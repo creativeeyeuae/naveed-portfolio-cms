@@ -1,0 +1,335 @@
+// ============================================================================
+// naveed-portfolio-cms — Prisma Schema
+// Mirrors database/schema.sql — keep both in sync.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+enum UserRole {
+  admin
+  client
+}
+
+enum ContentType {
+  photography
+  cinematography
+}
+
+enum OrientationType {
+  portrait
+  landscape
+}
+
+enum MediaKind {
+  image
+  video
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+enum PostStatus {
+  draft
+  published
+  archived
+}
+
+// ----------------------------------------------------------------------------
+// USERS & CLIENTS
+// ----------------------------------------------------------------------------
+
+model User {
+  id         String   @id @default(uuid())
+  authId     String?  @unique @map("auth_id")
+  email      String   @unique
+  role       UserRole @default(client)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  client     Client?
+  blogPosts  BlogPost[]
+
+  @@map("users")
+}
+
+model Client {
+  id         String   @id @default(uuid())
+  userId     String?  @unique @map("user_id")
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  company    String?
+  phone      String?
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+
+  albums          Album[]
+  galleryAccess   GalleryAccess[]
+  downloadLog     DownloadLog[]
+
+  @@map("clients")
+}
+
+// ----------------------------------------------------------------------------
+// TAXONOMY
+// ----------------------------------------------------------------------------
+
+model Category {
+  id         String      @id @default(uuid())
+  type       ContentType
+  name       String
+  slug       String
+  sortOrder  Int         @default(0) @map("sort_order")
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  albums     Album[]
+
+  @@unique([type, slug])
+  @@map("categories")
+}
+
+model Tag {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  albums     AlbumTag[]
+
+  @@map("tags")
+}
+
+// ----------------------------------------------------------------------------
+// ALBUMS / PROJECTS
+// ----------------------------------------------------------------------------
+
+model Album {
+  id            String      @id @default(uuid())
+  type          ContentType
+  categoryId    String?     @map("category_id")
+  category      Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  title         String
+  slug          String      @unique
+  description   String?
+  clientId      String?     @map("client_id")
+  client        Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  coverMediaId  String?     @unique @map("cover_media_id")
+  coverMedia    MediaAsset? @relation("AlbumCover", fields: [coverMediaId], references: [id], onDelete: SetNull)
+  isFeatured    Boolean     @default(false) @map("is_featured")
+  isPublished   Boolean     @default(true) @map("is_published")
+  sortOrder     Int         @default(0) @map("sort_order")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  media         MediaAsset[] @relation("AlbumMedia")
+  tags          AlbumTag[]
+  galleryAccess GalleryAccess[]
+
+  @@map("albums")
+}
+
+model AlbumTag {
+  albumId  String @map("album_id")
+  album    Album  @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  tagId    String @map("tag_id")
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, tagId])
+  @@map("album_tags")
+}
+
+// ----------------------------------------------------------------------------
+// MEDIA ASSETS
+// ----------------------------------------------------------------------------
+
+model MediaAsset {
+  id                String           @id @default(uuid())
+  albumId           String?          @map("album_id")
+  album             Album?           @relation("AlbumMedia", fields: [albumId], references: [id], onDelete: Cascade)
+  kind              MediaKind
+  orientation       OrientationType?
+  width             Int?
+  height            Int?
+  altText           String?          @map("alt_text")
+  originalKey       String           @map("original_key")
+  webKey            String           @map("web_key")
+  thumbnailKey      String           @map("thumbnail_key")
+  watermarkedKey    String?          @map("watermarked_key")
+  durationSeconds   Int?             @map("duration_seconds")
+  sortOrder         Int              @default(0) @map("sort_order")
+  createdAt         DateTime         @default(now()) @map("created_at")
+
+  coverOfAlbum      Album?           @relation("AlbumCover")
+  downloadLog       DownloadLog[]
+  blogPosts         BlogPost[]
+
+  @@map("media_assets")
+}
+
+// ----------------------------------------------------------------------------
+// GALLERY ACCESS
+// ----------------------------------------------------------------------------
+
+model GalleryAccess {
+  id             String    @id @default(uuid())
+  albumId        String?   @map("album_id")
+  album          Album?    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  clientId       String?   @map("client_id")
+  client         Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  passwordHash   String?   @map("password_hash")
+  allowDownload  Boolean   @default(true) @map("allow_download")
+  expiresAt      DateTime? @map("expires_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("gallery_access")
+}
+
+model DownloadLog {
+  id            String      @id @default(uuid())
+  mediaId       String?     @map("media_id")
+  media         MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  clientId      String?     @map("client_id")
+  client        Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  ipAddress     String?     @map("ip_address")
+  downloadedAt  DateTime    @default(now()) @map("downloaded_at")
+
+  @@map("download_log")
+}
+
+// ----------------------------------------------------------------------------
+// BOOKINGS & CONTACT
+// ----------------------------------------------------------------------------
+
+model Booking {
+  id           String        @id @default(uuid())
+  clientName   String        @map("client_name")
+  email        String
+  phone        String?
+  serviceType  String?       @map("service_type")
+  eventDate    DateTime?     @map("event_date") @db.Date
+  message      String?
+  status       BookingStatus @default(pending)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
+
+  @@map("bookings")
+}
+
+model ContactSubmission {
+  id         String   @id @default(uuid())
+  name       String
+  email      String
+  subject    String?
+  message    String
+  isRead     Boolean  @default(false) @map("is_read")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("contact_submissions")
+}
+
+// ----------------------------------------------------------------------------
+// BLOG
+// ----------------------------------------------------------------------------
+
+model BlogPost {
+  id            String      @id @default(uuid())
+  title         String
+  slug          String      @unique
+  excerpt       String?
+  content       String
+  coverMediaId  String?     @map("cover_media_id")
+  coverMedia    MediaAsset? @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
+  authorId      String?     @map("author_id")
+  author        User?       @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  status        PostStatus  @default(draft)
+  publishedAt   DateTime?   @map("published_at")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+
+  @@map("blog_posts")
+}
+
+// ----------------------------------------------------------------------------
+// TESTIMONIALS & CLIENT LOGOS
+// ----------------------------------------------------------------------------
+
+model Testimonial {
+  id          String   @id @default(uuid())
+  clientName  String   @map("client_name")
+  quote       String
+  rating      Int?
+  avatarUrl   String?  @map("avatar_url")
+  isFeatured  Boolean  @default(false) @map("is_featured")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("testimonials")
+}
+
+model ClientLogo {
+  id         String @id @default(uuid())
+  name       String
+  logoUrl    String @map("logo_url")
+  websiteUrl String? @map("website_url")
+  sortOrder  Int    @default(0) @map("sort_order")
+
+  @@map("client_logos")
+}
+
+// ----------------------------------------------------------------------------
+// SEO
+// ----------------------------------------------------------------------------
+
+model SeoMetadata {
+  id          String   @id @default(uuid())
+  pagePath    String   @unique @map("page_path")
+  title       String?
+  description String?
+  ogImageUrl  String?  @map("og_image_url")
+  jsonLd      Json?    @map("json_ld")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("seo_metadata")
+}
+
+// ----------------------------------------------------------------------------
+// ANALYTICS
+// ----------------------------------------------------------------------------
+
+model AnalyticsEvent {
+  id         String   @id @default(uuid())
+  eventType  String   @map("event_type")
+  pagePath   String?  @map("page_path")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("analytics_events")
+}
+
+// ----------------------------------------------------------------------------
+// SETTINGS
+// ----------------------------------------------------------------------------
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

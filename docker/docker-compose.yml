@@ -1,0 +1,18 @@
+# Local development only — production uses Supabase (managed Postgres) and
+# Cloudflare R2 (managed object storage), not these containers.
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: naveed
+      POSTGRES_PASSWORD: naveed_dev_password
+      POSTGRES_DB: naveed_portfolio_cms
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
-import { SettingsForm } from "../../../../admin/settings/SettingsForm";
+import { SettingsForm } from "@/components/SettingsForm";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({});

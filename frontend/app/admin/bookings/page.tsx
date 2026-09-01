@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
-import { BookingsTable, type BookingRow } from "../../../../admin/bookings/BookingsTable";
+import { BookingsTable, type BookingRow } from "@/components/BookingsTable";
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { api } from "@/lib/api";
-import { AlbumList, type AlbumListItem } from "../../../../admin/portfolio/AlbumList";
-import { AlbumForm, type AlbumFormValues } from "../../../../admin/portfolio/AlbumForm";
+import { AlbumList, type AlbumListItem } from "@/components/AlbumList";
+import { AlbumForm, type AlbumFormValues } from "@/components/AlbumForm";
 
 export default function AdminPortfolioPage() {
   const [albums, setAlbums] = useState<AlbumListItem[]>([]);

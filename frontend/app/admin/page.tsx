@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase";
-import { StatsCards } from "../../../../admin/dashboard/StatsCards";
+import { StatsCards } from "@/components/StatsCards";
 
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<{ label: string; value: number }[]>([]);

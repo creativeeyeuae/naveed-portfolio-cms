@@ -3,27 +3,27 @@
 @tailwind utilities;
 
 :root {
-  /* Surface tokens (Shams-inspired obsidian base) */
-  --bg-primary: #080809;
-  --bg-surface-1: #111113;
-  --bg-surface-2: #18181B;
-  --bg-surface-3: #222226;
+  /* Surface tokens (Royal Obsidian base) */
+  --bg-primary: #09060E;
+  --bg-surface-1: #140D21;
+  --bg-surface-2: #1C1330;
+  --bg-surface-3: #241A3D;
 
   /* Typography & contrast tokens */
   --text-primary: #FFFFFF;
-  --text-secondary: #E4E4E7;
-  --text-muted: #A1A1AA;
-  --text-dim: #71717A;
+  --text-secondary: #E2D9F3;
+  --text-muted: #A892C6;
+  --text-dim: #6B5C87;
 
-  /* Restrained accent tokens (kept under ~3% of the page) */
-  --accent-gold: #C5A059;
-  --accent-gold-hover: #D4AF37;
-  --accent-gold-subtle: rgba(197, 160, 89, 0.12);
+  /* Restrained accent tokens (Electric Violet, kept to ~5-10% of the page) */
+  --accent-primary: #8B5CF6;
+  --accent-primary-hover: #A855F7;
+  --accent-subtle: rgba(139, 92, 246, 0.12);
 
   /* Grid & border tokens */
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-bold: rgba(255, 255, 255, 0.18);
-  --border-gold: rgba(197, 160, 89, 0.35);
+  --border-subtle: #2D1F45;
+  --border-bold: #4A3570;
+  --border-accent: rgba(139, 92, 246, 0.35);
 
   /* System spacing */
   --radius-sm: 2px;

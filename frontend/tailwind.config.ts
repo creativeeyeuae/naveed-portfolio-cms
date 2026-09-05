@@ -5,9 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        purple: "#C5A059",
-        gold: "#C5A059",
-        ink: "#080809",
+        purple: "#A855F7",
+        gold: "#8B5CF6",
+        ink: "#09060E",
       },
       fontFamily: {
         serif: ["var(--font-serif)", "'DM Serif Display'", "serif"],

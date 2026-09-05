@@ -10,9 +10,9 @@ const config: Config = {
         ink: "#0B0B0D",
       },
       fontFamily: {
-        serif: ["'DM Serif Display'", "serif"],
+        serif: ["var(--font-serif)", "'DM Serif Display'", "serif"],
         display: ["'Playfair Display'", "serif"],
-        sans: ["'Jost'", "sans-serif"],
+        sans: ["var(--font-sans)", "'Jost'", "sans-serif"],
       },
     },
   },

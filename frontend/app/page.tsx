@@ -91,16 +91,18 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
 
 // ─── COLORS ─────────────────────────────────────────────────────────────────
-const C = { P:"#7c5cbf",PL:"#a78bdc",PD:"#4a2d80",BG:"#070710",FG:"#f0eef8",MID:"#9490a8",DARK:"#0c0c1a",BORDER:"rgba(124,92,191,0.15)" };
+// PL doubles as the site's light "accent" token: gold for labels, tags, active nav state and
+// hover highlights, while P/PD (true purple) stay reserved for the solid primary-button fill.
+const C = { P:"#7C3AED",PL:"#C4A44A",PD:"#5B21B6",GOLD:"#C4A44A",GOLDL:"#DCC076",BG:"#0B0B0D",FG:"#F5F0E6",MID:"#A39C93",DARK:"#141210",BORDER:"rgba(196,164,74,0.16)" };
 
 const S = {
-  base:{background:C.BG,color:C.FG,minHeight:"100vh",fontFamily:"Georgia,serif"} as React.CSSProperties,
-  inp:{background:"#10101c",border:"1px solid #2a2840",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",fontFamily:"Georgia,serif",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
-  btnP:{background:C.P,border:"none",color:"#fff",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",fontFamily:"Georgia,serif"},
-  btnO:{background:"none",border:`1px solid ${C.PL}`,color:C.PL,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",fontFamily:"Georgia,serif"},
-  btnSm:{background:C.P,border:"none",color:"#fff",padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer",fontFamily:"Georgia,serif"},
+  base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
+  inp:{background:"#171412",border:"1px solid #332c22",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
+  btnP:{background:C.P,border:"none",color:"#fff",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
+  btnO:{background:"none",border:`1px solid ${C.GOLD}`,color:C.GOLD,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
+  btnSm:{background:C.P,border:"none",color:"#fff",padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer"},
   lbl:{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
-  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.PL,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
+  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.GOLD,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
 };
 
 // ─── UPLOAD HELPER ───────────────────────────────────────────────────────────
@@ -219,15 +221,15 @@ function Hero({slides,onNav}:{slides:HeroSlide[];onNav:(p:string)=>void}) {
       ))}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(4,4,18,0.88) 0%,rgba(4,4,18,0.45) 60%,rgba(4,4,18,0.2) 100%)",zIndex:2}} />
       <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(7,7,16,0.95) 0%,transparent 35%)",zIndex:2}} />
-      <div style={{position:"absolute",top:96,right:48,color:"rgba(255,255,255,0.3)",fontSize:11,letterSpacing:4,fontFamily:"Georgia,serif",zIndex:3}}>0{slide+1} / 0{slides.length}</div>
+      <div style={{position:"absolute",top:96,right:48,color:"rgba(255,255,255,0.3)",fontSize:11,letterSpacing:4,zIndex:3}}>0{slide+1} / 0{slides.length}</div>
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
-          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",fontFamily:"Georgia,serif"}}>{sl.label}</span></div>
-          <h1 style={{fontSize:"clamp(36px,6vw,76px)",fontWeight:300,letterSpacing:2,color:"#fff",margin:"0 0 20px",lineHeight:1.2,fontFamily:"Georgia,serif",whiteSpace:"pre-line"}}>{sl.headline}</h1>
-          <p style={{fontSize:"clamp(13px,1.3vw,15px)",color:"rgba(255,255,255,0.55)",lineHeight:1.85,maxWidth:460,marginBottom:40,fontFamily:"Georgia,serif"}}>{sl.sub}</p>
+          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
+          <h1 style={{fontSize:"clamp(36px,6vw,76px)",fontWeight:400,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.15,whiteSpace:"pre-line"}}>{sl.headline}</h1>
+          <p style={{fontSize:"clamp(13px,1.3vw,15px)",color:"rgba(255,255,255,0.55)",lineHeight:1.85,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
-            {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",fontFamily:"Georgia,serif"}}>{sl.btn2}</button>}
+            {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
           </div>
         </div>
       </div>
@@ -352,7 +354,7 @@ export default function Home() {
 
   const Nav=()=>(
     <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:0,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(7,7,16,0.96)",backdropFilter:"blur(14px)",borderBottom:`1px solid ${C.BORDER}`}}>
-      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:13,letterSpacing:5,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"Georgia,serif"}}>{settings.siteName}</div>
+      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>{settings.siteName}</div>
 
       {isMobile?(
         <button aria-label={mobileNavOpen?"Close menu":"Open menu"} onClick={()=>setMobileNavOpen(o=>!o)} style={{background:"none",border:`1px solid ${C.BORDER}`,color:C.FG,width:40,height:36,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
@@ -1087,7 +1089,7 @@ export default function Home() {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
             {testimonials.filter(t=>t.featured).map(t=>(
               <div key={t.id} style={{padding:32,border:`1px solid ${C.BORDER}`,background:C.DARK}}>
-                <div style={{fontSize:40,color:C.P,lineHeight:1,marginBottom:16,fontFamily:"Georgia,serif"}}>"</div>
+                <div style={{fontSize:40,color:C.GOLD,lineHeight:1,marginBottom:16,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
                 <p style={{color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
                 <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
                   <div style={{fontSize:13,color:C.FG,letterSpacing:1}}>{t.name}</div>

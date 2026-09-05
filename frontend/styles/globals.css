@@ -15,5 +15,11 @@ html, body {
 
 body {
   background-color: var(--color-ink);
-  color: #F5F5F5;
+  color: #F5F0E6;
+  font-family: var(--font-sans), 'Jost', sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-serif), 'DM Serif Display', serif;
+  font-weight: 400;
 }

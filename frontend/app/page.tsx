@@ -91,19 +91,20 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
 
 // ─── COLORS ─────────────────────────────────────────────────────────────────
-// Purple (P/PL/PD) is the site's dominant palette -- labels, tags, active nav state, hover
-// highlights and the primary-button fill all draw from it. GOLD is kept as a rare (~5%)
-// accent for a single decorative touch (the testimonial quote mark) only.
-const C = { P:"#7C3AED",PL:"#A78BFA",PD:"#5B21B6",GOLD:"#C4A44A",GOLDL:"#DCC076",BG:"#0B0B0D",FG:"#F5F0E6",MID:"#A39C93",DARK:"#141210",BORDER:"rgba(124,92,191,0.10)" };
+// Shams-inspired obsidian system: near-black surfaces, white/silver text, and a single
+// restrained gold accent reserved for CTAs and rare focus moments (kept under ~3% of the
+// page). P/PD carry the gold CTA fill; PL is a neutral near-white used for active/hover
+// states and structural labels -- never a second color.
+const C = { P:"#C5A059",PL:"#E4E4E7",PD:"#D4AF37",GOLD:"#C5A059",GOLDL:"#D4AF37",BG:"#080809",FG:"#FFFFFF",MID:"#A1A1AA",DARK:"#111113",BORDER:"rgba(255,255,255,0.08)" };
 
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
-  inp:{background:"#171412",border:"1px solid #332c22",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
-  btnP:{background:C.P,border:"none",color:"#fff",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
-  btnO:{background:"none",border:`1px solid ${C.P}`,color:C.P,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
-  btnSm:{background:C.P,border:"none",color:"#fff",padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer"},
+  inp:{background:"#18181B",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
+  btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
+  btnO:{background:"none",border:"1px solid rgba(255,255,255,0.18)",color:C.FG,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
+  btnSm:{background:C.P,border:"none",color:C.BG,padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   lbl:{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
-  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.PL,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
+  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.MID,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
 };
 
 // ─── UPLOAD HELPER ───────────────────────────────────────────────────────────
@@ -214,14 +215,14 @@ function Hero({slides,onNav}:{slides:HeroSlide[];onNav:(p:string)=>void}) {
   if(!slides.length) return null;
   const sl=slides[slide]||slides[0];
   return(
-    <div style={{position:"relative",height:"100vh",overflow:"hidden",background:"#030308"}}>
+    <div style={{position:"relative",height:"100vh",overflow:"hidden",background:C.BG}}>
       {slides.map((s,i)=>(
         <div key={i} style={{position:"absolute",inset:0,opacity:i===slide?1:0,transition:"opacity 1.4s ease",zIndex:i===slide?1:0}}>
           <img src={s.img} alt={s.label} style={{width:"100%",height:"100%",objectFit:"cover",transform:i===slide?"scale(1.06)":"scale(1)",transition:"transform 7s ease"}} />
         </div>
       ))}
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(4,4,18,0.88) 0%,rgba(4,4,18,0.45) 60%,rgba(4,4,18,0.2) 100%)",zIndex:2}} />
-      <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(7,7,16,0.95) 0%,transparent 35%)",zIndex:2}} />
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(8,8,9,0.88) 0%,rgba(8,8,9,0.45) 60%,rgba(8,8,9,0.2) 100%)",zIndex:2}} />
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(8,8,9,0.95) 0%,transparent 35%)",zIndex:2}} />
       <div style={{position:"absolute",top:96,right:48,color:"rgba(255,255,255,0.3)",fontSize:11,letterSpacing:4,zIndex:3}}>0{slide+1} / 0{slides.length}</div>
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
@@ -354,7 +355,7 @@ export default function Home() {
   const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["cv","CV"],["blog","Journal"],["contact","Contact"]];
 
   const Nav=()=>(
-    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:0,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(7,7,16,0.96)",backdropFilter:"blur(14px)",borderBottom:`1px solid ${C.BORDER}`}}>
+    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:0,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(8,8,9,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
       <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>{settings.siteName}</div>
 
       {isMobile?(
@@ -373,7 +374,7 @@ export default function Home() {
       )}
 
       {isMobile&&mobileNavOpen&&(
-        <div style={{position:"fixed",top:64,left:0,right:0,bottom:0,background:"rgba(4,4,12,0.98)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
+        <div style={{position:"fixed",top:64,left:0,right:0,bottom:0,background:"rgba(8,8,9,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
           {NAV_LINKS.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
@@ -385,7 +386,7 @@ export default function Home() {
 
   // ── FOOTER ──
   const Footer=()=>(
-    <footer style={{background:"#04040e",borderTop:`1px solid ${C.BORDER}`}}>
+    <footer style={{background:"#050506",borderTop:`1px solid ${C.BORDER}`}}>
       <div style={{maxWidth:1200,margin:"0 auto",padding:"48px 40px 24px",display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:40}}>
         <div>
           <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG,marginBottom:12}}>{settings.siteName}</div>
@@ -757,7 +758,7 @@ export default function Home() {
               {projects.filter(p=>p.id!==selProj.id&&p.categories?.some(c=>selProj.categories?.includes(c))).slice(0,3).map(p=>(
                 <div key={p.id} onClick={()=>openProj(p)} style={{cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:C.DARK}}>
                   <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.05)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} />
-                  <div style={{position:"absolute",bottom:0,left:0,right:0,padding:16,background:"linear-gradient(to top,rgba(7,7,16,0.9),transparent)"}}><div style={{fontSize:13,color:"#fff"}}>{p.title}</div></div>
+                  <div style={{position:"absolute",bottom:0,left:0,right:0,padding:16,background:"linear-gradient(to top,rgba(8,8,9,0.9),transparent)"}}><div style={{fontSize:13,color:"#fff"}}>{p.title}</div></div>
                 </div>
               ))}
             </div>
@@ -795,7 +796,7 @@ export default function Home() {
         <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Photography Journal</h1>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
           {blog.map(b=>(
-            <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:"rgba(124,92,191,0.05)",borderRadius:14,overflow:"hidden"}}>
+            <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,overflow:"hidden"}}>
               {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
               <div style={{padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
@@ -922,7 +923,7 @@ export default function Home() {
             </div>
           </div>
           <div>
-            <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",borderRadius:14,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
+            <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",borderRadius:4,border:`1px solid ${C.BORDER}`,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
               <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",objectFit:"cover"}} />
             </div>
             <div style={{marginTop:32,display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
@@ -949,7 +950,7 @@ export default function Home() {
         <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Let's Work Together</h1>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,marginBottom:48}}>
           {[{label:"WhatsApp",value:settings.phone,href:`https://wa.me/${WA}`},{label:"Email",value:settings.email,href:`mailto:${settings.email}`},{label:"Location",value:settings.location,href:null}].map((c,i)=>(
-            <div key={i} className="tcard" style={{padding:24,borderRadius:12,background:"rgba(124,92,191,0.05)"}}>
+            <div key={i} className="tcard" style={{padding:24,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK}}>
               <div style={{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase",marginBottom:12}}>{c.label}</div>
               {c.href?<a href={c.href} target="_blank" style={{color:C.PL,fontSize:13,textDecoration:"none"}}>{c.value}</a>:<div style={{color:C.PL,fontSize:13}}>{c.value}</div>}
             </div>
@@ -991,7 +992,7 @@ export default function Home() {
               onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
               onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
               <img src={p.coverImage||p.images?.[0]?.url||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",transition:"transform 0.6s"}} />
-              <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(7,7,16,0.92) 0%,transparent 55%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:24}}>
+              <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(8,8,9,0.92) 0%,transparent 55%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:6}}>{p.categories?.join(" · ")}</div>
                 <div style={{fontSize:18,letterSpacing:2,color:"#fff"}}>{p.title}</div>
                 {p.location&&<div style={{fontSize:11,color:C.MID,marginTop:4}}>📍 {p.location}</div>}
@@ -1019,8 +1020,8 @@ export default function Home() {
         </div>
         <div style={{display:"flex",gap:28}}>
           {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"]].map(([n,l])=>(
-            <div key={l} style={{textAlign:"center"}}>
-              <div style={{fontSize:20,color:C.PL,fontWeight:300}}>{n}</div>
+            <div key={l} style={{textAlign:"left",borderLeft:`2px solid ${C.GOLD}`,paddingLeft:14}}>
+              <div style={{fontSize:20,color:C.FG,fontWeight:300}}>{n}</div>
               <div style={{fontSize:9,letterSpacing:3,color:C.MID,textTransform:"uppercase"}}>{l}</div>
             </div>
           ))}
@@ -1044,7 +1045,7 @@ export default function Home() {
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.04)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
                 <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.7s"}} />
-                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(7,7,16,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
+                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(8,8,9,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
                   <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{p.categories?.join(" · ")}</div>
                   <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
                 </div>
@@ -1055,7 +1056,7 @@ export default function Home() {
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.05)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
                 <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.6s"}} />
-                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(7,7,16,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
+                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(8,8,9,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
                   <div style={{fontSize:9,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:4}}>{p.categories?.[0]}</div>
                   <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
                 </div>
@@ -1070,8 +1071,9 @@ export default function Home() {
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Services</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
-            {settings.services.map(sv=>(
-              <div key={sv.id} className="tcard" style={{padding:"32px 28px",borderRadius:14,background:"rgba(124,92,191,0.05)",cursor:"pointer"}}>
+            {settings.services.map((sv,i)=>(
+              <div key={sv.id} className="tcard" style={{padding:"32px 28px",borderRadius:4,border:`1px solid ${C.BORDER}`,background:"#18181B",cursor:"pointer"}}>
+                <div style={{fontSize:11,fontWeight:600,color:C.GOLD,letterSpacing:2,marginBottom:14}}>{String(i+1).padStart(2,"0")}</div>
                 <div style={{fontSize:26,marginBottom:16}}>{sv.icon}</div>
                 <div style={{fontSize:12,letterSpacing:3,color:C.FG,textTransform:"uppercase",marginBottom:10}}>{sv.title}</div>
                 <div style={{fontSize:13,color:C.MID,lineHeight:1.7}}>{sv.desc}</div>
@@ -1087,8 +1089,7 @@ export default function Home() {
           <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Client Testimonials</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
             {testimonials.filter(t=>t.featured).map(t=>(
-              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:16,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
-                <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg, ${C.P}, ${C.PD})`}} />
+              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
                 <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.14,lineHeight:1,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
                 <p style={{position:"relative",color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
                 <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
@@ -1114,7 +1115,7 @@ export default function Home() {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
               {blog.slice(0,2).map(b=>(
-                <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:14,overflow:"hidden",background:"rgba(124,92,191,0.05)"}}>
+                <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:4,overflow:"hidden",border:`1px solid ${C.BORDER}`,background:C.DARK}}>
                   {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
                   <div style={{padding:24}}>
                     <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
@@ -1129,7 +1130,7 @@ export default function Home() {
       )}
 
       {/* CTA */}
-      <div style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,#0e0820 50%,${C.BG} 100%)`}}>
+      <div style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Ready to create?</div>
         <h2 style={{fontSize:"clamp(22px,3vw,38px)",fontWeight:300,letterSpacing:3,margin:"0 0 12px"}}>Book Your Session</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>

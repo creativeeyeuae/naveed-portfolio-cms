@@ -3,9 +3,31 @@
 @tailwind utilities;
 
 :root {
-  --color-purple: #7C3AED;
-  --color-gold: #C4A44A;
-  --color-ink: #0B0B0D;
+  /* Surface tokens (Shams-inspired obsidian base) */
+  --bg-primary: #080809;
+  --bg-surface-1: #111113;
+  --bg-surface-2: #18181B;
+  --bg-surface-3: #222226;
+
+  /* Typography & contrast tokens */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E4E4E7;
+  --text-muted: #A1A1AA;
+  --text-dim: #71717A;
+
+  /* Restrained accent tokens (kept under ~3% of the page) */
+  --accent-gold: #C5A059;
+  --accent-gold-hover: #D4AF37;
+  --accent-gold-subtle: rgba(197, 160, 89, 0.12);
+
+  /* Grid & border tokens */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-bold: rgba(255, 255, 255, 0.18);
+  --border-gold: rgba(197, 160, 89, 0.35);
+
+  /* System spacing */
+  --radius-sm: 2px;
+  --radius-md: 4px;
 }
 
 html, body {
@@ -14,8 +36,8 @@ html, body {
 }
 
 body {
-  background-color: var(--color-ink);
-  color: #F5F0E6;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-sans), 'Jost', sans-serif;
 }
 
@@ -29,6 +51,6 @@ h1, h2, h3, h4 {
 }
 .tcard:hover {
   transform: translateY(-4px);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
-  border-color: rgba(196, 164, 74, 0.4);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+  border-color: var(--border-bold);
 }

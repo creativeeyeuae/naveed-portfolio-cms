@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/admin", label: "Dashboard" },
@@ -8,6 +11,14 @@ const navItems = [
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // The login screen renders its own full-bleed design and shouldn't expose the
+  // internal admin nav (or its unstyled sidebar chrome) before anyone signs in.
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="flex min-h-screen bg-ink text-white">
       <aside className="w-64 border-r border-white/10 p-6">

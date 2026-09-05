@@ -1,16 +1,23 @@
 import type { Metadata } from "next";
-import { DM_Serif_Display, Jost } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "../styles/globals.css";
 
-const dmSerifDisplay = DM_Serif_Display({
-  weight: "400",
+// "Sharjah" (the shamsfz.ae brand typeface) isn't a licensed font we can source --
+// it only turns up on unlicensed font-aggregator sites, not Google Fonts or any
+// legitimate foundry, and it also appears to be Shams Free Zone's own commissioned
+// corporate face rather than a general-purpose typeface. Plus Jakarta Sans is used
+// here instead: a single, properly-licensed geometric sans across every weight the
+// brief calls for (Light/Regular/Medium/Bold), applied as one family for both
+// headings and body copy exactly as specified.
+const plusJakartaSans = Plus_Jakarta_Sans({
+  weight: ["300", "400", "500", "700", "800"],
   subsets: ["latin"],
   variable: "--font-serif",
   display: "swap",
 });
 
-const jost = Jost({
-  weight: ["300", "400", "500", "600"],
+const plusJakartaSansBody = Plus_Jakarta_Sans({
+  weight: ["300", "400", "500", "700"],
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
@@ -52,7 +59,7 @@ const structuredData = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${dmSerifDisplay.variable} ${jost.variable}`}>
+    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable}`}>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

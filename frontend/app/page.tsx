@@ -101,11 +101,11 @@ const C = { P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7"
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
   inp:{background:"#1C1330",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
-  btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
-  btnO:{background:"none",border:"1px solid rgba(255,255,255,0.18)",color:C.FG,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
+  btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
+  btnO:{background:"none",border:"1px solid rgba(255,255,255,0.18)",color:C.FG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   btnSm:{background:C.P,border:"none",color:C.BG,padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
-  lbl:{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
-  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.MID,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
+  lbl:{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
+  tag:(center=false)=>({fontSize:11,letterSpacing:6,color:C.MID,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
 };
 
 // ─── UPLOAD HELPER ───────────────────────────────────────────────────────────
@@ -243,8 +243,8 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
-          <h1 style={{fontSize:"clamp(36px,6vw,76px)",fontWeight:400,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.15,whiteSpace:"pre-line"}}>{sl.headline}</h1>
-          <p style={{fontSize:"clamp(13px,1.3vw,15px)",color:"rgba(255,255,255,0.55)",lineHeight:1.85,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
+          <h1 style={{fontSize:"clamp(40px,6.5vw,96px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
+          <p style={{fontSize:"clamp(15px,1.6vw,22px)",fontWeight:400,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:36}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
             {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
@@ -395,7 +395,7 @@ export default function Home() {
 
   const Nav=()=>(
     <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:0,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
-      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>{settings.siteName}</div>
+      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>{settings.siteName}</div>
 
       {isMobile?(
         <button aria-label={mobileNavOpen?"Close menu":"Open menu"} onClick={()=>setMobileNavOpen(o=>!o)} style={{background:"none",border:`1px solid ${C.BORDER}`,color:C.FG,width:40,height:36,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
@@ -781,7 +781,7 @@ export default function Home() {
         <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
           <span onClick={()=>goTo("work")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:40}}>← All Work</span>
           <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{selProj.categories?.join(" · ")}</div>
-          <h1 style={{fontSize:"clamp(28px,5vw,56px)",fontWeight:300,letterSpacing:3,margin:"0 0 16px"}}>{selProj.title}</h1>
+          <h1 style={{fontSize:"clamp(32px,5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{selProj.title}</h1>
           <div style={{display:"flex",gap:24,color:C.MID,fontSize:12,marginBottom:32,flexWrap:"wrap"}}>
             {selProj.location&&<span>📍 {selProj.location}</span>}
             {selProj.projectDate&&<span>📅 {selProj.projectDate}</span>}
@@ -816,7 +816,7 @@ export default function Home() {
       <div style={{maxWidth:800,margin:"0 auto",padding:"120px 40px 80px"}}>
         <span onClick={()=>goTo("blog")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:40}}>← Journal</span>
         <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{selBlog.category}</div>
-        <h1 style={{fontSize:"clamp(24px,4vw,48px)",fontWeight:300,letterSpacing:2,margin:"0 0 16px"}}>{selBlog.title}</h1>
+        <h1 style={{fontSize:"clamp(28px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{selBlog.title}</h1>
         <div style={{color:C.MID,fontSize:12,marginBottom:32}}>📅 {selBlog.date}</div>
         {selBlog.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden",marginBottom:48}}><img src={selBlog.coverImage} alt={selBlog.title} style={{width:"100%",height:"100%",objectFit:"cover"}} /></div>}
         <p style={{color:C.MID,fontSize:15,lineHeight:1.9,marginBottom:24}}>{selBlog.excerpt}</p>
@@ -832,14 +832,14 @@ export default function Home() {
       <Nav />
       <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
         <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
-        <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Photography Journal</h1>
+        <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 48px"}}>Photography Journal</h1>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
           {blog.map(b=>(
             <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,overflow:"hidden"}}>
               {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
               <div style={{padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
-                <h3 style={{fontSize:18,fontWeight:300,letterSpacing:1,margin:"0 0 12px"}}>{b.title}</h3>
+                <h3 style={{fontSize:18,fontWeight:700,letterSpacing:0.5,margin:"0 0 12px"}}>{b.title}</h3>
                 <p style={{color:C.MID,fontSize:13,lineHeight:1.7}}>{b.excerpt}</p>
                 <div style={{marginTop:16,fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase"}}>Read More →</div>
               </div>
@@ -858,7 +858,7 @@ export default function Home() {
       <div style={{maxWidth:900,margin:"0 auto",padding:"120px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:64}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
-          <h1 style={{fontSize:"clamp(32px,5vw,56px)",fontWeight:300,letterSpacing:4,margin:"0 0 12px"}}>{settings.aboutName}</h1>
+          <h1 style={{fontSize:"clamp(36px,5.5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.aboutName}</h1>
           <p style={{color:C.MID,fontSize:14,letterSpacing:2}}>{settings.aboutTitle}</p>
           <p style={{color:C.MID,fontSize:13,marginTop:8}}>{settings.phone} · {settings.email}</p>
           <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:24}}>
@@ -901,13 +901,13 @@ export default function Home() {
       <div style={{maxWidth:720,margin:"0 auto",padding:"120px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:56}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Book a Session</div>
-          <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 12px"}}>Let's Create Together</h1>
+          <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>Let's Create Together</h1>
           <p style={{color:C.MID,fontSize:14}}>Fill in the details below or message directly on WhatsApp</p>
         </div>
         {bookingDone?(
           <div style={{textAlign:"center",padding:64}}>
             <div style={{fontSize:48,color:C.PL,marginBottom:16}}>✓</div>
-            <h2 style={{fontWeight:300,letterSpacing:2,marginBottom:12}}>Request Sent!</h2>
+            <h2 style={{fontWeight:700,letterSpacing:0.5,marginBottom:12}}>Request Sent!</h2>
             <p style={{color:C.MID}}>Your booking request has been sent via WhatsApp. Naveed will respond shortly.</p>
             <button onClick={()=>{setBookingDone(false);setBooking({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});}} style={{...S.btnO,marginTop:24}}>New Request</button>
           </div>
@@ -947,7 +947,7 @@ export default function Home() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:64,alignItems:"start"}}>
           <div>
             <div style={{...S.tag(),marginBottom:20}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
-            <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 16px"}}>{settings.aboutName}</h1>
+            <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{settings.aboutName}</h1>
             <p style={{color:C.MID,fontSize:13,letterSpacing:2,marginBottom:24}}>{settings.aboutTitle}</p>
             <p style={{color:C.MID,fontSize:14,lineHeight:1.9,marginBottom:32}}>{settings.aboutBio}</p>
             <p style={{color:C.MID,fontSize:14,lineHeight:1.8,marginBottom:32}}>📱 {settings.phone}<br/>📧 {settings.email}<br/>📍 {settings.location}</p>
@@ -968,7 +968,7 @@ export default function Home() {
             <div style={{marginTop:32,display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
               {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"],["UAE","Base"]].map(([n,l])=>(
                 <div key={l} style={{textAlign:"center"}}>
-                  <div style={{fontSize:28,color:C.PL,fontWeight:300}}>{n}</div>
+                  <div style={{fontSize:40,color:C.PL,fontWeight:700}}>{n}</div>
                   <div style={{fontSize:9,letterSpacing:3,color:C.MID,textTransform:"uppercase",marginTop:4}}>{l}</div>
                 </div>
               ))}
@@ -986,7 +986,7 @@ export default function Home() {
       <Nav />
       <div style={{maxWidth:700,margin:"0 auto",padding:"120px 40px 80px",textAlign:"center"}}>
         <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Get In Touch</div>
-        <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Let's Work Together</h1>
+        <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 48px"}}>Let's Work Together</h1>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,marginBottom:48}}>
           {[{label:"WhatsApp",value:settings.phone,href:`https://wa.me/${WA}`},{label:"Email",value:settings.email,href:`mailto:${settings.email}`},{label:"Location",value:settings.location,href:null}].map((c,i)=>(
             <div key={i} className="tcard" style={{padding:24,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK}}>
@@ -1019,7 +1019,7 @@ export default function Home() {
       <div style={{maxWidth:1400,margin:"0 auto",padding:"100px 32px 80px"}}>
         <div style={{marginBottom:48}}>
           <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Portfolio</div>
-          <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 32px"}}>Selected Work</h1>
+          <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 32px"}}>Selected Work</h1>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             <span onClick={()=>setFilterCat("All")} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat==="All"?C.PL:C.MID,borderBottom:filterCat==="All"?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>All ({projects.length})</span>
             {cats.map(c=>{ const cnt=projects.filter(p=>p.categories?.includes(c)).length; if(!cnt) return null; return <span key={c} onClick={()=>setFilterCat(c)} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat===c?C.PL:C.MID,borderBottom:filterCat===c?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>{c} ({cnt})</span>; })}
@@ -1060,7 +1060,7 @@ export default function Home() {
         <div style={{display:"flex",gap:28}}>
           {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"]].map(([n,l])=>(
             <div key={l} style={{textAlign:"left",borderLeft:`2px solid ${C.GOLD}`,paddingLeft:14}}>
-              <div style={{fontSize:20,color:C.FG,fontWeight:300}}>{n}</div>
+              <div style={{fontSize:20,color:C.FG,fontWeight:700}}>{n}</div>
               <div style={{fontSize:9,letterSpacing:3,color:C.MID,textTransform:"uppercase"}}>{l}</div>
             </div>
           ))}
@@ -1074,7 +1074,7 @@ export default function Home() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
               <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Selected Work</div>
-              <h2 style={{fontSize:"clamp(20px,3vw,36px)",fontWeight:300,letterSpacing:3,margin:0}}>Featured Projects</h2>
+              <h2 style={{fontSize:"clamp(28px,4vw,56px)",fontWeight:700,letterSpacing:1,margin:0}}>Featured Projects</h2>
             </div>
             <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>View All →</span>
           </div>
@@ -1129,7 +1129,7 @@ export default function Home() {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
             {testimonials.filter(t=>t.featured).map(t=>(
               <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
-                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.14,lineHeight:1,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
+                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.14,lineHeight:1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>"</div>
                 <p style={{position:"relative",color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
                 <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
                   <div style={{fontSize:13,color:C.FG,letterSpacing:1}}>{t.name}</div>
@@ -1148,7 +1148,7 @@ export default function Home() {
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
                 <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
-                <h2 style={{fontSize:"clamp(20px,2.5vw,32px)",fontWeight:300,letterSpacing:3,margin:0}}>Photography Journal</h2>
+                <h2 style={{fontSize:"clamp(26px,3.5vw,48px)",fontWeight:700,letterSpacing:1,margin:0}}>Photography Journal</h2>
               </div>
               <span onClick={()=>goTo("blog")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>All Posts →</span>
             </div>
@@ -1158,7 +1158,7 @@ export default function Home() {
                   {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
                   <div style={{padding:24}}>
                     <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
-                    <h3 style={{fontSize:16,fontWeight:300,letterSpacing:1,margin:"0 0 10px"}}>{b.title}</h3>
+                    <h3 style={{fontSize:16,fontWeight:700,letterSpacing:0.5,margin:"0 0 10px"}}>{b.title}</h3>
                     <p style={{color:C.MID,fontSize:13,lineHeight:1.7}}>{b.excerpt}</p>
                   </div>
                 </div>
@@ -1171,7 +1171,7 @@ export default function Home() {
       {/* CTA */}
       <div style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Ready to create?</div>
-        <h2 style={{fontSize:"clamp(22px,3vw,38px)",fontWeight:300,letterSpacing:3,margin:"0 0 12px"}}>Book Your Session</h2>
+        <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>Book Your Session</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>
         <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
           <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>Book Now</button>

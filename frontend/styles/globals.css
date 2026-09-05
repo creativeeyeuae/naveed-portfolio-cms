@@ -8,6 +8,11 @@
   --color-ink: #0B0B0D;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
 body {
   background-color: var(--color-ink);
   color: #F5F5F5;

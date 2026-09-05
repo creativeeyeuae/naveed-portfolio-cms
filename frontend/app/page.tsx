@@ -91,18 +91,19 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
 
 // ─── COLORS ─────────────────────────────────────────────────────────────────
-// PL doubles as the site's light "accent" token: gold for labels, tags, active nav state and
-// hover highlights, while P/PD (true purple) stay reserved for the solid primary-button fill.
-const C = { P:"#7C3AED",PL:"#C4A44A",PD:"#5B21B6",GOLD:"#C4A44A",GOLDL:"#DCC076",BG:"#0B0B0D",FG:"#F5F0E6",MID:"#A39C93",DARK:"#141210",BORDER:"rgba(196,164,74,0.16)" };
+// Purple (P/PL/PD) is the site's dominant palette -- labels, tags, active nav state, hover
+// highlights and the primary-button fill all draw from it. GOLD is kept as a rare (~5%)
+// accent for a single decorative touch (the testimonial quote mark) only.
+const C = { P:"#7C3AED",PL:"#A78BFA",PD:"#5B21B6",GOLD:"#C4A44A",GOLDL:"#DCC076",BG:"#0B0B0D",FG:"#F5F0E6",MID:"#A39C93",DARK:"#141210",BORDER:"rgba(124,92,191,0.10)" };
 
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
   inp:{background:"#171412",border:"1px solid #332c22",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
   btnP:{background:C.P,border:"none",color:"#fff",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
-  btnO:{background:"none",border:`1px solid ${C.GOLD}`,color:C.GOLD,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
+  btnO:{background:"none",border:`1px solid ${C.P}`,color:C.P,padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer"},
   btnSm:{background:C.P,border:"none",color:"#fff",padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer"},
   lbl:{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
-  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.GOLD,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
+  tag:(center=false)=>({fontSize:10,letterSpacing:6,color:C.PL,textTransform:"uppercase" as const,display:"flex",alignItems:"center",gap:12,marginBottom:12,justifyContent:center?"center":"flex-start"} as React.CSSProperties),
 };
 
 // ─── UPLOAD HELPER ───────────────────────────────────────────────────────────
@@ -794,7 +795,7 @@ export default function Home() {
         <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Photography Journal</h1>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
           {blog.map(b=>(
-            <div key={b.id} onClick={()=>openBlog(b)} style={{cursor:"pointer",background:C.DARK,border:`1px solid ${C.BORDER}`,overflow:"hidden",transition:"border-color 0.3s"}} onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor=C.P} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=C.BORDER}>
+            <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:"rgba(124,92,191,0.05)",borderRadius:14,overflow:"hidden"}}>
               {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
               <div style={{padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
@@ -921,7 +922,7 @@ export default function Home() {
             </div>
           </div>
           <div>
-            <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",border:`1px solid ${C.BORDER}`}}>
+            <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",borderRadius:14,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
               <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",objectFit:"cover"}} />
             </div>
             <div style={{marginTop:32,display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
@@ -948,7 +949,7 @@ export default function Home() {
         <h1 style={{fontSize:"clamp(28px,4vw,48px)",fontWeight:300,letterSpacing:3,margin:"0 0 48px"}}>Let's Work Together</h1>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,marginBottom:48}}>
           {[{label:"WhatsApp",value:settings.phone,href:`https://wa.me/${WA}`},{label:"Email",value:settings.email,href:`mailto:${settings.email}`},{label:"Location",value:settings.location,href:null}].map((c,i)=>(
-            <div key={i} style={{padding:24,border:`1px solid ${C.BORDER}`,transition:"border-color 0.3s"}} onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor=C.P} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=C.BORDER}>
+            <div key={i} className="tcard" style={{padding:24,borderRadius:12,background:"rgba(124,92,191,0.05)"}}>
               <div style={{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase",marginBottom:12}}>{c.label}</div>
               {c.href?<a href={c.href} target="_blank" style={{color:C.PL,fontSize:13,textDecoration:"none"}}>{c.value}</a>:<div style={{color:C.PL,fontSize:13}}>{c.value}</div>}
             </div>
@@ -1011,7 +1012,7 @@ export default function Home() {
       <Hero slides={settings.heroSlides} onNav={goTo} />
 
       {/* INTRO STRIP */}
-      <div style={{background:C.DARK,borderBottom:`1px solid ${C.BORDER}`,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
+      <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div>
           <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG}}>{settings.siteName}</div>
           <div style={{fontSize:12,color:C.MID,letterSpacing:1,marginTop:4}}>{settings.aboutTitle} · {settings.location}</div>
@@ -1065,14 +1066,12 @@ export default function Home() {
       )}
 
       {/* SERVICES */}
-      <div style={{background:C.DARK,borderTop:`1px solid ${C.BORDER}`,borderBottom:`1px solid ${C.BORDER}`,padding:"60px 40px"}}>
+      <div style={{background:C.DARK,padding:"60px 40px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
           <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Services</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:1}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
             {settings.services.map(sv=>(
-              <div key={sv.id} style={{padding:"36px 28px",border:`1px solid ${C.BORDER}`,cursor:"pointer",transition:"all 0.3s"}}
-                onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(124,92,191,0.06)";}}
-                onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="none";}}>
+              <div key={sv.id} className="tcard" style={{padding:"32px 28px",borderRadius:14,background:"rgba(124,92,191,0.05)",cursor:"pointer"}}>
                 <div style={{fontSize:26,marginBottom:16}}>{sv.icon}</div>
                 <div style={{fontSize:12,letterSpacing:3,color:C.FG,textTransform:"uppercase",marginBottom:10}}>{sv.title}</div>
                 <div style={{fontSize:13,color:C.MID,lineHeight:1.7}}>{sv.desc}</div>
@@ -1088,9 +1087,9 @@ export default function Home() {
           <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Client Testimonials</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
             {testimonials.filter(t=>t.featured).map(t=>(
-              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:16,border:`1px solid ${C.BORDER}`,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
-                <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg, ${C.GOLD}, ${C.P})`}} />
-                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.12,lineHeight:1,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
+              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:16,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+                <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg, ${C.P}, ${C.PD})`}} />
+                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.14,lineHeight:1,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
                 <p style={{position:"relative",color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
                 <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
                   <div style={{fontSize:13,color:C.FG,letterSpacing:1}}>{t.name}</div>
@@ -1104,7 +1103,7 @@ export default function Home() {
 
       {/* BLOG PREVIEW */}
       {blog.length>0&&(
-        <div style={{background:C.DARK,borderTop:`1px solid ${C.BORDER}`,padding:"60px 40px"}}>
+        <div style={{background:C.DARK,padding:"60px 40px"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
@@ -1115,7 +1114,7 @@ export default function Home() {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
               {blog.slice(0,2).map(b=>(
-                <div key={b.id} onClick={()=>openBlog(b)} style={{cursor:"pointer",border:`1px solid ${C.BORDER}`,overflow:"hidden",background:C.BG,transition:"border-color 0.3s"}} onMouseEnter={e=>(e.currentTarget as HTMLElement).style.borderColor=C.P} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.borderColor=C.BORDER}>
+                <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:14,overflow:"hidden",background:"rgba(124,92,191,0.05)"}}>
                   {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
                   <div style={{padding:24}}>
                     <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>

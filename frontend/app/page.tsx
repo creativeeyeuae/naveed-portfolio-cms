@@ -88,7 +88,24 @@ const TIMES = ["9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3
 const getYTId = (url:string) => { if(!url) return null; const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|v\/))([^&\n?#]+)/); return m?.[1]??null; };
 const slugify = (s:string) => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
 const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ const i=new Image(); i.onload=()=>res(i.width>=i.height?"landscape":"portrait"); i.onerror=()=>res("landscape"); i.src=url; });
-const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
+// Bump this whenever a code-level content fix (corrected image, copy, etc.) needs to reach
+// browsers that already cached the old data in localStorage. On mismatch we clear the cached
+// CMS keys once so the browser re-reads the shipped defaults below -- any admin edits made
+// through the CMS since the last bump are what gets reset, so bump only when a real content
+// fix needs to override stale caches, not on every deploy.
+const DATA_VERSION = 2;
+let _dataVersionChecked = false;
+function ensureFreshData() {
+  if (_dataVersionChecked || typeof window === "undefined") return;
+  _dataVersionChecked = true;
+  try {
+    if (localStorage.getItem("nap_data_v") !== String(DATA_VERSION)) {
+      ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog"].forEach(k=>localStorage.removeItem(k));
+      localStorage.setItem("nap_data_v", String(DATA_VERSION));
+    }
+  } catch {}
+}
+const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; ensureFreshData(); try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
 
 // ─── COLORS ─────────────────────────────────────────────────────────────────
 // Royal Obsidian + Electric Violet master brand system: violet-black surfaces, white/lavender

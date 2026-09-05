@@ -206,8 +206,16 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
 }
 
 // ─── HERO ────────────────────────────────────────────────────────────────────
-function Hero({slides,onNav}:{slides:HeroSlide[];onNav:(p:string)=>void}) {
+function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string}) {
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
+  const [cbPhone,setCbPhone]=useState("");
+  function requestCallback(){
+    const phone=cbPhone.trim();
+    if(!phone) return;
+    const msg=`Hello Naveed, please call me back at ${phone} regarding a project.`;
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`,"_blank");
+    setCbPhone("");
+  }
   const tRef=useRef<ReturnType<typeof setInterval>|null>(null); const pRef=useRef<ReturnType<typeof setInterval>|null>(null);
   const DUR=5500;
   function startTimers(){ if(tRef.current)clearInterval(tRef.current); if(pRef.current)clearInterval(pRef.current); setProg(0); let p=0; pRef.current=setInterval(()=>{p+=100/(DUR/60);setProg(Math.min(p,100));},60); tRef.current=setInterval(()=>{setSlide(s=>(s+1)%slides.length);p=0;setProg(0);},DUR); }
@@ -230,9 +238,16 @@ function Hero({slides,onNav}:{slides:HeroSlide[];onNav:(p:string)=>void}) {
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
           <h1 style={{fontSize:"clamp(36px,6vw,76px)",fontWeight:400,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.15,whiteSpace:"pre-line"}}>{sl.headline}</h1>
           <p style={{fontSize:"clamp(13px,1.3vw,15px)",color:"rgba(255,255,255,0.55)",lineHeight:1.85,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
-          <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:36}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
             {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
+          </div>
+          <div style={{maxWidth:420}}>
+            <div style={{display:"flex",background:"#fff",borderRadius:50,padding:5,gap:4,boxShadow:"0 8px 30px rgba(0,0,0,0.35)"}}>
+              <input value={cbPhone} onChange={e=>setCbPhone(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")requestCallback();}} type="tel" placeholder="+971 xx xxx xxxx" aria-label="Phone number for callback" style={{flex:1,border:"none",outline:"none",background:"transparent",padding:"11px 18px",fontSize:14,color:"#1a1a1a"}} />
+              <button onClick={requestCallback} aria-label="Request a callback" style={{width:42,height:42,borderRadius:"50%",border:"none",background:C.P,color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>→</button>
+            </div>
+            <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",marginTop:12}}>Prefer a call? Leave your number — Naveed will get back to you personally.</div>
           </div>
         </div>
       </div>
@@ -1011,7 +1026,7 @@ export default function Home() {
   return(
     <div style={S.base}>
       <Nav />
-      <Hero slides={settings.heroSlides} onNav={goTo} />
+      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} />
 
       {/* INTRO STRIP */}
       <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>

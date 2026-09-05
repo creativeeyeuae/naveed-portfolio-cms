@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
-type Img = { url: string; orientation: string };
+type Img = { url: string; orientation: string; caption?: string };
 type Project = { id:string;title:string;slug:string;categories:string[];description:string;fullDescription:string;clientName:string;location:string;projectDate:string;tags:string[];featured:boolean;coverImage:string;images:Img[];videos:string[];reels:string[];youtubeUrl:string; };
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
@@ -176,37 +176,69 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
   );
 }
 
-// ─── SMART GRID ──────────────────────────────────────────────────────────────
+// ─── SMART GRID (editorial masonry / bento gallery) ─────────────────────────
+// Dynamically detects each image's real aspect ratio on load (no manual per-project
+// layout, no orientation tagging required beyond what the CMS already stores) and
+// gives it a column span: 1 (portrait/square), 2 (landscape) or 4/full-width
+// (panoramic). Images never crop or distort -- width:100%/height:auto always keeps
+// the photo's own intrinsic ratio; grid-auto-flow:dense fills the gaps around
+// shorter tiles automatically, producing the collage effect with zero manual work
+// per project, for any mix or count of images.
 function SmartGrid({images,onClick}:{images:Img[];onClick:(i:number)=>void}) {
   if(!images?.length) return null;
-  const groups:{type:string;imgs:Img[];idxs:number[]}[]=[];
-  let i=0;
-  while(i<images.length){ const c=images[i],n=images[i+1]; if(c.orientation==="portrait"&&n?.orientation==="portrait"){groups.push({type:"pair",imgs:[c,n],idxs:[i,i+1]});i+=2;}else{groups.push({type:"full",imgs:[c],idxs:[i]});i++;} }
-  return(
-    <div style={{display:"flex",flexDirection:"column",gap:3}}>
-      {groups.map((g,gi)=>(
-        <div key={gi} style={{display:"flex",gap:3}}>
-          {g.imgs.map((img,ii)=>(
-            <div key={ii} onClick={()=>onClick(g.idxs[ii])} style={{flex:g.type==="pair"?1:"none",width:g.type==="full"?"100%":undefined,cursor:"pointer",overflow:"hidden",background:C.DARK,aspectRatio:g.type==="pair"?"2/3":img.orientation==="landscape"?"16/9":"2/3"}}>
-              <img src={img.url} alt="" loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",transition:"transform 0.6s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.05)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} />
-            </div>
-          ))}
-        </div>
-      ))}
+  return (
+    <div className="egallery">
+      {images.map((img,i)=>(<GalleryTile key={i} img={img} index={i} onClick={()=>onClick(i)} />))}
+    </div>
+  );
+}
+
+function GalleryTile({img,index,onClick}:{img:Img;index:number;onClick:()=>void}) {
+  // Seed a span + placeholder ratio from the CMS-stored orientation so the tile has a
+  // sensible size before the real image loads (avoids a big layout jump), then refine
+  // both from the image's actual measured dimensions once it decodes.
+  const guess = img.orientation==="landscape" ? 2 : 1;
+  const [span,setSpan] = useState(index===0 && guess===2 ? 3 : guess);
+  const [ratio,setRatio] = useState(img.orientation==="landscape" ? 3/2 : 3/4);
+  const [loaded,setLoaded] = useState(false);
+  function handleLoad(e:React.SyntheticEvent<HTMLImageElement>) {
+    const el=e.currentTarget; const r=el.naturalWidth/el.naturalHeight;
+    let s = r>=2.1?4 : r>=1.2?2 : 1;
+    if(index===0 && s<2 && r>=0.9) s=2; // give the hero/first image a touch more presence
+    setRatio(r); setSpan(s); setLoaded(true);
+  }
+  return (
+    <div className={`egallery-item eg-span-${span}`} onClick={onClick} style={{aspectRatio:loaded?"auto":ratio,background:C.DARK}}>
+      <img src={img.url} alt={img.caption||""} loading={index<2?"eager":"lazy"} decoding="async" onLoad={handleLoad}
+        style={{width:"100%",height:loaded?"auto":"100%",objectFit:loaded?undefined:"cover",display:"block"}} />
+      {img.caption&&<div className="egallery-caption">{img.caption}</div>}
     </div>
   );
 }
 
 // ─── LIGHTBOX ────────────────────────────────────────────────────────────────
 function Lightbox({images,index,onClose,onPrev,onNext}:{images:Img[];index:number;onClose:()=>void;onPrev:()=>void;onNext:()=>void}) {
+  const touchX = useRef<number|null>(null);
   useEffect(()=>{ const h=(e:KeyboardEvent)=>{if(e.key==="Escape")onClose();if(e.key==="ArrowLeft")onPrev();if(e.key==="ArrowRight")onNext();}; window.addEventListener("keydown",h); return()=>window.removeEventListener("keydown",h); },[]);
+  useEffect(()=>{ const prev=document.body.style.overflow; document.body.style.overflow="hidden"; return()=>{document.body.style.overflow=prev;}; },[]);
+  function onTouchStart(e:React.TouchEvent){ touchX.current=e.touches[0].clientX; }
+  function onTouchEnd(e:React.TouchEvent){
+    if(touchX.current==null) return;
+    const dx=e.changedTouches[0].clientX-touchX.current;
+    if(Math.abs(dx)>50){ dx>0?onPrev():onNext(); }
+    touchX.current=null;
+  }
+  const cur=images[index];
   return(
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.98)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <button onClick={e=>{e.stopPropagation();onPrev();}} style={{position:"absolute",left:16,color:"#fff",background:"none",border:"none",fontSize:48,cursor:"pointer",opacity:0.5}}>‹</button>
-      <img onClick={e=>e.stopPropagation()} src={images[index]?.url} alt="" style={{maxWidth:"92vw",maxHeight:"92vh",objectFit:"contain"}} />
-      <button onClick={e=>{e.stopPropagation();onNext();}} style={{position:"absolute",right:16,color:"#fff",background:"none",border:"none",fontSize:48,cursor:"pointer",opacity:0.5}}>›</button>
-      <button onClick={onClose} style={{position:"absolute",top:16,right:16,color:"#fff",background:"none",border:"none",fontSize:24,cursor:"pointer"}}>✕</button>
-      <div style={{position:"absolute",bottom:16,color:"#555",fontSize:12,letterSpacing:3}}>{index+1} / {images.length}</div>
+    <div onClick={onClose} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.98)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <button aria-label="Previous image" onClick={e=>{e.stopPropagation();onPrev();}} style={{position:"absolute",left:16,color:"#fff",background:"none",border:"none",fontSize:48,cursor:"pointer",opacity:0.5}}>‹</button>
+      <figure onClick={e=>e.stopPropagation()} style={{margin:0,display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+        <img src={cur?.url} alt={cur?.caption||""} style={{maxWidth:"92vw",maxHeight:"84vh",objectFit:"contain"}} />
+        {cur?.caption&&<figcaption style={{color:"rgba(255,255,255,0.6)",fontSize:13,letterSpacing:0.5,textAlign:"center",maxWidth:"80vw"}}>{cur.caption}</figcaption>}
+      </figure>
+      <button aria-label="Next image" onClick={e=>{e.stopPropagation();onNext();}} style={{position:"absolute",right:16,color:"#fff",background:"none",border:"none",fontSize:48,cursor:"pointer",opacity:0.5}}>›</button>
+      <button aria-label="Close" onClick={onClose} style={{position:"absolute",top:16,right:16,color:"#fff",background:"none",border:"none",fontSize:24,cursor:"pointer"}}>✕</button>
+      <div style={{position:"absolute",bottom:16,color:"#777",fontSize:12,letterSpacing:3}}>{String(index+1).padStart(2,"0")} / {String(images.length).padStart(2,"0")}</div>
     </div>
   );
 }

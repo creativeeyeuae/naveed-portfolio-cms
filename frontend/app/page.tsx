@@ -29,7 +29,7 @@ const DEF_SETTINGS: SiteSettings = {
     {label:"Photography",headline:"Capturing Images\nWith Purpose.",sub:"Professional photography for brands, businesses, people and memorable moments.",btn1:"View Photography",btn2:"Start a Project",img:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1600&q=90",page:"work"},
     {label:"Videography",headline:"Stories Told\nThrough Motion.",sub:"Professional video production for corporate, commercial, events and social media.",btn1:"View Videography",btn2:"Book a Session",img:"https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1600&q=90",page:"work"},
     {label:"Commercial",headline:"Visuals Designed\nto Elevate Your Brand.",sub:"Creative photography and video content for modern businesses and campaigns.",btn1:"Explore Projects",btn2:"",img:"https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=1600&q=90",page:"work"},
-    {label:"Events",headline:"Professional Coverage.\nPowerful Visuals.",sub:"Photography and videography for corporate events, exhibitions and conferences.",btn1:"View Events",btn2:"",img:"https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1600&q=90",page:"work"},
+    {label:"Events",headline:"Professional Coverage.\nPowerful Visuals.",sub:"Photography and videography for corporate events, exhibitions and conferences.",btn1:"View Events",btn2:"",img:"https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1600&q=90",page:"work"},
   ],
   aboutName:"Naveed Anjum", aboutTitle:"Photographer · Cinematographer · Creative Director",
   aboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience creating powerful visual stories for brands, businesses and people. Specializing in luxury photography, commercial cinematography, portrait sessions and creative visual content for the UAE and international markets.",
@@ -65,7 +65,7 @@ const DEF_SETTINGS: SiteSettings = {
 
 const DEF_PROJECTS: Project[] = [
   {id:"p1",title:"Golden Hour Dubai",slug:"golden-hour-dubai",categories:["Landscape Photography"],description:"Aerial and ground-level captures of Dubai at dusk.",fullDescription:"",clientName:"Visit Dubai",location:"Dubai, UAE",projectDate:"2026-01-15",tags:["dubai","landscape"],featured:true,coverImage:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",orientation:"landscape"},{url:"https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&q=80",orientation:"portrait"},{url:"https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
-  {id:"p2",title:"Bridal Portraits",slug:"bridal-portraits",categories:["Wedding","Portrait Photography"],description:"Intimate bridal portraits in natural light.",fullDescription:"",clientName:"Private Client",location:"Abu Dhabi",projectDate:"2026-02-20",tags:["wedding","portrait"],featured:true,coverImage:"https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&q=80",orientation:"portrait"},{url:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p2",title:"Bridal Portraits",slug:"bridal-portraits",categories:["Wedding","Portrait Photography"],description:"Intimate bridal portraits in natural light.",fullDescription:"",clientName:"Private Client",location:"Abu Dhabi",projectDate:"2026-02-20",tags:["wedding","portrait"],featured:true,coverImage:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
   {id:"p3",title:"Corporate Excellence",slug:"corporate-excellence",categories:["Commercial","Editorial"],description:"Premium corporate photography for UAE brands.",fullDescription:"",clientName:"UAE Corporate",location:"DIFC, Dubai",projectDate:"2026-03-10",tags:["corporate","commercial"],featured:true,coverImage:"https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
 ];
 
@@ -1088,9 +1088,10 @@ export default function Home() {
           <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Client Testimonials</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
             {testimonials.filter(t=>t.featured).map(t=>(
-              <div key={t.id} style={{padding:32,border:`1px solid ${C.BORDER}`,background:C.DARK}}>
-                <div style={{fontSize:40,color:C.GOLD,lineHeight:1,marginBottom:16,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
-                <p style={{color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
+              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:16,border:`1px solid ${C.BORDER}`,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
+                <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg, ${C.GOLD}, ${C.P})`}} />
+                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.12,lineHeight:1,fontFamily:"var(--font-serif),'DM Serif Display',serif"}}>"</div>
+                <p style={{position:"relative",color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
                 <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
                   <div style={{fontSize:13,color:C.FG,letterSpacing:1}}>{t.name}</div>
                   <div style={{fontSize:11,color:C.MID,marginTop:4}}>{t.role} · {t.company}</div>

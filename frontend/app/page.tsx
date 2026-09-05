@@ -208,14 +208,21 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
 // ─── HERO ────────────────────────────────────────────────────────────────────
 function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string}) {
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
-  const [cbPhone,setCbPhone]=useState("");
-  function requestCallback(){
-    const phone=cbPhone.trim();
-    if(!phone) return;
-    const msg=`Hello Naveed, please call me back at ${phone} regarding a project.`;
-    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`,"_blank");
-    setCbPhone("");
+  const [cbStep,setCbStep]=useState<"phone"|"name"|"email"|"done">("phone");
+  const [cbPhone,setCbPhone]=useState(""); const [cbName,setCbName]=useState(""); const [cbEmail,setCbEmail]=useState("");
+  function cbNext(){
+    if(cbStep==="phone"){ if(!cbPhone.trim())return; setCbStep("name"); return; }
+    if(cbStep==="name"){ if(!cbName.trim())return; setCbStep("email"); return; }
+    if(cbStep==="email"){
+      if(!cbEmail.trim())return;
+      const msg=`Hello Naveed, please call me back regarding a project.\nName: ${cbName.trim()}\nPhone: ${cbPhone.trim()}\nEmail: ${cbEmail.trim()}`;
+      window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`,"_blank");
+      setCbStep("done");
+    }
   }
+  const cbField = cbStep==="phone" ? {value:cbPhone,set:setCbPhone,type:"tel",placeholder:"+971 xx xxx xxxx"}
+    : cbStep==="name" ? {value:cbName,set:setCbName,type:"text",placeholder:"Your full name"}
+    : {value:cbEmail,set:setCbEmail,type:"email",placeholder:"Your email address"};
   const tRef=useRef<ReturnType<typeof setInterval>|null>(null); const pRef=useRef<ReturnType<typeof setInterval>|null>(null);
   const DUR=5500;
   function startTimers(){ if(tRef.current)clearInterval(tRef.current); if(pRef.current)clearInterval(pRef.current); setProg(0); let p=0; pRef.current=setInterval(()=>{p+=100/(DUR/60);setProg(Math.min(p,100));},60); tRef.current=setInterval(()=>{setSlide(s=>(s+1)%slides.length);p=0;setProg(0);},DUR); }
@@ -243,11 +250,27 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
             {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
           </div>
           <div style={{maxWidth:420}}>
-            <div style={{display:"flex",background:"#fff",borderRadius:50,padding:5,gap:4,boxShadow:"0 8px 30px rgba(0,0,0,0.35)"}}>
-              <input value={cbPhone} onChange={e=>setCbPhone(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")requestCallback();}} type="tel" placeholder="+971 xx xxx xxxx" aria-label="Phone number for callback" style={{flex:1,border:"none",outline:"none",background:"transparent",padding:"11px 18px",fontSize:14,color:"#1a1a1a"}} />
-              <button onClick={requestCallback} aria-label="Request a callback" style={{width:42,height:42,borderRadius:"50%",border:"none",background:C.P,color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>→</button>
-            </div>
-            <div style={{fontSize:12,color:"rgba(255,255,255,0.55)",marginTop:12}}>Prefer a call? Leave your number — Naveed will get back to you personally.</div>
+            {cbStep==="done"?(
+              <div style={{display:"flex",alignItems:"center",gap:12,background:"#fff",borderRadius:50,padding:"14px 22px",boxShadow:"0 8px 30px rgba(0,0,0,0.35)"}}>
+                <span style={{width:24,height:24,borderRadius:"50%",background:C.P,color:"#fff",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>✓</span>
+                <span style={{fontSize:13,color:"#1a1a1a",lineHeight:1.4}}>We've received your request — Naveed will be in touch personally.</span>
+              </div>
+            ):(
+              <>
+                <div style={{display:"flex",background:"#fff",borderRadius:50,padding:5,gap:4,boxShadow:"0 8px 30px rgba(0,0,0,0.35)"}}>
+                  <input value={cbField.value} onChange={e=>cbField.set(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")cbNext();}} type={cbField.type} placeholder={cbField.placeholder} required aria-label={cbField.placeholder} style={{flex:1,border:"none",outline:"none",background:"transparent",padding:"11px 18px",fontSize:14,color:"#1a1a1a"}} />
+                  <button onClick={cbNext} aria-label="Next" style={{width:42,height:42,borderRadius:"50%",border:"none",background:C.P,color:"#fff",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>→</button>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:12}}>
+                  {["phone","name","email"].map(s=>(<span key={s} style={{width:s===cbStep?18:6,height:2,borderRadius:1,background:s===cbStep?C.PL:"rgba(255,255,255,0.25)",transition:"all 0.25s"}} />))}
+                  <span style={{fontSize:12,color:"rgba(255,255,255,0.55)",marginLeft:6}}>
+                    {cbStep==="phone"&&"Prefer a call? Leave your number to get started."}
+                    {cbStep==="name"&&"And your name, please."}
+                    {cbStep==="email"&&"Last step — your email address."}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

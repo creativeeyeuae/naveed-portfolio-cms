@@ -1665,27 +1665,27 @@ export default function Home() {
                     intrinsic height of its own. */}
                 <div className="pflip" style={{height:420}}>
                 <div className="pflip-inner">
-                  <div className="pflip-face" style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
+                  {/* When a photo is set for this package, it becomes the card's full background
+                      (with a dark gradient overlay for text contrast) instead of a small side
+                      thumbnail -- gives each package its own visual identity. */}
+                  <div className="pflip-face" style={pk.image?{backgroundImage:`linear-gradient(180deg, rgba(20,13,33,0.25) 0%, rgba(20,13,33,0.6) 55%, rgba(20,13,33,0.92) 100%), url(${pk.image})`,backgroundSize:"cover",backgroundPosition:"center",border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.18)"}:{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:26}}>
                       <span style={{fontSize:20}}>{pk.icon}</span>
-                      <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:C.P,textTransform:"uppercase"}}>{pk.label}</span>
+                      <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:pk.image?"#fff":C.P,textTransform:"uppercase"}}>{pk.label}</span>
                     </div>
-                    <div style={{display:"flex",gap:20,alignItems:"flex-start",flex:1,minHeight:0}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:11,letterSpacing:2,color:C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
-                        <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-                          <span style={{fontSize:12,fontWeight:700,color:C.P}}>AED</span>
-                          <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:C.DARK,lineHeight:1}}>{pk.price}</span>
-                        </div>
-                        {pk.priceNote&&<div style={{fontSize:11,color:C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
-                        <p style={{fontSize:13,color:C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
+                    <div style={{flex:1,minHeight:0}}>
+                      <div style={{fontSize:11,letterSpacing:2,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
+                      <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                        <span style={{fontSize:12,fontWeight:700,color:pk.image?"#fff":C.P}}>AED</span>
+                        <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:pk.image?"#fff":C.DARK,lineHeight:1}}>{pk.price}</span>
                       </div>
-                      {pk.image&&<img src={pk.image} alt={pk.label} loading="lazy" style={{width:100,height:150,objectFit:"cover",borderRadius:8,flexShrink:0,boxShadow:"0 10px 24px rgba(20,13,33,0.15)"}} />}
+                      {pk.priceNote&&<div style={{fontSize:11,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
+                      <p style={{fontSize:13,color:pk.image?"rgba(255,255,255,0.92)":C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
                     </div>
                     <div style={{marginTop:"auto"}}>
-                      {(pk.features||[]).length>0&&<div style={{fontSize:10,color:C.P,letterSpacing:1,marginBottom:10}}>↻ Hover to see what's included</div>}
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,borderTop:`1px solid ${C.LTBORDER}`}}>
-                        <span style={{fontSize:10,color:C.INKMID}}>T&C Apply</span>
+                      {(pk.features||[]).length>0&&<div style={{fontSize:10,color:pk.image?"#fff":C.P,letterSpacing:1,marginBottom:10}}>↻ Hover to see what's included</div>}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,borderTop:`1px solid ${pk.image?"rgba(255,255,255,0.3)":C.LTBORDER}`}}>
+                        <span style={{fontSize:10,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID}}>T&C Apply</span>
                         <a href={waHref} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 20px",fontSize:11,textDecoration:"none"}}>{pk.ctaLabel}</a>
                       </div>
                     </div>

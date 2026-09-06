@@ -545,6 +545,31 @@ function ConsultPopup({open,onClose,title,text,ctaLabel,waNumber}:{open:boolean;
   );
 }
 
+// ─── REVEAL ───────────────────────────────────────────────────────────────────
+// Lightweight scroll-reveal: fades + rises its children into place the first time they enter
+// the viewport (IntersectionObserver, disconnects after triggering once -- no work done again
+// on subsequent scrolls). Purely additive polish: content is fully visible either way, this
+// only changes how it arrives, so it's safe to wrap around any existing block with zero markup
+// or layout changes to what's inside. `delay` (seconds) staggers items in a grid/list.
+function Reveal({children,delay=0,className,style}:{children:React.ReactNode;delay?:number;className?:string;style?:React.CSSProperties}) {
+  const ref=useRef<HTMLDivElement>(null);
+  const [shown,setShown]=useState(false);
+  useEffect(()=>{
+    const el=ref.current; if(!el) return;
+    if(typeof IntersectionObserver==="undefined"){ setShown(true); return; }
+    const io=new IntersectionObserver((entries)=>{
+      if(entries[0]?.isIntersecting){ setShown(true); io.disconnect(); }
+    },{threshold:0.12,rootMargin:"0px 0px -40px 0px"});
+    io.observe(el);
+    return ()=>io.disconnect();
+  },[]);
+  return (
+    <div ref={ref} className={className} style={{...style,opacity:shown?1:0,transform:shown?"translateY(0)":"translateY(26px)",transition:`opacity 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s, transform 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s`}}>
+      {children}
+    </div>
+  );
+}
+
 // ─── PAGE BANNER ──────────────────────────────────────────────────────────────
 // Reusable banner rendered at the top of every inner page (Work, About, Packages, Journal,
 // CV, Booking, Contact, plus individual Project/Post pages using their own title+cover image).
@@ -848,6 +873,11 @@ export default function Home() {
 
   const Nav=()=>(
     <>
+    {/* Sitewide motion: a soft fade+rise plays once whenever the page div below remounts
+        (React remounts it on every nav change because of its key={page}), giving every page
+        switch a smooth, modern transition instead of an abrupt cut. Defined once here since
+        Nav renders at the top of every public page. */}
+    <style>{`@keyframes pgFadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
     <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,padding:isMobile?"8px 20px":"8px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18}}>
@@ -1395,7 +1425,7 @@ export default function Home() {
   if(page==="project"&&selProj){
     const ytId=getYTId(selProj.youtubeUrl);
     return(
-      <div style={S.base}>
+      <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
         <Nav />
         <PageBanner eyebrow={selProj.categories?.join(" · ")||"Portfolio"} title={selProj.title} image={selProj.coverImage} />
         <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 80px"}}>
@@ -1430,7 +1460,7 @@ export default function Home() {
 
   // ── BLOG POST ──
   if(page==="blog-post"&&selBlog) return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={selBlog.category||"Journal"} title={selBlog.title} image={selBlog.coverImage} />
       <div style={{maxWidth:800,margin:"0 auto",padding:"40px 40px 80px"}}>
@@ -1447,7 +1477,7 @@ export default function Home() {
 
   // ── BLOG ──
   if(page==="blog") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
         <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
@@ -1478,7 +1508,7 @@ export default function Home() {
   // ── PACKAGES ── feature-list cards + Enquire/Book Now CTAs, no exact pricing shown --
   // modeled on the shamsfz.ae reference, tiers derived from the CMS-editable services list.
   if(page==="packages") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.packagesBannerEyebrow} title={settings.uiText.packagesBannerTitle} image={settings.sectionBg.packages} />
       <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 100px"}}>
@@ -1515,7 +1545,7 @@ export default function Home() {
 
   // ── CV ──
   if(page==="cv") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} image={settings.sectionBg.cv} />
       <div style={{maxWidth:900,margin:"0 auto",padding:"40px 40px 80px"}}>
@@ -1560,7 +1590,7 @@ export default function Home() {
 
   // ── BOOKING ──
   if(page==="booking") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} image={settings.sectionBg.booking} />
       <div style={{maxWidth:720,margin:"0 auto",padding:"40px 40px 80px"}}>
@@ -1607,7 +1637,7 @@ export default function Home() {
 
   // ── ABOUT ──
   if(page==="about") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.aboutBannerEyebrow} title={settings.uiText.aboutBannerTitle} image={settings.sectionBg.about} />
       <div style={{maxWidth:1000,margin:"0 auto",padding:"40px 40px 80px"}}>
@@ -1650,7 +1680,7 @@ export default function Home() {
 
   // ── CONTACT ──
   if(page==="contact") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.contactBannerEyebrow} title={settings.uiText.contactBannerTitle} image={settings.sectionBg.contact} />
       <div style={{maxWidth:700,margin:"0 auto",padding:"40px 40px 80px",textAlign:"center"}}>
@@ -1706,7 +1736,7 @@ export default function Home() {
 
   // ── WORK ──
   if(page==="work") return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.workBannerEyebrow} title={settings.uiText.workBannerTitle} image={settings.sectionBg.work} />
       <div style={{maxWidth:1400,margin:"0 auto",padding:"40px 32px 80px"}}>
@@ -1739,7 +1769,7 @@ export default function Home() {
 
   // ── HOME ──
   return(
-    <div style={S.base}>
+    <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} />
 
@@ -1763,35 +1793,39 @@ export default function Home() {
       {/* FEATURED WORK */}
       {featured.length>0&&(
         <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
+          <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
               <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeWorkEyebrow}</div>
               <h2 style={{fontSize:"clamp(28px,4vw,56px)",fontWeight:700,letterSpacing:1,margin:0}}>{settings.uiText.homeWorkTitle}</h2>
             </div>
             <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeWorkViewAll}</span>
-          </div>
+          </Reveal>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
-              <div key={p.id} onClick={()=>openProj(p)} style={{gridColumn:"1/3",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK}}
+              <Reveal key={p.id} style={{gridColumn:"1/3"}}>
+              <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.04)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
-                <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.7s"}} />
+                <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1)"}} />
                 <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
                   <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{p.categories?.join(" · ")}</div>
                   <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
                 </div>
               </div>
+              </Reveal>
             ))}
-            {featured.slice(1,4).map(p=>(
-              <div key={p.id} onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
+            {featured.slice(1,4).map((p,idx)=>(
+              <Reveal key={p.id} delay={0.1+idx*0.08}>
+              <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.05)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
-                <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.6s"}} />
+                <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1)"}} />
                 <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
                   <div style={{fontSize:9,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:4}}>{p.categories?.[0]}</div>
                   <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
                 </div>
               </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -1805,16 +1839,17 @@ export default function Home() {
       <div style={{background:C.LT,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-10%",right:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.16),transparent 70%)",filter:"blur(10px)",pointerEvents:"none"}} />
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
+          <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
             <div>
               <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
               <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
             </div>
             <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
-          </div>
+          </Reveal>
           <div>
             {settings.services.map((sv,i)=>(
-              <div key={sv.id} className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+              <Reveal key={sv.id} delay={i*0.07}>
+              <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
                   <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
                   <div style={{minWidth:0}}>
@@ -1824,6 +1859,7 @@ export default function Home() {
                 </div>
                 <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
               </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -1834,7 +1870,7 @@ export default function Home() {
           as part of the same design language. Auto-rotates like the Hero slideshow. */}
       {featuredTesti.length>0&&(
         <div style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
-          <div style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
+          <Reveal style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
             <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
               <div style={{width:44,height:44,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
               <div style={{...S.tag(true),marginBottom:24,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeTestimonialsEyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
@@ -1849,7 +1885,7 @@ export default function Home() {
                 ))}
               </div>}
             </div>
-          </div>
+          </Reveal>
         </div>
       )}
 
@@ -1865,15 +1901,17 @@ export default function Home() {
               <span onClick={()=>goTo("blog")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeJournalViewAll}</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
-              {blog.slice(0,2).map(b=>(
-                <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:4,overflow:"hidden",border:`1px solid ${C.BORDER}`,background:C.DARK}}>
-                  {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
+              {blog.slice(0,2).map((b,idx)=>(
+                <Reveal key={b.id} delay={idx*0.1}>
+                <div className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:4,overflow:"hidden",border:`1px solid ${C.BORDER}`,background:C.DARK}}>
+                  {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s cubic-bezier(.16,.84,.44,1)"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
                   <div style={{padding:24}}>
                     <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
                     <h3 style={{fontSize:16,fontWeight:700,letterSpacing:0.5,margin:"0 0 10px"}}>{b.title}</h3>
                     <p style={{color:C.MID,fontSize:13,lineHeight:1.7}}>{b.excerpt}</p>
                   </div>
                 </div>
+                </Reveal>
               ))}
             </div>
           </div>
@@ -1881,7 +1919,7 @@ export default function Home() {
       )}
 
       {/* CTA */}
-      <div style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
+      <Reveal style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeCtaEyebrow}</div>
         <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.uiText.homeCtaTitle}</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>
@@ -1889,7 +1927,7 @@ export default function Home() {
           <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.homeCtaBookBtn}</button>
           <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>{settings.uiText.homeCtaWaBtn}</a>
         </div>
-      </div>
+      </Reveal>
 
       <Footer />
       <FloatingWA num={WA} msg={WA_MSG} />

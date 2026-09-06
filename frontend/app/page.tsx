@@ -887,17 +887,34 @@ export default function Home() {
     // asynchronously and re-injects its <select> on each full page load, so this polls
     // briefly for it rather than assuming it's already there.
     const googleCode=lang==="zh"?"zh-CN":lang;
-    let tries=0;
-    const iv=setInterval(()=>{
-      tries++;
-      const combo=document.querySelector("select.goog-te-combo") as HTMLSelectElement|null;
-      if(combo){
-        clearInterval(iv);
-        const want=googleCode;
-        if(combo.value!==want){ combo.value=want; combo.dispatchEvent(new Event("change",{bubbles:true})); }
-      } else if(tries>25){ clearInterval(iv); }
-    },200);
-    return ()=>clearInterval(iv);
+    let cancelled=false;
+    const isApplied=()=>document.cookie.includes(`googtrans=/en/${googleCode}`);
+    const waitForCombo=()=>new Promise<HTMLSelectElement|null>(resolve=>{
+      let tries=0;
+      const iv=setInterval(()=>{
+        if(cancelled){ clearInterval(iv); resolve(null); return; }
+        tries++;
+        const combo=document.querySelector("select.goog-te-combo") as HTMLSelectElement|null;
+        if(combo||tries>25){ clearInterval(iv); resolve(combo); }
+      },200);
+    });
+    (async()=>{
+      const combo=await waitForCombo();
+      if(!combo||cancelled) return;
+      // Google's own change listener isn't always wired up the instant its hidden
+      // <select> lands in the DOM, so the very first dispatch can be a silent no-op
+      // right after a fresh page load -- our own chrome (nav labels, dir/rtl) would
+      // flip correctly while the actual page content stayed English. Confirm via the
+      // googtrans cookie Google sets once it has actually translated, and retry a
+      // few times if it hasn't, instead of firing once and hoping.
+      for(let attempt=0; attempt<6 && !cancelled; attempt++){
+        if(isApplied()) return;
+        combo.value=googleCode;
+        combo.dispatchEvent(new Event("change",{bubbles:true}));
+        await new Promise(r=>setTimeout(r,600));
+      }
+    })();
+    return ()=>{ cancelled=true; };
   },[lang]);
   const T=UI_STRINGS[lang];
 

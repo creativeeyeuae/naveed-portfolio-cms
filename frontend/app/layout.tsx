@@ -23,10 +23,34 @@ const plusJakartaSansBody = Plus_Jakarta_Sans({
   display: "swap",
 });
 
+const SITE_URL = "https://bynaveedanjum.com";
+const SITE_TITLE = "Creative Fusion — Naveed Anjum | Photography & Cinematography";
+const SITE_DESC =
+  "Dubai-based photographer and cinematographer specializing in landscape, portrait, editorial, commercial, product, real estate, and street photography, plus commercial, documentary, fashion, automotive, and sports cinematography.";
+// Same photo already used as the About-page portrait, at a wider crop for social share cards.
+const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
+
 export const metadata: Metadata = {
-  title: "Creative Fusion — Naveed Anjum | Photography & Cinematography",
-  description:
-    "Dubai-based photographer and cinematographer specializing in landscape, portrait, editorial, commercial, product, real estate, and street photography, plus commercial, documentary, fashion, automotive, and sports cinematography.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESC,
+  alternates: { canonical: "/" },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESC,
+    url: SITE_URL,
+    siteName: "Naveed Anjum — Creative Fusion",
+    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Naveed Anjum — Photographer & Cinematographer" }],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESC,
+    images: [OG_IMAGE],
+  },
 };
 
 const structuredData = {
@@ -34,21 +58,31 @@ const structuredData = {
   "@graph": [
     {
       "@type": "Person",
-      "@id": "https://bynaveedanjum.com/#person",
+      "@id": `${SITE_URL}/#person`,
       name: "Naveed Anjum",
-      url: "https://bynaveedanjum.com",
+      url: SITE_URL,
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
       jobTitle: ["Photographer", "Cinematographer", "Creative Director"],
       description:
         "Dubai-based photographer and cinematographer with over 20 years of experience in portrait, commercial, real estate, events and cinematography.",
       address: { "@type": "PostalAddress", addressLocality: "Dubai", addressCountry: "AE" },
-      sameAs: ["https://instagram.com/creativeeyeuae", "https://youtube.com/@creativeeyeuae"],
+      email: "creativeeyeuae@gmail.com",
+      telephone: "+971581174911",
+      sameAs: [
+        "https://www.instagram.com/bynaveedanjum/",
+        "https://youtube.com/@creativeeyeuae",
+        "https://linkedin.com/in/naveedanjumch",
+      ],
     },
     {
       "@type": "ProfessionalService",
-      "@id": "https://bynaveedanjum.com/#service",
+      "@id": `${SITE_URL}/#service`,
       name: "Naveed Anjum — Creative Fusion",
-      url: "https://bynaveedanjum.com",
-      provider: { "@id": "https://bynaveedanjum.com/#person" },
+      url: SITE_URL,
+      image: OG_IMAGE,
+      telephone: "+971581174911",
+      email: "creativeeyeuae@gmail.com",
+      provider: { "@id": `${SITE_URL}/#person` },
       areaServed: [
         { "@type": "City", name: "Dubai" },
         { "@type": "Country", name: "United Arab Emirates" },

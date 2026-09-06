@@ -33,6 +33,11 @@ type UiText = {
 // band using theme.DARK, identical to how these pages look today. Adding a URL overlays a dark
 // scrim automatically so the banner title stays readable over any photo.
 type SectionBg = { work:string;about:string;packages:string;blog:string;cv:string;booking:string;contact:string; };
+// Per-page visibility switch (CMS > Settings > Pages). Home always stays on -- these are the
+// other public pages, each independently turn-off-able without touching any content or code.
+// A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
+// something still points at it, so nothing 404s and no content is deleted.
+type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean; };
 type SiteSettings = {
   pin:string; siteName:string; siteTagline:string; siteDescription:string;
   heroSlides:HeroSlide[]; aboutName:string; aboutTitle:string; aboutBio:string; aboutPhoto:string;
@@ -43,7 +48,7 @@ type SiteSettings = {
   seoTitle:string; seoDesc:string; googlePlaceId:string;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
-  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg;
+  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -95,6 +100,7 @@ const DEF_SETTINGS: SiteSettings = {
     contactBannerEyebrow:"Get In Touch", contactBannerTitle:"Let's Work Together",
   },
   sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
+  pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -780,7 +786,7 @@ export default function Home() {
   const filteredBlog=blogFilterCat==="All"?blog:blog.filter(b=>b.category===blogFilterCat);
   const WA=settings.waNumber; const WA_MSG=settings.waMsg;
 
-  function goTo(p:string){setPage(p);window.scrollTo(0,0);}
+  function goTo(p:string){ const pe=settings.pageEnabled as Record<string,boolean>|undefined; if(pe&&pe[p]===false) p="home"; setPage(p);window.scrollTo(0,0); }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
   function openBlog(b:BlogPost){setSelBlog(b);setPage("blog-post");window.scrollTo(0,0);}
 
@@ -836,6 +842,9 @@ export default function Home() {
 
   // ── NAV ──
   const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["contact","Contact"]];
+  // Skip any page CMS-disabled via Settings > Pages. Home is never in pageEnabled, so it's
+  // always shown regardless.
+  const visibleNavLinks=NAV_LINKS.filter(([k])=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[k]!==false);
 
   const Nav=()=>(
     <>
@@ -857,7 +866,7 @@ export default function Home() {
         </button>
       ):(
         <div style={{display:"flex",gap:16,alignItems:"center"}}>
-          {NAV_LINKS.map(([k,l])=>(
+          {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>goTo(k)} style={{fontSize:11,letterSpacing:3,color:page===k?C.PL:C.MID,textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s",borderBottom:page===k?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:2}}>{l}</span>
           ))}
           <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.navBookBtn}</button>
@@ -866,7 +875,7 @@ export default function Home() {
 
       {isMobile&&mobileNavOpen&&(
         <div style={{position:"fixed",top:96,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
-          {NAV_LINKS.map(([k,l])=>(
+          {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
           <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>{settings.uiText.navBookBtn}</button>
@@ -890,11 +899,11 @@ export default function Home() {
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Services</div>
-          {settings.services.map(sv=><div key={sv.id} onClick={()=>{setPage("work");window.scrollTo(0,0);}} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{sv.title}</div>)}
+          {settings.services.map(sv=><div key={sv.id} onClick={()=>goTo("work")} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{sv.title}</div>)}
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Quick Links</div>
-          {settings.footerLinks.map((l,i)=><div key={i} onClick={()=>goTo(l.page)} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{l.label}</div>)}
+          {settings.footerLinks.filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l.page]!==false).map((l,i)=><div key={i} onClick={()=>goTo(l.page)} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{l.label}</div>)}
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Follow</div>
@@ -907,7 +916,7 @@ export default function Home() {
       <div style={{borderTop:`1px solid ${C.BORDER}`,padding:"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div style={{fontSize:11,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase"}}>{settings.footerCopyright}</div>
         <div style={{display:"flex",gap:16}}>
-          {["work","about","booking","contact"].map(l=><span key={l} onClick={()=>goTo(l)} style={{fontSize:10,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color="#2a2a3a")}>{l}</span>)}
+          {["work","about","booking","contact"].filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l]!==false).map(l=><span key={l} onClick={()=>goTo(l)} style={{fontSize:10,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color="#2a2a3a")}>{l}</span>)}
         </div>
       </div>
     </footer>
@@ -973,7 +982,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -1191,6 +1200,26 @@ export default function Home() {
                     <SingleImageUpload value={settingsDraft.sectionBg[key]} onChange={url=>updateSD({sectionBg:{...settingsDraft.sectionBg,[key]:url}})} label="Banner Background Image (optional)" />
                   </div>
                 ))}
+              </div>
+            )}
+
+            {settingsTab==="pages"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Show / Hide Pages</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn a page off to remove it from the menu and footer everywhere on the site -- nothing is deleted, its content is just hidden until you switch it back on. Home always stays on.</div>
+                {([
+                  ["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
+                ] as [keyof PageEnabled,string][]).map(([key,label])=>{
+                  const on=settingsDraft.pageEnabled[key]!==false;
+                  return (
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:600}}>{label} Page</span>
+                      <button onClick={()=>updateSD({pageEnabled:{...settingsDraft.pageEnabled,[key]:!on}})} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} page ${on?"off":"on"}`}>
+                        <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

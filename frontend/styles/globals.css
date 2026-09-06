@@ -4,12 +4,18 @@
 
 /* Google Website Translator (layout.tsx) is driven headlessly by the site's own language
    dropdown -- hide every bit of Google's own UI (the top "this page has been translated"
-   banner frame, the highlighted-word popup, and the widget's own dropdown) so the site keeps
-   its own look. Also cancel the top-offset Google's banner normally pushes onto <body>. */
-.goog-te-banner-frame, .goog-tooltip, .goog-te-balloon-frame { display: none !important; }
+   banner frame, the highlighted-word popup, the widget's own dropdown, and the small
+   "Google" attribution/"show original" link it floats in a corner) so the site keeps its
+   own look with zero visible Google branding. ".skiptranslate" is the class Google marks
+   ALL of its own injected UI with -- banner, tooltip, gadget, attribution link alike -- so
+   hiding it is the most complete way to catch every variant, including ones Google renames
+   internally. Also cancel the top-offset Google's banner normally pushes onto <body>. */
+.skiptranslate { display: none !important; }
+.goog-te-banner-frame, .goog-tooltip, .goog-te-balloon-frame, .goog-te-gadget-icon { display: none !important; }
 .goog-text-highlight { background: none !important; box-shadow: none !important; }
 body { top: 0 !important; position: static !important; }
 #google_translate_element { display: none !important; }
+iframe.goog-te-banner-frame, iframe[id^="\:"] { display: none !important; }
 
 :root {
   /* Surface tokens (Royal Obsidian base) */

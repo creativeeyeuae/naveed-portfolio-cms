@@ -117,6 +117,17 @@ const structuredData = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable} ${heroFontVars} ${arabicFontVars}`}>
+      <head>
+        {/* Open the connection to Google's translate hosts as early as possible (DNS +
+            TLS handshake) instead of waiting until the script tag is reached, so the
+            widget is ready to translate sooner after a language is picked. Shaves real
+            time off the one part of the delay we can control -- the rest is Google's
+            own server-side translation call, which this can't speed up further. */}
+        <link rel="preconnect" href="https://translate.google.com" />
+        <link rel="preconnect" href="https://translate.googleapis.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://translate.google.com" />
+        <link rel="dns-prefetch" href="https://translate.googleapis.com" />
+      </head>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

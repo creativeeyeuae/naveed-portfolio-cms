@@ -81,15 +81,16 @@ h1, h2, h3, h4 {
   border-color: rgba(139, 92, 246, 0.3) !important;
 }
 .svc-row:hover .svc-arrow {
-  transform: translateX(8px);
-  color: #7C3AED;
+  transform: translateX(6px);
+  background-color: #140D21;
+  border-color: #140D21 !important;
+  color: #A855F7;
 }
 .svc-row:hover .svc-desc {
   color: #4A4258;
 }
 .svc-arrow {
-  display: inline-block;
-  transition: transform 0.3s ease, color 0.3s ease;
+  transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 .svc-desc {
   transition: color 0.3s ease;

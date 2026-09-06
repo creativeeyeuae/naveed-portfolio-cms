@@ -1317,10 +1317,11 @@ export default function Home() {
         </div>
       )}
 
-      {/* SERVICES -- editorial index list (no cards/icons): large confident type, a hairline
-          rule between rows, and a hover reveal is what separates a designer-built services
-          section from a template icon-grid. A soft out-of-focus violet glow sits behind the
-          list for depth without adding any imagery. */}
+      {/* SERVICES -- editorial index list, but each row is bookended by a solid-DARK chip
+          (number + arrow). The chips are the same DARK used in the hero/nav, so the light
+          section reads as this site's light register, not a different site pasted in --
+          exactly how creativefusion.llc threads its dark charcoal through its white sections
+          via repeated dark card elements. */}
       <div style={{background:C.LT,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-10%",right:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.16),transparent 70%)",filter:"blur(10px)",pointerEvents:"none"}} />
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
@@ -1333,39 +1334,41 @@ export default function Home() {
           </div>
           <div>
             {settings.services.map((sv,i)=>(
-              <div key={sv.id} className="svc-row" style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:32,padding:"38px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"baseline",gap:28,minWidth:0}}>
-                  <span style={{fontSize:14,fontWeight:700,color:C.P,letterSpacing:1,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
+              <div key={sv.id} className="svc-row" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
+                  <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
                   <div style={{minWidth:0}}>
-                    <div style={{fontSize:"clamp(20px,2.6vw,32px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:10}}>{sv.title}</div>
-                    <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.8,maxWidth:520}}>{sv.desc}</div>
+                    <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
+                    <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
                   </div>
                 </div>
-                <span className="svc-arrow" style={{fontSize:22,color:C.P,flexShrink:0}}>→</span>
+                <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* TESTIMONIALS -- a single-quote spotlight (magazine pull-quote), not a card grid:
-          one voice at a time, large italic type, quiet dot navigation. Auto-rotates like
-          the Hero slideshow. */}
+      {/* TESTIMONIALS -- a pull-quote spotlight held inside a bordered panel (not bare floating
+          text) with a solid-DARK quote badge, echoing the Services chips so this section reads
+          as part of the same design language. Auto-rotates like the Hero slideshow. */}
       {featuredTesti.length>0&&(
         <div style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
-          <div style={{maxWidth:760,margin:"0 auto",textAlign:"center",position:"relative"}}>
-            <div style={{...S.tag(true),marginBottom:28,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
-            <div style={{fontSize:120,lineHeight:0.5,color:C.P,opacity:0.1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif",marginBottom:8}}>"</div>
-            <p key={testiIdx} className="testi-fade" style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:500,fontStyle:"italic",color:C.DARK,lineHeight:1.65,margin:"0 0 32px"}}>{featuredTesti[testiIdx % featuredTesti.length].quote}</p>
-            <div key={"n"+testiIdx} className="testi-fade" style={{marginBottom:36}}>
-              <div style={{fontSize:14,color:C.DARK,letterSpacing:1,fontWeight:700}}>{featuredTesti[testiIdx % featuredTesti.length].name}</div>
-              <div style={{fontSize:11,color:C.INKMID,marginTop:4,letterSpacing:1,textTransform:"uppercase"}}>{featuredTesti[testiIdx % featuredTesti.length].role} · {featuredTesti[testiIdx % featuredTesti.length].company}</div>
+          <div style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
+            <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
+              <div style={{width:44,height:44,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
+              <div style={{...S.tag(true),marginBottom:24,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
+              <p key={testiIdx} className="testi-fade" style={{fontSize:"clamp(18px,2.2vw,26px)",fontWeight:500,fontStyle:"italic",color:C.DARK,lineHeight:1.6,margin:"0 0 28px"}}>{featuredTesti[testiIdx % featuredTesti.length].quote}</p>
+              <div key={"n"+testiIdx} className="testi-fade" style={{marginBottom:featuredTesti.length>1?28:0}}>
+                <div style={{fontSize:14,color:C.DARK,letterSpacing:1,fontWeight:700}}>{featuredTesti[testiIdx % featuredTesti.length].name}</div>
+                <div style={{fontSize:11,color:C.INKMID,marginTop:4,letterSpacing:1,textTransform:"uppercase"}}>{featuredTesti[testiIdx % featuredTesti.length].role} · {featuredTesti[testiIdx % featuredTesti.length].company}</div>
+              </div>
+              {featuredTesti.length>1&&<div style={{display:"flex",gap:10,justifyContent:"center"}}>
+                {featuredTesti.map((_,i)=>(
+                  <span key={i} onClick={()=>setTestiIdx(i)} style={{width:i===testiIdx%featuredTesti.length?26:8,height:8,borderRadius:4,background:i===testiIdx%featuredTesti.length?C.P:"rgba(139,92,246,0.25)",cursor:"pointer",transition:"all 0.3s"}} />
+                ))}
+              </div>}
             </div>
-            {featuredTesti.length>1&&<div style={{display:"flex",gap:10,justifyContent:"center"}}>
-              {featuredTesti.map((_,i)=>(
-                <span key={i} onClick={()=>setTestiIdx(i)} style={{width:i===testiIdx%featuredTesti.length?26:8,height:8,borderRadius:4,background:i===testiIdx%featuredTesti.length?C.P:"rgba(139,92,246,0.25)",cursor:"pointer",transition:"all 0.3s"}} />
-              ))}
-            </div>}
           </div>
         </div>
       )}

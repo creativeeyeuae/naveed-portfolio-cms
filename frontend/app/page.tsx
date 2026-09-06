@@ -578,7 +578,7 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
 // theme.DARK, so shipping this changes nothing visually until an image is actually added.
 function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:string}) {
   return (
-    <div style={{position:"relative",overflow:"hidden",background:C.DARK,padding:"120px 40px 44px"}}>
+    <div style={{position:"relative",overflow:"hidden",background:C.DARK,padding:"134px 40px 44px"}}>
       {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.4}} />}
       {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.92) 0%,rgba(9,6,14,0.65) 100%)"}} />}
       <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto"}}>
@@ -881,14 +881,14 @@ export default function Home() {
         to that wrapper instead of the viewport for the animation's duration, visibly shifting
         the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
     <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18}}>
         {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
         {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
       </div>
     </div>
-    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:32,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
+    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:32,left:0,right:0,zIndex:500,padding:isMobile?"21px 20px":"23px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
       <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>{settings.siteName}</div>
 
       {isMobile?(
@@ -907,7 +907,7 @@ export default function Home() {
       )}
 
       {isMobile&&mobileNavOpen&&(
-        <div style={{position:"fixed",top:96,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
+        <div style={{position:"fixed",top:110,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
           {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
@@ -1482,7 +1482,7 @@ export default function Home() {
   if(page==="blog") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"134px 40px 80px"}}>
         <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
         <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 32px"}}>Photography Journal</h1>
         <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:48}}>

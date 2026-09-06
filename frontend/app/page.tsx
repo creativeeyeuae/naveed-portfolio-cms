@@ -881,7 +881,7 @@ export default function Home() {
         to that wrapper instead of the viewport for the animation's duration, visibly shifting
         the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
     <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,padding:isMobile?"8px 20px":"8px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18}}>
         {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}

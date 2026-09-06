@@ -38,6 +38,15 @@ type SectionBg = { work:string;about:string;packages:string;blog:string;cv:strin
 // A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
 // something still points at it, so nothing 404s and no content is deleted.
 type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean; };
+// Hero headline/sub-text typography (CMS > Settings > Hero Slides). Font keys are looked up in
+// HERO_FONTS (a curated set of properly-licensed Google Fonts loaded once via next/font in
+// layout.tsx -- no runtime font-CDN calls). "default" and an empty color mean "inherit the
+// site's existing look", so shipping this makes zero visual change until Naveed picks
+// something different in CMS.
+type HeroTypography = {
+  headlineFont:string; headlineWeight:number; headlineSize:number; headlineSpacing:number; headlineItalic:boolean; headlineColor:string;
+  subFont:string; subWeight:number; subSize:number; subColor:string;
+};
 type SiteSettings = {
   pin:string; siteName:string; siteTagline:string; siteDescription:string;
   heroSlides:HeroSlide[]; aboutName:string; aboutTitle:string; aboutBio:string; aboutPhoto:string;
@@ -48,7 +57,7 @@ type SiteSettings = {
   seoTitle:string; seoDesc:string; googlePlaceId:string;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
-  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled;
+  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; heroTypography:HeroTypography;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -101,6 +110,7 @@ const DEF_SETTINGS: SiteSettings = {
   },
   sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
+  heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -590,7 +600,25 @@ function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:st
 }
 
 // ─── HERO ────────────────────────────────────────────────────────────────────
-function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string}) {
+// Curated, properly-licensed font choices for CMS > Settings > Hero Slides > Typography.
+// Each key maps to a CSS variable next/font/google generates once at build time in layout.tsx
+// (see the fontVar comment there) -- no runtime Google Fonts request, same licensing approach
+// already used for the site's base typeface. "default" omits fontFamily so text keeps
+// inheriting the site's existing font exactly as before.
+const HERO_FONTS: Record<string,string|undefined> = {
+  default: undefined,
+  playfair: "var(--font-playfair), Georgia, serif",
+  cormorant: "var(--font-cormorant), Georgia, serif",
+  montserrat: "var(--font-montserrat), sans-serif",
+  oswald: "var(--font-oswald), sans-serif",
+  spacegrotesk: "var(--font-spacegrotesk), sans-serif",
+};
+const HERO_FONT_LABELS: [string,string][] = [
+  ["default","Default (Site Font)"], ["playfair","Playfair Display"], ["cormorant","Cormorant Garamond"],
+  ["montserrat","Montserrat"], ["oswald","Oswald"], ["spacegrotesk","Space Grotesk"],
+];
+function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string;typography:HeroTypography}) {
+  const ht=typography;
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
   const [cbStep,setCbStep]=useState<"phone"|"name"|"email"|"done">("phone");
   const [cbPhone,setCbPhone]=useState(""); const [cbName,setCbName]=useState(""); const [cbEmail,setCbEmail]=useState("");
@@ -634,8 +662,8 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
       <div style={{position:"absolute",top:110,left:0,right:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:"clamp(14px,3vh,28px)"}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
-          <h1 style={{fontSize:"clamp(30px,min(5.4vw,7.5vh),86px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 clamp(12px,2.5vh,20px)",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
-          <p style={{fontSize:"clamp(14px,min(1.5vw,2.1vh),22px)",fontWeight:400,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:"clamp(18px,3.5vh,40px)"}}>{sl.sub}</p>
+          <h1 style={{fontSize:`clamp(30px,min(5.4vw,7.5vh),${ht.headlineSize}px)`,fontFamily:HERO_FONTS[ht.headlineFont],fontWeight:ht.headlineWeight,fontStyle:ht.headlineItalic?"italic":"normal",letterSpacing:ht.headlineSpacing,color:ht.headlineColor||"#fff",margin:"0 0 clamp(12px,2.5vh,20px)",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
+          <p style={{fontSize:`clamp(14px,min(1.5vw,2.1vh),${ht.subSize}px)`,fontFamily:HERO_FONTS[ht.subFont],fontWeight:ht.subWeight,color:ht.subColor||"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:"clamp(18px,3.5vh,40px)"}}>{sl.sub}</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:"clamp(16px,3vh,36px)"}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
             {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
@@ -1090,6 +1118,44 @@ export default function Home() {
 
             {settingsTab==="hero"&&(
               <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>🔤 Typography</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Controls the headline and sub-text style across every hero slide. Leave as-is for the current look.</div>
+                <div style={{background:"#10101c",padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>Headline</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                    <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.heroTypography.headlineFont} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                    <div><label style={S.lbl}>Weight</label><select style={S.inp} value={settingsDraft.heroTypography.headlineWeight} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineWeight:Number(e.target.value)}})}>{[300,400,500,600,700,800,900].map(w=><option key={w} value={w}>{w}</option>)}</select></div>
+                    <div><label style={S.lbl}>Size (px, desktop max)</label><input type="number" min={40} max={140} style={S.inp} value={settingsDraft.heroTypography.headlineSize} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineSize:Number(e.target.value)||86}})} /></div>
+                    <div><label style={S.lbl}>Letter Spacing (px)</label><input type="number" step={0.1} style={S.inp} value={settingsDraft.heroTypography.headlineSpacing} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineSpacing:Number(e.target.value)||0}})} /></div>
+                    <div>
+                      <label style={S.lbl}>Color</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.heroTypography.headlineColor)?settingsDraft.heroTypography.headlineColor:"#ffffff"} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} value={settingsDraft.heroTypography.headlineColor} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineColor:e.target.value}})} />
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"flex-end",paddingBottom:8}}>
+                      <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:C.MID,cursor:"pointer"}}>
+                        <input type="checkbox" checked={settingsDraft.heroTypography.headlineItalic} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineItalic:e.target.checked}})} />
+                        Italic
+                      </label>
+                    </div>
+                  </div>
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",margin:"16px 0 12px"}}>Sub-Text</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.heroTypography.subFont} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,subFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                    <div><label style={S.lbl}>Weight</label><select style={S.inp} value={settingsDraft.heroTypography.subWeight} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,subWeight:Number(e.target.value)}})}>{[300,400,500,600,700].map(w=><option key={w} value={w}>{w}</option>)}</select></div>
+                    <div><label style={S.lbl}>Size (px, desktop max)</label><input type="number" min={12} max={32} style={S.inp} value={settingsDraft.heroTypography.subSize} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,subSize:Number(e.target.value)||22}})} /></div>
+                    <div>
+                      <label style={S.lbl}>Color (blank = default faded white)</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.heroTypography.subColor)?settingsDraft.heroTypography.subColor:"#ffffff"} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,subColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} placeholder="rgba(255,255,255,0.6)" value={settingsDraft.heroTypography.subColor} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,subColor:e.target.value}})} />
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={()=>updateSD({heroTypography:DEF_SETTINGS.heroTypography})} style={{...S.btnO,marginTop:16}}>Reset to Default Typography</button>
+                </div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Hero Slides ({settingsDraft.heroSlides.length})</div>
                 <button onClick={()=>updateSD({heroSlides:[...settingsDraft.heroSlides,{label:"New Slide",headline:"Headline\nHere.",sub:"Supporting text.",btn1:"View Work",btn2:"",img:"",page:"work"}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Slide</button>
                 {settingsDraft.heroSlides.map((sl,i)=>(
@@ -1792,7 +1858,7 @@ export default function Home() {
   return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} />
+      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} />
 
       {/* INTRO STRIP */}
       <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>

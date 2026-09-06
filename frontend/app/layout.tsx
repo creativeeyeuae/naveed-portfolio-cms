@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk } from "next/font/google";
 import "../styles/globals.css";
 
 // "Sharjah" (the shamsfz.ae brand typeface) isn't a licensed font we can source --
@@ -22,6 +22,18 @@ const plusJakartaSansBody = Plus_Jakarta_Sans({
   variable: "--font-sans",
   display: "swap",
 });
+
+// Curated, properly-licensed hero-typography choices (CMS > Settings > Hero Slides). Loaded
+// once at build time via next/font -- self-hosted, no runtime Google Fonts request -- and
+// exposed as CSS variables (fontVar) that CMS-selected values reference in inline styles.
+// None of these are applied anywhere unless picked in the CMS, so adding them changes nothing
+// visually on their own.
+const playfairDisplay = Playfair_Display({ weight: ["400", "500", "600", "700", "800", "900"], subsets: ["latin"], variable: "--font-playfair", display: "swap" });
+const cormorantGaramond = Cormorant_Garamond({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-cormorant", display: "swap" });
+const montserrat = Montserrat({ weight: ["300", "400", "500", "600", "700", "800", "900"], subsets: ["latin"], variable: "--font-montserrat", display: "swap" });
+const oswald = Oswald({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-oswald", display: "swap" });
+const spaceGrotesk = Space_Grotesk({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-spacegrotesk", display: "swap" });
+const heroFontVars = `${playfairDisplay.variable} ${cormorantGaramond.variable} ${montserrat.variable} ${oswald.variable} ${spaceGrotesk.variable}`;
 
 const SITE_URL = "https://bynaveedanjum.com";
 const SITE_TITLE = "Creative Fusion — Naveed Anjum | Photography & Cinematography";
@@ -93,7 +105,7 @@ const structuredData = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable}`}>
+    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable} ${heroFontVars}`}>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

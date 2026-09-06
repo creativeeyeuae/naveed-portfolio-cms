@@ -8,6 +8,31 @@ type Project = { id:string;title:string;slug:string;categories:string[];descript
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
 type Service = { id:string;icon:string;title:string;desc:string;detail:string;deliverables:string[]; };
+// CMS-editable "WordPress Customizer"-style theme: every brand color (ThemeColors) and every
+// small hardcoded UI string (UiText) that isn't already covered by settings/services/testimonials/
+// blog/projects/CV. Defaults below mirror the current hardcoded copy/colors exactly, so shipping
+// this makes zero visual change until Naveed actually edits something in CMS > Settings > Colors/Text.
+type ThemeColors = { P:string;PL:string;PD:string;GOLD:string;GOLDL:string;BG:string;FG:string;MID:string;DARK:string;BORDER:string;LT:string;LTCARD:string;LTBORDER:string;INKMID:string; };
+type UiText = {
+  navBookBtn:string; footerWhatsappBtn:string;
+  homeServicesEyebrow:string; homeServicesTitle:string; homeServicesIntro:string;
+  homeWorkEyebrow:string; homeWorkTitle:string; homeWorkViewAll:string;
+  homeTestimonialsEyebrow:string;
+  homeJournalEyebrow:string; homeJournalTitle:string; homeJournalViewAll:string;
+  homeCtaEyebrow:string; homeCtaTitle:string; homeCtaBookBtn:string; homeCtaWaBtn:string;
+  workBannerEyebrow:string; workBannerTitle:string;
+  aboutBannerEyebrow:string; aboutBannerTitle:string;
+  packagesBannerEyebrow:string; packagesBannerTitle:string;
+  blogBannerEyebrow:string; blogBannerTitle:string;
+  cvBannerEyebrow:string; cvBannerTitle:string;
+  bookingBannerEyebrow:string; bookingBannerTitle:string;
+  contactBannerEyebrow:string; contactBannerTitle:string;
+};
+// Optional per-page banner background image (CMS > Settings > Colors & Banners). Empty string
+// (the default for every page) means "no image" -- the banner renders as a plain solid-color
+// band using theme.DARK, identical to how these pages look today. Adding a URL overlays a dark
+// scrim automatically so the banner title stays readable over any photo.
+type SectionBg = { work:string;about:string;packages:string;blog:string;cv:string;booking:string;contact:string; };
 type SiteSettings = {
   pin:string; siteName:string; siteTagline:string; siteDescription:string;
   heroSlides:HeroSlide[]; aboutName:string; aboutTitle:string; aboutBio:string; aboutPhoto:string;
@@ -18,6 +43,7 @@ type SiteSettings = {
   seoTitle:string; seoDesc:string; googlePlaceId:string;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
+  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -52,6 +78,23 @@ const DEF_SETTINGS: SiteSettings = {
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
   popupCtaLabel:"Request a Callback",
   emailjsServiceId:"", emailjsTemplateId:"", emailjsPublicKey:"",
+  theme:{P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(139,92,246,0.14)",INKMID:"#6E6480"},
+  uiText:{
+    navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
+    homeServicesEyebrow:"What We Offer", homeServicesTitle:"Services", homeServicesIntro:"Every project is shaped around the brand or story behind it -- from first concept to final delivery.",
+    homeWorkEyebrow:"Selected Work", homeWorkTitle:"Featured Projects", homeWorkViewAll:"View All →",
+    homeTestimonialsEyebrow:"Client Testimonials",
+    homeJournalEyebrow:"Journal", homeJournalTitle:"Photography Journal", homeJournalViewAll:"All Posts →",
+    homeCtaEyebrow:"Ready to create?", homeCtaTitle:"Book Your Session", homeCtaBookBtn:"Book Now", homeCtaWaBtn:"WhatsApp",
+    workBannerEyebrow:"Portfolio", workBannerTitle:"Selected Work",
+    aboutBannerEyebrow:"About", aboutBannerTitle:"About",
+    packagesBannerEyebrow:"Packages", packagesBannerTitle:"Your Investment",
+    blogBannerEyebrow:"Journal", blogBannerTitle:"Photography Journal",
+    cvBannerEyebrow:"Curriculum Vitae", cvBannerTitle:"CV",
+    bookingBannerEyebrow:"Book a Session", bookingBannerTitle:"Let's Create Together",
+    contactBannerEyebrow:"Get In Touch", contactBannerTitle:"Let's Work Together",
+  },
+  sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -113,7 +156,7 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 // CMS keys once so the browser re-reads the shipped defaults below -- any admin edits made
 // through the CMS since the last bump are what gets reset, so bump only when a real content
 // fix needs to override stale caches, not on every deploy.
-const DATA_VERSION = 5;
+const DATA_VERSION = 6;
 let _dataVersionChecked = false;
 function ensureFreshData() {
   if (_dataVersionChecked || typeof window === "undefined") return;
@@ -226,11 +269,13 @@ async function uploadToStorage(file:File): Promise<string> {
 // the page -- photography remains the strongest visual element). P/PD/GOLD/GOLDL all carry the
 // violet accent (kept as separate keys for a minimal diff); PL is the secondary lavender-white
 // text used for active/hover states and structural labels.
-const C = { P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",
-  // Light-section rebalance tokens: warm violet-tinted white grounds so pages read as
-  // dark+light in rhythm rather than all-dark, while staying inside the same brand family
-  // (ink text reuses DARK, muted text is a lighter tint of the same violet-gray as MID).
-  LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(139,92,246,0.14)",INKMID:"#6E6480" };
+// CSS-custom-property bridge: each value is a var() reference (falling back to the brand
+// default) instead of a literal hex, so a CMS color change (Settings > Colors) can repaint
+// every C.xxx usage across the whole file -- including standalone components outside Home()
+// like FloatingWA/ConsultPopup/Hero/Lightbox/SmartGrid/CropModal -- just by setting the
+// variable on :root, with zero JS re-render needed anywhere.
+const C = { P:"var(--c-p,#8B5CF6)",PL:"var(--c-pl,#E2D9F3)",PD:"var(--c-pd,#A855F7)",GOLD:"var(--c-gold,#8B5CF6)",GOLDL:"var(--c-goldl,#A855F7)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
+  LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(139,92,246,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
 
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
@@ -494,6 +539,25 @@ function ConsultPopup({open,onClose,title,text,ctaLabel,waNumber}:{open:boolean;
   );
 }
 
+// ─── PAGE BANNER ──────────────────────────────────────────────────────────────
+// Reusable banner rendered at the top of every inner page (Work, About, Packages, Journal,
+// CV, Booking, Contact, plus individual Project/Post pages using their own title+cover image).
+// CMS-editable eyebrow/title text (Settings > Colors & Banners) with an optional background
+// image; no image set (the default everywhere) renders as a plain solid-color band using
+// theme.DARK, so shipping this changes nothing visually until an image is actually added.
+function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:string}) {
+  return (
+    <div style={{position:"relative",overflow:"hidden",background:C.DARK,padding:"120px 40px 44px"}}>
+      {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.4}} />}
+      {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.92) 0%,rgba(9,6,14,0.65) 100%)"}} />}
+      <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto"}}>
+        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:10}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
+        <h1 style={{fontSize:"clamp(26px,3.6vw,44px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
+      </div>
+    </div>
+  );
+}
+
 // ─── HERO ────────────────────────────────────────────────────────────────────
 function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string}) {
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
@@ -532,7 +596,7 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
-          <h1 style={{fontSize:"clamp(40px,6.5vw,96px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
+          <h1 style={{fontSize:"clamp(36px,5.85vw,86px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
           <p style={{fontSize:"clamp(15px,1.6vw,22px)",fontWeight:400,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:36}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
@@ -577,7 +641,7 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [settings,setSettings]=useState<SiteSettings>(()=>ls("nap_settings",DEF_SETTINGS));
+  const [settings,setSettings]=useState<SiteSettings>(()=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
   const [projects,setProjects]=useState<Project[]>(()=>ls("nap_projects",DEF_PROJECTS));
   const [cats,setCats]=useState<string[]>(()=>ls("nap_cats",DEF_CATS));
   const [testimonials,setTestimonials]=useState<Testimonial[]>(()=>ls("nap_testimonials",DEF_TESTIMONIALS));
@@ -671,6 +735,21 @@ export default function Home() {
   const [settingsDraft,setSettingsDraft]=useState<SiteSettings>(settings);
   const [settingsTab,setSettingsTab]=useState("general");
 
+  // Apply CMS-editable theme colors as CSS custom properties on :root -- every C.xxx usage
+  // across the file (Nav/Footer inside Home() and standalone components like FloatingWA,
+  // ConsultPopup, Hero, Lightbox, SmartGrid, CropModal, PageBanner) is a var(--c-x,fallback)
+  // reference, so this instantly repaints the whole site without touching any of those call sites.
+  useEffect(()=>{
+    const t=settings.theme; if(!t||typeof document==="undefined") return;
+    const root=document.documentElement.style;
+    root.setProperty("--c-p",t.P); root.setProperty("--c-pl",t.PL); root.setProperty("--c-pd",t.PD);
+    root.setProperty("--c-gold",t.GOLD); root.setProperty("--c-goldl",t.GOLDL);
+    root.setProperty("--c-bg",t.BG); root.setProperty("--c-fg",t.FG); root.setProperty("--c-mid",t.MID);
+    root.setProperty("--c-dark",t.DARK); root.setProperty("--c-border",t.BORDER);
+    root.setProperty("--c-lt",t.LT); root.setProperty("--c-ltcard",t.LTCARD);
+    root.setProperty("--c-ltborder",t.LTBORDER); root.setProperty("--c-inkmid",t.INKMID);
+  },[settings.theme]);
+
   // Only push to the shared cloud copy while an authenticated CMS session made the change --
   // never on a plain public page load, otherwise an ordinary visitor's own (possibly stale)
   // locally-cached copy could momentarily clobber the real live content for everyone.
@@ -686,7 +765,7 @@ export default function Home() {
     let cancelled=false;
     fetchCloudData().then(cloud=>{
       if(cancelled||!cloud) return;
-      if(cloud.nap_settings) setSettings(cloud.nap_settings);
+      if(cloud.nap_settings) setSettings(s=>({...DEF_SETTINGS,...cloud.nap_settings}));
       if(cloud.nap_projects) setProjects(cloud.nap_projects);
       if(cloud.nap_cats) setCats(cloud.nap_cats);
       if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
@@ -781,7 +860,7 @@ export default function Home() {
           {NAV_LINKS.map(([k,l])=>(
             <span key={k} onClick={()=>goTo(k)} style={{fontSize:11,letterSpacing:3,color:page===k?C.PL:C.MID,textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s",borderBottom:page===k?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:2}}>{l}</span>
           ))}
-          <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>Book a Project</button>
+          <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.navBookBtn}</button>
         </div>
       )}
 
@@ -790,7 +869,7 @@ export default function Home() {
           {NAV_LINKS.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
-          <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>Book a Project</button>
+          <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>{settings.uiText.navBookBtn}</button>
         </div>
       )}
     </nav>
@@ -807,7 +886,7 @@ export default function Home() {
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.phone}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.email}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:16}}>{settings.location}</div>
-          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>WhatsApp Us</a>
+          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>{settings.uiText.footerWhatsappBtn}</a>
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Services</div>
@@ -894,7 +973,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -1053,6 +1132,65 @@ export default function Home() {
                 <div style={{marginBottom:16}}><label style={S.lbl}>Popup Title</label><input style={S.inp} value={settingsDraft.popupTitle} onChange={e=>updateSD({popupTitle:e.target.value})} /></div>
                 <div style={{marginBottom:16}}><label style={S.lbl}>Popup Text</label><textarea style={{...S.inp,height:80,resize:"vertical" as const}} value={settingsDraft.popupText} onChange={e=>updateSD({popupText:e.target.value})} /></div>
                 <div style={{marginBottom:16}}><label style={S.lbl}>Button Label</label><input style={S.inp} value={settingsDraft.popupCtaLabel} onChange={e=>updateSD({popupCtaLabel:e.target.value})} /></div>
+              </div>
+            )}
+
+            {settingsTab==="colors"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Site Colors</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Change any brand color below and the whole live site repaints instantly -- every page, the CMS excluded. Leave as-is for the current look.</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>
+                  {([["P","Primary Accent (Violet)"],["PL","Secondary / Active Text"],["PD","Accent Hover (Darker)"],["GOLD","Gold Accent"],["GOLDL","Gold Accent (Light)"],["BG","Page Background"],["FG","Main Text (on dark)"],["MID","Muted Text (on dark)"],["DARK","Dark Panel / Nav / Footer"],["BORDER","Dark Section Borders"],["LT","Light Section Background"],["LTCARD","Light Section Cards"],["LTBORDER","Light Section Borders"],["INKMID","Muted Text (on light)"]] as [keyof ThemeColors,string][]).map(([key,label])=>(
+                    <div key={key} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:12}}>
+                      <label style={{...S.lbl,marginBottom:8}}>{label}</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.theme[key])?settingsDraft.theme[key]:"#000000"} onChange={e=>updateSD({theme:{...settingsDraft.theme,[key]:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} value={settingsDraft.theme[key]} onChange={e=>updateSD({theme:{...settingsDraft.theme,[key]:e.target.value}})} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={()=>updateSD({theme:DEF_SETTINGS.theme})} style={{...S.btnO,marginTop:16}}>Reset to Default Colors</button>
+              </div>
+            )}
+
+            {settingsTab==="text"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Homepage Text</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Every heading, eyebrow label and button below is editable, like the rest of the site's content.</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:32}}>
+                  <div><label style={S.lbl}>Nav "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.navBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,navBookBtn:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Footer WhatsApp Button</label><input style={S.inp} value={settingsDraft.uiText.footerWhatsappBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,footerWhatsappBtn:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Services Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeServicesEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Services Title</label><input style={S.inp} value={settingsDraft.uiText.homeServicesTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesTitle:e.target.value}})} /></div>
+                  <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Services Intro Text</label><input style={S.inp} value={settingsDraft.uiText.homeServicesIntro} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesIntro:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Work Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeWorkEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Work Title</label><input style={S.inp} value={settingsDraft.uiText.homeWorkTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkTitle:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Work "View All" Link</label><input style={S.inp} value={settingsDraft.uiText.homeWorkViewAll} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkViewAll:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Testimonials Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeTestimonialsEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeTestimonialsEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Journal Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeJournalEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeJournalEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Journal Title</label><input style={S.inp} value={settingsDraft.uiText.homeJournalTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeJournalTitle:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Journal "All Posts" Link</label><input style={S.inp} value={settingsDraft.uiText.homeJournalViewAll} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeJournalViewAll:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Closing CTA Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeCtaEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeCtaEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Closing CTA Title</label><input style={S.inp} value={settingsDraft.uiText.homeCtaTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeCtaTitle:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>CTA "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.homeCtaBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeCtaBookBtn:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>CTA "WhatsApp" Button</label><input style={S.inp} value={settingsDraft.uiText.homeCtaWaBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeCtaWaBtn:e.target.value}})} /></div>
+                </div>
+
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Page Banners</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Each inner page shows a banner under the menu with the eyebrow/title below, plus an optional background photo (leave blank for a plain color band).</div>
+                {([
+                  ["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
+                ] as [keyof SectionBg,string][]).map(([key,label])=>(
+                  <div key={key} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,marginBottom:12}}>
+                    <div style={{fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{label} Page</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
+                      <div><label style={S.lbl}>Eyebrow</label><input style={S.inp} value={(settingsDraft.uiText as any)[`${key}BannerEyebrow`]} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,[`${key}BannerEyebrow`]:e.target.value}})} /></div>
+                      <div><label style={S.lbl}>Title</label><input style={S.inp} value={(settingsDraft.uiText as any)[`${key}BannerTitle`]} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,[`${key}BannerTitle`]:e.target.value}})} /></div>
+                    </div>
+                    <SingleImageUpload value={settingsDraft.sectionBg[key]} onChange={url=>updateSD({sectionBg:{...settingsDraft.sectionBg,[key]:url}})} label="Banner Background Image (optional)" />
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1230,10 +1368,9 @@ export default function Home() {
     return(
       <div style={S.base}>
         <Nav />
-        <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
-          <span onClick={()=>goTo("work")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:40}}>← All Work</span>
-          <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{selProj.categories?.join(" · ")}</div>
-          <h1 style={{fontSize:"clamp(32px,5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{selProj.title}</h1>
+        <PageBanner eyebrow={selProj.categories?.join(" · ")||"Portfolio"} title={selProj.title} image={selProj.coverImage} />
+        <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 80px"}}>
+          <span onClick={()=>goTo("work")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:24}}>← All Work</span>
           <div style={{display:"flex",gap:24,color:C.MID,fontSize:12,marginBottom:32,flexWrap:"wrap"}}>
             {selProj.location&&<span>📍 {selProj.location}</span>}
             {selProj.projectDate&&<span>📅 {selProj.projectDate}</span>}
@@ -1266,10 +1403,9 @@ export default function Home() {
   if(page==="blog-post"&&selBlog) return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:800,margin:"0 auto",padding:"120px 40px 80px"}}>
-        <span onClick={()=>goTo("blog")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:40}}>← Journal</span>
-        <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{selBlog.category}</div>
-        <h1 style={{fontSize:"clamp(28px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{selBlog.title}</h1>
+      <PageBanner eyebrow={selBlog.category||"Journal"} title={selBlog.title} image={selBlog.coverImage} />
+      <div style={{maxWidth:800,margin:"0 auto",padding:"40px 40px 80px"}}>
+        <span onClick={()=>goTo("blog")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:24}}>← Journal</span>
         <div style={{color:C.MID,fontSize:12,marginBottom:32}}>📅 {selBlog.date}</div>
         {selBlog.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden",marginBottom:48}}><img src={selBlog.coverImage} alt={selBlog.title} style={{width:"100%",height:"100%",objectFit:"cover"}} /></div>}
         <p style={{color:C.MID,fontSize:15,lineHeight:1.9,marginBottom:24}}>{selBlog.excerpt}</p>
@@ -1315,7 +1451,8 @@ export default function Home() {
   if(page==="packages") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 100px"}}>
+      <PageBanner eyebrow={settings.uiText.packagesBannerEyebrow} title={settings.uiText.packagesBannerTitle} image={settings.sectionBg.packages} />
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 100px"}}>
         <div style={{textAlign:"center",maxWidth:640,margin:"0 auto 64px"}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Packages<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
           <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>Your Investment</h1>
@@ -1351,7 +1488,8 @@ export default function Home() {
   if(page==="cv") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:900,margin:"0 auto",padding:"120px 40px 80px"}}>
+      <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} image={settings.sectionBg.cv} />
+      <div style={{maxWidth:900,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:64}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
           <h1 style={{fontSize:"clamp(36px,5.5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.aboutName}</h1>
@@ -1395,7 +1533,8 @@ export default function Home() {
   if(page==="booking") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:720,margin:"0 auto",padding:"120px 40px 80px"}}>
+      <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} image={settings.sectionBg.booking} />
+      <div style={{maxWidth:720,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:56}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Book a Session</div>
           <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>Let's Create Together</h1>
@@ -1441,7 +1580,8 @@ export default function Home() {
   if(page==="about") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:1000,margin:"0 auto",padding:"120px 40px 80px"}}>
+      <PageBanner eyebrow={settings.uiText.aboutBannerEyebrow} title={settings.uiText.aboutBannerTitle} image={settings.sectionBg.about} />
+      <div style={{maxWidth:1000,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:64,alignItems:"start"}}>
           <div>
             <div style={{...S.tag(),marginBottom:20}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
@@ -1483,7 +1623,8 @@ export default function Home() {
   if(page==="contact") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:700,margin:"0 auto",padding:"120px 40px 80px",textAlign:"center"}}>
+      <PageBanner eyebrow={settings.uiText.contactBannerEyebrow} title={settings.uiText.contactBannerTitle} image={settings.sectionBg.contact} />
+      <div style={{maxWidth:700,margin:"0 auto",padding:"40px 40px 80px",textAlign:"center"}}>
         <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Get In Touch</div>
         <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 48px"}}>Let's Work Together</h1>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,marginBottom:48}}>
@@ -1538,10 +1679,9 @@ export default function Home() {
   if(page==="work") return(
     <div style={S.base}>
       <Nav />
-      <div style={{maxWidth:1400,margin:"0 auto",padding:"100px 32px 80px"}}>
+      <PageBanner eyebrow={settings.uiText.workBannerEyebrow} title={settings.uiText.workBannerTitle} image={settings.sectionBg.work} />
+      <div style={{maxWidth:1400,margin:"0 auto",padding:"40px 32px 80px"}}>
         <div style={{marginBottom:48}}>
-          <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Portfolio</div>
-          <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 32px"}}>Selected Work</h1>
           <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             <span onClick={()=>setFilterCat("All")} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat==="All"?C.PL:C.MID,borderBottom:filterCat==="All"?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>All ({projects.length})</span>
             {cats.map(c=>{ const cnt=projects.filter(p=>p.categories?.includes(c)).length; if(!cnt) return null; return <span key={c} onClick={()=>setFilterCat(c)} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat===c?C.PL:C.MID,borderBottom:filterCat===c?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>{c} ({cnt})</span>; })}
@@ -1588,7 +1728,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>Book a Project</button>
+        <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.navBookBtn}</button>
       </div>
 
       {/* FEATURED WORK */}
@@ -1596,10 +1736,10 @@ export default function Home() {
         <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
-              <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Selected Work</div>
-              <h2 style={{fontSize:"clamp(28px,4vw,56px)",fontWeight:700,letterSpacing:1,margin:0}}>Featured Projects</h2>
+              <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeWorkEyebrow}</div>
+              <h2 style={{fontSize:"clamp(28px,4vw,56px)",fontWeight:700,letterSpacing:1,margin:0}}>{settings.uiText.homeWorkTitle}</h2>
             </div>
-            <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>View All →</span>
+            <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeWorkViewAll}</span>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
@@ -1638,14 +1778,14 @@ export default function Home() {
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
             <div>
-              <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />What We Offer</div>
-              <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>Services</h2>
+              <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
+              <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
             </div>
-            <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>Every project is shaped around the brand or story behind it -- from first concept to final delivery.</p>
+            <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
           </div>
           <div>
             {settings.services.map((sv,i)=>(
-              <div key={sv.id} className="svc-row" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+              <div key={sv.id} className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
                   <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
                   <div style={{minWidth:0}}>
@@ -1668,7 +1808,7 @@ export default function Home() {
           <div style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
             <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
               <div style={{width:44,height:44,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
-              <div style={{...S.tag(true),marginBottom:24,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
+              <div style={{...S.tag(true),marginBottom:24,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeTestimonialsEyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
               <p key={testiIdx} className="testi-fade" style={{fontSize:"clamp(18px,2.2vw,26px)",fontWeight:500,fontStyle:"italic",color:C.DARK,lineHeight:1.6,margin:"0 0 28px"}}>{featuredTesti[testiIdx % featuredTesti.length].quote}</p>
               <div key={"n"+testiIdx} className="testi-fade" style={{marginBottom:featuredTesti.length>1?28:0}}>
                 <div style={{fontSize:14,color:C.DARK,letterSpacing:1,fontWeight:700}}>{featuredTesti[testiIdx % featuredTesti.length].name}</div>
@@ -1690,10 +1830,10 @@ export default function Home() {
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
-                <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
-                <h2 style={{fontSize:"clamp(26px,3.5vw,48px)",fontWeight:700,letterSpacing:1,margin:0}}>Photography Journal</h2>
+                <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeJournalEyebrow}</div>
+                <h2 style={{fontSize:"clamp(26px,3.5vw,48px)",fontWeight:700,letterSpacing:1,margin:0}}>{settings.uiText.homeJournalTitle}</h2>
               </div>
-              <span onClick={()=>goTo("blog")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>All Posts →</span>
+              <span onClick={()=>goTo("blog")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeJournalViewAll}</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
               {blog.slice(0,2).map(b=>(
@@ -1713,12 +1853,12 @@ export default function Home() {
 
       {/* CTA */}
       <div style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
-        <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Ready to create?</div>
-        <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>Book Your Session</h2>
+        <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeCtaEyebrow}</div>
+        <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.uiText.homeCtaTitle}</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>
         <div style={{display:"flex",gap:16,justifyContent:"center",flexWrap:"wrap"}}>
-          <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>Book Now</button>
-          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>WhatsApp</a>
+          <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.homeCtaBookBtn}</button>
+          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>{settings.uiText.homeCtaWaBtn}</a>
         </div>
       </div>
 

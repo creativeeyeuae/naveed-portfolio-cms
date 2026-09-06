@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+out/
+**/.next/
+**/out/
+
+# Env files with real secrets -- never commit these; .env.example templates are fine
+.env
+.env.local
+.env*.local
+**/.env
+**/.env.local
+**/.env*.local
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Logs / OS junk
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

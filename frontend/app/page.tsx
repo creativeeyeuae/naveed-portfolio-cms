@@ -604,7 +604,15 @@ export default function Home() {
   const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["cv","CV"],["blog","Journal"],["contact","Contact"]];
 
   const Nav=()=>(
-    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:0,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
+    <>
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,padding:isMobile?"8px 20px":"8px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
+      <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
+      <div style={{display:"flex",gap:18}}>
+        {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
+        {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
+      </div>
+    </div>
+    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:32,left:0,right:0,zIndex:500,padding:isMobile?"14px 20px":"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
       <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>{settings.siteName}</div>
 
       {isMobile?(
@@ -623,7 +631,7 @@ export default function Home() {
       )}
 
       {isMobile&&mobileNavOpen&&(
-        <div style={{position:"fixed",top:64,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
+        <div style={{position:"fixed",top:96,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
           {NAV_LINKS.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
@@ -631,6 +639,7 @@ export default function Home() {
         </div>
       )}
     </nav>
+    </>
   );
 
   // ── FOOTER ──

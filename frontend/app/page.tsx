@@ -41,7 +41,9 @@ type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv
 // Pricing package cards (CMS > Settings > Packages), rendered on the Packages page under
 // "Your Investment" -- add/remove/edit freely, each with its own image. Separate from
 // `services` (the deliverables-list cards further down that page), which stay untouched.
-type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; };
+// `features` populates the card-back "Includes" checklist (hover-flip -- see .pflip in
+// globals.css); safe to be missing/empty on older saved data, the back face just shows nothing.
+type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; features:string[]; };
 // Hero headline/sub-text typography (CMS > Settings > Hero Slides). Font keys are looked up in
 // HERO_FONTS (a curated set of properly-licensed Google Fonts loaded once via next/font in
 // layout.tsx -- no runtime font-CDN calls). "default" and an empty color mean "inherit the
@@ -119,9 +121,12 @@ const DEF_SETTINGS: SiteSettings = {
   // Starter examples only -- placeholder names/prices for Naveed to replace with real ones in
   // CMS > Settings > Packages. Not real published pricing.
   pricingPackages:[
-    {id:"pp1",icon:"📸",label:"Essential Package",price:"1,500",priceNote:"Starting price · half-day session",desc:"Perfect for individuals and small businesses needing high-quality photography for portraits, products or short social content shoots.",image:"",ctaLabel:"Enquire Now"},
-    {id:"pp2",icon:"🎬",label:"Premium Package",price:"3,500",priceNote:"Starting price · full-day production",desc:"Ideal for brands and creators who need a complete mix of photography and videography for campaigns, events or content libraries.",image:"",ctaLabel:"Enquire Now"},
-    {id:"pp3",icon:"✨",label:"Signature Package",price:"7,500",priceNote:"Starting price · multi-day production",desc:"A full creative production for weddings, luxury brands and major campaigns -- photography, cinematography and post-production, end to end.",image:"",ctaLabel:"Enquire Now"},
+    {id:"pp1",icon:"📸",label:"Essential Package",price:"1,500",priceNote:"Starting price · half-day session",desc:"Perfect for individuals and small businesses needing high-quality photography for portraits, products or short social content shoots.",image:"",ctaLabel:"Enquire Now",
+      features:["Half-day shoot (up to 4 hours)","20 professionally edited images","High-resolution digital gallery","Commercial usage license","5-day turnaround"]},
+    {id:"pp2",icon:"🎬",label:"Premium Package",price:"3,500",priceNote:"Starting price · full-day production",desc:"Ideal for brands and creators who need a complete mix of photography and videography for campaigns, events or content libraries.",image:"",ctaLabel:"Enquire Now",
+      features:["Full-day shoot (up to 8 hours)","40 professionally edited images","1 edited highlight video (60–90s)","High-resolution digital gallery","Commercial usage license","3-day turnaround"]},
+    {id:"pp3",icon:"✨",label:"Signature Package",price:"7,500",priceNote:"Starting price · multi-day production",desc:"A full creative production for weddings, luxury brands and major campaigns -- photography, cinematography and post-production, end to end.",image:"",ctaLabel:"Enquire Now",
+      features:["Multi-day production","80+ professionally edited images","Full cinematic video edit","Dedicated creative direction","Commercial usage license","Priority 48-hour turnaround"]},
   ],
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
@@ -1356,7 +1361,7 @@ export default function Home() {
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Pricing Packages ({settingsDraft.pricingPackages.length})</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
-                <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now"}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
+                <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now",features:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
                 {settingsDraft.pricingPackages.map((pk,i)=>(
                   <div key={pk.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
@@ -1366,6 +1371,10 @@ export default function Home() {
                       <div><label style={S.lbl}>Price Note</label><input style={S.inp} value={pk.priceNote} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,priceNote:e.target.value}:x)})} placeholder="Starting price · per session" /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Description</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={pk.desc} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,desc:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Button Label</label><input style={S.inp} value={pk.ctaLabel} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,ctaLabel:e.target.value}:x)})} /></div>
+                      <div style={{gridColumn:"1/3"}}>
+                        <label style={S.lbl}>Includes (one per line -- shows on the card's flip-back side)</label>
+                        <textarea style={{...S.inp,height:100,resize:"vertical" as const}} value={(pk.features||[]).join("\n")} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,features:e.target.value.split("\n").filter(l=>l.trim())}:x)})} placeholder={"High-resolution edited images\nCommercial usage license\nFast turnaround"} />
+                      </div>
                       <div style={{gridColumn:"1/3"}}><SingleImageUpload label="Photo (optional)" value={pk.image} onChange={v=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,image:v}:x)})} /></div>
                     </div>
                     <button onClick={()=>updateSD({pricingPackages:settingsDraft.pricingPackages.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Package</button>
@@ -1646,32 +1655,61 @@ export default function Home() {
         {settings.pricingPackages.length>0&&(
           <div style={{marginBottom:72}}>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:28}}>
-              {settings.pricingPackages.map((pk,i)=>(
+              {settings.pricingPackages.map((pk,i)=>{
+                const waHref=`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${pk.label}.`)}`;
+                return (
                 <Reveal key={pk.id} delay={i*0.08}>
-                <div className="tcard" style={{position:"relative",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,overflow:"hidden",boxShadow:"0 24px 60px rgba(20,13,33,0.10)",display:"flex",flexDirection:"column",minHeight:400}}>
-                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:26}}>
-                    <span style={{fontSize:20}}>{pk.icon}</span>
-                    <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:C.P,textTransform:"uppercase"}}>{pk.label}</span>
-                  </div>
-                  <div style={{display:"flex",gap:20,alignItems:"flex-start",flex:1}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,letterSpacing:2,color:C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
-                      <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-                        <span style={{fontSize:12,fontWeight:700,color:C.P}}>AED</span>
-                        <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:C.DARK,lineHeight:1}}>{pk.price}</span>
-                      </div>
-                      {pk.priceNote&&<div style={{fontSize:11,color:C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
-                      <p style={{fontSize:13,color:C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
+                {/* Hover (or keyboard-focus the Enquire button) flips the card to a solid-accent
+                    back face listing what's included -- see .pflip in globals.css. Explicit
+                    height is required: the faces are position:absolute so the wrapper has no
+                    intrinsic height of its own. */}
+                <div className="pflip" style={{height:420}}>
+                <div className="pflip-inner">
+                  <div className="pflip-face" style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:26}}>
+                      <span style={{fontSize:20}}>{pk.icon}</span>
+                      <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:C.P,textTransform:"uppercase"}}>{pk.label}</span>
                     </div>
-                    {pk.image&&<img src={pk.image} alt={pk.label} loading="lazy" style={{width:100,height:150,objectFit:"cover",borderRadius:8,flexShrink:0,boxShadow:"0 10px 24px rgba(20,13,33,0.15)"}} />}
+                    <div style={{display:"flex",gap:20,alignItems:"flex-start",flex:1,minHeight:0}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:11,letterSpacing:2,color:C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
+                        <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                          <span style={{fontSize:12,fontWeight:700,color:C.P}}>AED</span>
+                          <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:C.DARK,lineHeight:1}}>{pk.price}</span>
+                        </div>
+                        {pk.priceNote&&<div style={{fontSize:11,color:C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
+                        <p style={{fontSize:13,color:C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
+                      </div>
+                      {pk.image&&<img src={pk.image} alt={pk.label} loading="lazy" style={{width:100,height:150,objectFit:"cover",borderRadius:8,flexShrink:0,boxShadow:"0 10px 24px rgba(20,13,33,0.15)"}} />}
+                    </div>
+                    <div style={{marginTop:"auto"}}>
+                      {(pk.features||[]).length>0&&<div style={{fontSize:10,color:C.P,letterSpacing:1,marginBottom:10}}>↻ Hover to see what's included</div>}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,borderTop:`1px solid ${C.LTBORDER}`}}>
+                        <span style={{fontSize:10,color:C.INKMID}}>T&C Apply</span>
+                        <a href={waHref} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 20px",fontSize:11,textDecoration:"none"}}>{pk.ctaLabel}</a>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,marginTop:20,borderTop:`1px solid ${C.LTBORDER}`}}>
-                    <span style={{fontSize:10,color:C.INKMID}}>T&C Apply</span>
-                    <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${pk.label}.`)}`} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 20px",fontSize:11,textDecoration:"none"}}>{pk.ctaLabel}</a>
+                  <div className="pflip-face pflip-back" style={{background:C.P,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22}}>
+                      <span style={{fontSize:20}}>{pk.icon}</span>
+                      <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:"#fff",textTransform:"uppercase"}}>{pk.label}</span>
+                    </div>
+                    <div style={{fontSize:11,letterSpacing:2,color:"rgba(255,255,255,0.8)",textTransform:"uppercase",fontWeight:700,marginBottom:14}}>Includes</div>
+                    <div style={{flex:1,overflowY:"auto"}}>
+                      {(pk.features||[]).map((f,j)=>(
+                        <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"5px 0",fontSize:13,color:"rgba(255,255,255,0.94)",lineHeight:1.5}}>
+                          <span style={{flexShrink:0}}>✓</span>{f}
+                        </div>
+                      ))}
+                    </div>
+                    <a href={waHref} target="_blank" rel="noopener noreferrer" style={{marginTop:16,textAlign:"center",background:"#fff",color:C.P,border:"none",padding:"10px 20px",fontSize:11,fontWeight:700,letterSpacing:2,textTransform:"uppercase",textDecoration:"none",borderRadius:2}}>{pk.ctaLabel}</a>
                   </div>
                 </div>
+                </div>
                 </Reveal>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

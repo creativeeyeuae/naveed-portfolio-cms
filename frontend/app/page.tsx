@@ -44,6 +44,28 @@ type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv
 // `features` populates the card-back "Includes" checklist (hover-flip -- see .pflip in
 // globals.css); safe to be missing/empty on older saved data, the back face just shows nothing.
 type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; features:string[]; };
+// Shared style controls for ALL pricing cards (CMS > Settings > Packages > Card Style) --
+// one set of padding/typography/overlay settings applied uniformly across every card, rather
+// than per-card, so the section stays visually consistent. Font keys look up HERO_FONTS (the
+// same curated Google Fonts already used by Hero Typography). Empty color strings mean
+// "inherit the site's existing theme colors" (same sentinel pattern as HeroTypography), so
+// shipping this makes zero visual change until Naveed picks something different in CMS.
+type PricingCardStyle = {
+  padTop:number; padRight:number; padBottom:number; padLeft:number;
+  titleFont:string; titleSize:number; titleWeight:number; titleColor:string; titleColorOnPhoto:string;
+  priceSize:number; priceColor:string; priceColorOnPhoto:string;
+  descFont:string; descSize:number; descColor:string; descColorOnPhoto:string;
+  overlayColor:string; overlayOpacity:number;
+};
+// Builds the dark gradient overlay used behind a pricing card's background photo, from the
+// CMS-controlled tint color + strength (Settings > Packages > Card Style). Kept as a small
+// pure helper so the card JSX below stays readable.
+function pricingOverlayGradient(pcs:PricingCardStyle){
+  const rgb=(pcs.overlayColor||"20,13,33").trim();
+  const op=Math.max(0,Math.min(1,pcs.overlayOpacity??0.6));
+  const top=Math.min(1,op*0.42).toFixed(2), mid=op.toFixed(2), bot=Math.min(1,op*1.53).toFixed(2);
+  return `linear-gradient(180deg, rgba(${rgb},${top}) 0%, rgba(${rgb},${mid}) 55%, rgba(${rgb},${bot}) 100%)`;
+}
 // Hero headline/sub-text typography (CMS > Settings > Hero Slides). Font keys are looked up in
 // HERO_FONTS (a curated set of properly-licensed Google Fonts loaded once via next/font in
 // layout.tsx -- no runtime font-CDN calls). "default" and an empty color mean "inherit the
@@ -64,7 +86,7 @@ type SiteSettings = {
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
   theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; heroTypography:HeroTypography;
-  pricingPackages:PricingPackage[];
+  pricingPackages:PricingPackage[]; pricingCardStyle:PricingCardStyle;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -118,6 +140,17 @@ const DEF_SETTINGS: SiteSettings = {
   sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
+  // Matches the padding/sizes/colors already hardcoded in the card markup, so shipping this
+  // makes zero visual change until Naveed adjusts something in CMS > Settings > Packages >
+  // Card Style. overlayColor/overlayOpacity control the dark gradient used for legibility when
+  // a package has a background photo.
+  pricingCardStyle:{
+    padTop:28,padRight:28,padBottom:28,padLeft:28,
+    titleFont:"default",titleSize:11,titleWeight:700,titleColor:"",titleColorOnPhoto:"#ffffff",
+    priceSize:44,priceColor:"",priceColorOnPhoto:"#ffffff",
+    descFont:"default",descSize:13,descColor:"",descColorOnPhoto:"rgba(255,255,255,0.92)",
+    overlayColor:"20,13,33",overlayOpacity:0.6,
+  },
   // Starter examples only -- placeholder names/prices for Naveed to replace with real ones in
   // CMS > Settings > Packages. Not real published pricing.
   pricingPackages:[
@@ -605,12 +638,12 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
 // theme.DARK, so shipping this changes nothing visually until an image is actually added.
 function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:string}) {
   return (
-    <div style={{position:"relative",overflow:"hidden",background:C.DARK,padding:"134px 40px 44px"}}>
-      {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.4}} />}
-      {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.92) 0%,rgba(9,6,14,0.65) 100%)"}} />}
-      <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto"}}>
-        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:10}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
-        <h1 style={{fontSize:"clamp(26px,3.6vw,44px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
+    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(320px,46vh,520px)",display:"flex",alignItems:"center",padding:"134px 40px 44px"}}>
+      {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.55}} />}
+      {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.88) 0%,rgba(9,6,14,0.5) 100%)"}} />}
+      <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto",width:"100%"}}>
+        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
+        <h1 style={{fontSize:"clamp(30px,4.4vw,54px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
       </div>
     </div>
   );
@@ -1361,6 +1394,87 @@ export default function Home() {
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Pricing Packages ({settingsDraft.pricingPackages.length})</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
+
+                <div style={{background:"#10101c",padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>🎨 Card Style (applies to every package card)</div>
+                  <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Padding, fonts and colors used on every pricing card. "On Photo" colors apply only to cards that have a background photo set.</div>
+
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:10}}>Padding (px)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:16}}>
+                    <div><label style={S.lbl}>Top</label><input type="number" min={0} max={80} style={S.inp} value={settingsDraft.pricingCardStyle.padTop} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,padTop:Number(e.target.value)||0}})} /></div>
+                    <div><label style={S.lbl}>Right</label><input type="number" min={0} max={80} style={S.inp} value={settingsDraft.pricingCardStyle.padRight} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,padRight:Number(e.target.value)||0}})} /></div>
+                    <div><label style={S.lbl}>Bottom</label><input type="number" min={0} max={80} style={S.inp} value={settingsDraft.pricingCardStyle.padBottom} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,padBottom:Number(e.target.value)||0}})} /></div>
+                    <div><label style={S.lbl}>Left</label><input type="number" min={0} max={80} style={S.inp} value={settingsDraft.pricingCardStyle.padLeft} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,padLeft:Number(e.target.value)||0}})} /></div>
+                  </div>
+
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",margin:"16px 0 10px"}}>Package Name (Title)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                    <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.pricingCardStyle.titleFont} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                    <div><label style={S.lbl}>Weight</label><select style={S.inp} value={settingsDraft.pricingCardStyle.titleWeight} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleWeight:Number(e.target.value)}})}>{[400,500,600,700,800,900].map(w=><option key={w} value={w}>{w}</option>)}</select></div>
+                    <div><label style={S.lbl}>Size (px)</label><input type="number" min={8} max={22} style={S.inp} value={settingsDraft.pricingCardStyle.titleSize} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleSize:Number(e.target.value)||11}})} /></div>
+                    <div>
+                      <label style={S.lbl}>Color (no photo, blank = brand accent)</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.titleColor)?settingsDraft.pricingCardStyle.titleColor:"#8B5CF6"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} placeholder="Brand accent" value={settingsDraft.pricingCardStyle.titleColor} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColor:e.target.value}})} />
+                      </div>
+                    </div>
+                    <div style={{gridColumn:"1/3"}}>
+                      <label style={S.lbl}>Color on Photo</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.titleColorOnPhoto)?settingsDraft.pricingCardStyle.titleColorOnPhoto:"#ffffff"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColorOnPhoto:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} value={settingsDraft.pricingCardStyle.titleColorOnPhoto} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColorOnPhoto:e.target.value}})} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",margin:"16px 0 10px"}}>Price Number</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                    <div><label style={S.lbl}>Size (px, desktop max)</label><input type="number" min={24} max={72} style={S.inp} value={settingsDraft.pricingCardStyle.priceSize} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,priceSize:Number(e.target.value)||44}})} /></div>
+                    <div>
+                      <label style={S.lbl}>Color (no photo, blank = dark ink)</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.priceColor)?settingsDraft.pricingCardStyle.priceColor:"#140D21"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,priceColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} placeholder="Dark ink" value={settingsDraft.pricingCardStyle.priceColor} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,priceColor:e.target.value}})} />
+                      </div>
+                    </div>
+                    <div style={{gridColumn:"1/3"}}>
+                      <label style={S.lbl}>Color on Photo</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.priceColorOnPhoto)?settingsDraft.pricingCardStyle.priceColorOnPhoto:"#ffffff"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,priceColorOnPhoto:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} value={settingsDraft.pricingCardStyle.priceColorOnPhoto} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,priceColorOnPhoto:e.target.value}})} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",margin:"16px 0 10px"}}>Description</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                    <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.pricingCardStyle.descFont} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
+                    <div><label style={S.lbl}>Size (px)</label><input type="number" min={10} max={20} style={S.inp} value={settingsDraft.pricingCardStyle.descSize} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descSize:Number(e.target.value)||13}})} /></div>
+                    <div>
+                      <label style={S.lbl}>Color (no photo, blank = muted ink)</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.descColor)?settingsDraft.pricingCardStyle.descColor:"#6E6480"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} placeholder="Muted ink" value={settingsDraft.pricingCardStyle.descColor} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descColor:e.target.value}})} />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={S.lbl}>Color on Photo</label>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.descColorOnPhoto)?settingsDraft.pricingCardStyle.descColorOnPhoto:"#ffffff"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descColorOnPhoto:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input style={{...S.inp,fontSize:11}} value={settingsDraft.pricingCardStyle.descColorOnPhoto} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,descColorOnPhoto:e.target.value}})} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",margin:"16px 0 10px"}}>Photo Overlay (readability tint for cards with a background photo)</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label style={S.lbl}>Tint Color (R,G,B)</label><input style={S.inp} value={settingsDraft.pricingCardStyle.overlayColor} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,overlayColor:e.target.value}})} placeholder="20,13,33" /></div>
+                    <div><label style={S.lbl}>Darkness (0 = light, 1 = solid)</label><input type="number" step={0.05} min={0} max={1} style={S.inp} value={settingsDraft.pricingCardStyle.overlayOpacity} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,overlayOpacity:Number(e.target.value)}})} /></div>
+                  </div>
+                  <button onClick={()=>updateSD({pricingCardStyle:DEF_SETTINGS.pricingCardStyle})} style={{...S.btnO,marginTop:16}}>Reset to Default Card Style</button>
+                </div>
+
                 <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now",features:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
                 {settingsDraft.pricingPackages.map((pk,i)=>(
                   <div key={pk.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
@@ -1657,6 +1771,10 @@ export default function Home() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:28}}>
               {settings.pricingPackages.map((pk,i)=>{
                 const waHref=`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${pk.label}.`)}`;
+                const pcs=settings.pricingCardStyle;
+                const cardPad=`${pcs.padTop}px ${pcs.padRight}px ${pcs.padBottom}px ${pcs.padLeft}px`;
+                const titleFF=HERO_FONTS[pcs.titleFont];
+                const descFF=HERO_FONTS[pcs.descFont];
                 return (
                 <Reveal key={pk.id} delay={i*0.08}>
                 {/* Hover (or keyboard-focus the Enquire button) flips the card to a solid-accent
@@ -1667,30 +1785,32 @@ export default function Home() {
                 <div className="pflip-inner">
                   {/* When a photo is set for this package, it becomes the card's full background
                       (with a dark gradient overlay for text contrast) instead of a small side
-                      thumbnail -- gives each package its own visual identity. */}
-                  <div className="pflip-face" style={pk.image?{backgroundImage:`linear-gradient(180deg, rgba(20,13,33,0.25) 0%, rgba(20,13,33,0.6) 55%, rgba(20,13,33,0.92) 100%), url(${pk.image})`,backgroundSize:"cover",backgroundPosition:"center",border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.18)"}:{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
+                      thumbnail -- gives each package its own visual identity. Padding, fonts and
+                      colors below all come from settings.pricingCardStyle (CMS > Settings >
+                      Packages > Card Style), applied the same way to every card. */}
+                  <div className="pflip-face" style={pk.image?{backgroundImage:`${pricingOverlayGradient(pcs)}, url(${pk.image})`,backgroundSize:"cover",backgroundPosition:"center",border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:cardPad,boxShadow:"0 24px 60px rgba(20,13,33,0.18)"}:{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:cardPad,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:26}}>
                       <span style={{fontSize:20}}>{pk.icon}</span>
-                      <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:pk.image?"#fff":C.P,textTransform:"uppercase"}}>{pk.label}</span>
+                      <span style={{fontFamily:titleFF,fontSize:pcs.titleSize,letterSpacing:3,fontWeight:pcs.titleWeight,color:pk.image?pcs.titleColorOnPhoto:(pcs.titleColor||C.P),textTransform:"uppercase"}}>{pk.label}</span>
                     </div>
                     <div style={{flex:1,minHeight:0}}>
-                      <div style={{fontSize:11,letterSpacing:2,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
+                      <div style={{fontSize:11,letterSpacing:2,color:pk.image?pcs.descColorOnPhoto:(pcs.descColor||C.INKMID),textTransform:"uppercase",marginBottom:6}}>Starting From</div>
                       <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
-                        <span style={{fontSize:12,fontWeight:700,color:pk.image?"#fff":C.P}}>AED</span>
-                        <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:pk.image?"#fff":C.DARK,lineHeight:1}}>{pk.price}</span>
+                        <span style={{fontSize:12,fontWeight:700,color:pk.image?pcs.titleColorOnPhoto:(pcs.titleColor||C.P)}}>AED</span>
+                        <span style={{fontSize:`clamp(32px,3.4vw,${pcs.priceSize}px)`,fontWeight:800,color:pk.image?pcs.priceColorOnPhoto:(pcs.priceColor||C.DARK),lineHeight:1}}>{pk.price}</span>
                       </div>
-                      {pk.priceNote&&<div style={{fontSize:11,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
-                      <p style={{fontSize:13,color:pk.image?"rgba(255,255,255,0.92)":C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
+                      {pk.priceNote&&<div style={{fontSize:11,color:pk.image?pcs.descColorOnPhoto:(pcs.descColor||C.INKMID),marginBottom:18}}>{pk.priceNote}</div>}
+                      <p style={{fontFamily:descFF,fontSize:pcs.descSize,color:pk.image?pcs.descColorOnPhoto:(pcs.descColor||C.INKMID),lineHeight:1.7,margin:0}}>{pk.desc}</p>
                     </div>
                     <div style={{marginTop:"auto"}}>
-                      {(pk.features||[]).length>0&&<div style={{fontSize:10,color:pk.image?"#fff":C.P,letterSpacing:1,marginBottom:10}}>↻ Hover to see what's included</div>}
+                      {(pk.features||[]).length>0&&<div style={{fontSize:10,color:pk.image?pcs.titleColorOnPhoto:(pcs.titleColor||C.P),letterSpacing:1,marginBottom:10}}>↻ Hover to see what's included</div>}
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,borderTop:`1px solid ${pk.image?"rgba(255,255,255,0.3)":C.LTBORDER}`}}>
-                        <span style={{fontSize:10,color:pk.image?"rgba(255,255,255,0.85)":C.INKMID}}>T&C Apply</span>
+                        <span style={{fontSize:10,color:pk.image?pcs.descColorOnPhoto:(pcs.descColor||C.INKMID)}}>T&C Apply</span>
                         <a href={waHref} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 20px",fontSize:11,textDecoration:"none"}}>{pk.ctaLabel}</a>
                       </div>
                     </div>
                   </div>
-                  <div className="pflip-face pflip-back" style={{background:C.P,borderRadius:10,padding:28,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
+                  <div className="pflip-face pflip-back" style={{background:C.P,borderRadius:10,padding:cardPad,boxShadow:"0 24px 60px rgba(20,13,33,0.10)"}}>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22}}>
                       <span style={{fontSize:20}}>{pk.icon}</span>
                       <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:"#fff",textTransform:"uppercase"}}>{pk.label}</span>

@@ -692,6 +692,7 @@ export default function Home() {
   const [pinAttempts,setPinAttempts]=useState(0);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(false);
+  const [scrolled,setScrolled]=useState(false);
   const [popupOpen,setPopupOpen]=useState(false);
   const [contactForm,setContactForm]=useState({name:"",email:"",phone:"",subject:"",message:""});
   const [contactSending,setContactSending]=useState(false);
@@ -713,6 +714,16 @@ export default function Home() {
     check();
     window.addEventListener("resize",check);
     return ()=>window.removeEventListener("resize",check);
+  },[]);
+
+  // Collapsing header on scroll (same pattern as creativefusion.llc): once the page scrolls
+  // past a small threshold, the top admin/social strip slides/fades away and the main nav
+  // rises to fill its place, freeing up viewport space. Passive listener, no layout thrash.
+  useEffect(()=>{
+    function onScroll(){ setScrolled(window.scrollY>40); }
+    onScroll();
+    window.addEventListener("scroll",onScroll,{passive:true});
+    return ()=>window.removeEventListener("scroll",onScroll);
   },[]);
 
   // Consultation popup -- shows once per browser session after a short delay, never on
@@ -881,14 +892,14 @@ export default function Home() {
         to that wrapper instead of the viewport for the animation's duration, visibly shifting
         the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
     <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,opacity:scrolled?0:1,transform:scrolled?"translateY(-100%)":"translateY(0)",pointerEvents:scrolled?"none":"auto",transition:"opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)"}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18}}>
         {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
         {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
       </div>
     </div>
-    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:32,left:0,right:0,zIndex:500,padding:isMobile?"21px 20px":"23px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`}}>
+    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:scrolled?0:32,left:0,right:0,zIndex:500,padding:isMobile?"21px 20px":"23px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`,transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
       <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>{settings.siteName}</div>
 
       {isMobile?(
@@ -907,7 +918,7 @@ export default function Home() {
       )}
 
       {isMobile&&mobileNavOpen&&(
-        <div style={{position:"fixed",top:110,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26}}>
+        <div style={{position:"fixed",top:scrolled?78:110,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26,transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
           {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}

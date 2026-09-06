@@ -33,15 +33,15 @@ const DEF_SETTINGS: SiteSettings = {
     {label:"Events",headline:"Professional\nCoverage. Powerful\nVisuals.",sub:"Photography and videography for corporate events, exhibitions and conferences.",btn1:"View Events",btn2:"",img:"https://images.unsplash.com/photo-1583012802443-efc6e8b00f5f?w=1600&q=90",page:"work"},
   ],
   aboutName:"Naveed Anjum", aboutTitle:"Photographer · Cinematographer · Creative Director",
-  aboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience creating powerful visual stories for brands, businesses and people. Specializing in luxury photography, commercial cinematography, portrait sessions and creative visual content for the UAE and international markets.",
+  aboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion, specializing in interior, real estate, product, lifestyle and campaign photography, plus short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces.",
   aboutPhoto:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
   statsYears:"20+", statsProjects:"500+", statsClients:"200+",
   phone:"+971 581 174 911", email:"creativeeyeuae@gmail.com", waNumber:"971581174911",
   waMsg:"Hello Naveed, I visited your portfolio and would like to discuss a project.",
   location:"Dubai, UAE",
-  instagram:"https://instagram.com/creativeeyeuae", youtube:"https://youtube.com/@creativeeyeuae", linkedin:"", tiktok:"",
+  instagram:"https://www.instagram.com/bynaveedanjum/", youtube:"https://youtube.com/@creativeeyeuae", linkedin:"https://linkedin.com/in/naveedanjumch", tiktok:"",
   footerCopyright:"© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
-  footerLinks:[{label:"Work",page:"work"},{label:"About",page:"about"},{label:"CV",page:"cv"},{label:"Booking",page:"booking"},{label:"Contact",page:"contact"}],
+  footerLinks:[{label:"Work",page:"work"},{label:"About",page:"about"},{label:"Packages",page:"packages"},{label:"CV",page:"cv"},{label:"Booking",page:"booking"},{label:"Contact",page:"contact"}],
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"",
@@ -52,15 +52,24 @@ const DEF_SETTINGS: SiteSettings = {
     {id:"s4",icon:"🎨",title:"Creative Production",desc:"Complete visual content from concept and shooting to editing and delivery.",detail:"End-to-end creative production from initial concept development through to final delivery.",deliverables:["Concept development","Full production","Post-production","Multiple formats"]},
   ],
   cvSections:[
-    {title:"Professional Profile",content:"Naveed Anjum is a Dubai-based professional photographer and cinematographer with over 20 years of experience crafting compelling visual narratives for brands, businesses and individuals across the UAE, GCC and internationally."},
-    {title:"Photography",content:"Portrait · Landscape · Fashion · Commercial · Real Estate · Architecture & Interior · Events · Wedding · Editorial · Product · Food · Automotive · Travel"},
-    {title:"Cinematography",content:"Commercial Films · Documentaries · Fashion Films · Automotive · Social Media · Instagram Reels · Corporate Videos · Event Videography"},
+    {title:"Profile",content:"Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Founder of Creative Fusion, a premium photography and cinematography brand. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces."},
+    {title:"Creative Expertise",content:"Trained graphic artist with a strong grounding in brand development, typography, imaging and grid-based design systems, built through years of designing across print, digital and social platforms. Applies this design foundation to content that drives measurable results using consistent visual identity, strategic composition and platform-native storytelling to increase engagement, build audience trust and generate qualified leads through organic and campaign content."},
+    {title:"Media Manager (Contract) — Earthlink Real Estate, Dubai · Jun 2026 – Present",content:"Overseeing media production management and photography, supporting the sales team and real estate agents with marketing content. Creates tailored content for individual agents, conducts on-site photo and video shoots at properties and development offices, and produces visuals for listings, campaigns and client presentations."},
+    {title:"Photographer, Videographer & Brand/Social Media Specialist — Creative Fusion LLC, Dubai · Jan 2024 – Present",content:"Founder and creative lead delivering end-to-end visual and brand solutions: interior, architectural, real estate, event, lifestyle, portrait, product and corporate photography/videography with cinematic storytelling, including luxury residential interiors and hospitality spaces. Directs full production workflows from concept through delivery, designs logos and branding kits, and manages social media strategy and campaigns across Instagram, LinkedIn and Facebook."},
+    {title:"Creative Director (Freelance, Part-Time) — Robus Shelters, Canada (Hybrid) · May 2020 – Present",content:"Providing creative direction on a freelance, part-time basis alongside his primary role, working hybrid with a Canada-based team."},
+    {title:"Head of Design Department — Bait Al Nokhada Tents & Fabric Shade LLC, Dubai · May 2016 – May 2024",content:"Led photography, videography, graphic design and visual branding for the company. Supported the sales team by designing proposals, marketing materials and presentations; managed teams and coordinated projects."},
+    {title:"Web & Graphic Designer — DigitalSofts, Faisalabad, Pakistan · Jan 2007 – Jun 2016",content:"Delivered web and graphic design work using Adobe Photoshop, Adobe Illustrator and related tools."},
+    {title:"Education",content:"2-Year Diploma in Video Production — IMedia University, Pakistan  ·  Bachelor of Fine Arts — Government College University, Faisalabad, Pakistan  ·  Diploma in Graphic Design — Mac Computer College, Pakistan"},
+    {title:"Recognition",content:"Sony Alpha Approved Content Creator"},
+    {title:"Beyond the Work",content:"Music · Traveling · Fine Arts · Fashion · Cinema"},
   ],
   skills:[
-    {dept:"Creative Skills",items:["Video Editing","Color Grading","Motion Graphics","Creative Direction","Art Direction","Graphic Design"]},
-    {dept:"Technical Skills",items:["Studio Lighting","Drone Photography","Location Scouting","Post Production"]},
+    {dept:"Creative Skills",items:["Cinematic Storytelling","Brand & Visual Identity Design","Typography & Grid-Based Design Systems","Creative Direction","Social Media Strategy"]},
+    {dept:"Technical Skills",items:["Drone Piloting","Interior & Architectural Photography","Product Photography","Short-Form Video (Reels/TikTok/Instagram/YouTube)"]},
     {dept:"Equipment",items:["Sony Alpha Series","Canon EOS R","DJI Drone Systems","Profoto Studio Lighting","Godox Location Lighting","Gimbals","Aputure LED"]},
-    {dept:"Software",items:["Adobe Lightroom","Photoshop","Premiere Pro","DaVinci Resolve","After Effects","Final Cut Pro","Capture One"]},
+    {dept:"Software",items:["Adobe Photoshop","Adobe Lightroom","Adobe Premiere Pro","Final Cut Pro","Sony Vegas","DaVinci Resolve","CorelDRAW"]},
+    {dept:"AI & Creative Tools",items:["ChatGPT","Google AI Studio","Versal AI Tools","CapCut","CapCut Template Creator","Adobe Template Designer"]},
+    {dept:"Languages",items:["English","Urdu","Punjabi","Hindi","Arabic (Basic)"]},
   ],
 };
 
@@ -97,14 +106,14 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 // CMS keys once so the browser re-reads the shipped defaults below -- any admin edits made
 // through the CMS since the last bump are what gets reset, so bump only when a real content
 // fix needs to override stale caches, not on every deploy.
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 let _dataVersionChecked = false;
 function ensureFreshData() {
   if (_dataVersionChecked || typeof window === "undefined") return;
   _dataVersionChecked = true;
   try {
     if (localStorage.getItem("nap_data_v") !== String(DATA_VERSION)) {
-      ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog"].forEach(k=>localStorage.removeItem(k));
+      ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog","nap_blogcats"].forEach(k=>localStorage.removeItem(k));
       localStorage.setItem("nap_data_v", String(DATA_VERSION));
     }
   } catch {}
@@ -609,7 +618,7 @@ export default function Home() {
   }
 
   // ── NAV ──
-  const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["cv","CV"],["blog","Journal"],["contact","Contact"]];
+  const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["contact","Contact"]];
 
   const Nav=()=>(
     <>
@@ -630,7 +639,7 @@ export default function Home() {
           <span style={{display:"block",width:18,height:1,background:C.FG}} />
         </button>
       ):(
-        <div style={{display:"flex",gap:22,alignItems:"center"}}>
+        <div style={{display:"flex",gap:16,alignItems:"center"}}>
           {NAV_LINKS.map(([k,l])=>(
             <span key={k} onClick={()=>goTo(k)} style={{fontSize:11,letterSpacing:3,color:page===k?C.PL:C.MID,textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s",borderBottom:page===k?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:2}}>{l}</span>
           ))}
@@ -1092,6 +1101,42 @@ export default function Home() {
                 <h3 style={{fontSize:18,fontWeight:700,letterSpacing:0.5,margin:"0 0 12px"}}>{b.title}</h3>
                 <p style={{color:C.MID,fontSize:13,lineHeight:1.7}}>{b.excerpt}</p>
                 <div style={{marginTop:16,fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase"}}>Read More →</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+    </div>
+  );
+
+  // ── PACKAGES ── feature-list cards + Enquire/Book Now CTAs, no exact pricing shown --
+  // modeled on the shamsfz.ae reference, tiers derived from the CMS-editable services list.
+  if(page==="packages") return(
+    <div style={S.base}>
+      <Nav />
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 100px"}}>
+        <div style={{textAlign:"center",maxWidth:640,margin:"0 auto 64px"}}>
+          <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Packages<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
+          <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>Your Investment</h1>
+          <p style={{color:C.MID,fontSize:14,lineHeight:1.8,margin:0}}>Every project is scoped around your brand and goals, so pricing is quoted after a short conversation about what you need. Here's what each service includes -- enquire for a tailored quote.</p>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:24}}>
+          {settings.services.map(sv=>(
+            <div key={sv.id} className="tcard" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32,display:"flex",flexDirection:"column"}}>
+              <div style={{width:44,height:44,borderRadius:4,background:"rgba(139,92,246,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
+              <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.3,margin:"0 0 8px"}}>{sv.title}</h3>
+              <p style={{color:C.MID,fontSize:13,lineHeight:1.7,margin:"0 0 20px"}}>{sv.desc}</p>
+              <div style={{flex:1,marginBottom:24}}>
+                {sv.deliverables.map((d,j)=>(
+                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",fontSize:13,color:C.FG}}>
+                    <span style={{color:C.PL,flexShrink:0}}>✓</span>{d}
+                  </div>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",paddingTop:20,borderTop:`1px solid ${C.BORDER}`}}>
+                <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${sv.title} package.`)}`} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 18px",fontSize:11,textDecoration:"none"}}>Enquire Now</a>
+                <button onClick={()=>goTo("booking")} style={{...S.btnO,padding:"10px 18px",fontSize:11}}>Book Now</button>
               </div>
             </div>
           ))}

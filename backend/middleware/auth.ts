@@ -11,7 +11,11 @@ export const requireAuth: MiddlewareHandler<{ Bindings: Env }> = async (c, next)
   }
   const token = authHeader.slice("Bearer ".length);
 
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  // Verifying a caller-supplied JWT via auth.getUser() only needs the public
+  // anon/publishable key -- it does not require (and must never use) the
+  // Supabase service-role key, which bypasses RLS and is reserved for
+  // privileged, server-only operations this route does not perform.
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY);
   const { data, error } = await supabase.auth.getUser(token);
 
   if (error || !data.user) {

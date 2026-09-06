@@ -7,10 +7,31 @@ compatibility_flags = ["nodejs_compat"]
 binding = "MEDIA_BUCKET"
 bucket_name = "naveed-portfolio-media"
 
+# ----------------------------------------------------------------------------
+# Preview environment (`wrangler deploy --env preview`). Fully isolated from
+# the default config above: separate Worker name, separate R2 bucket. Never
+# reads or writes the real "creative-fusion-media" bucket. Secrets for this
+# environment are set separately, e.g. `wrangler secret put DATABASE_URL --env
+# preview`, and are never inherited from the default environment.
+#
+# NOTE for whoever deploys to production later: the default `bucket_name`
+# above ("naveed-portfolio-media") does not exist in the account yet -- the
+# real bucket is named "creative-fusion-media". Fix that top-level binding
+# (or add a proper [env.production] section) before the first real deploy.
+# ----------------------------------------------------------------------------
+[env.preview]
+name = "naveed-portfolio-cms-api-preview"
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA_BUCKET"
+bucket_name = "creative-fusion-media-preview"
+
 # Secrets (set via `wrangler secret put <NAME>`):
 #   DATABASE_URL           - Supabase Postgres connection string
 #   SUPABASE_URL           - Supabase project URL
-#   SUPABASE_SERVICE_KEY   - Supabase service role key (server-side only)
+#   SUPABASE_ANON_KEY      - Supabase public anon/publishable key ONLY.
+#                             The service-role key must never be used here --
+#                             see middleware/auth.ts and backend/.env.example.
 #   R2_ACCOUNT_ID
 #   R2_ACCESS_KEY_ID
 #   R2_SECRET_ACCESS_KEY

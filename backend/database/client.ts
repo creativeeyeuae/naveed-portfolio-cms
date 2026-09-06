@@ -8,7 +8,9 @@ export interface Env {
   DATABASE_URL: string;
   MEDIA_BUCKET: R2Bucket;
   SUPABASE_URL: string;
-  SUPABASE_SERVICE_KEY: string;
+  // Public anon/publishable key only. The service-role key is never used by
+  // this backend -- see middleware/auth.ts for why it isn't needed.
+  SUPABASE_ANON_KEY: string;
   R2_ACCOUNT_ID: string;
   R2_ACCESS_KEY_ID: string;
   R2_SECRET_ACCESS_KEY: string;

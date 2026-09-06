@@ -11,7 +11,7 @@ bucket_name = "naveed-portfolio-media"
 # Preview environment (`wrangler deploy --env preview`). Fully isolated from
 # the default config above: separate Worker name, separate R2 bucket. Never
 # reads or writes the real "creative-fusion-media" bucket. Secrets for this
-# environment are set separately, e.g. `wrangler secret put DATABASE_URL --env
+# environment are set separately, e.g. `wrangler secret put DB_PASSWORD --env
 # preview`, and are never inherited from the default environment.
 #
 # NOTE for whoever deploys to production later: the default `bucket_name`
@@ -26,8 +26,25 @@ name = "naveed-portfolio-cms-api-preview"
 binding = "MEDIA_BUCKET"
 bucket_name = "creative-fusion-media-preview"
 
-# Secrets (set via `wrangler secret put <NAME>`):
-#   DATABASE_URL           - Supabase Postgres connection string
+# Database connection is split into discrete fields instead of one
+# DATABASE_URL connection-string secret -- see backend/database/client.ts
+# for why (a password with special characters breaks URL parsing unless
+# perfectly percent-encoded; discrete fields sidestep that entirely).
+# host/port/user/database are NOT secret on their own (no auth is possible
+# without the password) so they're plain vars, committed like any other
+# config. Only DB_PASSWORD is a secret.
+[env.preview.vars]
+DB_HOST = "aws-1-us-east-1.pooler.supabase.com"
+DB_PORT = "6543"
+DB_USER = "postgres.ziwaocjrpbrksnepbpxi"
+DB_NAME = "postgres"
+
+# Secrets (set via `wrangler secret put <NAME> --env preview`):
+#   DB_PASSWORD             - the Supabase database password, exactly as-is --
+#                             do NOT percent-encode it yourself; it's used as a
+#                             literal value now, not embedded in a URL. If you
+#                             previously set DATABASE_URL, that secret is now
+#                             unused and can be left alone or removed.
 #   SUPABASE_URL           - Supabase project URL
 #   SUPABASE_ANON_KEY      - Supabase public anon/publishable key ONLY.
 #                             The service-role key must never be used here --

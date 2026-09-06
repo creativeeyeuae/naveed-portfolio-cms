@@ -93,6 +93,57 @@ type SiteSettings = {
 };
 type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:string;img:string;page:string; };
 
+// ─── LANGUAGE SWITCHER ────────────────────────────────────────────────────────
+// Translates the fixed site chrome only -- nav labels, the book/WhatsApp buttons, and the
+// contact form. CMS-authored long-form content (hero headlines, about bio, services, CV,
+// blog posts, package descriptions) stays in whichever language Naveed wrote it in; adding
+// real per-field translations for that content is a separate, larger step once he has
+// translated text to paste in, rather than machine-translating his bio/CV on the fly.
+type Lang = "en"|"ar"|"fr"|"ru"|"zh";
+const LANGS: {code:Lang;label:string;flag:string;rtl?:boolean}[] = [
+  {code:"en",label:"English",flag:"🇬🇧"},
+  {code:"ar",label:"العربية",flag:"🇦🇪",rtl:true},
+  {code:"fr",label:"Français",flag:"🇫🇷"},
+  {code:"ru",label:"Русский",flag:"🇷🇺"},
+  {code:"zh",label:"中文",flag:"🇨🇳"},
+];
+const UI_STRINGS: Record<Lang,{
+  home:string;work:string;about:string;packages:string;journal:string;cv:string;booking:string;contact:string;
+  bookBtn:string;whatsappBtn:string;
+  reachingOut:string;chipGeneral:string;chipCollab:string;chipMedia:string;chipPress:string;
+  formName:string;formEmail:string;formPhone:string;formSubject:string;formMessage:string;
+  formSend:string;formSending:string;formThanks:string;
+}> = {
+  en:{home:"Home",work:"Work",about:"About",packages:"Packages",journal:"Journal",cv:"CV",booking:"Booking",contact:"Contact",
+    bookBtn:"Book a Project",whatsappBtn:"WhatsApp Us",
+    reachingOut:"I'm reaching out about",chipGeneral:"General Inquiry",chipCollab:"Collaboration",chipMedia:"Media Partnership",chipPress:"Press",
+    formName:"Your name *",formEmail:"Your email *",formPhone:"Phone / WhatsApp",formSubject:"Subject / Company or brand name",formMessage:"Tell us about your project, collaboration idea or partnership proposal *",
+    formSend:"Send Message",formSending:"Sending…",formThanks:"Thanks -- your message has been received. Naveed will get back to you shortly."},
+  ar:{home:"الرئيسية",work:"أعمالنا",about:"من نحن",packages:"الباقات",journal:"المجلة",cv:"السيرة الذاتية",booking:"الحجز",contact:"تواصل معنا",
+    bookBtn:"احجز مشروعك",whatsappBtn:"واتساب",
+    reachingOut:"سبب التواصل",chipGeneral:"استفسار عام",chipCollab:"تعاون",chipMedia:"شراكة إعلامية",chipPress:"صحافة",
+    formName:"الاسم *",formEmail:"البريد الإلكتروني *",formPhone:"الهاتف / واتساب",formSubject:"الموضوع / اسم الشركة",formMessage:"أخبرنا عن مشروعك أو فكرة التعاون *",
+    formSend:"إرسال",formSending:"جاري الإرسال…",formThanks:"شكرًا -- تم استلام رسالتك وسيتواصل نافيد معك قريبًا."},
+  fr:{home:"Accueil",work:"Travaux",about:"À propos",packages:"Forfaits",journal:"Journal",cv:"CV",booking:"Réservation",contact:"Contact",
+    bookBtn:"Réserver un projet",whatsappBtn:"WhatsApp",
+    reachingOut:"Je vous contacte au sujet de",chipGeneral:"Demande générale",chipCollab:"Collaboration",chipMedia:"Partenariat média",chipPress:"Presse",
+    formName:"Votre nom *",formEmail:"Votre e-mail *",formPhone:"Téléphone / WhatsApp",formSubject:"Sujet / Nom de l'entreprise",formMessage:"Parlez-nous de votre projet ou idée de collaboration *",
+    formSend:"Envoyer",formSending:"Envoi…",formThanks:"Merci -- votre message a été reçu. Naveed vous répondra bientôt."},
+  ru:{home:"Главная",work:"Работы",about:"О нас",packages:"Пакеты",journal:"Журнал",cv:"Резюме",booking:"Бронирование",contact:"Контакты",
+    bookBtn:"Заказать проект",whatsappBtn:"WhatsApp",
+    reachingOut:"Причина обращения",chipGeneral:"Общий вопрос",chipCollab:"Сотрудничество",chipMedia:"Медиапартнёрство",chipPress:"Пресса",
+    formName:"Ваше имя *",formEmail:"Ваш email *",formPhone:"Телефон / WhatsApp",formSubject:"Тема / Название компании",formMessage:"Расскажите о своём проекте или идее сотрудничества *",
+    formSend:"Отправить",formSending:"Отправка…",formThanks:"Спасибо -- ваше сообщение получено. Навид свяжется с вами в ближайшее время."},
+  zh:{home:"首页",work:"作品",about:"关于",packages:"套餐",journal:"期刊",cv:"简历",booking:"预约",contact:"联系我们",
+    bookBtn:"预约项目",whatsappBtn:"WhatsApp",
+    reachingOut:"联系原因",chipGeneral:"一般咨询",chipCollab:"合作",chipMedia:"媒体合作",chipPress:"新闻媒体",
+    formName:"您的姓名 *",formEmail:"您的邮箱 *",formPhone:"电话 / WhatsApp",formSubject:"主题 / 公司或品牌名称",formMessage:"请告诉我们您的项目或合作想法 *",
+    formSend:"发送信息",formSending:"发送中…",formThanks:"谢谢——我们已收到您的信息，Naveed 会尽快与您联系。"},
+};
+// Maps a footerLinks/NAV_LINKS page key to its UI_STRINGS translation key (a few names differ,
+// e.g. "blog" the page vs "journal" the label).
+const PAGE_LABEL_KEY: Record<string,keyof typeof UI_STRINGS["en"]> = {work:"work",about:"about",packages:"packages",blog:"journal",cv:"cv",booking:"booking",contact:"contact"};
+
 // ─── DEFAULTS ───────────────────────────────────────────────────────────────
 const DEF_SETTINGS: SiteSettings = {
   pin:"1913", siteName:"Naveed Anjum", siteTagline:"Photography & Cinematography",
@@ -778,6 +829,7 @@ export default function Home() {
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(false);
   const [scrolled,setScrolled]=useState(false);
+  const [lang,setLang]=useState<Lang>("en");
   const [popupOpen,setPopupOpen]=useState(false);
   const [contactForm,setContactForm]=useState({name:"",email:"",phone:"",subject:"",message:""});
   const [contactSending,setContactSending]=useState(false);
@@ -810,6 +862,26 @@ export default function Home() {
     window.addEventListener("scroll",onScroll,{passive:true});
     return ()=>window.removeEventListener("scroll",onScroll);
   },[]);
+
+  // Language switcher: restores the visitor's last choice (falls back to their browser
+  // language on a first visit, then to English), and keeps <html lang/dir> in sync so
+  // Arabic gets correct right-to-left text direction. Only the fixed site chrome (nav,
+  // buttons, contact form -- see UI_STRINGS) is translated; CMS content is unaffected.
+  useEffect(()=>{
+    try{
+      const saved=localStorage.getItem("nap_lang") as Lang|null;
+      if(saved&&UI_STRINGS[saved]){ setLang(saved); return; }
+      const browser=(navigator.language||"en").slice(0,2).toLowerCase();
+      if(LANGS.some(l=>l.code===browser)) setLang(browser as Lang);
+    }catch{}
+  },[]);
+  useEffect(()=>{
+    try{ localStorage.setItem("nap_lang",lang); }catch{}
+    const meta=LANGS.find(l=>l.code===lang);
+    document.documentElement.lang=lang;
+    document.documentElement.dir=meta?.rtl?"rtl":"ltr";
+  },[lang]);
+  const T=UI_STRINGS[lang];
 
   // Consultation popup -- shows once per browser session after a short delay, never on
   // the CMS/admin screens (those return before this code path renders). Swappable to a
@@ -962,7 +1034,7 @@ export default function Home() {
   }
 
   // ── NAV ──
-  const NAV_LINKS:[string,string][]=[["home","Home"],["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["contact","Contact"]];
+  const NAV_LINKS:[string,string][]=[["home",T.home],["work",T.work],["about",T.about],["packages",T.packages],["blog",T.journal],["cv",T.cv],["contact",T.contact]];
   // Skip any page CMS-disabled via Settings > Pages. Home is never in pageEnabled, so it's
   // always shown regardless.
   const visibleNavLinks=NAV_LINKS.filter(([k])=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[k]!==false);
@@ -979,7 +1051,11 @@ export default function Home() {
     <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
     <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,opacity:scrolled?0:1,transform:scrolled?"translateY(-100%)":"translateY(0)",pointerEvents:scrolled?"none":"auto",transition:"opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)"}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
-      <div style={{display:"flex",gap:18}}>
+      <div style={{display:"flex",gap:18,alignItems:"center"}}>
+        {/* Language switcher -- translates nav/buttons/contact form only, see UI_STRINGS. */}
+        <select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)} style={{background:"transparent",border:"none",color:C.MID,fontSize:10,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",outline:"none"}}>
+          {LANGS.map(l=><option key={l.code} value={l.code} style={{color:"#000"}}>{l.flag} {l.label}</option>)}
+        </select>
         {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
         {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
       </div>
@@ -998,7 +1074,7 @@ export default function Home() {
           {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>goTo(k)} style={{fontSize:11,letterSpacing:3,color:page===k?C.PL:C.MID,textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s",borderBottom:page===k?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:2}}>{l}</span>
           ))}
-          <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.navBookBtn}</button>
+          <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{lang==="en"?settings.uiText.navBookBtn:T.bookBtn}</button>
         </div>
       )}
 
@@ -1007,7 +1083,7 @@ export default function Home() {
           {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
-          <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>{settings.uiText.navBookBtn}</button>
+          <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>{lang==="en"?settings.uiText.navBookBtn:T.bookBtn}</button>
         </div>
       )}
     </nav>
@@ -1024,7 +1100,7 @@ export default function Home() {
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.phone}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.email}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:16}}>{settings.location}</div>
-          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>{settings.uiText.footerWhatsappBtn}</a>
+          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>{lang==="en"?settings.uiText.footerWhatsappBtn:T.whatsappBtn}</a>
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Services</div>
@@ -1032,7 +1108,7 @@ export default function Home() {
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Quick Links</div>
-          {settings.footerLinks.filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l.page]!==false).map((l,i)=><div key={i} onClick={()=>goTo(l.page)} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{l.label}</div>)}
+          {settings.footerLinks.filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l.page]!==false).map((l,i)=>{ const tk=PAGE_LABEL_KEY[l.page]; const label=lang==="en"||!tk?l.label:T[tk]; return <div key={i} onClick={()=>goTo(l.page)} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{label}</div>; })}
         </div>
         <div>
           <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Follow</div>
@@ -2024,26 +2100,26 @@ export default function Home() {
           {contactSent?(
             <div style={{textAlign:"center",padding:"24px 0"}}>
               <div style={{width:44,height:44,borderRadius:"50%",background:C.P,color:"#fff",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>✓</div>
-              <div style={{fontSize:14,color:"#fff"}}>Thanks -- your message has been received. Naveed will get back to you shortly.</div>
+              <div style={{fontSize:14,color:"#fff"}}>{T.formThanks}</div>
             </div>
           ):(
             <>
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",marginBottom:8}}>I'm reaching out about</div>
+                <div style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",marginBottom:8}}>{T.reachingOut}</div>
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                  {["General Inquiry","Collaboration","Media Partnership","Press"].map(r=>(
+                  {[T.chipGeneral,T.chipCollab,T.chipMedia,T.chipPress].map(r=>(
                     <span key={r} onClick={()=>setContactForm(f=>({...f,subject:r}))} style={{fontSize:11,padding:"7px 14px",borderRadius:20,cursor:"pointer",border:`1px solid ${contactForm.subject===r?C.P:C.BORDER}`,background:contactForm.subject===r?C.P:"transparent",color:contactForm.subject===r?"#fff":C.MID,transition:"all 0.2s"}}>{r}</span>
                   ))}
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
-                <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder="Your name *" />
-                <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder="Your email *" />
-                <input style={S.inp} type="tel" value={contactForm.phone} onChange={e=>setContactForm(f=>({...f,phone:e.target.value}))} placeholder="Phone / WhatsApp" />
-                <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder="Subject / Company or brand name" />
+                <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder={T.formName} />
+                <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder={T.formEmail} />
+                <input style={S.inp} type="tel" value={contactForm.phone} onChange={e=>setContactForm(f=>({...f,phone:e.target.value}))} placeholder={T.formPhone} />
+                <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder={T.formSubject} />
               </div>
-              <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder="Tell us about your project, collaboration idea or partnership proposal *" />
-              <button onClick={submitContact} disabled={contactSending||!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()} style={{...S.btnP,opacity:contactSending?0.6:1}}>{contactSending?"Sending…":"Send Message"}</button>
+              <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder={T.formMessage} />
+              <button onClick={submitContact} disabled={contactSending||!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()} style={{...S.btnP,opacity:contactSending?0.6:1}}>{contactSending?T.formSending:T.formSend}</button>
             </>
           )}
         </div>

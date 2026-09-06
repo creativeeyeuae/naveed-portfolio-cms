@@ -12,6 +12,7 @@ import { blog } from "../routes/blog";
 import { seo } from "../routes/seo";
 import { galleryAccess } from "../routes/gallery-access";
 import { analytics } from "../routes/analytics";
+import { adminAuth } from "../routes/admin-auth";
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -36,6 +37,7 @@ app.route("/blog", blog);
 app.route("/seo", seo);
 app.route("/gallery-access", galleryAccess);
 app.route("/analytics", analytics);
+app.route("/admin-auth", adminAuth);
 
 app.onError((err, c) => {
   console.error(err);

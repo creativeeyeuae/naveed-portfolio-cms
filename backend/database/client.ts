@@ -13,6 +13,9 @@ export interface Env {
   R2_ACCESS_KEY_ID: string;
   R2_SECRET_ACCESS_KEY: string;
   R2_PUBLIC_URL: string;
+  // Optional on purpose: the admin-auth route fails closed when this is unset,
+  // rather than falling back to any default PIN value.
+  ADMIN_PIN?: string;
 }
 
 let cachedClient: PrismaClient | null = null;

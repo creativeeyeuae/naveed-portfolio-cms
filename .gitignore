@@ -19,6 +19,9 @@ out/
 # Cloudflare Wrangler
 .wrangler/
 
+# Migration data exports/backups -- local safety copies, never committed
+backups/
+
 # Logs / OS junk
 *.log
 .DS_Store

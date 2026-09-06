@@ -56,4 +56,10 @@ export const api = {
     unlock: (albumId: string, password: string) =>
       request("/gallery-access/unlock", { method: "POST", body: JSON.stringify({ albumId, password }) }),
   },
+  adminAuth: {
+    // The PIN is verified server-side against a Worker secret. Only the
+    // caller's own guess is ever sent; the real value never reaches the client.
+    verifyPin: (pin: string) =>
+      request<{ ok: true }>("/admin-auth/verify-pin", { method: "POST", body: JSON.stringify({ pin }) }),
+  },
 };

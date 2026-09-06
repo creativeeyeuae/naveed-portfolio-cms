@@ -480,6 +480,7 @@ export default function Home() {
   const [selProj,setSelProj]=useState<Project|null>(null);
   const [selBlog,setSelBlog]=useState<BlogPost|null>(null);
   const [filterCat,setFilterCat]=useState("All");
+  const [testiIdx,setTestiIdx]=useState(0);
   const [lb,setLb]=useState({open:false,index:0});
   const [cms,setCms]=useState(false);
   const [authed,setAuthed]=useState(false);
@@ -504,6 +505,14 @@ export default function Home() {
     window.addEventListener("resize",check);
     return ()=>window.removeEventListener("resize",check);
   },[]);
+
+  // Auto-advance the homepage testimonial spotlight (matches the Hero slideshow's cadence).
+  const featuredTesti = testimonials.filter(t=>t.featured);
+  useEffect(()=>{
+    if(featuredTesti.length<2) return;
+    const id=setInterval(()=>setTestiIdx(i=>(i+1)%featuredTesti.length),6000);
+    return ()=>clearInterval(id);
+  },[featuredTesti.length]);
 
   // Auto sign-out of the CMS after 10 minutes of inactivity, so an unlocked admin
   // session doesn't stay open indefinitely on a shared or public computer.
@@ -1308,41 +1317,55 @@ export default function Home() {
         </div>
       )}
 
-      {/* SERVICES -- light section: rebalances the all-dark page rhythm, brand-violet glow accents */}
-      <div style={{background:C.LT,padding:"80px 40px"}}>
-        <div style={{maxWidth:1200,margin:"0 auto"}}>
-          <div style={{...S.tag(),marginBottom:8,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Services</div>
-          <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 40px",color:C.DARK}}>What We Offer</h2>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:24}}>
+      {/* SERVICES -- editorial index list (no cards/icons): large confident type, a hairline
+          rule between rows, and a hover reveal is what separates a designer-built services
+          section from a template icon-grid. A soft out-of-focus violet glow sits behind the
+          list for depth without adding any imagery. */}
+      <div style={{background:C.LT,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-10%",right:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.16),transparent 70%)",filter:"blur(10px)",pointerEvents:"none"}} />
+        <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
+            <div>
+              <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />What We Offer</div>
+              <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>Services</h2>
+            </div>
+            <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>Every project is shaped around the brand or story behind it -- from first concept to final delivery.</p>
+          </div>
+          <div>
             {settings.services.map((sv,i)=>(
-              <div key={sv.id} className="scard" style={{padding:"36px 30px",borderRadius:6,border:`1px solid ${C.LTBORDER}`,background:C.LTCARD,cursor:"pointer",boxShadow:"0 6px 28px rgba(139,92,246,0.09)"}}>
-                <div style={{width:54,height:54,borderRadius:"50%",background:"linear-gradient(135deg,#F1EAFC,#E4D5FA)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,marginBottom:22,boxShadow:"0 0 0 6px rgba(139,92,246,0.06)"}}>{sv.icon}</div>
-                <div style={{fontSize:11,fontWeight:700,color:C.P,letterSpacing:2,marginBottom:10}}>{String(i+1).padStart(2,"0")}</div>
-                <div style={{fontSize:14,letterSpacing:2,color:C.DARK,textTransform:"uppercase",fontWeight:700,marginBottom:12}}>{sv.title}</div>
-                <div style={{fontSize:13,color:C.INKMID,lineHeight:1.75}}>{sv.desc}</div>
+              <div key={sv.id} className="svc-row" style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",gap:32,padding:"38px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+                <div style={{display:"flex",alignItems:"baseline",gap:28,minWidth:0}}>
+                  <span style={{fontSize:14,fontWeight:700,color:C.P,letterSpacing:1,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:"clamp(20px,2.6vw,32px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:10}}>{sv.title}</div>
+                    <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.8,maxWidth:520}}>{sv.desc}</div>
+                  </div>
+                </div>
+                <span className="svc-arrow" style={{fontSize:22,color:C.P,flexShrink:0}}>→</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* TESTIMONIALS -- same light band as Services, continuing the rebalanced rhythm */}
-      {testimonials.filter(t=>t.featured).length>0&&(
-        <div style={{background:C.LT,padding:"0 40px 88px"}}>
-          <div style={{maxWidth:1200,margin:"0 auto"}}>
-            <div style={{...S.tag(),marginBottom:36,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
-              {testimonials.filter(t=>t.featured).map(t=>(
-                <div key={t.id} className="scard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:6,border:`1px solid ${C.LTBORDER}`,background:C.LTCARD,boxShadow:"0 6px 28px rgba(139,92,246,0.09)"}}>
-                  <div style={{position:"absolute",top:10,right:22,fontSize:64,color:C.P,opacity:0.12,lineHeight:1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>"</div>
-                  <p style={{position:"relative",color:C.INKMID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
-                  <div style={{borderTop:`1px solid ${C.LTBORDER}`,paddingTop:16}}>
-                    <div style={{fontSize:13,color:C.DARK,letterSpacing:1,fontWeight:700}}>{t.name}</div>
-                    <div style={{fontSize:11,color:C.INKMID,marginTop:4}}>{t.role} · {t.company}</div>
-                  </div>
-                </div>
-              ))}
+      {/* TESTIMONIALS -- a single-quote spotlight (magazine pull-quote), not a card grid:
+          one voice at a time, large italic type, quiet dot navigation. Auto-rotates like
+          the Hero slideshow. */}
+      {featuredTesti.length>0&&(
+        <div style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
+          <div style={{maxWidth:760,margin:"0 auto",textAlign:"center",position:"relative"}}>
+            <div style={{...S.tag(true),marginBottom:28,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
+            <div style={{fontSize:120,lineHeight:0.5,color:C.P,opacity:0.1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif",marginBottom:8}}>"</div>
+            <p key={testiIdx} className="testi-fade" style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:500,fontStyle:"italic",color:C.DARK,lineHeight:1.65,margin:"0 0 32px"}}>{featuredTesti[testiIdx % featuredTesti.length].quote}</p>
+            <div key={"n"+testiIdx} className="testi-fade" style={{marginBottom:36}}>
+              <div style={{fontSize:14,color:C.DARK,letterSpacing:1,fontWeight:700}}>{featuredTesti[testiIdx % featuredTesti.length].name}</div>
+              <div style={{fontSize:11,color:C.INKMID,marginTop:4,letterSpacing:1,textTransform:"uppercase"}}>{featuredTesti[testiIdx % featuredTesti.length].role} · {featuredTesti[testiIdx % featuredTesti.length].company}</div>
             </div>
+            {featuredTesti.length>1&&<div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              {featuredTesti.map((_,i)=>(
+                <span key={i} onClick={()=>setTestiIdx(i)} style={{width:i===testiIdx%featuredTesti.length?26:8,height:8,borderRadius:4,background:i===testiIdx%featuredTesti.length?C.P:"rgba(139,92,246,0.25)",cursor:"pointer",transition:"all 0.3s"}} />
+              ))}
+            </div>}
           </div>
         </div>
       )}

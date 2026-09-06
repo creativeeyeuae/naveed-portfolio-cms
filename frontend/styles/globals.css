@@ -66,6 +66,45 @@ h1, h2, h3, h4 {
   border-color: rgba(139, 92, 246, 0.35);
 }
 
+/* Services editorial index list: the whole row shifts right slightly and takes a
+   faint violet wash on hover, the arrow slides further right and the description
+   darkens a touch -- a quiet, confident reveal instead of an icon swap. */
+.svc-row {
+  transition: background-color 0.3s ease, padding-left 0.3s ease, border-color 0.3s ease;
+  margin: 0 -6px;
+  padding-left: 6px !important;
+  padding-right: 6px !important;
+}
+.svc-row:hover {
+  background-color: rgba(139, 92, 246, 0.05);
+  padding-left: 22px !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+.svc-row:hover .svc-arrow {
+  transform: translateX(8px);
+  color: #7C3AED;
+}
+.svc-row:hover .svc-desc {
+  color: #4A4258;
+}
+.svc-arrow {
+  display: inline-block;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+.svc-desc {
+  transition: color 0.3s ease;
+}
+
+/* Testimonial spotlight: each auto-rotated or dot-clicked quote crossfades in via
+   the key={testiIdx} remount trick in page.tsx re-triggering this animation. */
+@keyframes testiFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.testi-fade {
+  animation: testiFadeIn 0.6s ease;
+}
+
 /* ─── EDITORIAL GALLERY (project detail page) ───────────────────────────────
    Bento-style masonry: each tile keeps its photo's own aspect ratio (no crop,
    no distortion) and is given a column span based on that ratio, with dense

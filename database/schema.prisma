@@ -1,6 +1,19 @@
 // ============================================================================
 // naveed-portfolio-cms — Prisma Schema
 // Mirrors database/schema.sql — keep both in sync.
+//
+// Phase 2 migration notes (see database/migrations/0002_phase2_portfolio_cms.sql):
+//   - Setting/Testimonial/Booking/Client now map to NEW tables
+//     (app_settings/app_testimonials/app_bookings/crm_clients) instead of
+//     settings/testimonials/bookings/clients, because those original names
+//     collide with real, already-populated Supabase tables that predate
+//     this Prisma schema and were never actually created by it (no
+//     migrations/ ever existed). The new tables are additive and empty;
+//     the old settings/testimonials/bookings/clients tables are left
+//     completely untouched and unmanaged by this schema.
+//   - Service/Package below are ORM-only mappings onto the REAL, existing
+//     `services`/`packages` tables (already populated). No migration
+//     creates or alters them — they already exist exactly as mapped here.
 // ============================================================================
 
 generator client {
@@ -67,6 +80,9 @@ model User {
   @@map("users")
 }
 
+// Renamed table: crm_clients (was clients). See file header note --
+// `clients` already exists in production with a different/unknown shape
+// and is left untouched. This is a new, empty, additive table.
 model Client {
   id         String   @id @default(uuid())
   userId     String?  @unique @map("user_id")
@@ -82,7 +98,7 @@ model Client {
   galleryAccess   GalleryAccess[]
   downloadLog     DownloadLog[]
 
-  @@map("clients")
+  @@map("crm_clients")
 }
 
 // ----------------------------------------------------------------------------
@@ -97,7 +113,10 @@ model Category {
   sortOrder  Int         @default(0) @map("sort_order")
   createdAt  DateTime    @default(now()) @map("created_at")
 
-  albums     Album[]
+  // Direct one-to-many: an album's single primary category (existing).
+  albums          Album[]
+  // Many-to-many via join table: additional categories per album (new).
+  albumCategories AlbumCategory[]
 
   @@unique([type, slug])
   @@map("categories")
@@ -126,6 +145,14 @@ model Album {
   title         String
   slug          String      @unique
   description   String?
+  // Phase 2 additions -- project detail fields approved for the CMS:
+  fullDescription String?   @map("full_description")
+  location        String?
+  projectDate     DateTime? @map("project_date") @db.Date
+  youtubeUrl      String?   @map("youtube_url")
+  clientName      String?   @map("client_name")
+  seoTitle        String?   @map("seo_title")
+  seoDescription  String?   @map("seo_description")
   clientId      String?     @map("client_id")
   client        Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   coverMediaId  String?     @unique @map("cover_media_id")
@@ -138,6 +165,7 @@ model Album {
 
   media         MediaAsset[] @relation("AlbumMedia")
   tags          AlbumTag[]
+  categories    AlbumCategory[]
   galleryAccess GalleryAccess[]
 
   @@map("albums")
@@ -153,6 +181,18 @@ model AlbumTag {
   @@map("album_tags")
 }
 
+// New: many-to-many, additional categories beyond an album's single
+// primary category_id. Additive -- does not replace the existing FK.
+model AlbumCategory {
+  albumId     String   @map("album_id")
+  album       Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  categoryId  String   @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([albumId, categoryId])
+  @@map("album_categories")
+}
+
 // ----------------------------------------------------------------------------
 // MEDIA ASSETS
 // ----------------------------------------------------------------------------
@@ -166,10 +206,13 @@ model MediaAsset {
   width             Int?
   height            Int?
   altText           String?          @map("alt_text")
-  originalKey       String           @map("original_key")
-  webKey            String           @map("web_key")
-  thumbnailKey      String           @map("thumbnail_key")
+  // R2 keys are now optional: an externally-hosted item (e.g. a YouTube
+  // video referenced by URL) has no R2 object at all.
+  originalKey       String?          @map("original_key")
+  webKey            String?          @map("web_key")
+  thumbnailKey      String?          @map("thumbnail_key")
   watermarkedKey    String?          @map("watermarked_key")
+  externalUrl       String?          @map("external_url")
   durationSeconds   Int?             @map("duration_seconds")
   sortOrder         Int              @default(0) @map("sort_order")
   createdAt         DateTime         @default(now()) @map("created_at")
@@ -215,6 +258,9 @@ model DownloadLog {
 // BOOKINGS & CONTACT
 // ----------------------------------------------------------------------------
 
+// Renamed table: app_bookings (was bookings). See file header note --
+// `bookings` already exists in production (currently empty) and is left
+// untouched/unmanaged by this schema. This is a new, additive table.
 model Booking {
   id           String        @id @default(uuid())
   clientName   String        @map("client_name")
@@ -222,18 +268,21 @@ model Booking {
   phone        String?
   serviceType  String?       @map("service_type")
   eventDate    DateTime?     @map("event_date") @db.Date
+  location     String?
+  budget       String?
   message      String?
   status       BookingStatus @default(pending)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @default(now()) @updatedAt @map("updated_at")
 
-  @@map("bookings")
+  @@map("app_bookings")
 }
 
 model ContactSubmission {
   id         String   @id @default(uuid())
   name       String
   email      String
+  phone      String?
   subject    String?
   message    String
   isRead     Boolean  @default(false) @map("is_read")
@@ -243,7 +292,7 @@ model ContactSubmission {
 }
 
 // ----------------------------------------------------------------------------
-// BLOG
+// BLOG / JOURNAL
 // ----------------------------------------------------------------------------
 
 model BlogPost {
@@ -252,6 +301,9 @@ model BlogPost {
   slug          String      @unique
   excerpt       String?
   content       String
+  category      String?
+  seoTitle      String?     @map("seo_title")
+  seoDescription String?    @map("seo_description")
   coverMediaId  String?     @map("cover_media_id")
   coverMedia    MediaAsset? @relation(fields: [coverMediaId], references: [id], onDelete: SetNull)
   authorId      String?     @map("author_id")
@@ -268,9 +320,18 @@ model BlogPost {
 // TESTIMONIALS & CLIENT LOGOS
 // ----------------------------------------------------------------------------
 
+// Renamed table: app_testimonials (was testimonials). See file header note --
+// the real `testimonials` table already contains 3 rows that are the exact
+// same placeholder names as the old site's hardcoded defaults (Sarah Al
+// Mansoori/Emaar, Ahmed Hassan/Dubai Ventures, Layla Khalid/Luxury Retail
+// UAE) -- confirmed via read-only export, not real client testimonials.
+// That table is left untouched/unmanaged; this is a new, empty, additive
+// table for real testimonials the owner adds going forward.
 model Testimonial {
   id          String   @id @default(uuid())
   clientName  String   @map("client_name")
+  role        String?
+  company     String?
   quote       String
   rating      Int?
   avatarUrl   String?  @map("avatar_url")
@@ -278,7 +339,7 @@ model Testimonial {
   sortOrder   Int      @default(0) @map("sort_order")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  @@map("testimonials")
+  @@map("app_testimonials")
 }
 
 model ClientLogo {
@@ -289,6 +350,56 @@ model ClientLogo {
   sortOrder  Int    @default(0) @map("sort_order")
 
   @@map("client_logos")
+}
+
+// ----------------------------------------------------------------------------
+// SERVICES & PACKAGES
+// ORM-only mappings onto the REAL, already-existing, already-populated
+// `services` (3 rows) and `packages` (16 rows) tables. No migration
+// creates or alters these -- column shapes below were read directly from
+// a live export of the real tables, not invented. Existing rows are left
+// exactly as they are; this only lets the CMS/API read and (later) manage
+// them going forward.
+// ----------------------------------------------------------------------------
+
+model Service {
+  id             String   @id @default(uuid())
+  category       String
+  title          String
+  subtitle       String?
+  description    String?
+  iconName       String?  @map("icon_name")
+  categoryFields Json?    @map("category_fields")
+  features       Json?
+  benefits       Json?
+  subservices    Json?
+  isActive       Boolean  @default(true) @map("is_active")
+  displayOrder   Int      @default(0) @map("display_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("services")
+}
+
+model Package {
+  id                 String    @id @default(uuid())
+  name               String
+  category           String
+  price              Decimal   @db.Decimal(10, 2)
+  currency           String    @default("AED")
+  duration           String?
+  features           Json?
+  isFeatured         Boolean   @default(false) @map("is_featured")
+  isSpecialOffer     Boolean   @default(false) @map("is_special_offer")
+  discountPercentage Int       @default(0) @map("discount_percentage")
+  originalPrice      Decimal?  @db.Decimal(10, 2) @map("original_price")
+  offerValidUntil    DateTime? @map("offer_valid_until")
+  displayOrder       Int       @default(0) @map("display_order")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@map("packages")
 }
 
 // ----------------------------------------------------------------------------
@@ -325,11 +436,15 @@ model AnalyticsEvent {
 // SETTINGS
 // ----------------------------------------------------------------------------
 
+// Renamed table: app_settings (was settings). See file header note --
+// the real `settings` table already holds seed/placeholder key-value rows
+// (dummy phone/WhatsApp numbers, etc.) and is left untouched/unmanaged.
+// This is a new, empty, additive table for real settings going forward.
 model Setting {
   id        String   @id @default(uuid())
   key       String   @unique
   value     Json
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
-  @@map("settings")
+  @@map("app_settings")
 }

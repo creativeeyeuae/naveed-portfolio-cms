@@ -13,13 +13,15 @@ import { seo } from "../routes/seo";
 import { galleryAccess } from "../routes/gallery-access";
 import { analytics } from "../routes/analytics";
 import { adminAuth } from "../routes/admin-auth";
+import { services } from "../routes/services";
+import { packages } from "../routes/packages";
 
 const app = new Hono<{ Bindings: Env }>();
 
 app.use(
   "*",
   cors({
-    origin: ["https://naveedanjum.com", "http://localhost:3000"],
+    origin: ["https://bynaveedanjum.com", "http://localhost:3000"],
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
     allowHeaders: ["Content-Type", "Authorization"],
   })
@@ -38,6 +40,8 @@ app.route("/seo", seo);
 app.route("/gallery-access", galleryAccess);
 app.route("/analytics", analytics);
 app.route("/admin-auth", adminAuth);
+app.route("/services", services);
+app.route("/packages", packages);
 
 app.onError((err, c) => {
   console.error(err);

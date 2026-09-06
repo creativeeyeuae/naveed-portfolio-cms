@@ -11,6 +11,13 @@ const albumInput = z.object({
   title: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().optional(),
+  fullDescription: z.string().optional(),
+  location: z.string().optional(),
+  projectDate: z.string().optional(), // ISO date
+  youtubeUrl: z.string().url().optional(),
+  clientName: z.string().optional(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
   clientId: z.string().uuid().optional(),
   isFeatured: z.boolean().optional(),
   isPublished: z.boolean().optional(),
@@ -50,7 +57,12 @@ albums.get("/:slug", async (c) => {
 albums.post("/", requireAuth, requireAdmin, async (c) => {
   const prisma = getPrismaClient(c.env);
   const body = albumInput.parse(await c.req.json());
-  const created = await prisma.album.create({ data: body });
+  const created = await prisma.album.create({
+    data: {
+      ...body,
+      projectDate: body.projectDate ? new Date(body.projectDate) : undefined,
+    },
+  });
   return c.json(created, 201);
 });
 
@@ -60,7 +72,10 @@ albums.patch("/:id", requireAuth, requireAdmin, async (c) => {
   const body = albumInput.partial().parse(await c.req.json());
   const updated = await prisma.album.update({
     where: { id: c.req.param("id") },
-    data: body,
+    data: {
+      ...body,
+      projectDate: body.projectDate ? new Date(body.projectDate) : undefined,
+    },
   });
   return c.json(updated);
 });

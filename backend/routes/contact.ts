@@ -8,6 +8,7 @@ export const contact = new Hono<{ Bindings: Env }>();
 const contactInput = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  phone: z.string().optional(),
   subject: z.string().optional(),
   message: z.string().min(1),
 });

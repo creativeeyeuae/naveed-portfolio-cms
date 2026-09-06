@@ -11,6 +11,8 @@ const bookingInput = z.object({
   phone: z.string().optional(),
   serviceType: z.string().optional(),
   eventDate: z.string().optional(), // ISO date
+  location: z.string().optional(),
+  budget: z.string().optional(),
   message: z.string().optional(),
 });
 

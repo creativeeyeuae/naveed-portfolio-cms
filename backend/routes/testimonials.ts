@@ -7,6 +7,8 @@ export const testimonials = new Hono<{ Bindings: Env }>();
 
 const testimonialInput = z.object({
   clientName: z.string().min(1),
+  role: z.string().optional(),
+  company: z.string().optional(),
   quote: z.string().min(1),
   rating: z.number().int().min(1).max(5).optional(),
   avatarUrl: z.string().url().optional(),

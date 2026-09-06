@@ -47,6 +47,20 @@ export const api = {
   testimonials: {
     list: () => request("/testimonials"),
   },
+  blog: {
+    list: () => request("/blog"),
+    get: (slug: string) => request(`/blog/${slug}`),
+    create: (data: unknown, token: string) =>
+      request("/blog", { method: "POST", body: JSON.stringify(data) }, token),
+    update: (id: string, data: unknown, token: string) =>
+      request(`/blog/${id}`, { method: "PATCH", body: JSON.stringify(data) }, token),
+  },
+  services: {
+    list: () => request("/services"),
+  },
+  packages: {
+    list: () => request("/packages"),
+  },
   settings: {
     list: () => request<Record<string, unknown>>("/settings"),
     update: (key: string, value: unknown, token: string) =>

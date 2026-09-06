@@ -1,59 +1,89 @@
 -- ============================================================================
--- naveed-portfolio-cms — Database Schema (PostgreSQL / Supabase)
--- Phase 1: Foundation. Phase 2: Portfolio CMS (see header notes below).
+-- Migration 0002: Phase 2 Portfolio CMS foundation
 -- ============================================================================
--- Notes:
---   - Single-tenant today. Every table is structured so a `tenant_id` column
---     could be added later without restructuring relationships.
---   - UUIDs are used as primary keys throughout for Supabase/R2 friendliness.
---   - `media_assets` stores 3 derived variants per upload: thumbnail, web,
---     and original (full-res, used for downloads).
---   - Gallery access supports BOTH a per-gallery password AND per-client
---     assignment, so either mode (or both) can be used per booking.
+-- SCOPE: additive only. This migration:
+--   - Creates NEW tables only (CREATE TABLE IF NOT EXISTS throughout, as a
+--     defense-in-depth guard even though each was individually confirmed
+--     absent via a read-only Supabase REST probe on 2026-09-06).
+--   - Creates NEW enum types only (guarded so re-running is a no-op).
+--   - Adds exactly two ADD CONSTRAINT statements at the very end, to close
+--     the one circular foreign key (albums.cover_media_id <-> media_assets)
+--     -- these ADD a constraint only; nothing is dropped or altered.
+--   - Does NOT touch, in any way: settings, testimonials, bookings, clients,
+--     services, packages, portfolio_projects, portfolio_categories,
+--     portfolio_images, videos, media, site_settings -- every real,
+--     already-populated table this project's Supabase database has today.
+--     Four of those names collide with new concepts here, so the new
+--     tables use different names instead (app_settings, app_testimonials,
+--     app_bookings, crm_clients) -- see database/schema.prisma header.
+--   - Contains no DROP, no ALTER ... ALTER COLUMN, no DELETE, no TRUNCATE.
 --
---   PHASE 2 NOTE -- this file is a full reference schema (what a fresh
---   database would look like). It is NOT what actually gets run against
---   THIS project's real Supabase database, because that database already
---   has real data under some of these table names from before this schema
---   ever existed (settings, testimonials, bookings, clients, services,
---   packages). The actual, hand-reviewed, additive-only migration for the
---   real database lives in database/migrations/0002_phase2_portfolio_cms.sql
---   and does NOT touch settings/testimonials/bookings/clients at all, and
---   does NOT (re)create services/packages since those already exist exactly
---   as shown below. See that file's own header for the full explanation.
+-- HOW TO RUN (do NOT run via `prisma migrate dev` / `prisma db push`):
+--   This project has no prior Prisma migration history (no migrations/
+--   folder ever existed before this file), so a schema-diffing Prisma
+--   command would try to reconcile the ENTIRE schema.prisma against the
+--   database -- including services/packages, which already exist -- and
+--   would either error or attempt something outside this migration's
+--   reviewed scope. Apply this file directly and only this file, e.g.:
+--     psql "$DATABASE_URL" -f database/migrations/0002_phase2_portfolio_cms.sql
+--   or paste it into the Supabase SQL editor. Then mark it as applied in
+--   whatever migration-tracking approach is adopted (out of scope here).
+--
+-- STATUS: NOT YET EXECUTED. Presented for review per the standing rule --
+-- do not run this against the real database until explicitly approved.
 -- ============================================================================
 
 create extension if not exists "uuid-ossp";
 create extension if not exists "pgcrypto";
 
 -- ----------------------------------------------------------------------------
--- ENUMS
+-- ENUM TYPES (guarded -- CREATE TYPE has no native IF NOT EXISTS)
 -- ----------------------------------------------------------------------------
 
-create type user_role as enum ('admin', 'client');
-create type content_type as enum ('photography', 'cinematography');
-create type orientation_type as enum ('portrait', 'landscape');
-create type media_kind as enum ('image', 'video');
-create type booking_status as enum ('pending', 'confirmed', 'completed', 'cancelled');
-create type post_status as enum ('draft', 'published', 'archived');
+do $$ begin
+  create type user_role as enum ('admin', 'client');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type content_type as enum ('photography', 'cinematography');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type orientation_type as enum ('portrait', 'landscape');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type media_kind as enum ('image', 'video');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type booking_status as enum ('pending', 'confirmed', 'completed', 'cancelled');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type post_status as enum ('draft', 'published', 'archived');
+exception when duplicate_object then null;
+end $$;
 
 -- ----------------------------------------------------------------------------
--- USERS & CLIENTS
--- (Auth identity itself lives in Supabase Auth; this table mirrors/extends it)
+-- USERS & CRM CLIENTS (new -- does not touch the real `clients` table)
 -- ----------------------------------------------------------------------------
 
-create table users (
+create table if not exists users (
     id              uuid primary key default uuid_generate_v4(),
-    auth_id         uuid unique,                -- maps to Supabase auth.users.id
+    auth_id         uuid unique,
     email           text unique not null,
     role            user_role not null default 'client',
     created_at      timestamptz not null default now(),
     updated_at      timestamptz not null default now()
 );
 
--- Renamed: crm_clients (was clients -- that name already exists in
--- production with a different/unknown shape and is left untouched).
-create table crm_clients (
+create table if not exists crm_clients (
     id              uuid primary key default uuid_generate_v4(),
     user_id         uuid references users(id) on delete cascade,
     name            text not null,
@@ -65,10 +95,10 @@ create table crm_clients (
 );
 
 -- ----------------------------------------------------------------------------
--- TAXONOMY: categories, tags
+-- TAXONOMY (new -- does not touch the real `portfolio_categories` table)
 -- ----------------------------------------------------------------------------
 
-create table categories (
+create table if not exists categories (
     id              uuid primary key default uuid_generate_v4(),
     type            content_type not null,
     name            text not null,
@@ -78,7 +108,7 @@ create table categories (
     unique (type, slug)
 );
 
-create table tags (
+create table if not exists tags (
     id              uuid primary key default uuid_generate_v4(),
     name            text not null,
     slug            text unique not null,
@@ -86,11 +116,13 @@ create table tags (
 );
 
 -- ----------------------------------------------------------------------------
--- ALBUMS / PROJECTS
--- (An "album" is a project/shoot — e.g. a wedding, a commercial campaign)
+-- ALBUMS / PROJECTS (new -- does not touch the real `portfolio_projects`)
+-- cover_media_id is a plain uuid column here, no inline FK, to avoid the
+-- circular reference with media_assets; the FK is added at the end of this
+-- file once media_assets exists.
 -- ----------------------------------------------------------------------------
 
-create table albums (
+create table if not exists albums (
     id              uuid primary key default uuid_generate_v4(),
     type            content_type not null,
     category_id     uuid references categories(id) on delete set null,
@@ -105,7 +137,7 @@ create table albums (
     seo_title       text,
     seo_description text,
     client_id       uuid references crm_clients(id) on delete set null,
-    cover_media_id  uuid,  -- FK added after media_assets exists (see below)
+    cover_media_id  uuid,
     is_featured     boolean not null default false,
     is_published    boolean not null default true,
     sort_order      int not null default 0,
@@ -113,27 +145,25 @@ create table albums (
     updated_at      timestamptz not null default now()
 );
 
-create table album_tags (
+create table if not exists album_tags (
     album_id        uuid references albums(id) on delete cascade,
     tag_id          uuid references tags(id) on delete cascade,
     primary key (album_id, tag_id)
 );
 
--- New: many-to-many additional categories (additive alongside category_id).
-create table album_categories (
+create table if not exists album_categories (
     album_id        uuid references albums(id) on delete cascade,
     category_id     uuid references categories(id) on delete cascade,
     primary key (album_id, category_id)
 );
 
 -- ----------------------------------------------------------------------------
--- MEDIA ASSETS
--- (Individual images/videos belonging to an album; strict portrait/landscape
---  ratio enforcement — 2160x3240 portrait, 3240x2160 landscape — is validated
---  at the application layer on upload, not in SQL.)
+-- MEDIA ASSETS (new -- does not touch the real, empty `media` table)
+-- R2 key columns are nullable: an externally-hosted item (e.g. a YouTube
+-- video referenced by URL) has no R2 object at all.
 -- ----------------------------------------------------------------------------
 
-create table media_assets (
+create table if not exists media_assets (
     id                  uuid primary key default uuid_generate_v4(),
     album_id            uuid references albums(id) on delete cascade,
     kind                media_kind not null,
@@ -141,28 +171,17 @@ create table media_assets (
     width               int,
     height              int,
     alt_text            text,
-    -- R2 object keys (not full URLs). Now nullable: an externally-hosted
-    -- item (e.g. a YouTube video referenced by URL) has no R2 object.
     original_key        text,
-    web_key              text,
+    web_key             text,
     thumbnail_key       text,
     watermarked_key     text,
     external_url        text,
-    duration_seconds    int,             -- for video kind only
+    duration_seconds    int,
     sort_order          int not null default 0,
     created_at          timestamptz not null default now()
 );
 
-alter table albums
-    add constraint fk_albums_cover_media
-    foreign key (cover_media_id) references media_assets(id) on delete set null;
-
--- ----------------------------------------------------------------------------
--- GALLERY ACCESS
--- (Supports per-gallery password AND/OR per-client assignment)
--- ----------------------------------------------------------------------------
-
-create table gallery_access (
+create table if not exists gallery_access (
     id              uuid primary key default uuid_generate_v4(),
     album_id        uuid references albums(id) on delete cascade,
     client_id       uuid references crm_clients(id) on delete cascade,
@@ -173,7 +192,7 @@ create table gallery_access (
     check (client_id is not null or password_hash is not null)
 );
 
-create table download_log (
+create table if not exists download_log (
     id              uuid primary key default uuid_generate_v4(),
     media_id        uuid references media_assets(id) on delete cascade,
     client_id       uuid references crm_clients(id) on delete set null,
@@ -183,11 +202,13 @@ create table download_log (
 
 -- ----------------------------------------------------------------------------
 -- BOOKINGS & CONTACT
+-- app_bookings is new (does not touch the real, empty `bookings` table).
+-- contact_submissions is new (does not touch the OLD system's separate
+-- `nap_contact_submissions` site_settings key, which this migration never
+-- reads or writes).
 -- ----------------------------------------------------------------------------
 
--- Renamed: app_bookings (was bookings -- that name already exists in
--- production, currently empty, and is left untouched/unmanaged).
-create table app_bookings (
+create table if not exists app_bookings (
     id              uuid primary key default uuid_generate_v4(),
     client_name     text not null,
     email           text not null,
@@ -202,7 +223,7 @@ create table app_bookings (
     updated_at      timestamptz not null default now()
 );
 
-create table contact_submissions (
+create table if not exists contact_submissions (
     id              uuid primary key default uuid_generate_v4(),
     name            text not null,
     email           text not null,
@@ -214,10 +235,10 @@ create table contact_submissions (
 );
 
 -- ----------------------------------------------------------------------------
--- BLOG / JOURNAL
+-- BLOG / JOURNAL (new)
 -- ----------------------------------------------------------------------------
 
-create table blog_posts (
+create table if not exists blog_posts (
     id              uuid primary key default uuid_generate_v4(),
     title           text not null,
     slug            text unique not null,
@@ -235,13 +256,13 @@ create table blog_posts (
 );
 
 -- ----------------------------------------------------------------------------
--- TESTIMONIALS & CLIENTS STRIP
+-- TESTIMONIALS & CLIENT LOGOS
+-- app_testimonials is new -- does NOT touch the real `testimonials` table,
+-- which already holds 3 rows confirmed (read-only export) to be the exact
+-- same placeholder names as the old site's hardcoded defaults.
 -- ----------------------------------------------------------------------------
 
--- Renamed: app_testimonials (was testimonials -- that name already exists
--- in production with 3 rows confirmed to be the OLD site's hardcoded
--- placeholder names, not real client testimonials; left untouched).
-create table app_testimonials (
+create table if not exists app_testimonials (
     id              uuid primary key default uuid_generate_v4(),
     client_name     text not null,
     role            text,
@@ -254,7 +275,7 @@ create table app_testimonials (
     created_at      timestamptz not null default now()
 );
 
-create table client_logos (
+create table if not exists client_logos (
     id              uuid primary key default uuid_generate_v4(),
     name            text not null,
     logo_url        text not null,
@@ -263,54 +284,10 @@ create table client_logos (
 );
 
 -- ----------------------------------------------------------------------------
--- SERVICES & PACKAGES
--- Reference only -- these already exist in the real production database
--- exactly as shown (3 rows / 16 rows respectively, seeded 2025-12-07).
--- The Phase 2 migration does NOT create or alter these; shown here only
--- so this file stays a complete reference of the full intended schema.
+-- SEO & ANALYTICS (new)
 -- ----------------------------------------------------------------------------
 
-create table services (
-    id              uuid primary key default uuid_generate_v4(),
-    category        text not null,
-    title           text not null,
-    subtitle        text,
-    description     text,
-    icon_name       text,
-    category_fields jsonb,
-    features        jsonb,
-    benefits        jsonb,
-    subservices     jsonb,
-    is_active       boolean not null default true,
-    display_order   int not null default 0,
-    created_at      timestamptz not null default now(),
-    updated_at      timestamptz not null default now()
-);
-
-create table packages (
-    id                   uuid primary key default uuid_generate_v4(),
-    name                 text not null,
-    category             text not null,
-    price                numeric(10,2) not null,
-    currency             text not null default 'AED',
-    duration             text,
-    features             jsonb,
-    is_featured          boolean not null default false,
-    is_special_offer     boolean not null default false,
-    discount_percentage  int not null default 0,
-    original_price       numeric(10,2),
-    offer_valid_until    timestamptz,
-    display_order        int not null default 0,
-    is_active            boolean not null default true,
-    created_at           timestamptz not null default now(),
-    updated_at           timestamptz not null default now()
-);
-
--- ----------------------------------------------------------------------------
--- SEO
--- ----------------------------------------------------------------------------
-
-create table seo_metadata (
+create table if not exists seo_metadata (
     id              uuid primary key default uuid_generate_v4(),
     page_path       text unique not null,
     title           text,
@@ -320,11 +297,7 @@ create table seo_metadata (
     updated_at      timestamptz not null default now()
 );
 
--- ----------------------------------------------------------------------------
--- ANALYTICS (lightweight, self-hosted)
--- ----------------------------------------------------------------------------
-
-create table analytics_events (
+create table if not exists analytics_events (
     id              uuid primary key default uuid_generate_v4(),
     event_type      text not null,
     page_path       text,
@@ -333,12 +306,13 @@ create table analytics_events (
 );
 
 -- ----------------------------------------------------------------------------
--- SETTINGS (key/value store for site-wide config: theme, WhatsApp number, etc.)
+-- SETTINGS
+-- app_settings is new -- does NOT touch the real `settings` table (seed/
+-- placeholder key-value rows) or the OLD system's separate `site_settings`
+-- table (13 real flat keys) or its nap_* blob keys.
 -- ----------------------------------------------------------------------------
 
--- Renamed: app_settings (was settings -- that name already exists in
--- production with seed/placeholder key-value rows; left untouched).
-create table app_settings (
+create table if not exists app_settings (
     id              uuid primary key default uuid_generate_v4(),
     key             text unique not null,
     value           jsonb not null,
@@ -346,15 +320,40 @@ create table app_settings (
 );
 
 -- ----------------------------------------------------------------------------
--- INDEXES
+-- INDEXES (guarded)
 -- ----------------------------------------------------------------------------
 
-create index idx_albums_type on albums(type);
-create index idx_albums_category on albums(category_id);
-create index idx_album_categories_category on album_categories(category_id);
-create index idx_media_assets_album on media_assets(album_id);
-create index idx_gallery_access_album on gallery_access(album_id);
-create index idx_app_bookings_status on app_bookings(status);
-create index idx_blog_posts_status on blog_posts(status);
-create index idx_analytics_events_type on analytics_events(event_type);
-create index idx_analytics_events_created on analytics_events(created_at);
+create index if not exists idx_albums_type on albums(type);
+create index if not exists idx_albums_category on albums(category_id);
+create index if not exists idx_album_categories_category on album_categories(category_id);
+create index if not exists idx_media_assets_album on media_assets(album_id);
+create index if not exists idx_gallery_access_album on gallery_access(album_id);
+create index if not exists idx_app_bookings_status on app_bookings(status);
+create index if not exists idx_blog_posts_status on blog_posts(status);
+create index if not exists idx_analytics_events_type on analytics_events(event_type);
+create index if not exists idx_analytics_events_created on analytics_events(created_at);
+
+-- ----------------------------------------------------------------------------
+-- CIRCULAR FK CLOSURE (the only non-CREATE statements in this file)
+-- albums.cover_media_id -> media_assets.id
+-- media_assets.album_id -> albums.id (already added inline above)
+-- ADDS a constraint only. Never drops or alters an existing column/table.
+-- Guarded so re-running this file is a no-op if already applied.
+-- ----------------------------------------------------------------------------
+
+do $$ begin
+  alter table albums
+    add constraint fk_albums_cover_media
+    foreign key (cover_media_id) references media_assets(id) on delete set null;
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter table albums
+    add constraint uq_albums_cover_media unique (cover_media_id);
+exception when duplicate_object then null;
+end $$;
+
+-- ============================================================================
+-- END OF MIGRATION 0002
+-- ============================================================================

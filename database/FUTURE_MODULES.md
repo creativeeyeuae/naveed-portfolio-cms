@@ -47,6 +47,11 @@ campaign CRUD; an AI-draft-content endpoint that only ever produces a `draft`/
 `pending_approval` row; an approve endpoint (human-only, authenticated); a scheduler that
 only acts on `approved` rows; a performance-sync job per platform.
 
+**Fields the owner picks in the future UI, per piece of content:** platform, campaign,
+source project, content type, publish date/time, caption, media (selected from the
+project's already-approved photos/videos), campaign objective, target audience. These map
+directly onto the `campaign_content`/`campaigns` columns above.
+
 ---
 
 ## Module B — AI Client Communication Agent (future)

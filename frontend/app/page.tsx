@@ -16,6 +16,7 @@ type SiteSettings = {
   instagram:string; youtube:string; linkedin:string; tiktok:string;
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string;
+  popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -45,6 +46,10 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"",
+  popupEnabled:true, popupDelaySec:20,
+  popupTitle:"Let's Talk About Your Project",
+  popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
+  popupCtaLabel:"Request a Callback",
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -106,7 +111,7 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 // CMS keys once so the browser re-reads the shipped defaults below -- any admin edits made
 // through the CMS since the last bump are what gets reset, so bump only when a real content
 // fix needs to override stale caches, not on every deploy.
-const DATA_VERSION = 3;
+const DATA_VERSION = 4;
 let _dataVersionChecked = false;
 function ensureFreshData() {
   if (_dataVersionChecked || typeof window === "undefined") return;
@@ -400,6 +405,44 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   );
 }
 
+// ─── CONSULTATION POPUP ─────────────────────────────────────────────────────
+// Simple contact-capture: title/body text and the delay are CMS-editable (Settings > Popup),
+// defaulting to a plain "leave your number, get a callback" offer -- no discount or promo is
+// invented since none was specified. Naveed can swap the copy to a real seasonal offer later
+// without any code change.
+function ConsultPopup({open,onClose,title,text,ctaLabel,waNumber}:{open:boolean;onClose:()=>void;title:string;text:string;ctaLabel:string;waNumber:string}) {
+  const [name,setName]=useState(""); const [phone,setPhone]=useState(""); const [sent,setSent]=useState(false);
+  if(!open) return null;
+  function submit(){
+    if(!phone.trim()) return;
+    const msg=`Hello Naveed, I'd like a callback to discuss a project.\nName: ${name.trim()||"-"}\nPhone: ${phone.trim()}`;
+    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`,"_blank");
+    setSent(true);
+  }
+  return(
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(9,6,14,0.72)",zIndex:998,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"relative",width:"100%",maxWidth:420,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"40px 32px",boxShadow:"0 30px 90px rgba(0,0,0,0.5)"}}>
+        <button onClick={onClose} aria-label="Close" style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:C.MID,fontSize:20,cursor:"pointer"}}>✕</button>
+        {sent?(
+          <div style={{textAlign:"center",padding:"12px 0"}}>
+            <div style={{width:44,height:44,borderRadius:"50%",background:C.P,color:"#fff",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 18px"}}>✓</div>
+            <div style={{fontSize:15,color:"#fff",lineHeight:1.6}}>Thanks -- Naveed will be in touch personally.</div>
+          </div>
+        ):(
+          <>
+            <div style={{...S.tag(true),marginBottom:14}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Let's Connect</div>
+            <h3 style={{fontSize:22,fontWeight:700,letterSpacing:0.3,color:"#fff",margin:"0 0 10px"}}>{title}</h3>
+            <p style={{fontSize:13,color:C.MID,lineHeight:1.7,margin:"0 0 22px"}}>{text}</p>
+            <input value={name} onChange={e=>setName(e.target.value)} placeholder="Your name" style={{...S.inp,marginBottom:10}} />
+            <input value={phone} onChange={e=>setPhone(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")submit();}} type="tel" placeholder="Your phone / WhatsApp number" required style={{...S.inp,marginBottom:16}} />
+            <button onClick={submit} style={{...S.btnP,width:"100%"}}>{ctaLabel}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── HERO ────────────────────────────────────────────────────────────────────
 function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string}) {
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
@@ -503,6 +546,7 @@ export default function Home() {
   const [pinAttempts,setPinAttempts]=useState(0);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(false);
+  const [popupOpen,setPopupOpen]=useState(false);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
   useEffect(()=>{
@@ -519,6 +563,17 @@ export default function Home() {
     window.addEventListener("resize",check);
     return ()=>window.removeEventListener("resize",check);
   },[]);
+
+  // Consultation popup -- shows once per browser session after a short delay, never on
+  // the CMS/admin screens (those return before this code path renders). Swappable to a
+  // real seasonal offer later just by editing the CMS Popup tab; no discount is invented.
+  useEffect(()=>{
+    if(!settings.popupEnabled) return;
+    try{ if(sessionStorage.getItem("nap_popup_seen")==="1") return; }catch{}
+    const t=setTimeout(()=>setPopupOpen(true),Math.max(3,settings.popupDelaySec||20)*1000);
+    return ()=>clearTimeout(t);
+  },[settings.popupEnabled,settings.popupDelaySec]);
+  function closePopup(){ setPopupOpen(false); try{ sessionStorage.setItem("nap_popup_seen","1"); }catch{} }
 
   // Auto-advance the homepage testimonial spotlight (matches the Hero slideshow's cadence).
   const featuredTesti = testimonials.filter(t=>t.featured);
@@ -729,7 +784,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -856,6 +911,21 @@ export default function Home() {
                   <input style={S.inp} value={settingsDraft.googlePlaceId} onChange={e=>updateSD({googlePlaceId:e.target.value})} placeholder="ChIJ... (find at places.google.com)" />
                   <div style={{fontSize:11,color:"#444",marginTop:4}}>Go to maps.google.com → search your business → share → copy the place ID</div>
                 </div>
+              </div>
+            )}
+
+            {settingsTab==="popup"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Consultation Popup</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Shows once per visitor session after the delay below, asking for a name + phone number and sending it to you on WhatsApp. Swap the text below to a real seasonal offer any time -- nothing is invented automatically.</div>
+                <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,cursor:"pointer"}}>
+                  <input type="checkbox" checked={settingsDraft.popupEnabled} onChange={e=>updateSD({popupEnabled:e.target.checked})} />
+                  <span style={{fontSize:13,color:"#ccc"}}>Enable popup</span>
+                </label>
+                <div style={{marginBottom:16}}><label style={S.lbl}>Delay Before Showing (seconds)</label><input type="number" min={3} style={{...S.inp,maxWidth:160}} value={settingsDraft.popupDelaySec} onChange={e=>updateSD({popupDelaySec:Number(e.target.value)||20})} /></div>
+                <div style={{marginBottom:16}}><label style={S.lbl}>Popup Title</label><input style={S.inp} value={settingsDraft.popupTitle} onChange={e=>updateSD({popupTitle:e.target.value})} /></div>
+                <div style={{marginBottom:16}}><label style={S.lbl}>Popup Text</label><textarea style={{...S.inp,height:80,resize:"vertical" as const}} value={settingsDraft.popupText} onChange={e=>updateSD({popupText:e.target.value})} /></div>
+                <div style={{marginBottom:16}}><label style={S.lbl}>Button Label</label><input style={S.inp} value={settingsDraft.popupCtaLabel} onChange={e=>updateSD({popupCtaLabel:e.target.value})} /></div>
               </div>
             )}
 
@@ -1060,6 +1130,7 @@ export default function Home() {
         </div>
         {lb.open&&<Lightbox images={selProj.images||[]} index={lb.index} onClose={()=>setLb({open:false,index:0})} onPrev={()=>setLb(l=>({...l,index:Math.max(0,l.index-1)}))} onNext={()=>setLb(l=>({...l,index:Math.min((selProj.images?.length||1)-1,l.index+1)}))} />}
         <FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
       </div>
     );
   }
@@ -1078,6 +1149,7 @@ export default function Home() {
         {selBlog.content?<div style={{color:C.MID,fontSize:14,lineHeight:1.9,whiteSpace:"pre-wrap"}}>{selBlog.content}</div>:<p style={{color:"#444",fontSize:13,fontStyle:"italic"}}>Full article coming soon.</p>}
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1107,6 +1179,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1143,6 +1216,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1186,6 +1260,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1231,6 +1306,7 @@ export default function Home() {
         )}
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1272,6 +1348,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1304,6 +1381,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1337,6 +1415,7 @@ export default function Home() {
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 
@@ -1496,6 +1575,7 @@ export default function Home() {
 
       <Footer />
       <FloatingWA num={WA} msg={WA_MSG} />
+      <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
     </div>
   );
 }

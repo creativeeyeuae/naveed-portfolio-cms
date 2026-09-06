@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { createClient as _createSupabaseClient } from "@supabase/supabase-js";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -107,6 +108,50 @@ function ensureFreshData() {
 }
 const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; ensureFreshData(); try{ const s=localStorage.getItem(k); return s?JSON.parse(s):d; }catch{ return d; } };
 
+// ─── CLOUD SYNC (Supabase) ──────────────────────────────────────────────────
+// The CMS panel is edited from whatever browser/device the person happens to be
+// using, but its data previously lived only in that browser's localStorage --
+// invisible to every other visitor and even to the same person on another
+// device. This mirrors the CMS's five data blobs into the site's own existing
+// `site_settings` key/value table (the same live Supabase project/table the
+// separate admin dashboard already uses) under their own dedicated keys, so a
+// save/upload here becomes visible to everyone, everywhere, immediately --
+// while localStorage and the code defaults above remain as instant-paint /
+// offline fallbacks if Supabase is ever unreachable.
+const _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const sb = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey) : null;
+const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog"] as const;
+async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number],any>>|null> {
+  if(!sb) return null;
+  try {
+    const {data,error} = await sb.from("site_settings").select("key,value").in("key",CLOUD_KEYS as unknown as string[]);
+    if(error||!data) return null;
+    const out:Partial<Record<typeof CLOUD_KEYS[number],any>> = {};
+    data.forEach((row:any)=>{ try{ (out as any)[row.key] = JSON.parse(row.value); }catch{} });
+    return out;
+  } catch { return null; }
+}
+function pushCloudData(key:typeof CLOUD_KEYS[number], value:any) {
+  if(!sb) return;
+  sb.from("site_settings").upsert({key,value:JSON.stringify(value)},{onConflict:"key"}).then(()=>{},()=>{});
+}
+async function uploadToStorage(file:File): Promise<string> {
+  if (sb) {
+    try {
+      const ext = (file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
+      const key = `cms-uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await sb.storage.from("portfolio").upload(key,file,{contentType:file.type});
+      if(!error){
+        const { data } = sb.storage.from("portfolio").getPublicUrl(key);
+        if(data?.publicUrl) return data.publicUrl;
+      }
+    } catch {}
+  }
+  // Fallback (offline/misconfigured): embed as base64 so the CMS still works in this browser.
+  return await new Promise<string>((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.onerror=rej; r.readAsDataURL(file); });
+}
+
 // ─── COLORS ─────────────────────────────────────────────────────────────────
 // Royal Obsidian + Electric Violet master brand system: violet-black surfaces, white/lavender
 // text, and a restrained violet accent reserved for CTAs and focus moments (kept to ~5-10% of
@@ -136,7 +181,7 @@ function useUploader(onDone:(imgs:Img[])=>void) {
     for(let i=0;i<files.length;i++){
       setProg(Math.round(i/files.length*100));
       const f=files[i];
-      const url = await new Promise<string>((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.onerror=rej; r.readAsDataURL(f); });
+      const url = await uploadToStorage(f);
       const o = await detectOrientation(url);
       out.push({url,orientation:o});
     }
@@ -158,7 +203,7 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
   const [busy,setBusy] = useState(false);
   async function upload(f:File|null){
     if(!f) return; setBusy(true);
-    const url = await new Promise<string>((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.onerror=rej; r.readAsDataURL(f); });
+    const url = await uploadToStorage(f);
     onChange(url); setBusy(false);
   }
   return (
@@ -394,11 +439,28 @@ export default function Home() {
   const [settingsDraft,setSettingsDraft]=useState<SiteSettings>(settings);
   const [settingsTab,setSettingsTab]=useState("general");
 
-  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}},[settings]);
-  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}},[projects]);
-  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}},[cats]);
-  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}},[testimonials]);
-  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}},[blog]);
+  // Only push to the shared cloud copy while an authenticated CMS session made the change --
+  // never on a plain public page load, otherwise an ordinary visitor's own (possibly stale)
+  // locally-cached copy could momentarily clobber the real live content for everyone.
+  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed) pushCloudData("nap_settings",settings);},[settings,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed) pushCloudData("nap_projects",projects);},[projects,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed) pushCloudData("nap_cats",cats);},[cats,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed) pushCloudData("nap_testimonials",testimonials);},[testimonials,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed) pushCloudData("nap_blog",blog);},[blog,authed]);
+  // On first mount, pull the shared cloud copy (if reachable) so every visitor/device sees the
+  // same latest content instead of whatever this particular browser cached locally.
+  useEffect(()=>{
+    let cancelled=false;
+    fetchCloudData().then(cloud=>{
+      if(cancelled||!cloud) return;
+      if(cloud.nap_settings) setSettings(cloud.nap_settings);
+      if(cloud.nap_projects) setProjects(cloud.nap_projects);
+      if(cloud.nap_cats) setCats(cloud.nap_cats);
+      if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
+      if(cloud.nap_blog) setBlog(cloud.nap_blog);
+    });
+    return ()=>{cancelled=true;};
+  },[]);
 
   const filtered=filterCat==="All"?projects:projects.filter(p=>p.categories?.includes(filterCat));
   const featured=projects.filter(p=>p.featured);

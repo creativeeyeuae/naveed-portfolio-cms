@@ -38,6 +38,10 @@ type SectionBg = { work:string;about:string;packages:string;blog:string;cv:strin
 // A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
 // something still points at it, so nothing 404s and no content is deleted.
 type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean; };
+// Pricing package cards (CMS > Settings > Packages), rendered on the Packages page under
+// "Your Investment" -- add/remove/edit freely, each with its own image. Separate from
+// `services` (the deliverables-list cards further down that page), which stay untouched.
+type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; };
 // Hero headline/sub-text typography (CMS > Settings > Hero Slides). Font keys are looked up in
 // HERO_FONTS (a curated set of properly-licensed Google Fonts loaded once via next/font in
 // layout.tsx -- no runtime font-CDN calls). "default" and an empty color mean "inherit the
@@ -58,6 +62,7 @@ type SiteSettings = {
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
   theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; heroTypography:HeroTypography;
+  pricingPackages:PricingPackage[];
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -111,6 +116,13 @@ const DEF_SETTINGS: SiteSettings = {
   sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
+  // Starter examples only -- placeholder names/prices for Naveed to replace with real ones in
+  // CMS > Settings > Packages. Not real published pricing.
+  pricingPackages:[
+    {id:"pp1",icon:"📸",label:"Essential Package",price:"1,500",priceNote:"Starting price · half-day session",desc:"Perfect for individuals and small businesses needing high-quality photography for portraits, products or short social content shoots.",image:"",ctaLabel:"Enquire Now"},
+    {id:"pp2",icon:"🎬",label:"Premium Package",price:"3,500",priceNote:"Starting price · full-day production",desc:"Ideal for brands and creators who need a complete mix of photography and videography for campaigns, events or content libraries.",image:"",ctaLabel:"Enquire Now"},
+    {id:"pp3",icon:"✨",label:"Signature Package",price:"7,500",priceNote:"Starting price · multi-day production",desc:"A full creative production for weddings, luxury brands and major campaigns -- photography, cinematography and post-production, end to end.",image:"",ctaLabel:"Enquire Now"},
+  ],
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -1061,7 +1073,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -1340,6 +1352,28 @@ export default function Home() {
               </div>
             )}
 
+            {settingsTab==="pricing"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Pricing Packages ({settingsDraft.pricingPackages.length})</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
+                <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now"}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
+                {settingsDraft.pricingPackages.map((pk,i)=>(
+                  <div key={pk.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                      <div><label style={S.lbl}>Icon (emoji)</label><input style={S.inp} value={pk.icon} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,icon:e.target.value}:x)})} /></div>
+                      <div><label style={S.lbl}>Package Name</label><input style={S.inp} value={pk.label} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
+                      <div><label style={S.lbl}>Price (AED, numbers only)</label><input style={S.inp} value={pk.price} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,price:e.target.value}:x)})} placeholder="1,500" /></div>
+                      <div><label style={S.lbl}>Price Note</label><input style={S.inp} value={pk.priceNote} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,priceNote:e.target.value}:x)})} placeholder="Starting price · per session" /></div>
+                      <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Description</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={pk.desc} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,desc:e.target.value}:x)})} /></div>
+                      <div><label style={S.lbl}>Button Label</label><input style={S.inp} value={pk.ctaLabel} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,ctaLabel:e.target.value}:x)})} /></div>
+                      <div style={{gridColumn:"1/3"}}><SingleImageUpload label="Photo (optional)" value={pk.image} onChange={v=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,image:v}:x)})} /></div>
+                    </div>
+                    <button onClick={()=>updateSD({pricingPackages:settingsDraft.pricingPackages.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Package</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{marginTop:24,paddingTop:24,borderTop:`1px solid ${C.BORDER}`,display:"flex",gap:12}}>
               <button onClick={saveSettings} style={S.btnP}>💾 Save All Settings</button>
               <button onClick={()=>setSettingsDraft(settings)} style={S.btnO}>Reset Changes</button>
@@ -1604,6 +1638,45 @@ export default function Home() {
           <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>Your Investment</h1>
           <p style={{color:C.MID,fontSize:14,lineHeight:1.8,margin:0}}>Every project is scoped around your brand and goals, so pricing is quoted after a short conversation about what you need. Here's what each service includes -- enquire for a tailored quote.</p>
         </div>
+
+        {/* PRICING PACKAGES -- CMS > Settings > Packages. Light lavender cards (the same
+            C.LT/C.LTCARD tokens already used for the homepage's light sections) popping
+            against this page's dark background, each with a badge, a headline price,
+            description and an optional photo -- add/remove/edit freely in CMS, images included. */}
+        {settings.pricingPackages.length>0&&(
+          <div style={{marginBottom:72}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:28}}>
+              {settings.pricingPackages.map((pk,i)=>(
+                <Reveal key={pk.id} delay={i*0.08}>
+                <div className="tcard" style={{position:"relative",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:28,overflow:"hidden",boxShadow:"0 24px 60px rgba(20,13,33,0.10)",display:"flex",flexDirection:"column",minHeight:400}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:26}}>
+                    <span style={{fontSize:20}}>{pk.icon}</span>
+                    <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:C.P,textTransform:"uppercase"}}>{pk.label}</span>
+                  </div>
+                  <div style={{display:"flex",gap:20,alignItems:"flex-start",flex:1}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,letterSpacing:2,color:C.INKMID,textTransform:"uppercase",marginBottom:6}}>Starting From</div>
+                      <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                        <span style={{fontSize:12,fontWeight:700,color:C.P}}>AED</span>
+                        <span style={{fontSize:"clamp(32px,3.4vw,44px)",fontWeight:800,color:C.DARK,lineHeight:1}}>{pk.price}</span>
+                      </div>
+                      {pk.priceNote&&<div style={{fontSize:11,color:C.INKMID,marginBottom:18}}>{pk.priceNote}</div>}
+                      <p style={{fontSize:13,color:C.INKMID,lineHeight:1.7,margin:0}}>{pk.desc}</p>
+                    </div>
+                    {pk.image&&<img src={pk.image} alt={pk.label} loading="lazy" style={{width:100,height:150,objectFit:"cover",borderRadius:8,flexShrink:0,boxShadow:"0 10px 24px rgba(20,13,33,0.15)"}} />}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:20,marginTop:20,borderTop:`1px solid ${C.LTBORDER}`}}>
+                    <span style={{fontSize:10,color:C.INKMID}}>T&C Apply</span>
+                    <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${pk.label}.`)}`} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 20px",fontSize:11,textDecoration:"none"}}>{pk.ctaLabel}</a>
+                  </div>
+                </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{...S.tag(),marginBottom:24}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />What's Included</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:24}}>
           {settings.services.map(sv=>(
             <div key={sv.id} className="tcard" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32,display:"flex",flexDirection:"column"}}>

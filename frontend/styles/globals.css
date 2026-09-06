@@ -55,6 +55,22 @@ h1, h2, h3, h4 {
   font-weight: 700;
 }
 
+/* Arabic typography (Language switcher / Google Translate, page.tsx sets dir="rtl" on
+   <html> for Arabic). Overrides EVERY inline font-family with !important -- necessary
+   because most of the CMS's Latin display fonts (Playfair Display, Montserrat, etc.)
+   don't carry Arabic glyphs, so once text is translated the browser was silently
+   falling back to its generic default Arabic face (Tahoma/Arial) instead of Cairo/El
+   Messiri. Only fires under dir="rtl"; English and other LTR languages are untouched. */
+html[dir="rtl"] * {
+  font-family: var(--font-arabic-body), 'Cairo', 'Segoe UI', Tahoma, sans-serif !important;
+}
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] h4 {
+  font-family: var(--font-arabic-heading), var(--font-arabic-body), 'El Messiri', 'Cairo', sans-serif !important;
+}
+
 .tcard {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri } from "next/font/google";
 import "../styles/globals.css";
 
 // "Sharjah" (the shamsfz.ae brand typeface) isn't a licensed font we can source --
@@ -34,6 +34,17 @@ const montserrat = Montserrat({ weight: ["300", "400", "500", "600", "700", "800
 const oswald = Oswald({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-oswald", display: "swap" });
 const spaceGrotesk = Space_Grotesk({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-spacegrotesk", display: "swap" });
 const heroFontVars = `${playfairDisplay.variable} ${cormorantGaramond.variable} ${montserrat.variable} ${oswald.variable} ${spaceGrotesk.variable}`;
+
+// Arabic typography -- replaces the browser's generic default Arabic face (Tahoma/Arial,
+// which is what every element fell back to once translated, since none of the Latin
+// display fonts above carry Arabic glyphs). Cairo is a clean, modern, professional Arabic
+// sans for body copy; El Messiri is a slightly more characterful display face for headings,
+// matching the brand's "modern luxury" register instead of a generic UI look. Both are
+// self-hosted via next/font (no runtime Google Fonts request), applied only when the site
+// is in RTL/Arabic mode (globals.css), so nothing changes for English/other languages.
+const cairoArabic = Cairo({ weight: ["400", "500", "600", "700"], subsets: ["arabic", "latin"], variable: "--font-arabic-body", display: "swap" });
+const elMessiri = El_Messiri({ weight: ["500", "600", "700"], subsets: ["arabic", "latin"], variable: "--font-arabic-heading", display: "swap" });
+const arabicFontVars = `${cairoArabic.variable} ${elMessiri.variable}`;
 
 const SITE_URL = "https://bynaveedanjum.com";
 const SITE_TITLE = "Creative Fusion — Naveed Anjum | Photography & Cinematography";
@@ -105,7 +116,7 @@ const structuredData = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable} ${heroFontVars}`}>
+    <html lang="en" className={`${plusJakartaSans.variable} ${plusJakartaSansBody.variable} ${heroFontVars} ${arabicFontVars}`}>
       <body className="font-sans antialiased">
         <script
           type="application/ld+json"

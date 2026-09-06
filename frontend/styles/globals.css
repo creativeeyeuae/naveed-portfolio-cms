@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Google Website Translator (layout.tsx) is driven headlessly by the site's own language
+   dropdown -- hide every bit of Google's own UI (the top "this page has been translated"
+   banner frame, the highlighted-word popup, and the widget's own dropdown) so the site keeps
+   its own look. Also cancel the top-offset Google's banner normally pushes onto <body>. */
+.goog-te-banner-frame, .goog-tooltip, .goog-te-balloon-frame { display: none !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }
+body { top: 0 !important; position: static !important; }
+#google_translate_element { display: none !important; }
+
 :root {
   /* Surface tokens (Royal Obsidian base) */
   --bg-primary: #09060E;

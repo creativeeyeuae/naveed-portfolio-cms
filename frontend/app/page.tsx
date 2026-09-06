@@ -880,6 +880,24 @@ export default function Home() {
     const meta=LANGS.find(l=>l.code===lang);
     document.documentElement.lang=lang;
     document.documentElement.dir=meta?.rtl?"rtl":"ltr";
+
+    // Drive the hidden Google Website Translator (layout.tsx) so switching languages here
+    // translates the WHOLE rendered page -- every CMS section (hero, about, services, CV,
+    // journal, packages), not just this component's own UI_STRINGS chrome. The widget loads
+    // asynchronously and re-injects its <select> on each full page load, so this polls
+    // briefly for it rather than assuming it's already there.
+    const googleCode=lang==="zh"?"zh-CN":lang;
+    let tries=0;
+    const iv=setInterval(()=>{
+      tries++;
+      const combo=document.querySelector("select.goog-te-combo") as HTMLSelectElement|null;
+      if(combo){
+        clearInterval(iv);
+        const want=lang==="en"?"":googleCode;
+        if(combo.value!==want){ combo.value=want; combo.dispatchEvent(new Event("change")); }
+      } else if(tries>25){ clearInterval(iv); }
+    },200);
+    return ()=>clearInterval(iv);
   },[lang]);
   const T=UI_STRINGS[lang];
 

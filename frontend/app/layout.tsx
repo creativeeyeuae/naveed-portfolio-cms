@@ -111,6 +111,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
+        {/* Google Website Translator (free, official, no API key) -- translates the ENTIRE
+            rendered page (every CMS-authored section: hero, about, services, CV, journal,
+            packages, not just the nav/buttons) into whichever language the visitor picks in
+            the site's own language dropdown (page.tsx drives this widget's hidden select --
+            see the `lang` effect there). The widget's own UI is hidden via globals.css;
+            Naveed's site keeps its own look, Google only supplies the translation engine. */}
+        <div id="google_translate_element" style={{ position: "absolute", top: -9999, left: -9999 }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `function googleTranslateElementInit(){try{new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'en,ar,fr,ru,zh-CN',autoDisplay:false},'google_translate_element');}catch(e){}}`,
+          }}
+        />
+        <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async />
         <main>{children}</main>
 
       </body>

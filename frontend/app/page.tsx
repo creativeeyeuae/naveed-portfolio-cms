@@ -17,6 +17,7 @@ type SiteSettings = {
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
+  emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
   services:Service[];
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
@@ -50,6 +51,7 @@ const DEF_SETTINGS: SiteSettings = {
   popupTitle:"Let's Talk About Your Project",
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
   popupCtaLabel:"Request a Callback",
+  emailjsServiceId:"", emailjsTemplateId:"", emailjsPublicKey:"",
   services:[
     {id:"s1",icon:"📷",title:"Photography",desc:"Commercial, corporate, real estate, product, events and lifestyle photography.",detail:"From concept to final delivery, every shoot is approached with precision, creativity and an eye for storytelling.",deliverables:["High-resolution edited images","Color graded gallery","Commercial license","Fast turnaround"]},
     {id:"s2",icon:"🎬",title:"Videography",desc:"Corporate films, commercial videos, events, social media and promotional content.",detail:"Professional video production with cinematic quality for corporate and commercial clients.",deliverables:["4K video footage","Professional editing","Color grading","Music licensing"]},
@@ -111,7 +113,7 @@ const detectOrientation = (url:string):Promise<string> => new Promise(res=>{ con
 // CMS keys once so the browser re-reads the shipped defaults below -- any admin edits made
 // through the CMS since the last bump are what gets reset, so bump only when a real content
 // fix needs to override stale caches, not on every deploy.
-const DATA_VERSION = 4;
+const DATA_VERSION = 5;
 let _dataVersionChecked = false;
 function ensureFreshData() {
   if (_dataVersionChecked || typeof window === "undefined") return;
@@ -152,6 +154,55 @@ async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number
 function pushCloudData(key:typeof CLOUD_KEYS[number], value:any) {
   if(!sb) return;
   sb.from("site_settings").upsert({key,value:JSON.stringify(value)},{onConflict:"key"}).then(()=>{},()=>{});
+}
+
+// ─── CONTACT SUBMISSIONS ────────────────────────────────────────────────────
+// Deliberately separate from the CLOUD_KEYS bundle above: those only push when an
+// authed CMS session edits site content. A contact-form submission is the opposite --
+// any visitor must be able to add one, the same way a real contact-form backend would
+// accept an insert from anyone. Stored as its own growing JSON array under a dedicated
+// site_settings key, and only ever read back inside the CMS (never loaded into an
+// ordinary visitor's browser), so other visitors' names/numbers stay out of localStorage.
+type ContactLead = { id:string; date:string; name:string; email:string; phone:string; subject:string; message:string; };
+async function fetchContactLeads(): Promise<ContactLead[]> {
+  if(!sb) return [];
+  try{
+    const {data,error}=await sb.from("site_settings").select("value").eq("key","nap_contact_submissions").maybeSingle();
+    if(error||!data?.value) return [];
+    return JSON.parse(data.value)||[];
+  }catch{ return []; }
+}
+async function addContactLead(entry:ContactLead): Promise<boolean> {
+  if(!sb) return false;
+  try{
+    const existing=await fetchContactLeads();
+    const next=[entry,...existing].slice(0,500);
+    await sb.from("site_settings").upsert({key:"nap_contact_submissions",value:JSON.stringify(next)},{onConflict:"key"});
+    return true;
+  }catch{ return false; }
+}
+async function deleteContactLead(id:string): Promise<boolean> {
+  if(!sb) return false;
+  try{
+    const existing=await fetchContactLeads();
+    await sb.from("site_settings").upsert({key:"nap_contact_submissions",value:JSON.stringify(existing.filter(l=>l.id!==id))},{onConflict:"key"});
+    return true;
+  }catch{ return false; }
+}
+// Optional: only fires once Naveed has created a free EmailJS account and pasted his own
+// Service ID / Template ID / Public Key into CMS > Settings > Contact. Until then this is a
+// silent no-op -- the submission is still safely saved above regardless of email.
+async function sendEmailNotification(settings:SiteSettings, entry:ContactLead) {
+  if(!settings.emailjsServiceId||!settings.emailjsTemplateId||!settings.emailjsPublicKey) return;
+  try{
+    await fetch("https://api.emailjs.com/api/v1.0/email/send",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        service_id:settings.emailjsServiceId, template_id:settings.emailjsTemplateId, user_id:settings.emailjsPublicKey,
+        template_params:{ from_name:entry.name, from_email:entry.email, phone:entry.phone, subject:entry.subject||"Website Contact Form", message:entry.message, to_email:settings.email },
+      }),
+    });
+  }catch{}
 }
 async function uploadToStorage(file:File): Promise<string> {
   if (sb) {
@@ -547,6 +598,11 @@ export default function Home() {
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(false);
   const [popupOpen,setPopupOpen]=useState(false);
+  const [contactForm,setContactForm]=useState({name:"",email:"",phone:"",subject:"",message:""});
+  const [contactSending,setContactSending]=useState(false);
+  const [contactSent,setContactSent]=useState(false);
+  const [leads,setLeads]=useState<ContactLead[]>([]);
+  const [leadsLoading,setLeadsLoading]=useState(false);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
   useEffect(()=>{
@@ -598,6 +654,14 @@ export default function Home() {
 
   const [editId,setEditId]=useState<string|null>(null);
   const [cmsTab,setCmsTab]=useState("projects");
+
+  // Lazy-load contact-form submissions only when the CMS Leads tab is actually opened --
+  // never on a normal public page load (see the note above addContactLead/fetchContactLeads).
+  useEffect(()=>{
+    if(cmsTab!=="leads"||!authed) return;
+    setLeadsLoading(true);
+    fetchContactLeads().then(l=>{ setLeads(l); setLeadsLoading(false); });
+  },[cmsTab,authed]);
   const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});
   const [newImg,setNewImg]=useState(""); const [addingImg,setAddingImg]=useState(false);
   const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState(""); const [newBlogCat,setNewBlogCat]=useState("");
@@ -640,6 +704,25 @@ export default function Home() {
   function goTo(p:string){setPage(p);window.scrollTo(0,0);}
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
   function openBlog(b:BlogPost){setSelBlog(b);setPage("blog-post");window.scrollTo(0,0);}
+
+  // Contact form: opens a WhatsApp handoff immediately (same guaranteed-delivery channel every
+  // other lead-capture on this site already uses -- Hero callback, popup, booking), then also
+  // best-effort saves to Supabase (CMS-viewable under Leads) and, once Naveed has pasted his
+  // own free EmailJS credentials into Settings > Contact, emails him a copy. The WhatsApp open
+  // happens first and synchronously so it stays inside the click's user-gesture window (an
+  // await before window.open() gets it popup-blocked in some browsers).
+  async function submitContact(){
+    if(!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()) return;
+    const entry:ContactLead={id:String(Date.now()),date:new Date().toISOString(),...contactForm};
+    const waMsg=`New website contact form message:\nName: ${entry.name}\nEmail: ${entry.email}\nPhone: ${entry.phone||"-"}\nSubject: ${entry.subject||"-"}\nMessage: ${entry.message}`;
+    window.open(`https://wa.me/${WA}?text=${encodeURIComponent(waMsg)}`,"_blank");
+    setContactSending(true);
+    await addContactLead(entry);
+    await sendEmailNotification(settings,entry);
+    setContactSending(false); setContactSent(true);
+    setContactForm({name:"",email:"",phone:"",subject:"",message:""});
+  }
+  function removeLead(id:string){ setLeads(ls=>ls.filter(l=>l.id!==id)); deleteContactLead(id); }
   function handlePin(){
     if(Date.now()<pinLockUntil){ setPinErr(true); return; }
     if(pin===settings.pin){
@@ -765,7 +848,7 @@ export default function Home() {
       </div>
     );
 
-    const TABS=[["projects","📁 Projects"],["categories","🏷 Categories"],["testimonials","⭐ Testimonials"],["blog","📝 Blog"],["settings","⚙️ Settings"]];
+    const TABS=[["projects","📁 Projects"],["categories","🏷 Categories"],["testimonials","⭐ Testimonials"],["blog","📝 Blog"],["leads","📥 Leads"],["settings","⚙️ Settings"]];
 
     return(
       <div style={S.base}>
@@ -779,6 +862,33 @@ export default function Home() {
             <button onClick={()=>{setCms(false);setAuthed(false);}} style={S.btnO}>Exit</button>
           </div>
         </div>
+
+        {/* LEADS -- contact-form submissions saved by any visitor (see fetchContactLeads) */}
+        {cmsTab==="leads"&&(
+          <div style={{maxWidth:800,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Contact Form Submissions</div>
+            <div style={{fontSize:12,color:"#888",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
+              Every submission also opens a WhatsApp message to you immediately, so nothing is missed even if this list below is briefly empty. {!settings.emailjsServiceId&&"Add your free EmailJS details in Settings → Contact to also get them by email."}
+            </div>
+            {leadsLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):leads.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No submissions yet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {leads.map(l=>(
+                  <div key={l.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20,position:"relative"}}>
+                    <button onClick={()=>removeLead(l.id)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:14}}>✕</button>
+                    <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:8}}>{new Date(l.date).toLocaleString()}</div>
+                    <div style={{fontSize:14,color:"#fff",fontWeight:700,marginBottom:4}}>{l.name} {l.subject&&<span style={{color:C.PL,fontWeight:400}}>· {l.subject}</span>}</div>
+                    <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{l.email}{l.phone&&` · ${l.phone}`}</div>
+                    <div style={{fontSize:13,color:"#ccc",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{l.message}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* SETTINGS TAB */}
         {cmsTab==="settings"&&(
@@ -818,6 +928,23 @@ export default function Home() {
                   <div><label style={S.lbl}>YouTube URL</label><input style={S.inp} value={settingsDraft.youtube} onChange={e=>updateSD({youtube:e.target.value})} /></div>
                   <div><label style={S.lbl}>LinkedIn URL</label><input style={S.inp} value={settingsDraft.linkedin} onChange={e=>updateSD({linkedin:e.target.value})} /></div>
                   <div><label style={S.lbl}>TikTok URL</label><input style={S.inp} value={settingsDraft.tiktok} onChange={e=>updateSD({tiktok:e.target.value})} /></div>
+                </div>
+
+                <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Contact Form Email Notifications</div>
+                  <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginBottom:16,background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
+                    Every contact-form submission already opens a WhatsApp message to you immediately -- that part needs no setup. The CMS Leads tab is meant to also list submissions, but a Supabase permission setting is currently blocking that (flagged separately). To get submissions emailed to you too, create a free EmailJS account (200 emails/month, no card needed) -- takes about 2 minutes:<br/><br/>
+                    1. Go to emailjs.com → Sign Up (free)<br/>
+                    2. Email Services → Add New Service → connect your Gmail ({settings.email})<br/>
+                    3. Email Templates → Create New Template. Use variables: {"{{from_name}}"}, {"{{from_email}}"}, {"{{phone}}"}, {"{{subject}}"}, {"{{message}}"}, and set "To Email" to {"{{to_email}}"}<br/>
+                    4. Account → General → copy your Public Key, and copy the Service ID and Template ID from the steps above<br/>
+                    5. Paste all three below and Save
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16}}>
+                    <div><label style={S.lbl}>EmailJS Service ID</label><input style={S.inp} value={settingsDraft.emailjsServiceId} onChange={e=>updateSD({emailjsServiceId:e.target.value})} placeholder="service_xxxxxxx" /></div>
+                    <div><label style={S.lbl}>EmailJS Template ID</label><input style={S.inp} value={settingsDraft.emailjsTemplateId} onChange={e=>updateSD({emailjsTemplateId:e.target.value})} placeholder="template_xxxxxxx" /></div>
+                    <div><label style={S.lbl}>EmailJS Public Key</label><input style={S.inp} value={settingsDraft.emailjsPublicKey} onChange={e=>updateSD({emailjsPublicKey:e.target.value})} placeholder="xxxxxxxxxxxxxxxx" /></div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1366,6 +1493,28 @@ export default function Home() {
               {c.href?<a href={c.href} target="_blank" style={{color:C.PL,fontSize:13,textDecoration:"none"}}>{c.value}</a>:<div style={{color:C.PL,fontSize:13}}>{c.value}</div>}
             </div>
           ))}
+        </div>
+        {/* Message form -- saved to the CMS (Leads tab) and, once EmailJS is configured,
+            emailed to Naveed too. WhatsApp/phone above stay the instant-response option. */}
+        <div style={{textAlign:"left",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:6,padding:"36px 32px",marginBottom:48}}>
+          <div style={{...S.tag(),marginBottom:20}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Send a Message</div>
+          {contactSent?(
+            <div style={{textAlign:"center",padding:"24px 0"}}>
+              <div style={{width:44,height:44,borderRadius:"50%",background:C.P,color:"#fff",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>✓</div>
+              <div style={{fontSize:14,color:"#fff"}}>Thanks -- your message has been received. Naveed will get back to you shortly.</div>
+            </div>
+          ):(
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+                <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder="Your name *" />
+                <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder="Your email *" />
+                <input style={S.inp} type="tel" value={contactForm.phone} onChange={e=>setContactForm(f=>({...f,phone:e.target.value}))} placeholder="Phone / WhatsApp" />
+                <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder="Subject" />
+              </div>
+              <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder="Tell us about your project *" />
+              <button onClick={submitContact} disabled={contactSending||!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()} style={{...S.btnP,opacity:contactSending?0.6:1}}>{contactSending?"Sending…":"Send Message"}</button>
+            </>
+          )}
         </div>
         {/* Google Reviews Embed */}
         {settings.googlePlaceId&&(

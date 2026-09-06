@@ -99,13 +99,24 @@ type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:stri
 // blog posts, package descriptions) stays in whichever language Naveed wrote it in; adding
 // real per-field translations for that content is a separate, larger step once he has
 // translated text to paste in, rather than machine-translating his bio/CV on the fly.
-type Lang = "en"|"ar"|"fr"|"ru"|"zh";
+type Lang = "en"|"ar"|"fr"|"ru"|"zh"|"de"|"es"|"it"|"tr"|"hi"|"ur"|"tl";
+// Chosen for who actually visits/exhibits in the UAE: Germany, Spain, Italy and Turkey are
+// among the most frequent European/exhibition-visitor nationalities at Dubai trade shows;
+// Hindi and Urdu cover the two largest expat communities in the UAE; Filipino covers the
+// next-largest. Arabic/French/Russian/Chinese were added earlier for the same reason.
 const LANGS: {code:Lang;label:string;flag:string;rtl?:boolean}[] = [
   {code:"en",label:"English",flag:"🇬🇧"},
   {code:"ar",label:"العربية",flag:"🇦🇪",rtl:true},
   {code:"fr",label:"Français",flag:"🇫🇷"},
   {code:"ru",label:"Русский",flag:"🇷🇺"},
   {code:"zh",label:"中文",flag:"🇨🇳"},
+  {code:"de",label:"Deutsch",flag:"🇩🇪"},
+  {code:"es",label:"Español",flag:"🇪🇸"},
+  {code:"it",label:"Italiano",flag:"🇮🇹"},
+  {code:"tr",label:"Türkçe",flag:"🇹🇷"},
+  {code:"hi",label:"हिन्दी",flag:"🇮🇳"},
+  {code:"ur",label:"اردو",flag:"🇵🇰",rtl:true},
+  {code:"tl",label:"Filipino",flag:"🇵🇭"},
 ];
 const UI_STRINGS: Record<Lang,{
   home:string;work:string;about:string;packages:string;journal:string;cv:string;booking:string;contact:string;
@@ -139,6 +150,41 @@ const UI_STRINGS: Record<Lang,{
     reachingOut:"联系原因",chipGeneral:"一般咨询",chipCollab:"合作",chipMedia:"媒体合作",chipPress:"新闻媒体",
     formName:"您的姓名 *",formEmail:"您的邮箱 *",formPhone:"电话 / WhatsApp",formSubject:"主题 / 公司或品牌名称",formMessage:"请告诉我们您的项目或合作想法 *",
     formSend:"发送信息",formSending:"发送中…",formThanks:"谢谢——我们已收到您的信息，Naveed 会尽快与您联系。"},
+  de:{home:"Startseite",work:"Arbeiten",about:"Über uns",packages:"Pakete",journal:"Journal",cv:"Lebenslauf",booking:"Buchung",contact:"Kontakt",
+    bookBtn:"Projekt buchen",whatsappBtn:"WhatsApp uns",
+    reachingOut:"Ich kontaktiere Sie bezüglich",chipGeneral:"Allgemeine Anfrage",chipCollab:"Zusammenarbeit",chipMedia:"Medienpartnerschaft",chipPress:"Presse",
+    formName:"Ihr Name *",formEmail:"Ihre E-Mail *",formPhone:"Telefon / WhatsApp",formSubject:"Betreff / Firmenname",formMessage:"Erzählen Sie uns von Ihrem Projekt, Ihrer Kollaborationsidee oder Partnerschaftsanfrage *",
+    formSend:"Nachricht senden",formSending:"Wird gesendet…",formThanks:"Danke -- Ihre Nachricht wurde empfangen. Naveed wird sich in Kürze bei Ihnen melden."},
+  es:{home:"Inicio",work:"Trabajos",about:"Sobre nosotros",packages:"Paquetes",journal:"Revista",cv:"CV",booking:"Reserva",contact:"Contacto",
+    bookBtn:"Reservar un proyecto",whatsappBtn:"Escríbenos por WhatsApp",
+    reachingOut:"Me pongo en contacto sobre",chipGeneral:"Consulta general",chipCollab:"Colaboración",chipMedia:"Asociación de medios",chipPress:"Prensa",
+    formName:"Tu nombre *",formEmail:"Tu correo electrónico *",formPhone:"Teléfono / WhatsApp",formSubject:"Asunto / Nombre de la empresa",formMessage:"Cuéntanos sobre tu proyecto, idea de colaboración o propuesta de asociación *",
+    formSend:"Enviar mensaje",formSending:"Enviando…",formThanks:"Gracias -- tu mensaje ha sido recibido. Naveed se pondrá en contacto contigo pronto."},
+  it:{home:"Home",work:"Lavori",about:"Chi siamo",packages:"Pacchetti",journal:"Giornale",cv:"CV",booking:"Prenotazione",contact:"Contatti",
+    bookBtn:"Prenota un progetto",whatsappBtn:"Scrivici su WhatsApp",
+    reachingOut:"Ti scrivo riguardo a",chipGeneral:"Richiesta generale",chipCollab:"Collaborazione",chipMedia:"Partnership media",chipPress:"Stampa",
+    formName:"Il tuo nome *",formEmail:"La tua email *",formPhone:"Telefono / WhatsApp",formSubject:"Oggetto / Nome dell'azienda",formMessage:"Raccontaci del tuo progetto, idea di collaborazione o proposta di partnership *",
+    formSend:"Invia messaggio",formSending:"Invio…",formThanks:"Grazie -- il tuo messaggio è stato ricevuto. Naveed ti risponderà a breve."},
+  tr:{home:"Ana Sayfa",work:"Çalışmalar",about:"Hakkımızda",packages:"Paketler",journal:"Dergi",cv:"Özgeçmiş",booking:"Rezervasyon",contact:"İletişim",
+    bookBtn:"Proje Rezervasyonu Yap",whatsappBtn:"WhatsApp'tan Yazın",
+    reachingOut:"Şu konuda iletişime geçiyorum",chipGeneral:"Genel Soru",chipCollab:"İş Birliği",chipMedia:"Medya Ortaklığı",chipPress:"Basın",
+    formName:"Adınız *",formEmail:"E-posta adresiniz *",formPhone:"Telefon / WhatsApp",formSubject:"Konu / Şirket veya marka adı",formMessage:"Projeniz, iş birliği fikriniz veya ortaklık teklifiniz hakkında bize bilgi verin *",
+    formSend:"Mesaj Gönder",formSending:"Gönderiliyor…",formThanks:"Teşekkürler -- mesajınız alındı. Naveed en kısa sürede size dönüş yapacak."},
+  hi:{home:"होम",work:"कार्य",about:"परिचय",packages:"पैकेज",journal:"जर्नल",cv:"सीवी",booking:"बुकिंग",contact:"संपर्क करें",
+    bookBtn:"प्रोजेक्ट बुक करें",whatsappBtn:"व्हाट्सएप करें",
+    reachingOut:"मैं इस बारे में संपर्क कर रहा/रही हूँ",chipGeneral:"सामान्य पूछताछ",chipCollab:"सहयोग",chipMedia:"मीडिया साझेदारी",chipPress:"प्रेस",
+    formName:"आपका नाम *",formEmail:"आपका ईमेल *",formPhone:"फ़ोन / व्हाट्सएप",formSubject:"विषय / कंपनी या ब्रांड का नाम",formMessage:"अपने प्रोजेक्ट, सहयोग विचार या साझेदारी प्रस्ताव के बारे में बताएं *",
+    formSend:"संदेश भेजें",formSending:"भेजा जा रहा है…",formThanks:"धन्यवाद -- आपका संदेश प्राप्त हो गया है। नावीद शीघ्र ही आपसे संपर्क करेंगे।"},
+  ur:{home:"صفحہ اول",work:"کام",about:"ہمارے بارے میں",packages:"پیکجز",journal:"جرنل",cv:"سی وی",booking:"بکنگ",contact:"رابطہ کریں",
+    bookBtn:"پراجیکٹ بک کریں",whatsappBtn:"واٹس ایپ کریں",
+    reachingOut:"میں اس بارے میں رابطہ کر رہا/رہی ہوں",chipGeneral:"عام استفسار",chipCollab:"تعاون",chipMedia:"میڈیا شراکت",chipPress:"پریس",
+    formName:"آپ کا نام *",formEmail:"آپ کا ای میل *",formPhone:"فون / واٹس ایپ",formSubject:"موضوع / کمپنی یا برانڈ کا نام",formMessage:"اپنے پراجیکٹ، تعاون کے آئیڈیا یا شراکت کی تجویز کے بارے میں بتائیں *",
+    formSend:"پیغام بھیجیں",formSending:"بھیجا جا رہا ہے…",formThanks:"شکریہ -- آپ کا پیغام موصول ہو گیا ہے۔ نوید جلد آپ سے رابطہ کریں گے۔"},
+  tl:{home:"Home",work:"Mga Trabaho",about:"Tungkol Sa Amin",packages:"Mga Package",journal:"Journal",cv:"CV",booking:"Booking",contact:"Makipag-ugnayan",
+    bookBtn:"I-book ang Proyekto",whatsappBtn:"Mag-WhatsApp sa Amin",
+    reachingOut:"Nakikipag-ugnayan ako tungkol sa",chipGeneral:"Pangkalahatang Tanong",chipCollab:"Collaboration",chipMedia:"Media Partnership",chipPress:"Press",
+    formName:"Ang iyong pangalan *",formEmail:"Ang iyong email *",formPhone:"Telepono / WhatsApp",formSubject:"Paksa / Pangalan ng kompanya o brand",formMessage:"Sabihin sa amin ang tungkol sa iyong proyekto, ideya sa collaboration, o panukalang partnership *",
+    formSend:"Ipadala ang Mensahe",formSending:"Ipinapadala…",formThanks:"Salamat -- natanggap na ang iyong mensahe. Makikipag-ugnayan sa iyo si Naveed sa lalong madaling panahon."},
 };
 // Maps a footerLinks/NAV_LINKS page key to its UI_STRINGS translation key (a few names differ,
 // e.g. "blog" the page vs "journal" the label).

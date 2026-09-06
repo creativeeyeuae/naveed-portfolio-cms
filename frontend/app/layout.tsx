@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri, Noto_Sans_Devanagari, Noto_Nastaliq_Urdu } from "next/font/google";
 import "../styles/globals.css";
 
 // "Sharjah" (the shamsfz.ae brand typeface) isn't a licensed font we can source --
@@ -44,7 +44,15 @@ const heroFontVars = `${playfairDisplay.variable} ${cormorantGaramond.variable} 
 // is in RTL/Arabic mode (globals.css), so nothing changes for English/other languages.
 const cairoArabic = Cairo({ weight: ["400", "500", "600", "700"], subsets: ["arabic", "latin"], variable: "--font-arabic-body", display: "swap" });
 const elMessiri = El_Messiri({ weight: ["500", "600", "700"], subsets: ["arabic", "latin"], variable: "--font-arabic-heading", display: "swap" });
-const arabicFontVars = `${cairoArabic.variable} ${elMessiri.variable}`;
+// Hindi and Urdu get the same treatment as Arabic above -- Latin display fonts have no
+// Devanagari or Urdu-script glyphs either, so without this they'd fall back to whatever
+// generic Devanagari/Nastaliq face the visitor's OS ships. Noto Sans Devanagari is a
+// clean, modern, widely-used professional face for Hindi; Noto Nastaliq Urdu renders Urdu
+// in the traditional Nastaliq calligraphic style readers actually expect, rather than the
+// Naskh/Arabic-style rendering a generic fallback would produce.
+const notoDevanagari = Noto_Sans_Devanagari({ weight: ["400", "500", "600", "700"], subsets: ["devanagari", "latin"], variable: "--font-hindi", display: "swap" });
+const notoNastaliqUrdu = Noto_Nastaliq_Urdu({ weight: ["400", "700"], subsets: ["arabic"], variable: "--font-urdu", display: "swap" });
+const arabicFontVars = `${cairoArabic.variable} ${elMessiri.variable} ${notoDevanagari.variable} ${notoNastaliqUrdu.variable}`;
 
 const SITE_URL = "https://bynaveedanjum.com";
 const SITE_TITLE = "Creative Fusion — Naveed Anjum | Photography & Cinematography";
@@ -142,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div id="google_translate_element" style={{ position: "absolute", top: -9999, left: -9999 }} />
         <script
           dangerouslySetInnerHTML={{
-            __html: `function googleTranslateElementInit(){try{new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'en,ar,fr,ru,zh-CN',autoDisplay:false},'google_translate_element');}catch(e){}}`,
+            __html: `function googleTranslateElementInit(){try{new google.translate.TranslateElement({pageLanguage:'en',includedLanguages:'en,ar,fr,ru,zh-CN,de,es,it,tr,hi,ur,tl',autoDisplay:false},'google_translate_element');}catch(e){}}`,
           }}
         />
         <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async />

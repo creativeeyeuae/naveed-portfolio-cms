@@ -76,6 +76,15 @@ html[dir="rtl"] h3,
 html[dir="rtl"] h4 {
   font-family: var(--font-arabic-heading), var(--font-arabic-body), 'El Messiri', 'Cairo', sans-serif !important;
 }
+/* Urdu is RTL too but needs its own (Nastaliq) face, not Arabic's -- override again, more
+   specifically, for lang="ur" so it wins over the generic dir="rtl" rule above. */
+html[lang="ur"] * {
+  font-family: var(--font-urdu), 'Noto Nastaliq Urdu', sans-serif !important;
+}
+/* Hindi is LTR, so it needs its own selector rather than piggy-backing on the rtl rules. */
+html[lang="hi"] * {
+  font-family: var(--font-hindi), 'Noto Sans Devanagari', sans-serif !important;
+}
 
 .tcard {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;

@@ -638,12 +638,12 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
 // theme.DARK, so shipping this changes nothing visually until an image is actually added.
 function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:string}) {
   return (
-    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(320px,46vh,520px)",display:"flex",alignItems:"center",padding:"134px 40px 44px"}}>
-      {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.55}} />}
-      {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.88) 0%,rgba(9,6,14,0.5) 100%)"}} />}
+    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(420px,66vh,720px)",display:"flex",alignItems:"center",padding:"134px 40px 60px"}}>
+      {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.6}} />}
+      {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)"}} />}
       <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto",width:"100%"}}>
-        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
-        <h1 style={{fontSize:"clamp(30px,4.4vw,54px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
+        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:14}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
+        <h1 style={{fontSize:"clamp(32px,5.2vw,64px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
       </div>
     </div>
   );
@@ -2013,9 +2013,14 @@ export default function Home() {
           ))}
         </div>
         {/* Message form -- saved to the CMS (Leads tab) and, once EmailJS is configured,
-            emailed to Naveed too. WhatsApp/phone above stay the instant-response option. */}
+            emailed to Naveed too. WhatsApp/phone above stay the instant-response option.
+            The reason chips below reuse this exact same form/pipeline (no separate form,
+            no new lead type) for collaboration and media/press partnership requests --
+            picking one just sets the Subject field, so it's the same trusted, already-working
+            delivery path (WhatsApp handoff + saved lead + email) for every kind of enquiry. */}
         <div style={{textAlign:"left",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:6,padding:"36px 32px",marginBottom:48}}>
-          <div style={{...S.tag(),marginBottom:20}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Send a Message</div>
+          <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Send a Message</div>
+          {!contactSent&&<div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Project enquiries, collaboration proposals and media/press partnership requests -- this form reaches Naveed directly, whichever one it is.</div>}
           {contactSent?(
             <div style={{textAlign:"center",padding:"24px 0"}}>
               <div style={{width:44,height:44,borderRadius:"50%",background:C.P,color:"#fff",fontSize:20,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px"}}>✓</div>
@@ -2023,13 +2028,21 @@ export default function Home() {
             </div>
           ):(
             <>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",marginBottom:8}}>I'm reaching out about</div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {["General Inquiry","Collaboration","Media Partnership","Press"].map(r=>(
+                    <span key={r} onClick={()=>setContactForm(f=>({...f,subject:r}))} style={{fontSize:11,padding:"7px 14px",borderRadius:20,cursor:"pointer",border:`1px solid ${contactForm.subject===r?C.P:C.BORDER}`,background:contactForm.subject===r?C.P:"transparent",color:contactForm.subject===r?"#fff":C.MID,transition:"all 0.2s"}}>{r}</span>
+                  ))}
+                </div>
+              </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
                 <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder="Your name *" />
                 <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder="Your email *" />
                 <input style={S.inp} type="tel" value={contactForm.phone} onChange={e=>setContactForm(f=>({...f,phone:e.target.value}))} placeholder="Phone / WhatsApp" />
-                <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder="Subject" />
+                <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder="Subject / Company or brand name" />
               </div>
-              <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder="Tell us about your project *" />
+              <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder="Tell us about your project, collaboration idea or partnership proposal *" />
               <button onClick={submitContact} disabled={contactSending||!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()} style={{...S.btnP,opacity:contactSending?0.6:1}}>{contactSending?"Sending…":"Send Message"}</button>
             </>
           )}

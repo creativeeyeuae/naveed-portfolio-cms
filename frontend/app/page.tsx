@@ -221,6 +221,91 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
   );
 }
 
+// ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
+// The same project cover image shows in three different-shaped slots on the live
+// site: the single large "Featured Projects" highlight (16:9) and every other
+// grid / related-projects card (4:3). This lets the person pick exactly what
+// part of the photo shows for whichever slot they're framing for, instead of
+// leaving it to a blind CSS crop that can cut off the subject.
+function CropModal({src,onCancel,onConfirm}:{src:string;onCancel:()=>void;onConfirm:(file:File)=>void}) {
+  const [ratio,setRatio] = useState<"4:3"|"16:9">("4:3");
+  const [zoom,setZoom] = useState(1);
+  const [pos,setPos] = useState({x:0,y:0});
+  const [ready,setReady] = useState(false);
+  const [err,setErr] = useState(false);
+  const [busy,setBusy] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const dragRef = useRef<{sx:number;sy:number;ox:number;oy:number}|null>(null);
+  const BOX_W = 360;
+  const BOX_H = ratio==="4:3" ? 270 : 203;
+
+  useEffect(()=>{ setPos({x:0,y:0}); setZoom(1); },[ratio]);
+
+  function geometry(){
+    const img = imgRef.current;
+    const natW = img?.naturalWidth||1, natH = img?.naturalHeight||1;
+    const cover = Math.max(BOX_W/natW, BOX_H/natH);
+    const scale = cover*zoom;
+    const dispW = natW*scale, dispH = natH*scale;
+    const minX = BOX_W-dispW, minY = BOX_H-dispH; // both <=0 once image covers the box
+    const left = Math.min(0,Math.max(minX,(BOX_W-dispW)/2+pos.x));
+    const top = Math.min(0,Math.max(minY,(BOX_H-dispH)/2+pos.y));
+    return {scale,dispW,dispH,left,top};
+  }
+
+  function onDown(e:React.MouseEvent){ dragRef.current={sx:e.clientX,sy:e.clientY,ox:pos.x,oy:pos.y}; }
+  function onMove(e:React.MouseEvent){ if(!dragRef.current) return; const dx=e.clientX-dragRef.current.sx,dy=e.clientY-dragRef.current.sy; setPos({x:dragRef.current.ox+dx,y:dragRef.current.oy+dy}); }
+  function onUp(){ dragRef.current=null; }
+
+  async function confirm(){
+    const img = imgRef.current; if(!img) return;
+    setBusy(true);
+    try {
+      const {scale,left,top} = geometry();
+      const outW = ratio==="4:3"?1200:1600, outH = 900;
+      const canvas = document.createElement("canvas"); canvas.width=outW; canvas.height=outH;
+      const ctx = canvas.getContext("2d")!;
+      const srcX = -left/scale, srcY = -top/scale, srcW = BOX_W/scale, srcH = BOX_H/scale;
+      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, outW, outH);
+      const blob:Blob|null = await new Promise(res=>canvas.toBlob(res,"image/jpeg",0.92));
+      if(!blob) throw new Error("no blob");
+      onConfirm(new File([blob],"cover-crop.jpg",{type:"image/jpeg"}));
+    } catch {
+      setErr(true); setBusy(false);
+    }
+  }
+
+  const g = ready?geometry():null;
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onMouseMove={onMove} onMouseUp={onUp}>
+      <div style={{background:"#140D21",padding:24,border:`1px solid ${C.BORDER}`,maxWidth:420,width:"100%"}}>
+        <div style={{...S.tag(),marginBottom:14}}>Crop Cover Image</div>
+        <div style={{display:"flex",gap:8,marginBottom:14}}>
+          <button onClick={()=>setRatio("4:3")} style={{...S.btnSm,background:ratio==="4:3"?C.P:"transparent",border:`1px solid ${C.P}`,color:ratio==="4:3"?C.BG:C.PL}}>4:3 — Grid / Related</button>
+          <button onClick={()=>setRatio("16:9")} style={{...S.btnSm,background:ratio==="16:9"?C.P:"transparent",border:`1px solid ${C.P}`,color:ratio==="16:9"?C.BG:C.PL}}>16:9 — Featured Highlight</button>
+        </div>
+        {err ? (
+          <div style={{color:C.MID,fontSize:12,lineHeight:1.6,padding:"24px 0"}}>This image can't be cropped here (usually only happens with certain external photo links). Try re-uploading the file directly from your computer, or use it uncropped.</div>
+        ) : (
+          <div onMouseDown={onDown} style={{width:BOX_W,height:BOX_H,overflow:"hidden",position:"relative",background:"#000",cursor:"grab",userSelect:"none",margin:"0 auto"}}>
+            <img ref={imgRef} src={src} draggable={false} crossOrigin="anonymous" onLoad={()=>setReady(true)}
+              style={g?{position:"absolute",left:g.left,top:g.top,width:g.dispW,height:g.dispH,maxWidth:"none"}:{opacity:0}} />
+          </div>
+        )}
+        {!err&&<div style={{marginTop:14}}>
+          <label style={S.lbl}>Zoom</label>
+          <input type="range" min="1" max="3" step="0.02" value={zoom} onChange={e=>setZoom(parseFloat(e.target.value))} style={{width:"100%"}} />
+        </div>}
+        <div style={{display:"flex",gap:8,marginTop:18,justifyContent:"flex-end"}}>
+          <button onClick={onCancel} style={S.btnO}>Cancel</button>
+          {!err&&<button onClick={confirm} disabled={busy||!ready} style={{...S.btnP,opacity:busy||!ready?0.6:1}}>{busy?"Cropping...":"Use This Crop"}</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── SMART GRID (editorial masonry / bento gallery) ─────────────────────────
 // Dynamically detects each image's real aspect ratio on load (no manual per-project
 // layout, no orientation tagging required beyond what the CMS already stores) and
@@ -434,6 +519,7 @@ export default function Home() {
   const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});
   const [newImg,setNewImg]=useState(""); const [addingImg,setAddingImg]=useState(false);
   const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState("");
+  const [cropSrc,setCropSrc]=useState<string|null>(null);
   const [booking,setBooking]=useState({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});
   const [bookingDone,setBookingDone]=useState(false);
   const [settingsDraft,setSettingsDraft]=useState<SiteSettings>(settings);
@@ -842,6 +928,7 @@ export default function Home() {
                     <span style={{fontSize:11,letterSpacing:2,color:C.MID,textTransform:"uppercase" as const}}>Featured on homepage</span>
                   </div>
                   <SingleImageUpload value={form.coverImage||""} onChange={url=>setForm(f=>({...f,coverImage:url}))} label="Cover Image" />
+                    {form.coverImage&&<button onClick={()=>setCropSrc(form.coverImage!)} style={{...S.btnSm,marginTop:-10,marginBottom:16}}>✂️ Crop for Display Size</button>}
                   <div style={{marginBottom:8}}>
                     <label style={S.lbl}>Project Gallery</label>
                     <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
@@ -879,6 +966,7 @@ export default function Home() {
             </div>
           </div>
         )}
+        {cropSrc&&<CropModal src={cropSrc} onCancel={()=>setCropSrc(null)} onConfirm={async(file)=>{ const url=await uploadToStorage(file); setForm(f=>({...f,coverImage:url})); setCropSrc(null); }} />}
       </div>
     );
   }

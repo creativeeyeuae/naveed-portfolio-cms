@@ -873,11 +873,14 @@ export default function Home() {
 
   const Nav=()=>(
     <>
-    {/* Sitewide motion: a soft fade+rise plays once whenever the page div below remounts
-        (React remounts it on every nav change because of its key={page}), giving every page
-        switch a smooth, modern transition instead of an abrupt cut. Defined once here since
-        Nav renders at the top of every public page. */}
-    <style>{`@keyframes pgFadeIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}`}</style>
+    {/* Sitewide motion: a soft fade plays once whenever the page div below remounts (React
+        remounts it on every nav change because of its key={page}), giving every page switch a
+        smooth transition instead of an abrupt cut. Defined once here since Nav renders at the
+        top of every public page. Opacity-only on purpose -- animating `transform` on the page
+        wrapper (which contains this fixed Nav) would make the browser treat "fixed" as relative
+        to that wrapper instead of the viewport for the animation's duration, visibly shifting
+        the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
+    <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
     <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,padding:isMobile?"8px 20px":"8px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,borderBottom:`1px solid ${C.BORDER}`}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18}}>

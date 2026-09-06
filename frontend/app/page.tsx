@@ -893,8 +893,8 @@ export default function Home() {
       const combo=document.querySelector("select.goog-te-combo") as HTMLSelectElement|null;
       if(combo){
         clearInterval(iv);
-        const want=lang==="en"?"":googleCode;
-        if(combo.value!==want){ combo.value=want; combo.dispatchEvent(new Event("change")); }
+        const want=googleCode;
+        if(combo.value!==want){ combo.value=want; combo.dispatchEvent(new Event("change",{bubbles:true})); }
       } else if(tries>25){ clearInterval(iv); }
     },200);
     return ()=>clearInterval(iv);

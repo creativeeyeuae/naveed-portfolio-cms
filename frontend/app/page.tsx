@@ -623,13 +623,20 @@ function Hero({slides,onNav,waNumber}:{slides:HeroSlide[];onNav:(p:string)=>void
       ))}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.88) 0%,rgba(9,6,14,0.45) 60%,rgba(9,6,14,0.2) 100%)",zIndex:2}} />
       <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.95) 0%,transparent 35%)",zIndex:2}} />
-      <div style={{position:"absolute",top:96,right:48,color:"rgba(255,255,255,0.3)",fontSize:11,letterSpacing:4,zIndex:3}}>0{slide+1} / 0{slides.length}</div>
-      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
+      <div style={{position:"absolute",top:122,right:48,color:"rgba(255,255,255,0.3)",fontSize:11,letterSpacing:4,zIndex:3}}>0{slide+1} / 0{slides.length}</div>
+      {/* top:110 (instead of inset:0's top:0) permanently reserves the fixed header's
+          unscrolled height so this vertically-centered block can never sit under/behind the
+          nav; the font-size and spacing clamps below add a vh-based cap alongside the
+          existing vw-based one so the same content also shrinks gracefully on short-height
+          "laptop" viewports (same width as a desktop monitor but much less vertical room)
+          instead of overflowing upward into the header, while looking identical to before on
+          tall viewports where the vh cap never becomes the binding constraint. */}
+      <div style={{position:"absolute",top:110,left:0,right:0,bottom:0,display:"flex",flexDirection:"column",justifyContent:"center",padding:"0 6vw",zIndex:3}}>
         <div style={{maxWidth:680}}>
-          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
-          <h1 style={{fontSize:"clamp(36px,5.85vw,86px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 20px",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
-          <p style={{fontSize:"clamp(15px,1.6vw,22px)",fontWeight:400,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:40}}>{sl.sub}</p>
-          <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:36}}>
+          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:"clamp(14px,3vh,28px)"}}><div style={{width:36,height:1,background:C.PL}} /><span style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase"}}>{sl.label}</span></div>
+          <h1 style={{fontSize:"clamp(30px,min(5.4vw,7.5vh),86px)",fontWeight:700,letterSpacing:0.5,color:"#fff",margin:"0 0 clamp(12px,2.5vh,20px)",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline}</h1>
+          <p style={{fontSize:"clamp(14px,min(1.5vw,2.1vh),22px)",fontWeight:400,color:"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:"clamp(18px,3.5vh,40px)"}}>{sl.sub}</p>
+          <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:"clamp(16px,3vh,36px)"}}>
             <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
             {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
           </div>

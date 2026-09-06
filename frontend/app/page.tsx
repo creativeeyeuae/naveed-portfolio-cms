@@ -158,7 +158,11 @@ async function uploadToStorage(file:File): Promise<string> {
 // the page -- photography remains the strongest visual element). P/PD/GOLD/GOLDL all carry the
 // violet accent (kept as separate keys for a minimal diff); PL is the secondary lavender-white
 // text used for active/hover states and structural labels.
-const C = { P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45" };
+const C = { P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",
+  // Light-section rebalance tokens: warm violet-tinted white grounds so pages read as
+  // dark+light in rhythm rather than all-dark, while staying inside the same brand family
+  // (ink text reuses DARK, muted text is a lighter tint of the same violet-gray as MID).
+  LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(139,92,246,0.14)",INKMID:"#6E6480" };
 
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
@@ -1304,38 +1308,41 @@ export default function Home() {
         </div>
       )}
 
-      {/* SERVICES */}
-      <div style={{background:C.DARK,padding:"60px 40px"}}>
+      {/* SERVICES -- light section: rebalances the all-dark page rhythm, brand-violet glow accents */}
+      <div style={{background:C.LT,padding:"80px 40px"}}>
         <div style={{maxWidth:1200,margin:"0 auto"}}>
-          <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Services</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:20}}>
+          <div style={{...S.tag(),marginBottom:8,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Services</div>
+          <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 40px",color:C.DARK}}>What We Offer</h2>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:24}}>
             {settings.services.map((sv,i)=>(
-              <div key={sv.id} className="tcard" style={{padding:"32px 28px",borderRadius:4,border:`1px solid ${C.BORDER}`,background:"#1C1330",cursor:"pointer"}}>
-                <div style={{fontSize:11,fontWeight:600,color:C.GOLD,letterSpacing:2,marginBottom:14}}>{String(i+1).padStart(2,"0")}</div>
-                <div style={{fontSize:26,marginBottom:16}}>{sv.icon}</div>
-                <div style={{fontSize:12,letterSpacing:3,color:C.FG,textTransform:"uppercase",marginBottom:10}}>{sv.title}</div>
-                <div style={{fontSize:13,color:C.MID,lineHeight:1.7}}>{sv.desc}</div>
+              <div key={sv.id} className="scard" style={{padding:"36px 30px",borderRadius:6,border:`1px solid ${C.LTBORDER}`,background:C.LTCARD,cursor:"pointer",boxShadow:"0 6px 28px rgba(139,92,246,0.09)"}}>
+                <div style={{width:54,height:54,borderRadius:"50%",background:"linear-gradient(135deg,#F1EAFC,#E4D5FA)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,marginBottom:22,boxShadow:"0 0 0 6px rgba(139,92,246,0.06)"}}>{sv.icon}</div>
+                <div style={{fontSize:11,fontWeight:700,color:C.P,letterSpacing:2,marginBottom:10}}>{String(i+1).padStart(2,"0")}</div>
+                <div style={{fontSize:14,letterSpacing:2,color:C.DARK,textTransform:"uppercase",fontWeight:700,marginBottom:12}}>{sv.title}</div>
+                <div style={{fontSize:13,color:C.INKMID,lineHeight:1.75}}>{sv.desc}</div>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* TESTIMONIALS */}
+      {/* TESTIMONIALS -- same light band as Services, continuing the rebalanced rhythm */}
       {testimonials.filter(t=>t.featured).length>0&&(
-        <div style={{maxWidth:1200,margin:"0 auto",padding:"64px 40px"}}>
-          <div style={{...S.tag(),marginBottom:36}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Client Testimonials</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
-            {testimonials.filter(t=>t.featured).map(t=>(
-              <div key={t.id} className="tcard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK,boxShadow:"0 4px 20px rgba(0,0,0,0.3)"}}>
-                <div style={{position:"absolute",top:14,right:20,fontSize:64,color:C.GOLD,opacity:0.14,lineHeight:1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>"</div>
-                <p style={{position:"relative",color:C.MID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
-                <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
-                  <div style={{fontSize:13,color:C.FG,letterSpacing:1}}>{t.name}</div>
-                  <div style={{fontSize:11,color:C.MID,marginTop:4}}>{t.role} · {t.company}</div>
+        <div style={{background:C.LT,padding:"0 40px 88px"}}>
+          <div style={{maxWidth:1200,margin:"0 auto"}}>
+            <div style={{...S.tag(),marginBottom:36,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />Client Testimonials</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:24}}>
+              {testimonials.filter(t=>t.featured).map(t=>(
+                <div key={t.id} className="scard" style={{position:"relative",overflow:"hidden",padding:32,borderRadius:6,border:`1px solid ${C.LTBORDER}`,background:C.LTCARD,boxShadow:"0 6px 28px rgba(139,92,246,0.09)"}}>
+                  <div style={{position:"absolute",top:10,right:22,fontSize:64,color:C.P,opacity:0.12,lineHeight:1,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>"</div>
+                  <p style={{position:"relative",color:C.INKMID,fontSize:14,lineHeight:1.85,marginBottom:24,fontStyle:"italic"}}>{t.quote}</p>
+                  <div style={{borderTop:`1px solid ${C.LTBORDER}`,paddingTop:16}}>
+                    <div style={{fontSize:13,color:C.DARK,letterSpacing:1,fontWeight:700}}>{t.name}</div>
+                    <div style={{fontSize:11,color:C.INKMID,marginTop:4}}>{t.role} · {t.company}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

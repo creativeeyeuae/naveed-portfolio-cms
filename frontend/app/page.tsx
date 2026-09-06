@@ -77,9 +77,12 @@ const DEF_TESTIMONIALS: Testimonial[] = [
 ];
 
 const DEF_BLOG: BlogPost[] = [
-  {id:"b1",title:"Best Photography Locations in Dubai 2026",slug:"best-photography-locations-dubai",excerpt:"A professional photographer's guide to the most stunning and photogenic locations across Dubai.",date:"2026-08-01",category:"Photography Tips",coverImage:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80",content:""},
-  {id:"b2",title:"How to Choose a Professional Photographer in Dubai",slug:"choose-photographer-dubai",excerpt:"Everything you need to know before hiring a professional photographer in Dubai.",date:"2026-07-15",category:"Guides",coverImage:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=800&q=80",content:""},
+  {id:"b1",title:"Best Photography Locations in Dubai 2026",slug:"best-photography-locations-dubai",excerpt:"A professional photographer's guide to the most stunning and photogenic locations across Dubai.",date:"2026-08-01",category:"Tips & Tricks",coverImage:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80",content:""},
+  {id:"b2",title:"How to Choose a Professional Photographer in Dubai",slug:"choose-photographer-dubai",excerpt:"Everything you need to know before hiring a professional photographer in Dubai.",date:"2026-07-15",category:"Client Guides",coverImage:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=800&q=80",content:""},
 ];
+// Journal category taxonomy -- CMS-editable (same reusable list pattern as project DEF_CATS),
+// so these are a sensible starting structure, not a hardcoded enum Naveed is locked into.
+const DEF_BLOG_CATS = ["Tips & Tricks","Camera Settings & Gear","Behind the Scenes & Video","Client Guides"];
 
 const DEF_CATS = ["Portrait Photography","Landscape Photography","Fashion","Commercial","Real Estate","Architecture & Interior","Events","Wedding","Editorial","Product Photography","Food Photography","Automotive","Travel","Cinematography","Social Media Reels"];
 const BOOKING_SERVICES = ["Photography","Videography","Photography + Videography","Cinematography","Social Media Content","Event Coverage","Real Estate Photography","Product Photography","Fashion Photography","Corporate Photography"];
@@ -121,7 +124,7 @@ const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; e
 const _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const sb = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey) : null;
-const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog"] as const;
+const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog","nap_blogcats"] as const;
 async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number],any>>|null> {
   if(!sb) return null;
   try {
@@ -476,10 +479,12 @@ export default function Home() {
   const [cats,setCats]=useState<string[]>(()=>ls("nap_cats",DEF_CATS));
   const [testimonials,setTestimonials]=useState<Testimonial[]>(()=>ls("nap_testimonials",DEF_TESTIMONIALS));
   const [blog,setBlog]=useState<BlogPost[]>(()=>ls("nap_blog",DEF_BLOG));
+  const [blogCats,setBlogCats]=useState<string[]>(()=>ls("nap_blogcats",DEF_BLOG_CATS));
   const [page,setPage]=useState("home");
   const [selProj,setSelProj]=useState<Project|null>(null);
   const [selBlog,setSelBlog]=useState<BlogPost|null>(null);
   const [filterCat,setFilterCat]=useState("All");
+  const [blogFilterCat,setBlogFilterCat]=useState("All");
   const [testiIdx,setTestiIdx]=useState(0);
   const [lb,setLb]=useState({open:false,index:0});
   const [cms,setCms]=useState(false);
@@ -531,7 +536,7 @@ export default function Home() {
   const [cmsTab,setCmsTab]=useState("projects");
   const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});
   const [newImg,setNewImg]=useState(""); const [addingImg,setAddingImg]=useState(false);
-  const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState("");
+  const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState(""); const [newBlogCat,setNewBlogCat]=useState("");
   const [cropSrc,setCropSrc]=useState<string|null>(null);
   const [booking,setBooking]=useState({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});
   const [bookingDone,setBookingDone]=useState(false);
@@ -546,6 +551,7 @@ export default function Home() {
   useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed) pushCloudData("nap_cats",cats);},[cats,authed]);
   useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed) pushCloudData("nap_testimonials",testimonials);},[testimonials,authed]);
   useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed) pushCloudData("nap_blog",blog);},[blog,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed) pushCloudData("nap_blogcats",blogCats);},[blogCats,authed]);
   // On first mount, pull the shared cloud copy (if reachable) so every visitor/device sees the
   // same latest content instead of whatever this particular browser cached locally.
   useEffect(()=>{
@@ -557,12 +563,14 @@ export default function Home() {
       if(cloud.nap_cats) setCats(cloud.nap_cats);
       if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
       if(cloud.nap_blog) setBlog(cloud.nap_blog);
+      if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
     });
     return ()=>{cancelled=true;};
   },[]);
 
   const filtered=filterCat==="All"?projects:projects.filter(p=>p.categories?.includes(filterCat));
   const featured=projects.filter(p=>p.featured);
+  const filteredBlog=blogFilterCat==="All"?blog:blog.filter(b=>b.category===blogFilterCat);
   const WA=settings.waNumber; const WA_MSG=settings.waMsg;
 
   function goTo(p:string){setPage(p);window.scrollTo(0,0);}
@@ -863,6 +871,18 @@ export default function Home() {
                 <button onClick={()=>setCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer"}}>✕</button>
               </div>
             ))}
+
+            <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"40px 0 20px",textTransform:"uppercase"}}>Journal Categories</div>
+            <div style={{display:"flex",gap:8,marginBottom:24}}>
+              <input style={{...S.inp,flex:1}} value={newBlogCat} onChange={e=>setNewBlogCat(e.target.value)} placeholder="New journal category" onKeyDown={e=>{if(e.key==="Enter"&&newBlogCat.trim()){setBlogCats(c=>[...c,newBlogCat.trim()]);setNewBlogCat("");}}} />
+              <button onClick={()=>{if(newBlogCat.trim()){setBlogCats(c=>[...c,newBlogCat.trim()]);setNewBlogCat("");}}} style={S.btnP}>Add</button>
+            </div>
+            {blogCats.map((c,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.BORDER}`}}>
+                <span style={{fontSize:13}}>{c}</span>
+                <button onClick={()=>setBlogCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer"}}>✕</button>
+              </div>
+            ))}
           </div>
         )}
 
@@ -896,13 +916,18 @@ export default function Home() {
           <div style={{maxWidth:700,margin:"48px auto",padding:"0 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Blog Posts</div>
-              <button onClick={()=>setBlog(bs=>[...bs,{id:Date.now().toString(),title:"New Post",slug:"new-post",excerpt:"",date:new Date().toISOString().split("T")[0],category:"",coverImage:"",content:""}])} style={S.btnP}>+ New Post</button>
+              <button onClick={()=>setBlog(bs=>[...bs,{id:Date.now().toString(),title:"New Post",slug:"new-post",excerpt:"",date:new Date().toISOString().split("T")[0],category:blogCats[0]||"",coverImage:"",content:""}])} style={S.btnP}>+ New Post</button>
             </div>
             {blog.map((b,i)=>(
               <div key={b.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><label style={S.lbl}>Title</label><input style={S.inp} value={b.title} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,title:e.target.value,slug:slugify(e.target.value)}:x))} /></div>
-                  <div><label style={S.lbl}>Category</label><input style={S.inp} value={b.category} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,category:e.target.value}:x))} /></div>
+                  <div><label style={S.lbl}>Category</label>
+                    <select style={S.inp} value={b.category} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,category:e.target.value}:x))}>
+                      {!blogCats.includes(b.category)&&b.category&&<option value={b.category}>{b.category}</option>}
+                      {blogCats.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                   <div><label style={S.lbl}>Date</label><input type="date" style={S.inp} value={b.date} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,date:e.target.value}:x))} /></div>
                 </div>
                 <SingleImageUpload value={b.coverImage} onChange={url=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,coverImage:url}:x))} label="Cover Image" />
@@ -1053,9 +1078,13 @@ export default function Home() {
       <Nav />
       <div style={{maxWidth:1200,margin:"0 auto",padding:"120px 40px 80px"}}>
         <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
-        <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 48px"}}>Photography Journal</h1>
+        <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 32px"}}>Photography Journal</h1>
+        <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:48}}>
+          <span onClick={()=>setBlogFilterCat("All")} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:blogFilterCat==="All"?C.PL:C.MID,borderBottom:blogFilterCat==="All"?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>All ({blog.length})</span>
+          {blogCats.map(c=>{ const cnt=blog.filter(b=>b.category===c).length; if(!cnt) return null; return <span key={c} onClick={()=>setBlogFilterCat(c)} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:blogFilterCat===c?C.PL:C.MID,borderBottom:blogFilterCat===c?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>{c} ({cnt})</span>; })}
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
-          {blog.map(b=>(
+          {filteredBlog.map(b=>(
             <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,overflow:"hidden"}}>
               {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
               <div style={{padding:24}}>

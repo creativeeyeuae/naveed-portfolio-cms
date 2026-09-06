@@ -21,6 +21,7 @@ blog.get("/", async (c) => {
   const prisma = getPrismaClient(c.env);
   const list = await prisma.blogPost.findMany({
     where: { status: "published" },
+    include: { coverMedia: true },
     orderBy: { publishedAt: "desc" },
   });
   return c.json(list);
@@ -28,7 +29,10 @@ blog.get("/", async (c) => {
 
 blog.get("/:slug", async (c) => {
   const prisma = getPrismaClient(c.env);
-  const post = await prisma.blogPost.findUnique({ where: { slug: c.req.param("slug") } });
+  const post = await prisma.blogPost.findUnique({
+    where: { slug: c.req.param("slug") },
+    include: { coverMedia: true },
+  });
   if (!post || post.status !== "published") return c.json({ error: "Not found" }, 404);
   return c.json(post);
 });

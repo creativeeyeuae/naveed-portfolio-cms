@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import { buildMetadata, articleJsonLd, jsonLdScriptProps } from "@/lib/seo";
 
 // Real, indexable per-post URL: /journal/[slug]/. Not one of the 4
 // protected routes. Same build-safety pattern as /work/[slug]: under
@@ -22,7 +23,17 @@ type BlogPostDetail = {
   seoTitle?: string | null;
   seoDescription?: string | null;
   publishedAt?: string | null;
+  coverMedia?: { webKey?: string | null; externalUrl?: string | null } | null;
 };
+
+const MEDIA_CDN_HOST = process.env.NEXT_PUBLIC_MEDIA_CDN_HOST || "media.naveedanjum.com";
+function coverImageUrl(post: BlogPostDetail): string | undefined {
+  const m = post.coverMedia;
+  if (!m) return undefined;
+  if (m.externalUrl) return m.externalUrl;
+  if (m.webKey) return `https://${MEDIA_CDN_HOST}/${m.webKey}`;
+  return undefined;
+}
 
 async function getPost(slug: string): Promise<BlogPostDetail | null> {
   if (slug === PLACEHOLDER_SLUG) return null;
@@ -51,10 +62,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const post = await getPost(slug);
   if (!post) return { robots: { index: false, follow: true } };
-  return {
+  return buildMetadata({
+    path: `/journal/${post.slug}/`,
     title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt || undefined,
-  };
+    description: post.seoDescription || post.excerpt,
+    imageUrl: coverImageUrl(post),
+    ogType: "article",
+    publishedTime: post.publishedAt,
+  });
 }
 
 export default async function JournalPostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -63,8 +78,18 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
 
   if (!post) notFound();
 
+  const jsonLd = articleJsonLd({
+    path: `/journal/${post.slug}/`,
+    title: post.title,
+    description: post.seoDescription || post.excerpt,
+    imageUrl: coverImageUrl(post),
+    datePublished: post.publishedAt,
+    category: post.category,
+  });
+
   return (
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
+      <script {...jsonLdScriptProps(jsonLd)} />
       <article style={{ maxWidth: 720, margin: "0 auto", padding: "64px 24px 80px" }}>
         <a href="/" style={{ color: "var(--text-muted)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</a>
         {post.category && (

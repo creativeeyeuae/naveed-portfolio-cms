@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { api } from "@/lib/api";
+import { buildMetadata, creativeWorkJsonLd, jsonLdScriptProps } from "@/lib/seo";
 
 // Real, indexable per-project URL: /work/[slug]/. Deliberately NOT one of
 // the 4 protected routes (/about /contact /photography /cinematography).
@@ -29,6 +30,7 @@ function mediaUrl(m: { webKey?: string | null; externalUrl?: string | null }): s
 
 type AlbumDetail = {
   id: string;
+  type?: string | null;
   title: string;
   slug: string;
   description?: string | null;
@@ -67,10 +69,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const album = await getAlbum(slug);
   if (!album) return { robots: { index: false, follow: true } };
-  return {
+  const cover = (album.media || [])[0];
+  return buildMetadata({
+    path: `/work/${album.slug}/`,
     title: album.seoTitle || album.title,
-    description: album.seoDescription || album.description || undefined,
-  };
+    description: album.seoDescription || album.description,
+    imageUrl: cover ? mediaUrl(cover) : undefined,
+    ogType: "website",
+  });
 }
 
 export default async function WorkProjectPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -83,8 +89,20 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
     .map((m) => ({ ...m, url: mediaUrl(m) }))
     .filter((m) => m.url);
 
+  const jsonLd = creativeWorkJsonLd({
+    path: `/work/${album.slug}/`,
+    title: album.title,
+    description: album.seoDescription || album.description,
+    imageUrl: items[0]?.url,
+    dateCreated: album.projectDate,
+    location: album.location,
+    clientName: album.clientName,
+    contentType: album.type,
+  });
+
   return (
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
+      <script {...jsonLdScriptProps(jsonLd)} />
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "64px 24px 32px" }}>
         <a href="/" style={{ color: "var(--text-muted)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Work</a>
         <h1 style={{ fontSize: 36, fontWeight: 300, letterSpacing: 1, marginTop: 24 }}>{album.title}</h1>

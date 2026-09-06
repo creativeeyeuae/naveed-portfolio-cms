@@ -190,6 +190,14 @@ const UI_STRINGS: Record<Lang,{
 // e.g. "blog" the page vs "journal" the label).
 const PAGE_LABEL_KEY: Record<string,keyof typeof UI_STRINGS["en"]> = {work:"work",about:"about",packages:"packages",blog:"journal",cv:"cv",booking:"booking",contact:"contact"};
 
+// Google Translate translates whatever text it finds, including proper nouns -- a person's
+// or brand's NAME has no "meaning" to preserve, so machine translation can turn "Naveed
+// Anjum" into an unrelated string of characters that happens to translate the individual
+// words. translate="no" (and the matching notranslate class, which is the attribute Google's
+// widget actually looks for) tells it to leave this exact text alone in every language,
+// same as it already leaves "WhatsApp"/"Instagram" alone as recognized brand terms.
+const NoTranslate=({children}:{children:React.ReactNode})=><span translate="no" className="notranslate">{children}</span>;
+
 // ─── DEFAULTS ───────────────────────────────────────────────────────────────
 const DEF_SETTINGS: SiteSettings = {
   pin:"1913", siteName:"Naveed Anjum", siteTagline:"Photography & Cinematography",
@@ -1142,7 +1150,7 @@ export default function Home() {
       </div>
     </div>
     <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:scrolled?0:32,left:0,right:0,zIndex:500,padding:isMobile?"21px 20px":"23px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`,transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
-      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}>{settings.siteName}</div>
+      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}><NoTranslate>{settings.siteName}</NoTranslate></div>
 
       {isMobile?(
         <button aria-label={mobileNavOpen?"Close menu":"Open menu"} onClick={()=>setMobileNavOpen(o=>!o)} style={{background:"none",border:`1px solid ${C.BORDER}`,color:C.FG,width:40,height:36,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
@@ -1176,7 +1184,7 @@ export default function Home() {
     <footer style={{background:"#0C0817",borderTop:`1px solid ${C.BORDER}`}}>
       <div style={{maxWidth:1200,margin:"0 auto",padding:"48px 40px 24px",display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:40}}>
         <div>
-          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG,marginBottom:12}}>{settings.siteName}</div>
+          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG,marginBottom:12}}><NoTranslate>{settings.siteName}</NoTranslate></div>
           <p style={{color:C.MID,fontSize:13,lineHeight:1.7,marginBottom:16,maxWidth:280}}>{settings.siteTagline}</p>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.phone}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.email}</div>
@@ -2026,7 +2034,7 @@ export default function Home() {
       <div style={{maxWidth:900,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:64}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
-          <h1 style={{fontSize:"clamp(36px,5.5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.aboutName}</h1>
+          <h1 style={{fontSize:"clamp(36px,5.5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
           <p style={{color:C.MID,fontSize:14,letterSpacing:2}}>{settings.aboutTitle}</p>
           <p style={{color:C.MID,fontSize:13,marginTop:8}}>{settings.phone} · {settings.email}</p>
           <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:24}}>
@@ -2119,7 +2127,7 @@ export default function Home() {
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:64,alignItems:"start"}}>
           <div>
             <div style={{...S.tag(),marginBottom:20}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
-            <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}>{settings.aboutName}</h1>
+            <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 16px"}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
             <p style={{color:C.MID,fontSize:13,letterSpacing:2,marginBottom:24}}>{settings.aboutTitle}</p>
             <p style={{color:C.MID,fontSize:14,lineHeight:1.9,marginBottom:32}}>{settings.aboutBio}</p>
             <p style={{color:C.MID,fontSize:14,lineHeight:1.8,marginBottom:32}}>📱 {settings.phone}<br/>📧 {settings.email}<br/>📍 {settings.location}</p>
@@ -2264,7 +2272,7 @@ export default function Home() {
       {/* INTRO STRIP */}
       <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div>
-          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG}}>{settings.siteName}</div>
+          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG}}><NoTranslate>{settings.siteName}</NoTranslate></div>
           <div style={{fontSize:12,color:C.MID,letterSpacing:1,marginTop:4}}>{settings.aboutTitle} · {settings.location}</div>
         </div>
         <div style={{display:"flex",gap:28}}>

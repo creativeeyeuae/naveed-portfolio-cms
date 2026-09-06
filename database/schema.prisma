@@ -17,7 +17,12 @@
 // ============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Required for the pg driver adapter used in backend/database/client.ts --
+  // without this, the generated client rejects any adapter at request time
+  // with "PrismaClient is not configured to run in Cloudflare Workers."
+  // This is what actually makes the edge/Workers runtime deployment work.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {

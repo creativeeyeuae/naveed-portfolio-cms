@@ -74,7 +74,11 @@ media.delete("/:id", requireAuth, requireAdmin, async (c) => {
   const record = await prisma.mediaAsset.findUnique({ where: { id: c.req.param("id") } });
   if (!record) return c.json({ error: "Not found" }, 404);
 
-  await deleteObject(c.env, record.originalKey);
+  // originalKey is nullable -- an externally-hosted item (e.g. a YouTube
+  // video referenced by URL only) has no R2 object to delete.
+  if (record.originalKey) {
+    await deleteObject(c.env, record.originalKey);
+  }
   await prisma.mediaAsset.delete({ where: { id: record.id } });
   return c.json({ success: true });
 });

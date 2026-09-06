@@ -3,6 +3,7 @@
 // cannot run in the Workers runtime.
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 
 export interface Env {
   DATABASE_URL: string;
@@ -24,7 +25,14 @@ let cachedClient: PrismaClient | null = null;
 
 export function getPrismaClient(env: Env): PrismaClient {
   if (cachedClient) return cachedClient;
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  // @prisma/adapter-pg 5.22+ requires a real `pg.Pool` instance, not a
+  // plain { connectionString } object (the latter throws at request time:
+  // "PrismaPg must be initialized with an instance of Pool"). Workers can
+  // construct one thanks to the `nodejs_compat` compatibility flag already
+  // set in wrangler.toml, which is what makes `pg`'s TCP socket usage work
+  // in the Workers runtime at all.
+  const pool = new Pool({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg(pool);
   cachedClient = new PrismaClient({ adapter });
   return cachedClient;
 }

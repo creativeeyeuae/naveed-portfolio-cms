@@ -17,6 +17,7 @@ type UiText = {
   navBookBtn:string; footerWhatsappBtn:string;
   homeServicesEyebrow:string; homeServicesTitle:string; homeServicesIntro:string;
   homeWorkEyebrow:string; homeWorkTitle:string; homeWorkViewAll:string;
+  homeClientsEyebrow:string; homeClientsTitle:string;
   homeTestimonialsEyebrow:string;
   homeJournalEyebrow:string; homeJournalTitle:string; homeJournalViewAll:string;
   homeCtaEyebrow:string; homeCtaTitle:string; homeCtaBookBtn:string; homeCtaWaBtn:string;
@@ -87,7 +88,8 @@ type SiteSettings = {
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
   theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; heroTypography:HeroTypography;
   pricingPackages:PricingPackage[]; pricingCardStyle:PricingCardStyle;
-  services:Service[];
+  services:Service[]; servicesImage:string;
+  clients:{id:string;name:string;logo:string}[]; clientsEnabled:boolean;
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
 };
@@ -231,6 +233,7 @@ const DEF_SETTINGS: SiteSettings = {
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
     homeServicesEyebrow:"What We Offer", homeServicesTitle:"Services", homeServicesIntro:"Every project is shaped around the brand or story behind it -- from first concept to final delivery.",
     homeWorkEyebrow:"Selected Work", homeWorkTitle:"Featured Projects", homeWorkViewAll:"View All →",
+    homeClientsEyebrow:"Our Clients", homeClientsTitle:"Brands We've Worked With",
     homeTestimonialsEyebrow:"Client Testimonials",
     homeJournalEyebrow:"Journal", homeJournalTitle:"Photography Journal", homeJournalViewAll:"All Posts →",
     homeCtaEyebrow:"Ready to create?", homeCtaTitle:"Book Your Session", homeCtaBookBtn:"Book Now", homeCtaWaBtn:"WhatsApp",
@@ -242,7 +245,11 @@ const DEF_SETTINGS: SiteSettings = {
     bookingBannerEyebrow:"Book a Session", bookingBannerTitle:"Let's Create Together",
     contactBannerEyebrow:"Get In Touch", contactBannerTitle:"Let's Work Together",
   },
-  sectionBg:{work:"",about:"",packages:"",blog:"",cv:"",booking:"",contact:""},
+  // Unsplash photos as default banner backgrounds for the pages that were blank -- editable/
+  // replaceable any time via CMS > Settings > Text & Banners. About and Contact are left blank
+  // on purpose (those two routes are off-limits for changes), and Photography/Cinematography
+  // don't use sectionBg at all (separate routes, also off-limits).
+  sectionBg:{work:"https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=1600&q=80",about:"",packages:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1600&q=80",blog:"https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",cv:"https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",booking:"https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1600&q=80",contact:""},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
   // Matches the padding/sizes/colors already hardcoded in the card markup, so shipping this
@@ -272,6 +279,21 @@ const DEF_SETTINGS: SiteSettings = {
     {id:"s3",icon:"✨",title:"Content Creation",desc:"Professional photography and video content for brands and social media.",detail:"Consistent, high-quality content packages designed to elevate your brand across all platforms.",deliverables:["Monthly content packages","Social media formats","Brand guidelines adherence","Quick turnaround"]},
     {id:"s4",icon:"🎨",title:"Creative Production",desc:"Complete visual content from concept and shooting to editing and delivery.",detail:"End-to-end creative production from initial concept development through to final delivery.",deliverables:["Concept development","Full production","Post-production","Multiple formats"]},
   ],
+  // Placeholder for the tall photo beside the Services list -- replace via CMS > Settings >
+  // Services (upload or paste a URL). Defaults to the About photo just so the section isn't
+  // ever a blank box; the two are independent fields, changing one doesn't affect the other.
+  servicesImage:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
+  // DUMMY data for testing/review only -- clearly-labeled "Client One..Four" placeholders with
+  // generated placeholder-wordmark logos (not real logos, not any real brand). Naveed replaces
+  // every name/logo via CMS > Settings > Clients (add/edit/remove/reorder/upload, toggle the
+  // whole section on or off with clientsEnabled) once he has real clients cleared to display.
+  clientsEnabled:true,
+  clients:[
+    {id:"cl1",name:"Client One",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%238B5CF6'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT ONE%3C/text%3E%3C/svg%3E"},
+    {id:"cl2",name:"Client Two",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23A855F7'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT TWO%3C/text%3E%3C/svg%3E"},
+    {id:"cl3",name:"Client Three",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%238B5CF6'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='12' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT THREE%3C/text%3E%3C/svg%3E"},
+    {id:"cl4",name:"Client Four",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23A855F7'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT FOUR%3C/text%3E%3C/svg%3E"},
+  ] as {id:string;name:string;logo:string}[],
   cvSections:[
     {title:"Profile",content:"Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Founder of Creative Fusion, a premium photography and cinematography brand. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces."},
     {title:"Creative Expertise",content:"Trained graphic artist with a strong grounding in brand development, typography, imaging and grid-based design systems, built through years of designing across print, digital and social platforms. Applies this design foundation to content that drives measurable results using consistent visual identity, strategic composition and platform-native storytelling to increase engagement, build audience trust and generate qualified leads through organic and campaign content."},
@@ -295,15 +317,23 @@ const DEF_SETTINGS: SiteSettings = {
 };
 
 const DEF_PROJECTS: Project[] = [
-  {id:"p1",title:"Golden Hour Dubai",slug:"golden-hour-dubai",categories:["Landscape Photography"],description:"Aerial and ground-level captures of Dubai at dusk.",fullDescription:"",clientName:"Visit Dubai",location:"Dubai, UAE",projectDate:"2026-01-15",tags:["dubai","landscape"],featured:true,coverImage:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",orientation:"landscape"},{url:"https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=800&q=80",orientation:"portrait"},{url:"https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
-  {id:"p2",title:"Bridal Portraits",slug:"bridal-portraits",categories:["Wedding","Portrait Photography"],description:"Intimate bridal portraits in natural light.",fullDescription:"",clientName:"Private Client",location:"Abu Dhabi",projectDate:"2026-02-20",tags:["wedding","portrait"],featured:true,coverImage:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
-  {id:"p3",title:"Corporate Excellence",slug:"corporate-excellence",categories:["Commercial","Editorial"],description:"Premium corporate photography for UAE brands.",fullDescription:"",clientName:"UAE Corporate",location:"DIFC, Dubai",projectDate:"2026-03-10",tags:["corporate","commercial"],featured:true,coverImage:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  // DUMMY placeholder projects/testimonials for design review -- deliberately generic
+  // "Client One".."Client Six" names (never a real company) per the standing no-invented-
+  // content rule. A couple of earlier entries here used real UAE company names (Emaar
+  // Properties, Visit Dubai) by mistake; replaced with generic placeholders. Replace freely
+  // via CMS > Projects / Testimonials once Naveed has real case studies.
+  {id:"p1",title:"Sample Project One",slug:"sample-project-one",categories:["Landscape Photography"],description:"Aerial and ground-level landscape captures -- placeholder project for design review.",fullDescription:"",clientName:"Client One",location:"Dubai, UAE",projectDate:"2026-01-15",tags:["landscape"],featured:true,coverImage:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",orientation:"landscape"},{url:"https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=800&q=80",orientation:"portrait"},{url:"https://images.unsplash.com/photo-1582672060674-bc2bd808a8b5?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p2",title:"Sample Project Two",slug:"sample-project-two",categories:["Wedding","Portrait Photography"],description:"Intimate portraits in natural light -- placeholder project for design review.",fullDescription:"",clientName:"Client Two",location:"Abu Dhabi",projectDate:"2026-02-20",tags:["wedding","portrait"],featured:true,coverImage:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1519741497674-611481863552?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p3",title:"Sample Project Three",slug:"sample-project-three",categories:["Commercial","Editorial"],description:"Premium commercial photography -- placeholder project for design review.",fullDescription:"",clientName:"Client Three",location:"DIFC, Dubai",projectDate:"2026-03-10",tags:["commercial"],featured:true,coverImage:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1705412238984-8bb35d443964?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p4",title:"Sample Project Four",slug:"sample-project-four",categories:["Real Estate Photography","Architecture & Interior"],description:"Interior/architecture photography -- placeholder project for design review.",fullDescription:"",clientName:"Client Four",location:"Dubai, UAE",projectDate:"2026-04-05",tags:["real-estate","interior"],featured:true,coverImage:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80",orientation:"landscape"},{url:"https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p5",title:"Sample Project Five",slug:"sample-project-five",categories:["Fashion","Editorial"],description:"Editorial fashion shoot -- placeholder project for design review.",fullDescription:"",clientName:"Client Five",location:"Dubai, UAE",projectDate:"2026-05-12",tags:["fashion","editorial"],featured:true,coverImage:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80",orientation:"portrait"}],videos:[],reels:[],youtubeUrl:""},
+  {id:"p6",title:"Sample Project Six",slug:"sample-project-six",categories:["Product Photography","Commercial"],description:"Studio product photography -- placeholder project for design review.",fullDescription:"",clientName:"Client Six",location:"Dubai, UAE",projectDate:"2026-06-18",tags:["product","studio"],featured:false,coverImage:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",images:[{url:"https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&q=80",orientation:"landscape"}],videos:[],reels:[],youtubeUrl:""},
 ];
 
 const DEF_TESTIMONIALS: Testimonial[] = [
-  {id:"t1",name:"Sarah Al Mansoori",role:"Marketing Director",company:"Emaar Properties",quote:"Naveed's work exceeded our expectations. His ability to capture the essence of our brand through photography is truly exceptional.",featured:true},
-  {id:"t2",name:"Ahmed Hassan",role:"CEO",company:"Dubai Ventures",quote:"Professional, creative, and always delivers on time. Our corporate event coverage was absolutely stunning.",featured:true},
-  {id:"t3",name:"Layla Khalid",role:"Brand Manager",company:"Luxury Retail UAE",quote:"Working with Naveed transformed our product photography. The quality speaks for itself.",featured:true},
+  {id:"t1",name:"Client Name One",role:"Marketing Director",company:"Client One",quote:"Naveed's work exceeded our expectations. His ability to capture the essence of our brand through photography is truly exceptional.",featured:true},
+  {id:"t2",name:"Client Name Two",role:"CEO",company:"Client Two",quote:"Professional, creative, and always delivers on time. Our corporate event coverage was absolutely stunning.",featured:true},
+  {id:"t3",name:"Client Name Three",role:"Brand Manager",company:"Client Three",quote:"Working with Naveed transformed our product photography. The quality speaks for itself.",featured:true},
 ];
 
 const DEF_BLOG: BlogPost[] = [
@@ -368,6 +398,25 @@ async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number
 function pushCloudData(key:typeof CLOUD_KEYS[number], value:any) {
   if(!sb) return;
   sb.from("site_settings").upsert({key,value:JSON.stringify(value)},{onConflict:"key"}).then(()=>{},()=>{});
+}
+
+// ─── PROJECT LIKES (shared, cross-visitor) ──────────────────────────────────
+// Same site_settings key/value table and anon-key upsert pattern as the contact form
+// above -- any visitor can write here, not just an authed CMS session -- just under its
+// own dedicated key ("nap_project_likes") holding {[projectId]: totalLikes}. This makes
+// the like count a real, shared total across everyone who visits, not just this browser.
+// No new table/schema change, so it doesn't need a separate DB-migration approval.
+async function fetchProjectLikeCounts(): Promise<Record<string,number>> {
+  if(!sb) return {};
+  try {
+    const {data,error} = await sb.from("site_settings").select("value").eq("key","nap_project_likes").maybeSingle();
+    if(error||!data) return {};
+    try { return JSON.parse(data.value)||{}; } catch { return {}; }
+  } catch { return {}; }
+}
+async function pushProjectLikeCounts(counts:Record<string,number>) {
+  if(!sb) return;
+  try { await sb.from("site_settings").upsert({key:"nap_project_likes",value:JSON.stringify(counts)},{onConflict:"key"}); } catch {}
 }
 
 // ─── CONTACT SUBMISSIONS ────────────────────────────────────────────────────
@@ -672,6 +721,77 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   );
 }
 
+// ─── PHOTO COUNT BADGE ───────────────────────────────────────────────────────
+// Small "camera icon + total photos" pill in the bottom-right corner of a project cover,
+// same convention real-estate listing sites (Property Finder, Bayut, Zillow) use to show a
+// gallery has more photos than the one cover shot. Only rendered when there's more than one.
+function PhotoCountBadge({count}:{count:number}) {
+  if(count<=1) return null;
+  return (
+    <div style={{position:"absolute",bottom:10,right:10,zIndex:2,display:"flex",alignItems:"center",gap:5,background:"rgba(9,6,14,0.72)",backdropFilter:"blur(2px)",color:"#fff",fontSize:11,fontWeight:600,letterSpacing:0.3,padding:"5px 10px",borderRadius:20}}>
+      <span aria-hidden="true">📷</span>{count}
+    </div>
+  );
+}
+
+// ─── PROJECT REACTIONS (Like + Star Rating) ─────────────────────────────────
+// A real, functioning like button and 5-star rating per project -- not decorative/fabricated
+// numbers. Clicking Like actually toggles and persists (localStorage, keyed by project id);
+// the count shown is the genuine number of likes/unlikes this visitor's own browser has sent,
+// same for their star rating. There's no backend table for a site-wide shared tally across all
+// visitors (that would need a Supabase migration -- a separate approval), so this is honestly
+// scoped to "this browser's real reactions" rather than showing an invented aggregate number.
+function ProjectReaction({projectId}:{projectId:string}) {
+  const [liked,setLiked] = useState(false);
+  const [likeCount,setLikeCount] = useState(0);
+  const [rating,setRating] = useState(0);
+  const [hoverStar,setHoverStar] = useState(0);
+  useEffect(()=>{
+    try {
+      const likes = JSON.parse(localStorage.getItem("nap_likes")||"{}");
+      const counts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
+      const ratings = JSON.parse(localStorage.getItem("nap_ratings")||"{}");
+      setLiked(!!likes[projectId]);
+      setLikeCount(counts[projectId]||0);
+      setRating(ratings[projectId]||0);
+    } catch {}
+  },[projectId]);
+  function toggleLike(){
+    try {
+      const likes = JSON.parse(localStorage.getItem("nap_likes")||"{}");
+      const counts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
+      const now = !likes[projectId];
+      likes[projectId] = now;
+      counts[projectId] = Math.max(0,(counts[projectId]||0)+(now?1:-1));
+      localStorage.setItem("nap_likes",JSON.stringify(likes));
+      localStorage.setItem("nap_like_counts",JSON.stringify(counts));
+      setLiked(now); setLikeCount(counts[projectId]);
+    } catch {}
+  }
+  function rate(n:number){
+    try {
+      const ratings = JSON.parse(localStorage.getItem("nap_ratings")||"{}");
+      ratings[projectId] = n;
+      localStorage.setItem("nap_ratings",JSON.stringify(ratings));
+      setRating(n);
+    } catch {}
+  }
+  return (
+    <div style={{display:"flex",alignItems:"center",gap:24,flexWrap:"wrap",marginBottom:32}}>
+      <button onClick={toggleLike} aria-label={liked?"Unlike this project":"Like this project"} style={{display:"flex",alignItems:"center",gap:8,background:"none",border:"none",cursor:"pointer",padding:0}}>
+        <span style={{fontSize:22,lineHeight:1,color:liked?"#FF3B5C":C.MID,transform:liked?"scale(1.18)":"scale(1)",transition:"color 0.2s, transform 0.2s"}}>{liked?"♥":"♡"}</span>
+        <span style={{fontSize:13,color:C.MID}}>{likeCount>0?`${likeCount} like${likeCount===1?"":"s"}`:"Like"}</span>
+      </button>
+      <div style={{display:"flex",alignItems:"center",gap:4}} onMouseLeave={()=>setHoverStar(0)}>
+        {[1,2,3,4,5].map(n=>(
+          <span key={n} onClick={()=>rate(n)} onMouseEnter={()=>setHoverStar(n)} role="button" aria-label={`Rate ${n} star${n===1?"":"s"}`} style={{fontSize:17,lineHeight:1,cursor:"pointer",color:(hoverStar||rating)>=n?"#F5B301":C.BORDER,transition:"color 0.15s"}}>★</span>
+        ))}
+        {rating>0&&<span style={{fontSize:12,color:C.MID,marginLeft:4}}>Your rating: {rating}/5</span>}
+      </div>
+    </div>
+  );
+}
+
 // ─── CONSULTATION POPUP ─────────────────────────────────────────────────────
 // Simple contact-capture: title/body text and the delay are CMS-editable (Settings > Popup),
 // defaulting to a plain "leave your number, get a callback" offer -- no discount or promo is
@@ -741,14 +861,21 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
 // CMS-editable eyebrow/title text (Settings > Colors & Banners) with an optional background
 // image; no image set (the default everywhere) renders as a plain solid-color band using
 // theme.DARK, so shipping this changes nothing visually until an image is actually added.
-function PageBanner({eyebrow,title,image}:{eyebrow:string;title:string;image?:string}) {
+function PageBanner({eyebrow,title,description,image}:{eyebrow:string;title:string;description?:string;image?:string}) {
+  // Height reduced 40% (was clamp(420px,66vh,720px)) per feedback that the banner felt too
+  // tall on every inner page. Top padding kept close to before so the title still clears the
+  // fixed nav bar; only the extra empty space below it was trimmed.
   return (
-    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(420px,66vh,720px)",display:"flex",alignItems:"center",padding:"134px 40px 60px"}}>
+    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(252px,39.6vh,432px)",display:"flex",alignItems:"center",padding:"120px 40px 36px"}}>
       {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.6}} />}
       {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)"}} />}
       <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto",width:"100%"}}>
         <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",display:"flex",alignItems:"center",gap:12,marginBottom:14}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{eyebrow}</div>
         <h1 style={{fontSize:"clamp(32px,5.2vw,64px)",fontWeight:700,letterSpacing:0.5,margin:0,color:"#fff"}}>{title}</h1>
+        {/* Short (~3-line) intro shown only when a description is passed -- Work, Journal, CV
+            and Booking use one below; Packages/About/Contact keep their own existing intro
+            copy in the page body instead, so it isn't duplicated here. */}
+        {description&&<p style={{maxWidth:560,fontSize:14,lineHeight:1.7,color:"rgba(255,255,255,0.75)",margin:"16px 0 0"}}>{description}</p>}
       </div>
     </div>
   );
@@ -775,6 +902,10 @@ const HERO_FONT_LABELS: [string,string][] = [
 function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string;typography:HeroTypography}) {
   const ht=typography;
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
+  // Real React state (not imperative DOM style mutation) for the hover-to-color toggle --
+  // this component re-renders every ~60ms while the progress bar animates, and any style set
+  // directly via onMouseEnter would just get overwritten by the very next of those renders.
+  const [heroHover,setHeroHover]=useState(false);
   const [cbStep,setCbStep]=useState<"phone"|"name"|"email"|"done">("phone");
   const [cbPhone,setCbPhone]=useState(""); const [cbName,setCbName]=useState(""); const [cbEmail,setCbEmail]=useState("");
   function cbNext(){
@@ -798,10 +929,15 @@ function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:st
   if(!slides.length) return null;
   const sl=slides[slide]||slides[0];
   return(
-    <div style={{position:"relative",height:"100vh",overflow:"hidden",background:C.BG}}>
+    <div style={{position:"relative",height:"100vh",overflow:"hidden",background:C.BG}}
+      onMouseEnter={()=>setHeroHover(true)}
+      onMouseLeave={()=>setHeroHover(false)}>
+      {/* Same B&W-to-color hover treatment as the Featured Work / project grids -- the hero
+          photo reads black & white until the visitor's mouse is anywhere over the hero, then
+          eases into full color, and back to grayscale on mouse-leave. */}
       {slides.map((s,i)=>(
         <div key={i} style={{position:"absolute",inset:0,opacity:i===slide?1:0,transition:"opacity 1.4s ease",zIndex:i===slide?1:0}}>
-          <img src={s.img} alt={s.label} style={{width:"100%",height:"100%",objectFit:"cover",transform:i===slide?"scale(1.06)":"scale(1)",transition:"transform 7s ease"}} />
+          <img src={s.img} alt={s.label} style={{width:"100%",height:"100%",objectFit:"cover",transform:i===slide?"scale(1.06)":"scale(1)",filter:heroHover?"grayscale(0)":"grayscale(1)",transition:"transform 7s ease, filter 0.6s ease"}} />
         </div>
       ))}
       <div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.88) 0%,rgba(9,6,14,0.45) 60%,rgba(9,6,14,0.2) 100%)",zIndex:2}} />
@@ -1137,7 +1273,24 @@ export default function Home() {
         wrapper (which contains this fixed Nav) would make the browser treat "fixed" as relative
         to that wrapper instead of the viewport for the animation's duration, visibly shifting
         the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
-    <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}`}</style>
+    <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes clientsOrbit{
+        0%{transform:rotateY(0deg) translateZ(var(--r));filter:blur(0px);opacity:1}
+        12.5%{transform:rotateY(45deg) translateZ(var(--r));filter:blur(1.1px);opacity:0.9}
+        25%{transform:rotateY(90deg) translateZ(var(--r));filter:blur(3.75px);opacity:0.65}
+        37.5%{transform:rotateY(135deg) translateZ(var(--r));filter:blur(6.4px);opacity:0.4}
+        50%{transform:rotateY(180deg) translateZ(var(--r));filter:blur(7.5px);opacity:0.3}
+        62.5%{transform:rotateY(225deg) translateZ(var(--r));filter:blur(6.4px);opacity:0.4}
+        75%{transform:rotateY(270deg) translateZ(var(--r));filter:blur(3.75px);opacity:0.65}
+        87.5%{transform:rotateY(315deg) translateZ(var(--r));filter:blur(1.1px);opacity:0.9}
+        100%{transform:rotateY(360deg) translateZ(var(--r));filter:blur(0px);opacity:1}
+      }
+      /* Reference (spector.framer.website) keeps auto-rotating on hover -- it only responds to an
+         actual mouse-DOWN drag ("grab" cursor), not a plain hover. So no hover-pause here either;
+         the ring just spins continuously, same as the reference, and the per-item scale-up on
+         hover below is the only hover feedback (matches the reference's tile-level interaction). */
+      .client-tile{transition:transform 0.3s}
+      .client-tile:hover{transform:scale(1.15)}`}</style>
     <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,opacity:scrolled?0:1,transform:scrolled?"translateY(-100%)":"translateY(0)",pointerEvents:scrolled?"none":"auto",transition:"opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)"}}>
       <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
       <div style={{display:"flex",gap:18,alignItems:"center"}}>
@@ -1276,7 +1429,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["clients","🤝 Clients"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -1403,6 +1556,7 @@ export default function Home() {
             {settingsTab==="services"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Services</div>
+                <SingleImageUpload label="Section Photo (left side of the Services block on the homepage)" value={settingsDraft.servicesImage} onChange={url=>updateSD({servicesImage:url})} />
                 <button onClick={()=>updateSD({services:[...settingsDraft.services,{id:Date.now().toString(),icon:"📸",title:"New Service",desc:"Service description.",detail:"",deliverables:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Service</button>
                 {settingsDraft.services.map((sv,i)=>(
                   <div key={sv.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
@@ -1415,6 +1569,33 @@ export default function Home() {
                     <button onClick={()=>updateSD({services:settingsDraft.services.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {settingsTab==="clients"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Our Clients</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Currently showing DUMMY placeholder clients for testing. Replace each name/logo below with your real ones, remove any you don't need, and reorder with the arrows -- the homepage marquee reflects this list exactly.</div>
+                <label style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,cursor:"pointer"}}>
+                  <input type="checkbox" checked={settingsDraft.clientsEnabled} onChange={e=>updateSD({clientsEnabled:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}} />
+                  <span style={{fontSize:12,color:C.FG}}>Show "Our Clients" section on the homepage</span>
+                </label>
+                <button onClick={()=>updateSD({clients:[...settingsDraft.clients,{id:Date.now().toString(),name:"New Client",logo:""}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Client</button>
+                {settingsDraft.clients.map((cl,i)=>(
+                  <div key={cl.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                    <div style={{display:"flex",gap:12,marginBottom:12}}>
+                      <button title="Move up" disabled={i===0} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i-1],arr[i]]=[arr[i],arr[i-1]];updateSD({clients:arr});}} style={{...S.btnSm,opacity:i===0?0.3:1,padding:"6px 10px"}}>↑</button>
+                      <button title="Move down" disabled={i===settingsDraft.clients.length-1} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i+1],arr[i]]=[arr[i],arr[i+1]];updateSD({clients:arr});}} style={{...S.btnSm,opacity:i===settingsDraft.clients.length-1?0.3:1,padding:"6px 10px"}}>↓</button>
+                      <div style={{flex:1}}><label style={S.lbl}>Client Name</label><input style={S.inp} value={cl.name} onChange={e=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,name:e.target.value}:x)})} /></div>
+                    </div>
+                    <SingleImageUpload label="Logo" value={cl.logo} onChange={url=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:url}:x)})} />
+                    <div style={{display:"flex",gap:16}}>
+                      {cl.logo&&<button onClick={()=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:""}:x)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Logo (show name only)</button>}
+                      <button onClick={()=>updateSD({clients:settingsDraft.clients.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#a33",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Client</button>
+                    </div>
+                  </div>
+                ))}
+                {settingsDraft.clients.length===0&&<div style={{fontSize:12,color:"#555"}}>No clients yet -- the section stays hidden on the homepage until you add at least one.</div>}
               </div>
             )}
 
@@ -1508,6 +1689,8 @@ export default function Home() {
                   <div><label style={S.lbl}>Work Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeWorkEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkEyebrow:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Work Title</label><input style={S.inp} value={settingsDraft.uiText.homeWorkTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkTitle:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Work "View All" Link</label><input style={S.inp} value={settingsDraft.uiText.homeWorkViewAll} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeWorkViewAll:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Clients Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeClientsEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeClientsEyebrow:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>Clients Title</label><input style={S.inp} value={settingsDraft.uiText.homeClientsTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeClientsTitle:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Testimonials Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeTestimonialsEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeTestimonialsEyebrow:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Journal Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeJournalEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeJournalEyebrow:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Journal Title</label><input style={S.inp} value={settingsDraft.uiText.homeJournalTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeJournalTitle:e.target.value}})} /></div>
@@ -1839,11 +2022,12 @@ export default function Home() {
         <PageBanner eyebrow={selProj.categories?.join(" · ")||"Portfolio"} title={selProj.title} image={selProj.coverImage} />
         <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 80px"}}>
           <span onClick={()=>goTo("work")} style={{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase",cursor:"pointer",display:"inline-block",marginBottom:24}}>← All Work</span>
-          <div style={{display:"flex",gap:24,color:C.MID,fontSize:12,marginBottom:32,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:24,color:C.MID,fontSize:12,marginBottom:20,flexWrap:"wrap"}}>
             {selProj.location&&<span>📍 {selProj.location}</span>}
             {selProj.projectDate&&<span>📅 {selProj.projectDate}</span>}
             {selProj.clientName&&<span>👤 {selProj.clientName}</span>}
           </div>
+          <ProjectReaction projectId={selProj.id} />
           {selProj.description&&<p style={{color:C.MID,fontSize:15,lineHeight:1.9,maxWidth:680,marginBottom:48}}>{selProj.description}</p>}
           {ytId&&<div style={{marginBottom:48,aspectRatio:"16/9",maxWidth:900}}><iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${ytId}`} frameBorder={0} allowFullScreen style={{display:"block"}} /></div>}
           {selProj.images?.length>0&&<div style={{marginBottom:48}}><SmartGrid images={selProj.images} onClick={i=>setLb({open:true,index:i})} /></div>}
@@ -1853,7 +2037,7 @@ export default function Home() {
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:3}}>
               {projects.filter(p=>p.id!==selProj.id&&p.categories?.some(c=>selProj.categories?.includes(c))).slice(0,3).map(p=>(
                 <div key={p.id} onClick={()=>openProj(p)} style={{cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:C.DARK}}>
-                  <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.05)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} />
+                  <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.5s, filter 0.5s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.05)";e.currentTarget.style.filter="grayscale(0)";}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.filter="grayscale(1)";}} />
                   <div style={{position:"absolute",bottom:0,left:0,right:0,padding:16,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent)"}}><div style={{fontSize:13,color:"#fff"}}>{p.title}</div></div>
                 </div>
               ))}
@@ -1888,12 +2072,15 @@ export default function Home() {
   if(page==="blog") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"134px 40px 80px"}}>
-        <div style={{...S.tag(),marginBottom:12}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Journal</div>
-        <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 32px"}}>Photography Journal</h1>
-        <div style={{display:"flex",gap:24,flexWrap:"wrap",marginBottom:48}}>
-          <span onClick={()=>setBlogFilterCat("All")} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:blogFilterCat==="All"?C.PL:C.MID,borderBottom:blogFilterCat==="All"?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>All ({blog.length})</span>
-          {blogCats.map(c=>{ const cnt=blog.filter(b=>b.category===c).length; if(!cnt) return null; return <span key={c} onClick={()=>setBlogFilterCat(c)} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:blogFilterCat===c?C.PL:C.MID,borderBottom:blogFilterCat===c?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>{c} ({cnt})</span>; })}
+      {/* Was a hardcoded heading here instead of the shared PageBanner every other inner page
+          uses -- meant the CMS's Journal Banner Eyebrow/Title fields and its banner image
+          (Settings > Text & Banners) silently did nothing. Now wired up the same way Work/
+          Packages/CV/Booking already are. */}
+      <PageBanner eyebrow={settings.uiText.blogBannerEyebrow} title={settings.uiText.blogBannerTitle} description="Tips and tricks, camera settings and gear, behind-the-scenes stories and client guides -- practical notes from the field for anyone into photography and video." image={settings.sectionBg.blog} />
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"40px 40px 80px"}}>
+        <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:48}}>
+          <span onClick={()=>setBlogFilterCat("All")} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",borderRadius:20,cursor:"pointer",border:`1px solid ${blogFilterCat==="All"?C.PL:C.BORDER}`,background:blogFilterCat==="All"?C.PL:"transparent",color:blogFilterCat==="All"?C.BG:C.MID,transition:"all 0.2s"}}>All ({blog.length})</span>
+          {blogCats.map(c=>{ const cnt=blog.filter(b=>b.category===c).length; if(!cnt) return null; return <span key={c} onClick={()=>setBlogFilterCat(c)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",borderRadius:20,cursor:"pointer",border:`1px solid ${blogFilterCat===c?C.PL:C.BORDER}`,background:blogFilterCat===c?C.PL:"transparent",color:blogFilterCat===c?C.BG:C.MID,transition:"all 0.2s"}}>{c} ({cnt})</span>; })}
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
           {filteredBlog.map(b=>(
@@ -2000,23 +2187,44 @@ export default function Home() {
         )}
 
         <div style={{...S.tag(),marginBottom:24}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />What's Included</div>
+        {/* Same hover-flip pattern as the pricing packages above (.pflip in globals.css) applied
+            to each individual service, so the two card rows read as one consistent design
+            language: front face is icon/title/desc, back face (shown on hover, or focus-within
+            for keyboard users) reveals sv.deliverables -- that data already existed, it just
+            used to render open on the front instead of behind a flip. */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:24}}>
           {settings.services.map(sv=>(
-            <div key={sv.id} className="tcard" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32,display:"flex",flexDirection:"column"}}>
-              <div style={{width:44,height:44,borderRadius:4,background:"rgba(139,92,246,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
-              <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.3,margin:"0 0 8px"}}>{sv.title}</h3>
-              <p style={{color:C.MID,fontSize:13,lineHeight:1.7,margin:"0 0 20px"}}>{sv.desc}</p>
-              <div style={{flex:1,marginBottom:24}}>
-                {sv.deliverables.map((d,j)=>(
-                  <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"7px 0",fontSize:13,color:C.FG}}>
-                    <span style={{color:C.PL,flexShrink:0}}>✓</span>{d}
-                  </div>
-                ))}
+            <div key={sv.id} className="pflip" style={{height:380}}>
+            <div className="pflip-inner">
+              <div className="pflip-face" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32}}>
+                <div style={{width:44,height:44,borderRadius:4,background:"rgba(139,92,246,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
+                <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.3,margin:"0 0 8px"}}>{sv.title}</h3>
+                <p style={{color:C.MID,fontSize:13,lineHeight:1.7,margin:"0 0 20px"}}>{sv.desc}</p>
+                {sv.deliverables.length>0&&<div style={{fontSize:10,color:C.PL,letterSpacing:1,marginTop:"auto",marginBottom:10}}>↻ Hover to see what's included</div>}
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",paddingTop:20,marginTop:sv.deliverables.length>0?0:"auto",borderTop:`1px solid ${C.BORDER}`}}>
+                  <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${sv.title} package.`)}`} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 18px",fontSize:11,textDecoration:"none"}}>Enquire Now</a>
+                  <button onClick={()=>goTo("booking")} style={{...S.btnO,padding:"10px 18px",fontSize:11}}>Book Now</button>
+                </div>
               </div>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap",paddingTop:20,borderTop:`1px solid ${C.BORDER}`}}>
-                <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${sv.title} package.`)}`} target="_blank" rel="noopener noreferrer" style={{...S.btnP,padding:"10px 18px",fontSize:11,textDecoration:"none"}}>Enquire Now</a>
-                <button onClick={()=>goTo("booking")} style={{...S.btnO,padding:"10px 18px",fontSize:11}}>Book Now</button>
+              <div className="pflip-face pflip-back" style={{background:C.P,borderRadius:4,padding:32}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18}}>
+                  <span style={{fontSize:20}}>{sv.icon}</span>
+                  <span style={{fontSize:11,letterSpacing:3,fontWeight:700,color:"#fff",textTransform:"uppercase"}}>{sv.title}</span>
+                </div>
+                <div style={{fontSize:11,letterSpacing:2,color:"rgba(255,255,255,0.8)",textTransform:"uppercase",fontWeight:700,marginBottom:14}}>Includes</div>
+                <div style={{flex:1,overflowY:"auto"}}>
+                  {sv.deliverables.map((d,j)=>(
+                    <div key={j} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"5px 0",fontSize:13,color:"rgba(255,255,255,0.94)",lineHeight:1.5}}>
+                      <span style={{flexShrink:0}}>✓</span>{d}
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:16}}>
+                  <a href={`https://wa.me/${WA}?text=${encodeURIComponent(`Hello ${settings.siteName}! I'd like to enquire about your ${sv.title} package.`)}`} target="_blank" rel="noopener noreferrer" style={{textAlign:"center",background:"#fff",color:C.P,border:"none",padding:"10px 18px",fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",textDecoration:"none",borderRadius:2}}>Enquire Now</a>
+                  <button onClick={()=>goTo("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.5)",color:"#fff",padding:"10px 18px",fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",borderRadius:2}}>Book Now</button>
+                </div>
               </div>
+            </div>
             </div>
           ))}
         </div>
@@ -2030,7 +2238,7 @@ export default function Home() {
   if(page==="cv") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} image={settings.sectionBg.cv} />
+      <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} description="20+ years behind the camera across photography, cinematography and creative direction -- skills, tools and experience, at a glance." image={settings.sectionBg.cv} />
       <div style={{maxWidth:900,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:64}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
@@ -2075,7 +2283,7 @@ export default function Home() {
   if(page==="booking") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} image={settings.sectionBg.booking} />
+      <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} description="Ready to start a project? Share a few details below and get a tailored quote, or message directly on WhatsApp for a faster reply." image={settings.sectionBg.booking} />
       <div style={{maxWidth:720,margin:"0 auto",padding:"40px 40px 80px"}}>
         <div style={{textAlign:"center",marginBottom:56}}>
           <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Book a Session</div>
@@ -2234,20 +2442,26 @@ export default function Home() {
   if(page==="work") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <PageBanner eyebrow={settings.uiText.workBannerEyebrow} title={settings.uiText.workBannerTitle} image={settings.sectionBg.work} />
+      <PageBanner eyebrow={settings.uiText.workBannerEyebrow} title={settings.uiText.workBannerTitle} description="A curated selection of photography and cinematography work across the UAE -- brand campaigns, weddings, real estate and editorial, all in one place." image={settings.sectionBg.work} />
       <div style={{maxWidth:1400,margin:"0 auto",padding:"40px 32px 80px"}}>
+        {/* Pill chips (same style as the Contact page's subject tags) instead of plain
+            underlined text -- with more categories now in play (6 sample projects across 8
+            categories) the old bare-text list wrapped into a dense, hard-to-scan run-on line.
+            Chips give each one its own visible boundary and comfortable tap target. */}
         <div style={{marginBottom:48}}>
-          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            <span onClick={()=>setFilterCat("All")} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat==="All"?C.PL:C.MID,borderBottom:filterCat==="All"?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>All ({projects.length})</span>
-            {cats.map(c=>{ const cnt=projects.filter(p=>p.categories?.includes(c)).length; if(!cnt) return null; return <span key={c} onClick={()=>setFilterCat(c)} style={{fontSize:10,letterSpacing:3,textTransform:"uppercase",cursor:"pointer",color:filterCat===c?C.PL:C.MID,borderBottom:filterCat===c?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:4,transition:"color 0.2s"}}>{c} ({cnt})</span>; })}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <span onClick={()=>setFilterCat("All")} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",borderRadius:20,cursor:"pointer",border:`1px solid ${filterCat==="All"?C.PL:C.BORDER}`,background:filterCat==="All"?C.PL:"transparent",color:filterCat==="All"?C.BG:C.MID,transition:"all 0.2s"}}>All ({projects.length})</span>
+            {cats.map(c=>{ const cnt=projects.filter(p=>p.categories?.includes(c)).length; if(!cnt) return null; return <span key={c} onClick={()=>setFilterCat(c)} style={{fontSize:11,letterSpacing:1,padding:"8px 16px",borderRadius:20,cursor:"pointer",border:`1px solid ${filterCat===c?C.PL:C.BORDER}`,background:filterCat===c?C.PL:"transparent",color:filterCat===c?C.BG:C.MID,transition:"all 0.2s"}}>{c} ({cnt})</span>; })}
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:3}}>
           {filtered.map(p=>(
             <div key={p.id} onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
-              onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
-              onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
-              <img src={p.coverImage||p.images?.[0]?.url||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",transition:"transform 0.6s"}} />
+              onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
+              onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
+              {/* B&W-by-default, full color on hover -- same reveal treatment requested from kima.framer.media */}
+              <img src={p.coverImage||p.images?.[0]?.url||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"grayscale(1)",transition:"transform 0.6s, filter 0.6s"}} />
+              <PhotoCountBadge count={p.images?.length||0} />
               <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.92) 0%,transparent 55%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:6}}>{p.categories?.join(" · ")}</div>
                 <div style={{fontSize:18,letterSpacing:2,color:"#fff"}}>{p.title}</div>
@@ -2296,16 +2510,19 @@ export default function Home() {
             </div>
             <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeWorkViewAll}</span>
           </Reveal>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
-              <Reveal key={p.id} style={{gridColumn:"1/3"}}>
+              <Reveal key={p.id} style={{gridColumn:isMobile?"1/2":"1/3"}}>
               <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK}}
-                onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.04)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
-                onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
-                <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1)"}} />
-                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
-                  <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{p.categories?.join(" · ")}</div>
-                  <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
+                onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
+                onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
+                <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
+                <PhotoCountBadge count={p.images?.length||0} />
+                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.35s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
+                  <div className="ov-cap" style={{transform:"translateY(14px)",transition:"transform 0.45s cubic-bezier(.16,.84,.44,1)"}}>
+                    <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{p.categories?.join(" · ")}</div>
+                    <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
+                  </div>
                 </div>
               </div>
               </Reveal>
@@ -2313,12 +2530,15 @@ export default function Home() {
             {featured.slice(1,4).map((p,idx)=>(
               <Reveal key={p.id} delay={0.1+idx*0.08}>
               <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
-                onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.05)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
-                onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
-                <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1)"}} />
-                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
-                  <div style={{fontSize:9,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:4}}>{p.categories?.[0]}</div>
-                  <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
+                onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
+                onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
+                <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
+                <PhotoCountBadge count={p.images?.length||0} />
+                <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.35s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
+                  <div className="ov-cap" style={{transform:"translateY(14px)",transition:"transform 0.45s cubic-bezier(.16,.84,.44,1)"}}>
+                    <div style={{fontSize:9,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:4}}>{p.categories?.[0]}</div>
+                    <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
+                  </div>
                 </div>
               </div>
               </Reveal>
@@ -2335,31 +2555,86 @@ export default function Home() {
       <div style={{background:C.LT,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-10%",right:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.16),transparent 70%)",filter:"blur(10px)",pointerEvents:"none"}} />
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
-          <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
-            <div>
-              <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
-              <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
+          <div style={{display:"flex",gap:48,alignItems:"flex-start",flexWrap:"wrap"}}>
+            {/* DUMMY placeholder image for now -- replace via CMS > Settings > Services (upload
+                or paste a URL, see settingsTab==="services" below). Independent from aboutPhoto.
+                alignItems:flex-start (was "stretch") keeps this at its own height instead of
+                growing to match the services list -- that stretch was why the photo looked
+                oversized. Its top now lines up with the "What We Offer" eyebrow / Services
+                heading on the right, since both start at the same flex-start baseline. */}
+            <div style={{flex:"0 0 390px",minWidth:280,height:420,position:"relative",borderRadius:8,overflow:"hidden"}}>
+              <img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
             </div>
-            <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
-          </Reveal>
-          <div>
-            {settings.services.map((sv,i)=>(
-              <Reveal key={sv.id} delay={i*0.07}>
-              <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
-                  <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
-                  <div style={{minWidth:0}}>
-                    <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
-                    <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
-                  </div>
+            <div style={{flex:"1 1 480px",minWidth:280}}>
+              <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
+                <div>
+                  <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
+                  <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
                 </div>
-                <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
-              </div>
+                <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
               </Reveal>
-            ))}
+              <div>
+                {settings.services.map((sv,i)=>(
+                  <Reveal key={sv.id} delay={i*0.07}>
+                  <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
+                      <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
+                        <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
+                      </div>
+                    </div>
+                    <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
+                  </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* OUR CLIENTS -- rebuilt to match spector.framer.website's actual "Our Clients" component
+          as closely as directly inspecting its live DOM/CSS allows: white section (their
+          .mr-container is rgb(255,255,255), not a dark panel), bare logos with no card chrome,
+          pure rotateY+translateZ per item (their .mr-item transform is a plain rotateY matrix --
+          no X-axis tilt), and the same continuous per-item blur+opacity-by-depth curve their
+          .mr-item-content layer animates. Currently DUMMY data (Client One..Four) for review --
+          manage names/logos/order and the on/off toggle via CMS > Settings > Clients. */}
+      {settings.clientsEnabled&&settings.clients.length>0&&(
+        <div style={{background:C.LT,padding:"90px 0",overflow:"hidden"}}>
+          <Reveal style={{maxWidth:1160,margin:"0 auto 48px",padding:"0 40px",textAlign:"center"}}>
+            <div style={{...S.tag(),marginBottom:14,color:C.P,justifyContent:"center"}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeClientsEyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
+            <h2 style={{fontSize:"clamp(26px,3.4vw,42px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeClientsTitle}</h2>
+          </Reveal>
+          <div style={{maxWidth:1160,margin:"0 auto",padding:isMobile?"0 20px":"0 40px",height:isMobile?190:250,position:"relative",perspective:isMobile?1000:1800}}>
+            <div className="clients-orbit-anchor" style={{position:"absolute",top:"50%",left:"50%",transformStyle:"preserve-3d"}}>
+              {settings.clients.map((cl,i)=>{
+                const n=settings.clients.length;
+                const angle=(360/n)*i;
+                const radius=isMobile?Math.max(130,n*32):Math.max(220,n*55);
+                const tileW=isMobile?116:160;
+                // Measured the reference's own idle rotation directly (sampled its rotateY
+                // transform 2s apart): ~9deg/s, i.e. a full 360deg turn takes ~40s. Fixed at 40s
+                // regardless of client count (was tied to n before) so the speed always matches.
+                const dur=40;
+                const delay=-(angle/360)*dur;
+                return (
+                  <div key={cl.id} className="client-orbit-item" style={{position:"absolute",top:0,left:0,"--r":`${radius}px`,animation:`clientsOrbit ${dur}s linear infinite`,animationDelay:`${delay}s`,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden"} as React.CSSProperties}>
+                    <div className="client-tile" style={{width:tileW,marginLeft:-tileW/2,height:64,marginTop:-32,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {cl.logo?(
+                        <img src={cl.logo} alt={cl.name} style={{maxHeight:"100%",maxWidth:tileW-10,objectFit:"contain"}} />
+                      ):(
+                        <span style={{fontSize:isMobile?14:18,letterSpacing:1,color:C.DARK,fontWeight:600,whiteSpace:"nowrap"}}>{cl.name}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TESTIMONIALS -- a pull-quote spotlight held inside a bordered panel (not bare floating
           text) with a solid-DARK quote badge, echoing the Services chips so this section reads

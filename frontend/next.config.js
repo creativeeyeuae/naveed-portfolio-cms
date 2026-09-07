@@ -1,13 +1,17 @@
+const path = require("path");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "**.r2.dev" },
-      { protocol: "https", hostname: process.env.NEXT_PUBLIC_MEDIA_CDN_HOST || "media.naveedanjum.com" },
-    ],
+    unoptimized: true,
   },
-  reactStrictMode: true,
-};
+  // A stray package-lock.json in the user's home directory (outside this
+  // project) was making Next.js mis-infer the workspace root, which in turn
+  // broke dynamic-route detection (e.g. /work/[slug] wrongly reported as
+  // "missing generateStaticParams"). Pin the root explicitly, as Next's own
+  // build warning recommends.
+  outputFileTracingRoot: path.join(__dirname),
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

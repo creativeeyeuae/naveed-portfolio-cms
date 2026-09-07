@@ -32,10 +32,14 @@ export interface Env {
   ADMIN_PIN?: string;
 }
 
-let cachedClient: PrismaClient | null = null;
-
+// Deliberately NOT cached at module scope. Cloudflare Workers doesn't keep a
+// raw TCP socket reliably alive across separate requests without Hyperdrive
+// (which this project doesn't use) -- a cached connection reused on a later
+// request is exactly what produced "Connection terminated unexpectedly".
+// Prisma's own Cloudflare Workers guidance is explicit about this: create a
+// new client per request, unlike a long-running Node server. See the
+// backend/database/client.ts history/commit message for the sources.
 export function getPrismaClient(env: Env): PrismaClient {
-  if (cachedClient) return cachedClient;
   // @prisma/adapter-pg 5.22+ requires a real `pg.Pool` instance, not a
   // plain { connectionString } object (the latter throws at request time:
   // "PrismaPg must be initialized with an instance of Pool"). Workers can
@@ -52,6 +56,10 @@ export function getPrismaClient(env: Env): PrismaClient {
   // Supabase's own docs/quickstarts use for serverless/edge runtimes that
   // don't carry a full system CA bundle. The connection is still encrypted,
   // just without verifying the certificate chain.
+  //
+  // max:1 -- one connection per request, matching how Supabase's Transaction
+  // Pooler expects short-lived connections handed back quickly, rather than
+  // a client-side pool trying to hold several open at once.
   const pool = new Pool({
     host: env.DB_HOST,
     port: Number(env.DB_PORT),
@@ -59,8 +67,8 @@ export function getPrismaClient(env: Env): PrismaClient {
     password: env.DB_PASSWORD,
     database: env.DB_NAME,
     ssl: { rejectUnauthorized: false },
+    max: 1,
   });
   const adapter = new PrismaPg(pool);
-  cachedClient = new PrismaClient({ adapter });
-  return cachedClient;
+  return new PrismaClient({ adapter });
 }

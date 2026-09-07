@@ -128,30 +128,39 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         )}
       </div>
       {items.length > 0 && (
-        <div
-          style={{
-            maxWidth: 1400,
-            margin: "0 auto",
-            padding: "0 24px 64px",
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 12,
-          }}
-        >
-          {items.map((m) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={m.id}
-              src={m.url}
-              alt={m.altText || album.title}
-              style={{
-                width: "100%",
-                aspectRatio: m.orientation === "portrait" ? "2/3" : "3/2",
-                objectFit: "cover",
-              }}
-            />
-          ))}
-        </div>
+        <>
+          {/* Same black & white -> color hover treatment used on the homepage Featured Work
+              and /work gallery grids, applied here too so it's consistent wherever project
+              images appear. This page is a Server Component (async, no "use client"), so the
+              effect is done in pure CSS (:hover) rather than onMouseEnter/onMouseLeave. */}
+          <style>{`.wd-img{filter:grayscale(1);transition:filter 0.5s ease}
+            .wd-img:hover{filter:grayscale(0)}`}</style>
+          <div
+            style={{
+              maxWidth: 1400,
+              margin: "0 auto",
+              padding: "0 24px 64px",
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gap: 12,
+            }}
+          >
+            {items.map((m) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={m.id}
+                src={m.url}
+                alt={m.altText || album.title}
+                className="wd-img"
+                style={{
+                  width: "100%",
+                  aspectRatio: m.orientation === "portrait" ? "2/3" : "3/2",
+                  objectFit: "cover",
+                }}
+              />
+            ))}
+          </div>
+        </>
       )}
     </main>
   );

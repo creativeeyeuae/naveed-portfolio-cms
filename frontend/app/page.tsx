@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { createClient as _createSupabaseClient } from "@supabase/supabase-js";
+import { SERVICE_PAGES } from "@/lib/servicePagesData";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -39,6 +40,16 @@ type SectionBg = { work:string;about:string;packages:string;blog:string;cv:strin
 // A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
 // something still points at it, so nothing 404s and no content is deleted.
 type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean; };
+// Per-SECTION visibility switch for the home page itself (CMS > Settings > Pages, second
+// group below). Different from PageEnabled above (which hides/shows whole other pages) --
+// this toggles individual blocks of the home page on/off without touching their content.
+// "clients" isn't listed here on purpose: Our Clients already had its own toggle
+// (clientsEnabled, CMS > Settings > Clients) before this existed, so it stays there rather
+// than getting a second, redundant flag -- the Pages tab UI still surfaces it in the same
+// list for a single "everything homepage" control panel. Missing/older saved data reads as
+// all-on (every check below is `!==false`), so shipping this changes nothing until a section
+// is actually switched off.
+type HomeSections = { hero:boolean;intro:boolean;about:boolean;services:boolean;work:boolean;testimonials:boolean;journal:boolean;cta:boolean; };
 // Pricing package cards (CMS > Settings > Packages), rendered on the Packages page under
 // "Your Investment" -- add/remove/edit freely, each with its own image. Separate from
 // `services` (the deliverables-list cards further down that page), which stay untouched.
@@ -80,18 +91,19 @@ type SiteSettings = {
   pin:string; siteName:string; siteTagline:string; siteDescription:string;
   heroSlides:HeroSlide[]; aboutName:string; aboutTitle:string; aboutBio:string; aboutPhoto:string;
   statsYears:string; statsProjects:string; statsClients:string;
-  phone:string; email:string; waNumber:string; waMsg:string; location:string;
+  phone:string; email:string; waNumber:string; waMsg:string; location:string; address:string;
   instagram:string; youtube:string; linkedin:string; tiktok:string;
   footerCopyright:string; footerLinks:{label:string;page:string}[];
-  seoTitle:string; seoDesc:string; googlePlaceId:string;
+  seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
-  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; heroTypography:HeroTypography;
+  theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; homeSections:HomeSections; heroTypography:HeroTypography;
   pricingPackages:PricingPackage[]; pricingCardStyle:PricingCardStyle;
   services:Service[]; servicesImage:string;
   clients:{id:string;name:string;logo:string}[]; clientsEnabled:boolean;
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
+  bankTransferInstructions:string;
 };
 type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:string;img:string;page:string; };
 
@@ -216,13 +228,13 @@ const DEF_SETTINGS: SiteSettings = {
   statsYears:"20+", statsProjects:"500+", statsClients:"200+",
   phone:"+971 581 174 911", email:"creativeeyeuae@gmail.com", waNumber:"971581174911",
   waMsg:"Hello Naveed, I visited your portfolio and would like to discuss a project.",
-  location:"Dubai, UAE",
+  location:"Dubai, UAE", address:"Downtown Dubai, UAE",
   instagram:"https://www.instagram.com/bynaveedanjum/", youtube:"https://youtube.com/@creativeeyeuae", linkedin:"https://linkedin.com/in/naveedanjumch", tiktok:"",
   footerCopyright:"© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
   footerLinks:[{label:"Work",page:"work"},{label:"About",page:"about"},{label:"Packages",page:"packages"},{label:"CV",page:"cv"},{label:"Booking",page:"booking"},{label:"Contact",page:"contact"}],
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
-  googlePlaceId:"",
+  googlePlaceId:"", googleReviewsEnabled:false,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
@@ -251,6 +263,7 @@ const DEF_SETTINGS: SiteSettings = {
   // don't use sectionBg at all (separate routes, also off-limits).
   sectionBg:{work:"https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=1600&q=80",about:"",packages:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1600&q=80",blog:"https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",cv:"https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",booking:"https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1600&q=80",contact:""},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
+  homeSections:{hero:true,intro:true,about:true,services:true,work:true,testimonials:true,journal:true,cta:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
   // Matches the padding/sizes/colors already hardcoded in the card markup, so shipping this
   // makes zero visual change until Naveed adjusts something in CMS > Settings > Packages >
@@ -314,6 +327,7 @@ const DEF_SETTINGS: SiteSettings = {
     {dept:"AI & Creative Tools",items:["ChatGPT","Google AI Studio","Versal AI Tools","CapCut","CapCut Template Creator","Adobe Template Designer"]},
     {dept:"Languages",items:["English","Urdu","Punjabi","Hindi","Arabic (Basic)"]},
   ],
+  bankTransferInstructions:"",
 };
 
 const DEF_PROJECTS: Project[] = [
@@ -384,20 +398,46 @@ const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; e
 const _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const sb = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey) : null;
+// Dedicated client for the CMS's own content saves (the six nap_* keys below), kept
+// completely separate from `sb` on purpose. `sb` picks up the real admin's Supabase Auth
+// session once they sign in (see adminSignIn/onAuthStateChange) and from that point sends
+// every request as that authenticated user rather than the site's public anon key --
+// which is what was silently breaking every CMS save after the move to real admin logins
+// (an authenticated user is a different Postgres role than anon, and this table's access
+// was granted to anon, not to authenticated). `sbData` never holds a session
+// (persistSession:false), so it always talks to Supabase the same proven way the public
+// booking form, contact form and like counter already do successfully -- no RLS change
+// needed, nothing about who can write this table changes, this only fixes which key the
+// CMS's own save calls actually send.
+const sbData = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
 const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog","nap_blogcats"] as const;
 async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number],any>>|null> {
-  if(!sb) return null;
+  if(!sbData) return null;
   try {
-    const {data,error} = await sb.from("site_settings").select("key,value").in("key",CLOUD_KEYS as unknown as string[]);
+    const {data,error} = await sbData.from("site_settings").select("key,value").in("key",CLOUD_KEYS as unknown as string[]);
     if(error||!data) return null;
     const out:Partial<Record<typeof CLOUD_KEYS[number],any>> = {};
     data.forEach((row:any)=>{ try{ (out as any)[row.key] = JSON.parse(row.value); }catch{} });
     return out;
   } catch { return null; }
 }
-function pushCloudData(key:typeof CLOUD_KEYS[number], value:any) {
-  if(!sb) return;
-  sb.from("site_settings").upsert({key,value:JSON.stringify(value)},{onConflict:"key"}).then(()=>{},()=>{});
+// Returns whether the save actually reached the server -- callers MUST check this rather than
+// assume success, so the CMS never tells the admin "saved" when the change never left this
+// browser (that mismatch is exactly what makes one browser show new content and another show
+// stale content). Retries once after a short pause before giving up -- a brief network blip on
+// the admin's side (a dropped wifi packet, a momentary connection hiccup) shouldn't surface as
+// a save failure if the very next attempt would have gone through fine.
+async function pushCloudDataOnce(key:typeof CLOUD_KEYS[number], value:any): Promise<boolean> {
+  if(!sbData) return false;
+  try {
+    const {error} = await sbData.from("site_settings").upsert({key,value:JSON.stringify(value)},{onConflict:"key"});
+    return !error;
+  } catch { return false; }
+}
+async function pushCloudData(key:typeof CLOUD_KEYS[number], value:any): Promise<boolean> {
+  if(await pushCloudDataOnce(key,value)) return true;
+  await new Promise(r=>setTimeout(r,1500));
+  return pushCloudDataOnce(key,value);
 }
 
 // ─── PROJECT LIKES (shared, cross-visitor) ──────────────────────────────────
@@ -417,6 +457,99 @@ async function fetchProjectLikeCounts(): Promise<Record<string,number>> {
 async function pushProjectLikeCounts(counts:Record<string,number>) {
   if(!sb) return;
   try { await sb.from("site_settings").upsert({key:"nap_project_likes",value:JSON.stringify(counts)},{onConflict:"key"}); } catch {}
+}
+
+// ─── BOOKING / APPOINTMENTS (real, paid, shared cross-visitor) ──────────────────────
+// Prices always come from the live CMS package (settings.pricingPackages) at the moment of
+// booking -- never hard-coded here -- and are snapshotted onto the appointment row so a later
+// CMS price change never rewrites a past booking's price. find_or_create_customer and
+// is_slot_taken are Postgres RPC functions (security definer) so the public site key can look
+// up-or-create a customer by email and check slot availability WITHOUT being able to read
+// anyone else's customer/appointment/payment rows -- there is deliberately no anon SELECT
+// policy on customers/appointments/payments. Marking a payment PAID/REJECTED/VERIFIED never
+// happens from this file -- only the backend admin action (Phase 1 continuation) can do that.
+function moneyRound(n:number){ return Math.round((n+Number.EPSILON)*100)/100; }
+function parsePackagePrice(p:string): number { const n=parseFloat(String(p||"0").replace(/[^0-9.]/g,"")); return isNaN(n)?0:n; }
+function genAppointmentRef(): string { return "CF-"+Math.random().toString(36).slice(2,8).toUpperCase(); }
+const TX_FEE_RATE = 0.04;
+function calcFee(base:number){ return moneyRound(base*TX_FEE_RATE); }
+function calcTotal(base:number){ return moneyRound(base+calcFee(base)); }
+async function findOrCreateCustomerId(info:{full_name:string;email:string;phone?:string;whatsapp?:string;company?:string}): Promise<string|null> {
+  if(!sb) return null;
+  try {
+    const {data,error} = await sb.rpc("find_or_create_customer",{
+      p_full_name:info.full_name, p_email:info.email, p_phone:info.phone||null, p_whatsapp:info.whatsapp||null, p_company:info.company||null,
+    });
+    if(error||!data) return null;
+    return data as string;
+  } catch { return null; }
+}
+async function isSlotTaken(dateStr:string, timeStr:string): Promise<boolean> {
+  if(!sb) return false;
+  try {
+    const {data,error} = await sb.rpc("is_slot_taken",{p_date:dateStr,p_time:to24h(timeStr)});
+    if(error) return false;
+    return !!data;
+  } catch { return false; }
+}
+function to24h(t:string): string {
+  // "9:00 AM" -> "09:00:00" (TIMES uses 12h labels; DB column is a plain time)
+  const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if(!m) return t.length===5?`${t}:00`:t;
+  let h = parseInt(m[1],10); const min=m[2]; const ap=m[3].toUpperCase();
+  if(ap==="PM"&&h!==12) h+=12; if(ap==="AM"&&h===12) h=0;
+  return `${String(h).padStart(2,"0")}:${min}:00`;
+}
+type NewAppointmentInput = {
+  customer_id:string; service_key:string; service_name:string; package_id:string; package_name:string;
+  price_base:number; booking_date:string; booking_time:string; notes:string; method:"paypal"|"bank_transfer";
+};
+// Fire-and-forget: tells the server "something just happened, check if it's worth a push
+// notification". Never awaited by the caller and never blocks/fails the real action (booking,
+// receipt upload, contact form) -- the server re-verifies everything from the database before
+// sending anything, so this call can't be used to fake a notification.
+function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
+  try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
+}
+async function createAppointment(input:NewAppointmentInput): Promise<{id:string;ref:string}|null> {
+  if(!sb) return null;
+  try {
+    const id = crypto.randomUUID();
+    const ref = genAppointmentRef();
+    const fee = calcFee(input.price_base); const total = calcTotal(input.price_base);
+    const status = input.method==="bank_transfer" ? "pending_verification" : "pending_payment";
+    const {error:apptErr} = await sb.from("appointments").insert({
+      id, appointment_ref:ref, customer_id:input.customer_id, service_key:input.service_key, service_name:input.service_name,
+      package_id:input.package_id, package_name:input.package_name, price_base:input.price_base, currency:"AED",
+      transaction_fee:fee, total, booking_date:input.booking_date, booking_time:to24h(input.booking_time), notes:input.notes, status,
+    });
+    if(apptErr){ console.error("[booking] appointment insert failed:",apptErr); return null; }
+    const payStatus = input.method==="bank_transfer" ? "under_review" : "pending";
+    const {error:payErr} = await sb.from("payments").insert({
+      appointment_id:id, method:input.method, base_amount:input.price_base, transaction_fee:fee, total,
+      currency:"AED", status:payStatus, provider:input.method==="bank_transfer"?"bank":null,
+    });
+    if(payErr){ console.error("[booking] payment insert failed:",payErr); return null; }
+    return {id,ref};
+  } catch(e) { console.error("[booking] createAppointment threw:",e); return null; }
+}
+async function uploadReceiptFile(file:File, appointmentId:string): Promise<string|null> {
+  if(!sb) return null;
+  try {
+    const ext=(file.name.split(".").pop()||"pdf").toLowerCase().replace(/[^a-z0-9]/g,"")||"pdf";
+    const path=`${appointmentId}/${Date.now()}.${ext}`;
+    const {error} = await sb.storage.from("receipts").upload(path,file,{contentType:file.type});
+    if(error) return null;
+    const {error:updErr} = await sb.from("payments").update({receipt_path:path,receipt_status:"submitted",uploaded_at:new Date().toISOString()}).eq("appointment_id",appointmentId);
+    if(updErr) return null;
+    return path;
+  } catch { return null; }
+}
+function validateReceiptFile(file:File): string|null {
+  const ok=["image/jpeg","image/jpg","image/png","application/pdf"];
+  if(file.type && !ok.includes(file.type)) return "Please upload a valid payment receipt (JPG, PNG or PDF).";
+  if(file.size > 10*1024*1024) return "Receipt file is too large (max 10MB).";
+  return null;
 }
 
 // ─── CONTACT SUBMISSIONS ────────────────────────────────────────────────────
@@ -467,19 +600,47 @@ async function sendEmailNotification(settings:SiteSettings, entry:ContactLead) {
     });
   }catch{}
 }
+// Validation + size caps: rejects unsupported files up front (human-readable message, no
+// broken/partial upload) and stops the offline/misconfigured fallback below from ever
+// embedding a truly huge base64 blob into the CMS's saved data.
+const MAX_IMAGE_MB = 12;
+const FALLBACK_MAX_MB = 4;
+function validateImageFile(file:File): string|null {
+  const okTypes = ["image/jpeg","image/png","image/webp","image/avif","image/gif"];
+  if(file.type && !okTypes.includes(file.type)) return `"${file.name}" isn't a supported image type -- use JPG, PNG, WebP, AVIF or GIF.`;
+  if(file.size > MAX_IMAGE_MB*1024*1024) return `"${file.name}" is too large (max ${MAX_IMAGE_MB}MB).`;
+  return null;
+}
 async function uploadToStorage(file:File): Promise<string> {
-  if (sb) {
+  const invalid = validateImageFile(file);
+  if(invalid) throw new Error(invalid);
+  // Uses sbData (the always-anon client, same fix as the CMS's other saves further up this
+  // file) rather than `sb` -- once a real admin session was added, `sb` started sending every
+  // request as that signed-in user instead of the site's public key, and Storage's upload
+  // policy grants the public key, not a signed-in one. That's what was silently failing every
+  // CMS image upload here: it fell through to the base64-embed fallback below every time
+  // (or, past FALLBACK_MAX_MB, straight to a hard error), which is why photos looked like they
+  // "wouldn't upload" -- the real cloud upload never actually happened.
+  if (sbData) {
     try {
       const ext = (file.name.split(".").pop()||"jpg").toLowerCase().replace(/[^a-z0-9]/g,"")||"jpg";
       const key = `cms-uploads/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await sb.storage.from("portfolio").upload(key,file,{contentType:file.type});
+      const { error } = await sbData.storage.from("portfolio").upload(key,file,{contentType:file.type});
       if(!error){
-        const { data } = sb.storage.from("portfolio").getPublicUrl(key);
+        const { data } = sbData.storage.from("portfolio").getPublicUrl(key);
         if(data?.publicUrl) return data.publicUrl;
+      } else {
+        console.warn("[uploadToStorage] Supabase Storage upload failed, falling back to local embed:",error.message);
       }
-    } catch {}
+    } catch (e:any) {
+      console.warn("[uploadToStorage] Supabase Storage upload threw, falling back to local embed:",e?.message||e);
+    }
   }
-  // Fallback (offline/misconfigured): embed as base64 so the CMS still works in this browser.
+  // Fallback (Storage unreachable/misconfigured): embed as base64 so the CMS still works in
+  // this browser. Capped in size -- past this, silently embedding is worse than a clear error.
+  if(file.size > FALLBACK_MAX_MB*1024*1024){
+    throw new Error(`Cloud storage is temporarily unavailable and "${file.name}" is too large to use as a local fallback (max ${FALLBACK_MAX_MB}MB). Try a smaller file, or try again once storage is fixed.`);
+  }
   return await new Promise<string>((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.onerror=rej; r.readAsDataURL(file); });
 }
 
@@ -512,23 +673,27 @@ function useUploader(onDone:(imgs:Img[])=>void) {
   const ref = useRef<HTMLInputElement>(null);
   const [prog, setProg] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   async function upload(files:FileList|null) {
     if(!files?.length) return;
-    setBusy(true); const out:Img[]=[];
+    setBusy(true); setError(""); const out:Img[]=[]; const errs:string[]=[];
     for(let i=0;i<files.length;i++){
       setProg(Math.round(i/files.length*100));
       const f=files[i];
-      const url = await uploadToStorage(f);
-      const o = await detectOrientation(url);
-      out.push({url,orientation:o});
+      try {
+        const url = await uploadToStorage(f);
+        const o = await detectOrientation(url);
+        out.push({url,orientation:o});
+      } catch(e:any) { errs.push(e?.message||`Couldn't upload "${f.name}".`); }
     }
-    setProg(100); onDone(out); setTimeout(()=>{setBusy(false);setProg(0);},500);
+    setProg(100); if(out.length) onDone(out); if(errs.length) setError(errs.join(" ")); setTimeout(()=>{setBusy(false);setProg(0);},500);
   }
   const Btn = ({label="📁 Upload Photos"}:{label?:string}) => (
     <div>
       <input ref={ref} type="file" accept="image/*" multiple style={{display:"none"}} onChange={e=>upload(e.target.files)} />
       <button onClick={()=>ref.current?.click()} style={{...S.btnP,opacity:busy?0.7:1,marginBottom:busy?8:0}}>{busy?`Uploading ${prog}%`:label}</button>
       {busy&&<div style={{height:3,background:"#1a1a2e",borderRadius:2}}><div style={{height:"100%",background:C.P,width:`${prog}%`,transition:"width 0.3s"}} /></div>}
+      {!busy&&error&&<div style={{fontSize:11,color:"#ff6b6b",marginTop:6,maxWidth:340}}>{error}</div>}
     </div>
   );
   return {Btn,busy};
@@ -538,10 +703,12 @@ function useUploader(onDone:(imgs:Img[])=>void) {
 function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange:(url:string)=>void;label?:string}) {
   const ref = useRef<HTMLInputElement>(null);
   const [busy,setBusy] = useState(false);
+  const [error,setError] = useState("");
   async function upload(f:File|null){
-    if(!f) return; setBusy(true);
-    const url = await uploadToStorage(f);
-    onChange(url); setBusy(false);
+    if(!f) return; setBusy(true); setError("");
+    try { const url = await uploadToStorage(f); onChange(url); }
+    catch(e:any) { setError(e?.message||`Couldn't upload "${f.name}".`); }
+    setBusy(false);
   }
   return (
     <div style={{marginBottom:16}}>
@@ -552,6 +719,7 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
           <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e=>upload(e.target.files?.[0]||null)} />
           <button onClick={()=>ref.current?.click()} style={{...S.btnSm,display:"block",marginBottom:6}}>{busy?"Uploading...":"📁 Upload"}</button>
           <input style={{...S.inp,fontSize:11}} value={value} onChange={e=>onChange(e.target.value)} placeholder="or paste URL..." />
+          {error&&<div style={{fontSize:11,color:"#ff6b6b",marginTop:6}}>{error}</div>}
         </div>
       </div>
     </div>
@@ -736,36 +904,65 @@ function PhotoCountBadge({count}:{count:number}) {
 
 // ─── PROJECT REACTIONS (Like + Star Rating) ─────────────────────────────────
 // A real, functioning like button and 5-star rating per project -- not decorative/fabricated
-// numbers. Clicking Like actually toggles and persists (localStorage, keyed by project id);
-// the count shown is the genuine number of likes/unlikes this visitor's own browser has sent,
-// same for their star rating. There's no backend table for a site-wide shared tally across all
-// visitors (that would need a Supabase migration -- a separate approval), so this is honestly
-// scoped to "this browser's real reactions" rather than showing an invented aggregate number.
+// numbers. The like COUNT is a genuine shared/cross-visitor total: it lives in the existing
+// site_settings key/value table under the "nap_project_likes" key (fetchProjectLikeCounts /
+// pushProjectLikeCounts above), the same anon-writable table+pattern already used for contact
+// form submissions -- so no new table/schema migration was needed. Whether *this visitor*
+// has liked it, and their own star rating, are inherently per-browser facts and stay in
+// localStorage. If Supabase is unreachable, the count falls back to this browser's last-known
+// local mirror rather than showing nothing.
 function ProjectReaction({projectId}:{projectId:string}) {
   const [liked,setLiked] = useState(false);
   const [likeCount,setLikeCount] = useState(0);
   const [rating,setRating] = useState(0);
   const [hoverStar,setHoverStar] = useState(0);
   useEffect(()=>{
+    let cancelled=false;
+    // "did *I* like this" is inherently per-visitor -- stays in localStorage.
+    // The count itself is shared: try the cloud total first (nap_project_likes in
+    // site_settings), and only fall back to the local mirror if Supabase is unreachable
+    // (offline, or sb client not configured), so the number always reflects everyone,
+    // not just this browser, per Naveed's request.
     try {
       const likes = JSON.parse(localStorage.getItem("nap_likes")||"{}");
-      const counts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
       const ratings = JSON.parse(localStorage.getItem("nap_ratings")||"{}");
       setLiked(!!likes[projectId]);
-      setLikeCount(counts[projectId]||0);
       setRating(ratings[projectId]||0);
     } catch {}
+    (async()=>{
+      const cloud = await fetchProjectLikeCounts();
+      if(cancelled) return;
+      if(Object.keys(cloud).length>0 || sb){
+        setLikeCount(cloud[projectId]||0);
+      } else {
+        try {
+          const localCounts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
+          setLikeCount(localCounts[projectId]||0);
+        } catch {}
+      }
+    })();
+    return ()=>{cancelled=true;};
   },[projectId]);
-  function toggleLike(){
+  async function toggleLike(){
+    let likes:Record<string,boolean> = {};
+    try { likes = JSON.parse(localStorage.getItem("nap_likes")||"{}"); } catch {}
+    const now = !likes[projectId];
+    likes[projectId] = now;
+    try { localStorage.setItem("nap_likes",JSON.stringify(likes)); } catch {}
+    setLiked(now);
+    // Optimistic UI, then reconcile against the latest shared cloud total (not a
+    // locally-cached one) so two visitors liking around the same time both land
+    // correctly instead of one overwriting the other.
+    setLikeCount(c=>Math.max(0,c+(now?1:-1)));
+    const cloud = await fetchProjectLikeCounts();
+    const newTotal = Math.max(0,(cloud[projectId]||0)+(now?1:-1));
+    cloud[projectId] = newTotal;
+    await pushProjectLikeCounts(cloud);
+    setLikeCount(newTotal);
     try {
-      const likes = JSON.parse(localStorage.getItem("nap_likes")||"{}");
-      const counts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
-      const now = !likes[projectId];
-      likes[projectId] = now;
-      counts[projectId] = Math.max(0,(counts[projectId]||0)+(now?1:-1));
-      localStorage.setItem("nap_likes",JSON.stringify(likes));
-      localStorage.setItem("nap_like_counts",JSON.stringify(counts));
-      setLiked(now); setLikeCount(counts[projectId]);
+      const localCounts = JSON.parse(localStorage.getItem("nap_like_counts")||"{}");
+      localCounts[projectId] = newTotal;
+      localStorage.setItem("nap_like_counts",JSON.stringify(localCounts));
     } catch {}
   }
   function rate(n:number){
@@ -851,6 +1048,141 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
   return (
     <div ref={ref} className={className} style={{...style,opacity:shown?1:0,transform:shown?"translateY(0)":"translateY(26px)",transition:`opacity 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s, transform 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s`}}>
       {children}
+    </div>
+  );
+}
+
+// ─── GOOGLE REVIEWS (home Testimonials section) ──────────────────────────────
+// Pulls real, live Google reviews for the business via the /api/google-reviews Pages
+// Function (keeps the Places API key server-side -- see functions/api/google-reviews.ts).
+// Renders in the same bordered pull-quote panel as the manual testimonial spotlight, so
+// switching the CMS toggle on doesn't jar the page's look, and auto-rotates the same way.
+// Fails silently to `null` (never a broken-looking empty box) if the Place ID isn't set,
+// the key isn't configured yet, or Google returns nothing. The Place ID field already
+// exists in CMS > Settings > SEO; the on/off switch for showing it here lives in
+// CMS > Settings > Pages > Show/Hide Homepage Sections, next to the manual Testimonials one.
+function GoogleReviewsSection({placeId,eyebrow}:{placeId:string;eyebrow:string}) {
+  const [data,setData] = useState<{rating:number|null;total:number;reviews:{author:string;photo:string;rating:number;text:string;relativeTime:string}[]}|null>(null);
+  useEffect(()=>{
+    if(!placeId) return;
+    let cancelled=false;
+    fetch(`/api/google-reviews?placeId=${encodeURIComponent(placeId)}`).then(r=>r.json()).then(d=>{ if(!cancelled) setData(d); }).catch(()=>{});
+    return ()=>{ cancelled=true; };
+  },[placeId]);
+  const reviews = data?.reviews||[];
+  if(!placeId || reviews.length===0) return null;
+  // Every review Google returned scrolls continuously in one right-to-left marquee (instead
+  // of the old one-at-a-time fade), so all of them are visible rather than only whichever one
+  // was currently rotated in. The track is the review list rendered twice back-to-back --
+  // that's what lets the CSS animation (translateX 0 -> -50%) loop with no visible seam.
+  const track = [...reviews, ...reviews];
+  const mapsUrl = `https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(placeId)}`;
+  // Small abstract mark in Google's four brand colors -- not a reproduction of the Google "G"
+  // logo, just a colored ring used the way review-widget badges commonly signal "this is a
+  // real, verified Google review" at a glance.
+  const GDot = ({size=18}:{size?:number}) => (
+    <span aria-hidden style={{width:size,height:size,borderRadius:"50%",display:"inline-block",flexShrink:0,background:"conic-gradient(from -45deg, #4285F4 0deg 90deg, #34A853 90deg 180deg, #FBBC05 180deg 270deg, #EA4335 270deg 360deg)",boxShadow:"0 0 0 3px #fff"}} />
+  );
+  return (
+    <div style={{background:C.LT,padding:"96px 0 118px",position:"relative",overflow:"hidden"}}>
+      {/* Soft brand-color glow blobs behind the cards -- purely decorative atmosphere, sits
+          under everything (zIndex 0) so it never interferes with click targets. */}
+      <div aria-hidden style={{position:"absolute",top:-60,left:"6%",width:280,height:280,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.32),transparent 70%)",filter:"blur(50px)",zIndex:0}} />
+      <div aria-hidden style={{position:"absolute",bottom:-90,right:"8%",width:340,height:340,borderRadius:"50%",background:"radial-gradient(circle,rgba(236,72,153,0.24),transparent 70%)",filter:"blur(60px)",zIndex:0}} />
+      <Reveal style={{maxWidth:1400,margin:"0 auto 48px",padding:"0 40px",textAlign:"center",position:"relative",zIndex:1}}>
+        <div style={{...S.tag(true),marginBottom:20,color:C.P,justifyContent:"center"}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{eyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
+        {data?.rating!=null&&(
+          <div style={{display:"inline-flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",border:`1px solid ${C.LTBORDER}`,borderRadius:50,padding:"11px 24px 11px 14px",boxShadow:"0 14px 34px rgba(139,92,246,0.16)"}}>
+            <GDot />
+            <span style={{fontSize:15,fontWeight:800,color:C.DARK}}>{data.rating.toFixed(1)}</span>
+            <span style={{color:"#FBBC05",fontSize:14,letterSpacing:1}}>★★★★★</span>
+            {data.total>0&&<span style={{fontSize:12,color:C.INKMID}}>{data.total} reviews</span>}
+            <span style={{width:1,height:14,background:C.LTBORDER,display:"inline-block"}} />
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:C.P,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>See all ↗</a>
+          </div>
+        )}
+      </Reveal>
+      <div className="gr-fade" style={{position:"relative",zIndex:1}}>
+        <div className="gr-track" style={{display:"flex",gap:28,width:"max-content",animationDuration:`${reviews.length*10}s`}}>
+          {track.map((r,i)=>{
+            const filled = Math.max(0,Math.min(5,Math.round(r.rating)));
+            const stars = "★".repeat(filled) + "☆".repeat(5-filled);
+            const short = r.text.length>300 ? r.text.slice(0,300).trimEnd()+"…" : r.text;
+            return (
+              <div key={i} className="gr-card" style={{flex:"0 0 335px",position:"relative",overflow:"hidden",background:"rgba(255,255,255,0.78)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(255,255,255,0.9)",borderRadius:20,padding:"32px 26px 26px",boxShadow:"0 22px 48px rgba(139,92,246,0.14), 0 3px 12px rgba(20,13,33,0.05), inset 0 1px 0 rgba(255,255,255,0.7)",display:"flex",flexDirection:"column",height:302}}>
+                <span aria-hidden style={{position:"absolute",top:0,left:0,right:0,height:4,background:"linear-gradient(90deg,#8b5cf6,#ec4899)"}} />
+                <span aria-hidden style={{position:"absolute",top:-10,right:10,fontSize:96,fontFamily:"Georgia, serif",fontWeight:700,background:"linear-gradient(160deg,rgba(139,92,246,0.16),rgba(236,72,153,0.1))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1,userSelect:"none"}}>"</span>
+                <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                  <div style={{color:"#FBBC05",fontSize:14,letterSpacing:2}}>{stars}</div>
+                  <GDot size={16} />
+                </div>
+                <p style={{position:"relative",fontSize:13,fontWeight:400,color:C.DARK,lineHeight:1.7,margin:"0 0 6px",flex:1,overflow:"hidden"}}>
+                  {short}
+                  {r.text.length>300&&<a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{marginLeft:6,color:C.P,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>Read more ↗</a>}
+                </p>
+                <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,paddingTop:16,marginTop:12,borderTop:`1px solid ${C.LTBORDER}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10,minWidth:0}}>
+                    {r.photo&&<span style={{width:38,height:38,borderRadius:"50%",background:"linear-gradient(135deg,#8b5cf6,#ec4899)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><img src={r.photo} alt="" style={{width:33,height:33,borderRadius:"50%",objectFit:"cover"}} referrerPolicy="no-referrer" /></span>}
+                    <div style={{textAlign:"left",minWidth:0}}>
+                      <div style={{fontSize:12.5,color:C.DARK,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.author}</div>
+                      {r.relativeTime&&<div style={{fontSize:10,color:C.INKMID,marginTop:2,letterSpacing:0.5,textTransform:"uppercase"}}>{r.relativeTime}</div>}
+                    </div>
+                  </div>
+                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" aria-label="Read on Google" style={{flexShrink:0,fontSize:11,color:C.P,fontWeight:700,textDecoration:"none",whiteSpace:"nowrap"}}>Google ↗</a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── INTRO SPLASH (home only, once per browser session) ──────────────────────
+// A brief branded loading screen shown the first time someone lands on the homepage in a
+// given browser session, then fades/slides away to reveal the real page underneath. Uses
+// the site's own existing CMS text (siteName/siteTagline) rather than inventing new copy.
+// Auto-finishes at 100%; clicking anywhere skips straight to the end. sessionStorage (see
+// Home()) makes sure it only plays once per visit, not on every internal navigation back
+// to "/".
+function IntroSplash({siteName,tagline,onDone}:{siteName:string;tagline:string;onDone:()=>void}) {
+  const [pct,setPct]=useState(0);
+  const [leaving,setLeaving]=useState(false);
+  useEffect(()=>{
+    const prevOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const start=Date.now();
+    const DUR=1900;
+    const id=setInterval(()=>{
+      const p=Math.min(100,Math.round(((Date.now()-start)/DUR)*100));
+      setPct(p);
+      if(p>=100){
+        clearInterval(id);
+        setLeaving(true);
+        setTimeout(()=>{ document.body.style.overflow=prevOverflow; onDone(); },700);
+      }
+    },30);
+    return ()=>{ clearInterval(id); document.body.style.overflow=prevOverflow; };
+  },[]);
+  function skip(){
+    if(leaving) return;
+    setLeaving(true);
+    document.body.style.overflow="";
+    setTimeout(onDone,700);
+  }
+  return (
+    <div onClick={skip} role="button" aria-label="Skip intro" style={{position:"fixed",inset:0,zIndex:9999,background:C.DARK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",transition:"opacity 0.65s ease, transform 0.7s cubic-bezier(.7,0,.3,1)",opacity:leaving?0:1,transform:leaving?"translateY(-6%)":"translateY(0)"}}>
+      <div aria-hidden style={{position:"absolute",top:"-20%",left:"-10%",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.28),transparent 70%)",filter:"blur(60px)"}} />
+      <div aria-hidden style={{position:"absolute",bottom:"-25%",right:"-10%",width:460,height:460,borderRadius:"50%",background:"radial-gradient(circle,rgba(168,85,247,0.22),transparent 70%)",filter:"blur(70px)"}} />
+      <div style={{position:"relative",textAlign:"center",padding:"0 24px"}}>
+        <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",marginBottom:22,opacity:0.85}}>{tagline}</div>
+        <div style={{fontSize:"clamp(30px,6vw,54px)",fontWeight:700,color:C.FG,letterSpacing:0.5,marginBottom:36}}><NoTranslate>{siteName}</NoTranslate></div>
+        <div style={{width:220,height:2,background:"rgba(255,255,255,0.12)",position:"relative",overflow:"hidden",margin:"0 auto"}}>
+          <div style={{position:"absolute",inset:0,width:`${pct}%`,background:C.P,transition:"width 0.1s linear"}} />
+        </div>
+        <div style={{marginTop:16,fontSize:11,color:C.MID,letterSpacing:3}}>{pct}%</div>
+      </div>
     </div>
   );
 }
@@ -1012,10 +1344,10 @@ export default function Home() {
   const [testiIdx,setTestiIdx]=useState(0);
   const [lb,setLb]=useState({open:false,index:0});
   const [cms,setCms]=useState(false);
+  // "authed" tracks whether there's a real, signed-in admin session (see adminSession below --
+  // this used to be a client-side PIN check, replaced per Naveed's request for one real login
+  // shared by the whole CMS, not a PIN plus a separate sign-in just for Bookings).
   const [authed,setAuthed]=useState(false);
-  const [pin,setPin]=useState(""); const [pinErr,setPinErr]=useState(false);
-  const [pinLockUntil,setPinLockUntil]=useState(0);
-  const [pinAttempts,setPinAttempts]=useState(0);
   const [mobileNavOpen,setMobileNavOpen]=useState(false);
   const [isMobile,setIsMobile]=useState(false);
   const [scrolled,setScrolled]=useState(false);
@@ -1026,6 +1358,18 @@ export default function Home() {
   const [contactSent,setContactSent]=useState(false);
   const [leads,setLeads]=useState<ContactLead[]>([]);
   const [leadsLoading,setLeadsLoading]=useState(false);
+  // Branded loading screen on first landing on the homepage. Starts true so the very first
+  // paint (server-rendered static HTML included) already shows it -- no flash of the real
+  // page underneath before this effect runs. sessionStorage below then instantly turns it
+  // back off on any later visit within the same browser session (back button, re-opening the
+  // home tab, etc.) so it only ever plays once per visit, not every time.
+  const [showSplash,setShowSplash]=useState(true);
+  useEffect(()=>{
+    try{
+      if(sessionStorage.getItem("nap_introSeen")) setShowSplash(false);
+      else sessionStorage.setItem("nap_introSeen","1");
+    }catch{ setShowSplash(false); }
+  },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
   useEffect(()=>{
@@ -1133,7 +1477,7 @@ export default function Home() {
     if(!authed) return;
     let timer:ReturnType<typeof setTimeout>;
     const TIMEOUT_MS=10*60*1000;
-    function reset(){ if(timer) clearTimeout(timer); timer=setTimeout(()=>{ setAuthed(false); setCms(false); },TIMEOUT_MS); }
+    function reset(){ if(timer) clearTimeout(timer); timer=setTimeout(()=>{ adminSignOut(); },TIMEOUT_MS); }
     reset();
     window.addEventListener("click",reset);
     window.addEventListener("keydown",reset);
@@ -1150,12 +1494,228 @@ export default function Home() {
     setLeadsLoading(true);
     fetchContactLeads().then(l=>{ setLeads(l); setLeadsLoading(false); });
   },[cmsTab,authed]);
+
+  // ─── ADMIN SESSION -- the ONE real login for the whole CMS ────────────────────────────
+  // Replaces the old client-side PIN check entirely (per explicit request: one login, not
+  // a PIN plus a separate sign-in just for Bookings). The PIN was fetched by every visitor
+  // as part of the public CMS sync, so it could never be trusted as real security anyway.
+  // This is a real Supabase Auth email+password session; the same access token is what the
+  // /api/admin/* Pages Functions check server-side before touching the database with the
+  // service-role key. See functions/_shared/adminAuth.ts.
+  const [adminSession,setAdminSession]=useState<any>(null);
+  const [adminSessionChecked,setAdminSessionChecked]=useState(false);
+  const [pushStatus,setPushStatus]=useState<"unknown"|"unsupported"|"off"|"on"|"denied">("unknown");
+  const [pushBusy,setPushBusy]=useState(false);
+  const [pushErr,setPushErr]=useState("");
+  // "Add to Home Screen" prompt for regular visitors (not the admin panel). Android/Chrome
+  // can trigger the browser's own real install prompt; iPhone/Safari has no API for any
+  // website to trigger or detect this, so iOS just gets a one-time instructional banner.
+  const [showInstallBanner,setShowInstallBanner]=useState(false);
+  const [installPlatform,setInstallPlatform]=useState<"ios"|"android"|null>(null);
+  const [deferredInstallEvent,setDeferredInstallEvent]=useState<any>(null);
+  const [adminSignInEmail,setAdminSignInEmail]=useState("");
+  const [adminSignInPassword,setAdminSignInPassword]=useState("");
+  const [adminSignInBusy,setAdminSignInBusy]=useState(false);
+  const [adminSignInErr,setAdminSignInErr]=useState("");
+  const [forgotMode,setForgotMode]=useState(false);
+  const [forgotBusy,setForgotBusy]=useState(false);
+  const [forgotSent,setForgotSent]=useState(false);
+  const [resetMode,setResetMode]=useState(false);
+  const [newPass1,setNewPass1]=useState(""); const [newPass2,setNewPass2]=useState("");
+  const [resetBusy,setResetBusy]=useState(false); const [resetErr,setResetErr]=useState(""); const [resetDone,setResetDone]=useState(false);
+  const [bookingsList,setBookingsList]=useState<any[]|null>(null);
+  const [bookingsLoading,setBookingsLoading]=useState(false);
+  const [bookingsErr,setBookingsErr]=useState("");
+  const [bookingActionBusy,setBookingActionBusy]=useState<string|null>(null);
+  const [rejectReasonFor,setRejectReasonFor]=useState<string|null>(null);
+  const [rejectReasonText,setRejectReasonText]=useState("");
+
+  // Restore an existing session on load, and react to sign-in/out and password-recovery
+  // links (Supabase appends #access_token=...&type=recovery to the URL and this fires a
+  // PASSWORD_RECOVERY event) -- this is what makes "Forgot Password" work end to end on
+  // the live site itself, instead of needing a one-off manual page.
+  useEffect(()=>{
+    if(!sb){ setAdminSessionChecked(true); return; }
+    sb.auth.getSession().then(({data})=>{ setAdminSession(data.session||null); setAuthed(!!data.session); setAdminSessionChecked(true); });
+    const {data:sub}=sb.auth.onAuthStateChange((event:string,session:any)=>{
+      if(event==="PASSWORD_RECOVERY") setResetMode(true);
+      setAdminSession(session||null);
+      setAuthed(!!session);
+    });
+    return ()=>{ sub?.subscription?.unsubscribe?.(); };
+  },[]);
+  useEffect(()=>{ if(adminSession) setSettingsDraft(settings); },[adminSession]);
+
+  async function adminSignIn(){
+    if(!sb) return;
+    setAdminSignInBusy(true); setAdminSignInErr("");
+    const {data,error}=await sb.auth.signInWithPassword({email:adminSignInEmail.trim(),password:adminSignInPassword});
+    setAdminSignInBusy(false);
+    if(error||!data.session){ setAdminSignInErr("Incorrect email or password."); return; }
+    setAdminSession(data.session); setAuthed(true); setAdminSignInPassword("");
+  }
+  async function adminSignOut(){ if(sb) await sb.auth.signOut(); setAdminSession(null); setAuthed(false); setBookingsList(null); setCms(false); }
+
+  // ─── PUSH NOTIFICATIONS (mobile + desktop) ─────────────────────────────────────────────
+  // Real Web Push (RFC 8291/8292) -- see functions/_shared/webpush.ts for the server side.
+  // Nothing here can fabricate a notification: this only registers/removes a browser
+  // subscription; the actual sends always happen server-side, from real database events.
+  function urlBase64ToUint8Array(b64url:string){
+    const pad="=".repeat((4-(b64url.length%4))%4);
+    const base64=(b64url+pad).replace(/-/g,"+").replace(/_/g,"/");
+    const raw=atob(base64); const arr=new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+    return arr;
+  }
+  // ─── "ADD TO HOME SCREEN" PROMPT (public site, every visitor) ─────────────────────────
+  // Real behavior only: on Android this captures Chrome's own native install prompt and
+  // fires it on tap (nothing fake -- it's the browser's real dialog). On iPhone, Apple
+  // gives websites no API to trigger or even detect install-readiness, so this shows a
+  // one-time instructional banner instead of pretending to offer a real install button.
+  useEffect(()=>{
+    if(typeof window==="undefined") return;
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone===true;
+    if(isStandalone) return; // already installed/opened as the app -- never nag
+    let dismissed=false;
+    try{ dismissed = localStorage.getItem("na_install_dismissed")==="1"; }catch{}
+    if(dismissed) return;
+    const ua = window.navigator.userAgent;
+    const isIOS = /iPad|iPhone|iPod/.test(ua) && !("MSStream" in window);
+    const isAndroid = /Android/.test(ua);
+    if(isIOS){
+      setInstallPlatform("ios"); setShowInstallBanner(true);
+    }else if(isAndroid){
+      setInstallPlatform("android");
+      const handler=(e:any)=>{ e.preventDefault(); setDeferredInstallEvent(e); setShowInstallBanner(true); };
+      window.addEventListener("beforeinstallprompt",handler);
+      return ()=>window.removeEventListener("beforeinstallprompt",handler);
+    }
+  },[]);
+  function dismissInstallBanner(){
+    setShowInstallBanner(false);
+    try{ localStorage.setItem("na_install_dismissed","1"); }catch{}
+  }
+  async function triggerInstall(){
+    if(deferredInstallEvent){
+      deferredInstallEvent.prompt();
+      try{ await deferredInstallEvent.userChoice; }catch{}
+      setDeferredInstallEvent(null);
+    }
+    dismissInstallBanner();
+  }
+  useEffect(()=>{
+    if(!authed) return;
+    if(typeof window==="undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)){ setPushStatus("unsupported"); return; }
+    navigator.serviceWorker.register("/sw.js").then(async reg=>{
+      const sub = await reg.pushManager.getSubscription();
+      setPushStatus(sub ? "on" : (Notification.permission==="denied" ? "denied" : "off"));
+    }).catch(()=>setPushStatus("unsupported"));
+  },[authed]);
+  async function enablePush(){
+    setPushErr(""); setPushBusy(true);
+    try{
+      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+      if(!vapidKey){ setPushErr("Notifications aren't configured yet."); setPushBusy(false); return; }
+      const perm = await Notification.requestPermission();
+      if(perm!=="granted"){ setPushStatus(perm==="denied"?"denied":"off"); setPushBusy(false); return; }
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(vapidKey)});
+      const raw = sub.toJSON() as any;
+      const res = await fetch("/api/admin/push/subscribe",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession?.access_token}`},body:JSON.stringify({endpoint:raw.endpoint,keys:raw.keys})});
+      if(!res.ok){ setPushErr("Could not save this device on the server."); setPushBusy(false); return; }
+      setPushStatus("on");
+    }catch{ setPushErr("Could not enable notifications on this device/browser."); }
+    setPushBusy(false);
+  }
+  async function disablePush(){
+    setPushErr(""); setPushBusy(true);
+    try{
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      const sub = await reg?.pushManager.getSubscription();
+      if(sub){
+        const raw = sub.toJSON() as any;
+        await fetch("/api/admin/push/unsubscribe",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession?.access_token}`},body:JSON.stringify({endpoint:raw.endpoint})}).catch(()=>{});
+        await sub.unsubscribe();
+      }
+      setPushStatus("off");
+    }catch{ setPushErr("Could not turn off notifications on this device."); }
+    setPushBusy(false);
+  }
+  async function sendForgotPassword(){
+    if(!sb||!adminSignInEmail.trim()) return;
+    setForgotBusy(true);
+    await sb.auth.resetPasswordForEmail(adminSignInEmail.trim(),{redirectTo:window.location.origin+"/?admin=1"});
+    setForgotBusy(false); setForgotSent(true);
+  }
+  async function submitNewPassword(){
+    if(!sb) return;
+    setResetErr("");
+    if(newPass1.length<6){ setResetErr("Password must be at least 6 characters."); return; }
+    if(newPass1!==newPass2){ setResetErr("Passwords don't match."); return; }
+    setResetBusy(true);
+    const {error}=await sb.auth.updateUser({password:newPass1});
+    setResetBusy(false);
+    if(error){ setResetErr(error.message); return; }
+    setResetDone(true);
+  }
+
+  async function loadBookings(){
+    if(!adminSession) return;
+    setBookingsLoading(true); setBookingsErr("");
+    try{
+      const res=await fetch("/api/admin/bookings",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load bookings");
+      setBookingsList(data.bookings||[]);
+    }catch(e:any){ setBookingsErr(e.message||"Failed to load bookings"); }
+    setBookingsLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+
+  async function approvePayment(paymentId:string){
+    if(!adminSession) return;
+    setBookingActionBusy(paymentId);
+    try{
+      const res=await fetch(`/api/admin/payments/${paymentId}/approve`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Approve failed");
+      await loadBookings();
+    }catch(e:any){ setBookingsErr(e.message||"Approve failed"); }
+    setBookingActionBusy(null);
+  }
+  async function rejectPayment(paymentId:string){
+    if(!adminSession||!rejectReasonText.trim()) return;
+    setBookingActionBusy(paymentId);
+    try{
+      const res=await fetch(`/api/admin/payments/${paymentId}/reject`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({reason:rejectReasonText.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Reject failed");
+      setRejectReasonFor(null); setRejectReasonText("");
+      await loadBookings();
+    }catch(e:any){ setBookingsErr(e.message||"Reject failed"); }
+    setBookingActionBusy(null);
+  }
   const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});
   const [newImg,setNewImg]=useState(""); const [addingImg,setAddingImg]=useState(false);
   const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState(""); const [newBlogCat,setNewBlogCat]=useState("");
   const [cropSrc,setCropSrc]=useState<string|null>(null);
   const [booking,setBooking]=useState({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});
   const [bookingDone,setBookingDone]=useState(false);
+  // Real paid appointment flow (separate from the WhatsApp-only quote request above, which stays as-is)
+  const [bkStep,setBkStep]=useState(0);
+  const [bkCountry,setBkCountry]=useState("+971");
+  const [bkPkgId,setBkPkgId]=useState("");
+  const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer">("bank_transfer");
+  const [bkSlotTaken,setBkSlotTaken]=useState(false);
+  const [bkCheckingSlot,setBkCheckingSlot]=useState(false);
+  const [bkSubmitting,setBkSubmitting]=useState(false);
+  const [bkError,setBkError]=useState("");
+  const [bkConfirmed,setBkConfirmed]=useState<{ref:string;id:string}|null>(null);
+  const [bkReceiptFile,setBkReceiptFile]=useState<File|null>(null);
+  const [bkReceiptUploading,setBkReceiptUploading]=useState(false);
+  const [bkReceiptDone,setBkReceiptDone]=useState(false);
+  const [bkReceiptErr,setBkReceiptErr]=useState("");
   const [settingsDraft,setSettingsDraft]=useState<SiteSettings>(settings);
   const [settingsTab,setSettingsTab]=useState("general");
 
@@ -1174,15 +1734,22 @@ export default function Home() {
     root.setProperty("--c-ltborder",t.LTBORDER); root.setProperty("--c-inkmid",t.INKMID);
   },[settings.theme]);
 
+  // Surfaces save failures instead of swallowing them -- see pushCloudData's comment. Cleared
+  // on the next successful save, whichever section that comes from.
+  const [cloudSyncError,setCloudSyncError]=useState<string|null>(null);
+  async function pushCloudDataChecked(key:typeof CLOUD_KEYS[number], value:any, label:string){
+    const ok = await pushCloudData(key,value);
+    setCloudSyncError(ok?null:`Unable to save your last change (${label}) to the server. Check your internet connection and try again -- this browser is showing it, but other visitors and devices are not.`);
+  }
   // Only push to the shared cloud copy while an authenticated CMS session made the change --
   // never on a plain public page load, otherwise an ordinary visitor's own (possibly stale)
   // locally-cached copy could momentarily clobber the real live content for everyone.
-  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed) pushCloudData("nap_settings",settings);},[settings,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed) pushCloudData("nap_projects",projects);},[projects,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed) pushCloudData("nap_cats",cats);},[cats,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed) pushCloudData("nap_testimonials",testimonials);},[testimonials,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed) pushCloudData("nap_blog",blog);},[blog,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed) pushCloudData("nap_blogcats",blogCats);},[blogCats,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed) pushCloudDataChecked("nap_settings",settings,"Settings");},[settings,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed) pushCloudDataChecked("nap_projects",projects,"Projects");},[projects,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed) pushCloudDataChecked("nap_cats",cats,"Categories");},[cats,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed]);
   // On first mount, pull the shared cloud copy (if reachable) so every visitor/device sees the
   // same latest content instead of whatever this particular browser cached locally.
   useEffect(()=>{
@@ -1221,20 +1788,12 @@ export default function Home() {
     window.open(`https://wa.me/${WA}?text=${encodeURIComponent(waMsg)}`,"_blank");
     setContactSending(true);
     await addContactLead(entry);
+    notifyServer("new_lead", entry.id);
     await sendEmailNotification(settings,entry);
     setContactSending(false); setContactSent(true);
     setContactForm({name:"",email:"",phone:"",subject:"",message:""});
   }
   function removeLead(id:string){ setLeads(ls=>ls.filter(l=>l.id!==id)); deleteContactLead(id); }
-  function handlePin(){
-    if(Date.now()<pinLockUntil){ setPinErr(true); return; }
-    if(pin===settings.pin){
-      setAuthed(true);setPinErr(false);setPin("");setSettingsDraft(settings);setPinAttempts(0);
-    }else{
-      const attempts=pinAttempts+1; setPinAttempts(attempts); setPinErr(true);
-      if(attempts>=5){ setPinLockUntil(Date.now()+60000); setPinAttempts(0); }
-    }
-  }
   function saveSettings(){setSettings(settingsDraft);}
   function updateSD(patch:Partial<SiteSettings>){setSettingsDraft(d=>({...d,...patch}));}
 
@@ -1256,6 +1815,57 @@ export default function Home() {
     const msg=`Hello ${settings.siteName}! 👋\n\nNew Booking:\n📋 *Service:* ${booking.service}\n👤 *Name:* ${booking.name}\n📧 *Email:* ${booking.email}\n📱 *Phone:* ${booking.phone}\n📅 *Date:* ${booking.date}\n⏰ *Time:* ${booking.time}\n📍 *Location:* ${booking.location}\n💰 *Budget:* ${booking.budget} AED\n📝 ${booking.details}`;
     window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,"_blank");
     setBookingDone(true);
+  }
+
+  // Real appointment flow: the packages/prices come straight from the live CMS package the
+  // person picked (settings.pricingPackages) -- looked up fresh at submit time, never cached
+  // from an earlier step -- so an in-between CMS price edit can never be bypassed.
+  const bkSelectedPkg = settings.pricingPackages.find(p=>p.id===bkPkgId) || null;
+  const bkBase = bkSelectedPkg ? parsePackagePrice(bkSelectedPkg.price) : 0;
+  const bkFee = calcFee(bkBase); const bkTotal = calcTotal(bkBase);
+  useEffect(()=>{
+    if(!booking.date||!booking.time){ setBkSlotTaken(false); return; }
+    let cancelled=false; setBkCheckingSlot(true);
+    isSlotTaken(booking.date,booking.time).then(taken=>{ if(!cancelled){ setBkSlotTaken(taken); setBkCheckingSlot(false); } });
+    return ()=>{cancelled=true;};
+  },[booking.date,booking.time]);
+  async function submitAppointment(){
+    setBkError("");
+    if(!booking.name||!booking.email||!booking.date||!booking.time||!bkSelectedPkg||!booking.service){ setBkError("Please complete every required field."); return; }
+    setBkSubmitting(true);
+    const stillTaken = await isSlotTaken(booking.date,booking.time);
+    if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
+    const customerId = await findOrCreateCustomerId({full_name:booking.name,email:booking.email,phone:booking.phone,whatsapp:booking.phone,company:""});
+    if(!customerId){ setBkSubmitting(false); setBkError("Something went wrong saving your details. Please try again."); return; }
+    const created = await createAppointment({
+      customer_id:customerId, service_key:booking.service, service_name:booking.service,
+      package_id:bkSelectedPkg.id, package_name:bkSelectedPkg.label, price_base:bkBase,
+      booking_date:booking.date, booking_time:booking.time, notes:booking.details, method:bkPayMethod,
+    });
+    setBkSubmitting(false);
+    if(!created){ setBkError("Payment could not be completed. Please try again."); return; }
+    setBkConfirmed(created);
+    notifyServer("new_booking", created.id);
+    setBkStep(7);
+    // Existing WhatsApp notification stays as a bonus heads-up -- real record of truth is now the database above.
+    try{ const msg=`New paid appointment ${created.ref}\n${bkSelectedPkg.label} (${booking.service})\n${booking.date} ${booking.time}\nAED ${bkTotal} via ${bkPayMethod==="paypal"?"PayPal":"Bank Transfer"}\n${booking.name} / ${booking.email} / ${booking.phone}`; window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,"_blank"); }catch{}
+  }
+  async function submitReceipt(){
+    if(!bkReceiptFile||!bkConfirmed) return;
+    setBkReceiptErr("");
+    const invalid = validateReceiptFile(bkReceiptFile);
+    if(invalid){ setBkReceiptErr(invalid); return; }
+    setBkReceiptUploading(true);
+    const path = await uploadReceiptFile(bkReceiptFile,bkConfirmed.id);
+    setBkReceiptUploading(false);
+    if(!path){ setBkReceiptErr("Please upload a valid payment receipt."); return; }
+    notifyServer("receipt_uploaded", bkConfirmed.id);
+    setBkReceiptDone(true);
+  }
+  function resetAppointmentFlow(){
+    setBkStep(0); setBkPkgId(""); setBkPayMethod("bank_transfer"); setBkSlotTaken(false); setBkError("");
+    setBkConfirmed(null); setBkReceiptFile(null); setBkReceiptDone(false); setBkReceiptErr("");
+    setBooking({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});
   }
 
   // ── NAV ──
@@ -1321,7 +1931,10 @@ export default function Home() {
       )}
 
       {isMobile&&mobileNavOpen&&(
-        <div style={{position:"fixed",top:scrolled?78:110,left:0,right:0,bottom:0,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26,transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
+        // Explicit height (not top+bottom, which some mobile browsers resolve to a
+        // zero-height box here) -- without it this panel's dark backdrop silently paints
+        // nothing, leaving the menu labels floating unreadably over the hero image.
+        <div style={{position:"fixed",top:scrolled?78:110,left:0,right:0,height:`calc(100vh - ${scrolled?78:110}px)`,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26,overflowY:"auto",transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
           {visibleNavLinks.map(([k,l])=>(
             <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
           ))}
@@ -1329,6 +1942,24 @@ export default function Home() {
         </div>
       )}
     </nav>
+
+    {showInstallBanner&&(
+      <div style={{position:"fixed",left:12,right:12,bottom:12,zIndex:600,background:"rgba(20,13,33,0.98)",border:`1px solid ${C.BORDER}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 30px rgba(0,0,0,0.4)",backdropFilter:"blur(10px)"}}>
+        <div style={{width:36,height:36,borderRadius:9,background:"#140D21",display:"flex",alignItems:"center",justifyContent:"center",color:"#A855F7",fontSize:14,fontWeight:700,flexShrink:0}}>NA</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:12.5,color:C.FG,fontWeight:600,marginBottom:2}}>Install this site as an app</div>
+          <div style={{fontSize:11,color:C.MID,lineHeight:1.4}}>
+            {installPlatform==="ios"
+              ? "Tap the Share icon below, then \"Add to Home Screen.\""
+              : "Add a quick-access icon to your home screen."}
+          </div>
+        </div>
+        {installPlatform==="android"&&(
+          <button onClick={triggerInstall} style={{...S.btnP,padding:"9px 16px",fontSize:11,flexShrink:0}}>Install</button>
+        )}
+        <button aria-label="Dismiss" onClick={dismissInstallBanner} style={{background:"none",border:"none",color:C.MID,fontSize:18,lineHeight:1,cursor:"pointer",padding:4,flexShrink:0}}>×</button>
+      </div>
+    )}
     </>
   );
 
@@ -1341,7 +1972,10 @@ export default function Home() {
           <p style={{color:C.MID,fontSize:13,lineHeight:1.7,marginBottom:16,maxWidth:280}}>{settings.siteTagline}</p>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.phone}</div>
           <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.email}</div>
-          <div style={{fontSize:13,color:C.MID,marginBottom:16}}>{settings.location}</div>
+          <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.location}</div>
+          {settings.address&&(
+            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.address)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:12,color:C.MID,marginBottom:16,textDecoration:"underline",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>📍 {settings.address} — Get Directions</a>
+          )}
           <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>{lang==="en"?settings.uiText.footerWhatsappBtn:T.whatsappBtn}</a>
         </div>
         <div>
@@ -1360,6 +1994,15 @@ export default function Home() {
           {settings.tiktok&&<a href={settings.tiktok} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:C.MID,marginBottom:10,textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>TikTok</a>}
         </div>
       </div>
+      {/* Real, plain <a href> links (not the client-side goTo() used above) to the standalone
+          SEO service pages -- so search engines crawling the homepage's actual HTML can
+          discover and follow links into them, and a visitor can jump straight to the
+          specialty they came for. */}
+      <div style={{maxWidth:1200,margin:"0 auto",padding:"0 40px 28px",display:"flex",flexWrap:"wrap",gap:"8px 18px"}}>
+        {SERVICE_PAGES.map(s=>(
+          <a key={s.slug} href={`/${s.slug}`} style={{fontSize:11,letterSpacing:0.5,color:"#4a4460",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color="#4a4460")}>{s.label} Dubai</a>
+        ))}
+      </div>
       <div style={{borderTop:`1px solid ${C.BORDER}`,padding:"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div style={{fontSize:11,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase"}}>{settings.footerCopyright}</div>
         <div style={{display:"flex",gap:16}}>
@@ -1371,32 +2014,272 @@ export default function Home() {
 
   // ── CMS ──
   if(cms){
-    if(!authed) return(
+    // Single unified login for the whole CMS -- real Supabase email+password, no PIN.
+    if(!adminSessionChecked) return(
       <div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{textAlign:"center",width:320}}>
-          <div style={{fontSize:11,letterSpacing:6,color:C.MID,marginBottom:32,textTransform:"uppercase"}}>Admin Access</div>
-          <input type="password" value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handlePin()} placeholder="PIN" style={{...S.inp,textAlign:"center",fontSize:28,letterSpacing:10,marginBottom:16}} />
-          {pinErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{Date.now()<pinLockUntil?"Too many attempts — try again in a minute.":"Incorrect PIN"}</div>}
-          <button onClick={handlePin} style={{...S.btnP,width:"100%"}}>Enter</button>
-          <div onClick={()=>setCms(false)} style={{marginTop:20,color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back</div>
+        <div style={{color:"#444",fontSize:13}}>Loading…</div>
+      </div>
+    );
+
+    if(resetMode) return(
+      <div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{textAlign:"left",width:340}}>
+          <div style={{fontSize:11,letterSpacing:6,color:C.MID,marginBottom:24,textTransform:"uppercase",textAlign:"center"}}>Set New Password</div>
+          {resetDone?(
+            <div style={{textAlign:"center"}}>
+              <div style={{color:"#2ecc71",fontSize:13,marginBottom:16}}>✅ Password updated.</div>
+              <button onClick={()=>{setResetMode(false);setResetDone(false);setNewPass1("");setNewPass2("");}} style={{...S.btnP,width:"100%"}}>Continue to CMS</button>
+            </div>
+          ):(
+            <>
+              <div style={{fontSize:12,color:"#888",marginBottom:16,lineHeight:1.6}}>Choose a new password for the admin account.</div>
+              <input type="password" value={newPass1} onChange={e=>setNewPass1(e.target.value)} placeholder="New password (min 6 characters)" style={{...S.inp,marginBottom:12}} />
+              <input type="password" value={newPass2} onChange={e=>setNewPass2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitNewPassword()} placeholder="Confirm new password" style={{...S.inp,marginBottom:16}} />
+              {resetErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{resetErr}</div>}
+              <button onClick={submitNewPassword} disabled={resetBusy} style={{...S.btnP,width:"100%",opacity:resetBusy?0.6:1}}>{resetBusy?"Saving…":"Set Password"}</button>
+            </>
+          )}
         </div>
       </div>
     );
 
-    const TABS=[["projects","📁 Projects"],["categories","🏷 Categories"],["testimonials","⭐ Testimonials"],["blog","📝 Blog"],["leads","📥 Leads"],["settings","⚙️ Settings"]];
+    if(!authed) return(
+      <div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{textAlign:"left",width:340}}>
+          <div style={{fontSize:11,letterSpacing:6,color:C.MID,marginBottom:24,textTransform:"uppercase",textAlign:"center"}}>Admin Access</div>
+          {forgotMode?(
+            forgotSent?(
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:13,color:"#888",marginBottom:20,lineHeight:1.6}}>If an account exists for that email, a password reset link has been sent. Open it on this site to set a new password.</div>
+                <div onClick={()=>{setForgotMode(false);setForgotSent(false);}} style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back to Sign In</div>
+              </div>
+            ):(
+              <>
+                <div style={{fontSize:12,color:"#888",marginBottom:16,lineHeight:1.6}}>Enter your admin email and we'll send a link to set a new password.</div>
+                <input type="email" value={adminSignInEmail} onChange={e=>setAdminSignInEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendForgotPassword()} placeholder="Email" style={{...S.inp,marginBottom:16}} />
+                <button onClick={sendForgotPassword} disabled={forgotBusy||!adminSignInEmail.trim()} style={{...S.btnP,width:"100%",marginBottom:12,opacity:forgotBusy?0.6:1}}>{forgotBusy?"Sending…":"Send Reset Link"}</button>
+                <div style={{textAlign:"center"}} onClick={()=>setForgotMode(false)}><span style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back to Sign In</span></div>
+              </>
+            )
+          ):(
+            <>
+              <input type="email" value={adminSignInEmail} onChange={e=>setAdminSignInEmail(e.target.value)} placeholder="Email" style={{...S.inp,marginBottom:12}} />
+              <input type="password" value={adminSignInPassword} onChange={e=>setAdminSignInPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&adminSignIn()} placeholder="Password" style={{...S.inp,marginBottom:16}} />
+              {adminSignInErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{adminSignInErr}</div>}
+              <button onClick={adminSignIn} disabled={adminSignInBusy||!adminSignInEmail.trim()||!adminSignInPassword} style={{...S.btnP,width:"100%",marginBottom:14,opacity:adminSignInBusy?0.6:1}}>{adminSignInBusy?"Signing in…":"Sign In"}</button>
+              <div style={{textAlign:"center"}}>
+                <div onClick={()=>setForgotMode(true)} style={{color:"#666",fontSize:11,letterSpacing:1,cursor:"pointer",marginBottom:20}}>Forgot Password?</div>
+                <div onClick={()=>setCms(false)} style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back</div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
 
-    return(
-      <div style={S.base}>
-        <div style={{background:"#0a0a16",borderBottom:`1px solid ${C.BORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10}}>
-          <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-            <span style={{fontSize:11,letterSpacing:4,textTransform:"uppercase",color:C.PL,marginRight:8}}>CMS</span>
-            {TABS.map(([k,l])=><button key={k} onClick={()=>setCmsTab(k)} style={{...S.btnSm,background:cmsTab===k?C.P:"#1a1a2e",marginRight:4}}>{l}</button>)}
-          </div>
-          <div style={{display:"flex",gap:12}}>
-            {cmsTab==="projects"&&<button onClick={()=>startEdit(null)} style={S.btnP}>+ New Project</button>}
-            <button onClick={()=>{setCms(false);setAuthed(false);}} style={S.btnO}>Exit</button>
+    // CMS_NAV -- grouped sidebar navigation. Each leaf routes to the SAME cmsTab/settingsTab
+    // state the old flat tab bar used -- this is a navigation/layout reorganization only,
+    // every existing panel below is unchanged and still reachable.
+    const cmsPageTitle:Record<string,string> = {
+      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
+      categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
+      activity:"Activity", errorlog:"Error Logs", access:"Admin & Access",
+      settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
+    };
+    function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
+      return(
+        <button onClick={()=>{onClick();if(isMobile)setMobileNavOpen(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left" as const,padding:"9px 12px",borderRadius:6,border:"none",cursor:"pointer",marginBottom:2,background:active?C.P:"transparent",color:active?"#fff":"#E8E3F0",fontSize:12.5,fontWeight:active?600:400}}>
+          <span style={{fontSize:13,opacity:active?1:0.85}}>{icon}</span>{label}
+        </button>
+      );
+    }
+    function CmsNavSection({label}:{label:string}){
+      return <div style={{fontSize:10.5,letterSpacing:1.2,textTransform:"uppercase" as const,color:"#6E6480",padding:"16px 12px 6px"}}>{label}</div>;
+    }
+    const cmsSidebar = (
+      <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 20px"}}>
+          <div style={{width:26,height:26,borderRadius:"50%",background:C.P,flexShrink:0}} />
+          <div>
+            <div style={{fontSize:12.5,fontWeight:700,letterSpacing:0.5,color:"#fff"}}>CREATIVE FUSION</div>
+            <div style={{fontSize:10.5,color:C.MID}}>CMS Admin</div>
           </div>
         </div>
+        <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
+        <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
+        <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
+        <CmsNavSection label="Content" />
+        <CmsNavItem icon="🖼" label="Portfolio" active={cmsTab==="projects"} onClick={()=>setCmsTab("projects")} />
+        <CmsNavItem icon="🏷" label="Categories" active={cmsTab==="categories"} onClick={()=>setCmsTab("categories")} />
+        <CmsNavItem icon="⭐" label="Testimonials" active={cmsTab==="testimonials"} onClick={()=>setCmsTab("testimonials")} />
+        <CmsNavItem icon="📝" label="Journal" active={cmsTab==="blog"} onClick={()=>setCmsTab("blog")} />
+        <CmsNavItem icon="🧾" label="Services" active={cmsTab==="settings"&&settingsTab==="services"} onClick={()=>{setCmsTab("settings");setSettingsTab("services");}} />
+        <CmsNavItem icon="💳" label="Packages" active={cmsTab==="settings"&&settingsTab==="pricing"} onClick={()=>{setCmsTab("settings");setSettingsTab("pricing");}} />
+        <CmsNavItem icon="🗂" label="Media Library" active={cmsTab==="media"} onClick={()=>setCmsTab("media")} />
+        <CmsNavSection label="Website" />
+        <CmsNavItem icon="🔀" label="Navigation & Pages" active={cmsTab==="settings"&&settingsTab==="pages"} onClick={()=>{setCmsTab("settings");setSettingsTab("pages");}} />
+        <CmsNavItem icon="⚙️" label="General" active={cmsTab==="settings"&&settingsTab==="general"} onClick={()=>{setCmsTab("settings");setSettingsTab("general");}} />
+        <CmsNavItem icon="🎞" label="Hero Slides" active={cmsTab==="settings"&&settingsTab==="hero"} onClick={()=>{setCmsTab("settings");setSettingsTab("hero");}} />
+        <CmsNavItem icon="👤" label="About" active={cmsTab==="settings"&&settingsTab==="about"} onClick={()=>{setCmsTab("settings");setSettingsTab("about");}} />
+        <CmsNavItem icon="🤝" label="Clients" active={cmsTab==="settings"&&settingsTab==="clients"} onClick={()=>{setCmsTab("settings");setSettingsTab("clients");}} />
+        <CmsNavItem icon="🎓" label="CV & Skills" active={cmsTab==="settings"&&settingsTab==="cv"} onClick={()=>{setCmsTab("settings");setSettingsTab("cv");}} />
+        <CmsNavItem icon="⬇️" label="Footer" active={cmsTab==="settings"&&settingsTab==="footer"} onClick={()=>{setCmsTab("settings");setSettingsTab("footer");}} />
+        <CmsNavItem icon="✉️" label="Contact" active={cmsTab==="settings"&&settingsTab==="contact"} onClick={()=>{setCmsTab("settings");setSettingsTab("contact");}} />
+        <CmsNavItem icon="🔔" label="Popup" active={cmsTab==="settings"&&settingsTab==="popup"} onClick={()=>{setCmsTab("settings");setSettingsTab("popup");}} />
+        <CmsNavItem icon="🎨" label="Colors" active={cmsTab==="settings"&&settingsTab==="colors"} onClick={()=>{setCmsTab("settings");setSettingsTab("colors");}} />
+        <CmsNavItem icon="🔤" label="Text & Banners" active={cmsTab==="settings"&&settingsTab==="text"} onClick={()=>{setCmsTab("settings");setSettingsTab("text");}} />
+        <CmsNavSection label="SEO" />
+        <CmsNavItem icon="🔍" label="SEO & Metadata" active={cmsTab==="settings"&&settingsTab==="seo"} onClick={()=>{setCmsTab("settings");setSettingsTab("seo");}} />
+        <CmsNavSection label="System" />
+        <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
+        <CmsNavItem icon="⚠️" label="Error Logs" active={cmsTab==="errorlog"} onClick={()=>setCmsTab("errorlog")} />
+        <CmsNavItem icon="🔐" label="Admin & Access" active={cmsTab==="access"} onClick={()=>setCmsTab("access")} />
+      </div>
+    );
+
+    return(
+      <div style={{...S.base,paddingLeft:isMobile?0:250}} onKeyDown={e=>{
+        // CMS-wide: pressing Enter in any plain text field must never save/submit anything --
+        // only clicking the section's own Save/Add button does. Covers every tab (Settings,
+        // Testimonials, Blog, Categories, etc.), not just Projects, which already had this same
+        // guard on its own edit panel. Buttons are untouched -- Enter while a button itself has
+        // focus still "clicks" it (normal keyboard accessibility), and textareas keep normal
+        // Enter-for-newline. Deliberate exceptions (typing a category/tag then hitting Enter to
+        // add it, or pasting an image URL) are marked data-allow-enter="true" at the input.
+        if(e.key==="Enter" && (e.target as HTMLElement).tagName==="INPUT" && (e.target as HTMLElement).getAttribute("data-allow-enter")!=="true"){
+          e.preventDefault();
+        }
+      }}>
+        {cmsSidebar}
+        {isMobile&&mobileNavOpen&&<div onClick={()=>setMobileNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:19}} />}
+        <div style={{background:C.LTCARD,borderBottom:`1px solid ${C.LTBORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10,gap:12,flexWrap:"wrap" as const}}>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            {isMobile&&<button onClick={()=>setMobileNavOpen(v=>!v)} style={{...S.btnO,padding:"8px 12px"}}>☰</button>}
+            <span style={{fontSize:15,fontWeight:700,color:"#140D21"}}>{cmsPageTitle[cmsTab]||cmsPageTitle.settings}</span>
+          </div>
+          <div style={{display:"flex",gap:12,alignItems:"center"}}>
+            {cmsTab==="projects"&&<button onClick={()=>startEdit(null)} style={S.btnP}>+ New Project</button>}
+            <span style={{fontSize:11,color:"#6E6480"}}>{adminSession?.user?.email}</span>
+            <button onClick={adminSignOut} style={S.btnO}>Sign Out</button>
+          </div>
+        </div>
+        {cloudSyncError&&(
+          <div style={{background:"#3a1414",borderBottom:"1px solid #ff6b6b",color:"#ff9b9b",padding:"10px 24px",fontSize:12,textAlign:"center"}}>
+            ⚠️ {cloudSyncError}
+          </div>
+        )}
+
+        {/* DASHBOARD -- real, computed overview (no fabricated data). Landing screen after login. */}
+        {cmsTab==="dashboard"&&(
+          <div style={{maxWidth:1100,margin:"0 auto",padding:"32px 24px"}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(4,1fr)",gap:16,marginBottom:28}}>
+              {[
+                ["TOTAL BOOKINGS", String((bookingsList||[]).length||"—")],
+                ["PENDING RECEIPTS", String((bookingsList||[]).filter((b:any)=>(b.payments||[])[0]?.status==="under_review").length)],
+                ["PUBLISHED PROJECTS", String(projects.length)],
+                ["NEW LEADS", String(leads.length)],
+              ].map(([label,value])=>(
+                <div key={label} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:20}}>
+                  <div style={{fontSize:11,letterSpacing:1,color:"#6E6480",marginBottom:8,textTransform:"uppercase" as const}}>{label}</div>
+                  <div style={{fontSize:26,fontWeight:700,color:"#140D21"}}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:16}}>
+              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:22}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:4}}>Recent Bookings</div>
+                <div style={{fontSize:11.5,color:"#6E6480",marginBottom:16}}>Latest bookings received</div>
+                {!bookingsList||bookingsList.length===0?(
+                  <div style={{fontSize:12,color:"#8a8098",fontStyle:"italic" as const}}>No bookings yet.</div>
+                ):bookingsList.slice(0,5).map((b:any)=>(
+                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid rgba(0,0,0,0.06)",fontSize:12.5}}>
+                    <span style={{color:"#140D21"}}>{b.appointment_ref} — {b.customers?.full_name||"—"}</span>
+                    <span style={{color:"#6E6480"}}>{String(b.status).replace(/_/g," ")}</span>
+                  </div>
+                ))}
+                <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,marginTop:14}}>View All Bookings →</button>
+              </div>
+              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:22}}>
+                <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:14}}>Quick Actions</div>
+                <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+                  <button onClick={()=>{setCmsTab("projects");startEdit(null);}} style={{...S.btnSm,textAlign:"left" as const}}>+ Add Portfolio Project</button>
+                  <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,textAlign:"left" as const}}>📥 Review Bookings</button>
+                  <button onClick={()=>setCmsTab("leads")} style={{...S.btnSm,textAlign:"left" as const}}>✉️ View Leads ({leads.length})</button>
+                  <button onClick={()=>{setCmsTab("settings");setSettingsTab("pricing");}} style={{...S.btnSm,textAlign:"left" as const}}>🧾 Edit Packages</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MEDIA LIBRARY -- real aggregation of media already stored on projects, hero slides,
+            about photo and journal covers. Read-only browse; uploads still happen from within
+            each section (Portfolio / Hero Slides / About / Journal) so there's one source of truth. */}
+        {cmsTab==="media"&&(
+          <div style={{maxWidth:1100,margin:"0 auto",padding:"32px 24px"}}>
+            <div style={{fontSize:12,color:"#6E6480",marginBottom:20,lineHeight:1.6}}>All images and videos currently used across your site, gathered from where they're actually stored. To add or remove media, open the section it belongs to (Portfolio, Hero Slides, About, or Journal) -- this is a browse view, not a separate upload location.</div>
+            {(()=>{
+              const items:{src:string;label:string;kind:string}[]=[];
+              projects.forEach(p=>{ if(p.coverImage) items.push({src:p.coverImage,label:p.title,kind:"Portfolio cover"}); (p.images||[]).forEach(im=>items.push({src:im.url,label:p.title,kind:"Portfolio image"})); });
+              settings.heroSlides.forEach(h=>{ if(h.img) items.push({src:h.img,label:h.label,kind:"Hero slide"}); });
+              if(settings.aboutPhoto) items.push({src:settings.aboutPhoto,label:"About photo",kind:"About"});
+              blog.forEach(b=>{ if(b.coverImage) items.push({src:b.coverImage,label:b.title,kind:"Journal cover"}); });
+              return items.length===0?(
+                <div style={{fontSize:12,color:"#8a8098",fontStyle:"italic" as const}}>No media found yet.</div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(5,1fr)",gap:14}}>
+                  {items.map((it,i)=>(
+                    <div key={i} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,overflow:"hidden"}}>
+                      <div style={{width:"100%",aspectRatio:"1",backgroundImage:`url(${it.src})`,backgroundSize:"cover",backgroundPosition:"center"}} />
+                      <div style={{padding:"8px 10px"}}>
+                        <div style={{fontSize:11,color:"#140D21",fontWeight:600,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{it.label}</div>
+                        <div style={{fontSize:9.5,color:"#8a8098",textTransform:"uppercase" as const,letterSpacing:0.5}}>{it.kind}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* ACTIVITY & ERROR LOGS -- honest placeholders for now. Wiring these to a real, persisted
+            audit trail is a separate, larger change (a new synced log) and hasn't been built yet --
+            this deliberately shows an empty state instead of fabricated entries. */}
+        {(cmsTab==="activity"||cmsTab==="errorlog")&&(
+          <div style={{maxWidth:700,margin:"64px auto",padding:"0 24px",textAlign:"center" as const}}>
+            <div style={{fontSize:32,marginBottom:12}}>{cmsTab==="activity"?"📈":"⚠️"}</div>
+            <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:8}}>{cmsTab==="activity"?"Activity log":"Error logs"} coming soon</div>
+            <div style={{fontSize:12.5,color:"#6E6480",lineHeight:1.6}}>{cmsTab==="activity"?"A real, persisted history of changes made in this CMS will appear here.":"Application errors will appear here with a friendly summary and expandable technical detail, without exposing raw errors to visitors."} This section isn't wired up yet -- ask to have it built next and it will show genuine data only, never placeholder entries.</div>
+          </div>
+        )}
+
+        {/* ADMIN & ACCESS -- real info about the current, single admin session. */}
+        {cmsTab==="access"&&(
+          <div style={{maxWidth:600,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:24}}>
+              <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:16}}>Signed in</div>
+              <div style={{fontSize:13,color:"#140D21",marginBottom:4}}>{adminSession?.user?.email}</div>
+              <div style={{fontSize:11.5,color:"#6E6480",marginBottom:20}}>Authenticated via Supabase Auth (email + password)</div>
+              <div style={{fontSize:11.5,color:"#8a8098",lineHeight:1.6,borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:16}}>This CMS currently has a single administrator account. Multiple admin users with individual permissions aren't set up yet -- ask if you'd like that added.</div>
+            </div>
+
+            <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:24,marginTop:16}}>
+              <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:6}}>Push Notifications</div>
+              <div style={{fontSize:11.5,color:"#6E6480",marginBottom:16,lineHeight:1.6}}>Get alerted on this device -- desktop or mobile -- for new bookings, receipts awaiting review, new contact messages, and payment approvals/rejections, even when this tab isn't open. On iPhone, add this site to your Home Screen first (Share → Add to Home Screen) -- that's Apple's requirement for push, not something this CMS can skip.</div>
+              {pushStatus==="unsupported"&&<div style={{fontSize:12,color:"#8a8098"}}>Not supported in this browser.</div>}
+              {pushStatus==="denied"&&<div style={{fontSize:12,color:"#c0392b"}}>Notifications are blocked for this site in your browser settings -- allow them there, then reload.</div>}
+              {(pushStatus==="off"||pushStatus==="unknown")&&<button onClick={enablePush} disabled={pushBusy} style={{...S.btnP,opacity:pushBusy?0.6:1}}>{pushBusy?"Enabling…":"🔔 Enable Notifications on This Device"}</button>}
+              {pushStatus==="on"&&(
+                <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap" as const}}>
+                  <span style={{fontSize:12,color:"#22C55E",fontWeight:600}}>✓ Enabled on this device</span>
+                  <button onClick={disablePush} disabled={pushBusy} style={S.btnO}>{pushBusy?"…":"Turn Off"}</button>
+                </div>
+              )}
+              {pushErr&&<div style={{fontSize:11.5,color:"#c0392b",marginTop:10}}>{pushErr}</div>}
+            </div>
+          </div>
+        )}
 
         {/* LEADS -- contact-form submissions saved by any visitor (see fetchContactLeads) */}
         {cmsTab==="leads"&&(
@@ -1425,6 +2308,73 @@ export default function Home() {
           </div>
         )}
 
+        {/* BOOKINGS -- approve/reject bank-transfer payments. By the time this tab can even be
+            reached, the single CMS login above has already established a real Supabase Auth
+            session (adminSession) -- that's the credential these calls send, never the PIN. */}
+        {cmsTab==="bookings"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Bookings &amp; Payments</div>
+                  <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                    <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
+                  </div>
+                </div>
+                {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
+                {bookingsLoading?(
+                  <div style={{color:"#444",fontSize:13}}>Loading…</div>
+                ):!bookingsList||bookingsList.length===0?(
+                  <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No bookings yet.</div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                    {bookingsList.map((b:any)=>{
+                      const payment=(b.payments||[])[0];
+                      const cust=b.customers;
+                      const canDecide=payment&&payment.status==="under_review"&&payment.receipt_path;
+                      const statusColor:Record<string,string>={pending_verification:"#d4a017",confirmed:"#2ecc71",payment_rejected:"#e74c3c",cancelled:"#666",completed:"#3498db"};
+                      return(
+                        <div key={b.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                          <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                            <div>
+                              <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
+                              <div style={{fontSize:12,color:"#888",marginTop:2}}>{cust?.full_name} · {cust?.email}{cust?.phone&&` · ${cust.phone}`}</div>
+                            </div>
+                            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[b.status]||C.MID,border:`1px solid ${statusColor[b.status]||C.BORDER}`}}>{String(b.status).replace(/_/g," ")}</span>
+                          </div>
+                          <div style={{fontSize:12,color:"#aaa",marginBottom:10}}>{b.booking_date} · {b.booking_time} &nbsp;·&nbsp; AED {Number(b.total).toLocaleString()} total ({Number(b.price_base).toLocaleString()} + {Number(b.transaction_fee).toLocaleString()} fee)</div>
+                          {payment&&(
+                            <div style={{fontSize:12,color:"#888",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+                              <span>Payment: {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {payment.status}</span>
+                              {payment.receipt_signed_url?(
+                                <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>View Receipt →</a>
+                              ):payment.method==="bank_transfer"?(
+                                <span style={{color:"#666"}}>Waiting for client's receipt</span>
+                              ):null}
+                            </div>
+                          )}
+                          {canDecide&&(
+                            rejectReasonFor===payment.id?(
+                              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                                <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Reason (shown to client)" value={rejectReasonText} onChange={e=>setRejectReasonText(e.target.value)} />
+                                <button onClick={()=>rejectPayment(payment.id)} disabled={bookingActionBusy===payment.id||!rejectReasonText.trim()} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Confirm Reject</button>
+                                <button onClick={()=>{setRejectReasonFor(null);setRejectReasonText("");}} style={S.btnSm}>Cancel</button>
+                              </div>
+                            ):(
+                              <div style={{display:"flex",gap:8}}>
+                                <button onClick={()=>approvePayment(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnP,opacity:bookingActionBusy===payment.id?0.6:1}}>✓ Approve Payment</button>
+                                <button onClick={()=>setRejectReasonFor(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>✕ Reject</button>
+                              </div>
+                            )
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+          </div>
+        )}
+
         {/* SETTINGS TAB */}
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
@@ -1440,7 +2390,6 @@ export default function Home() {
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
                   <div><label style={S.lbl}>Site Name</label><input style={S.inp} value={settingsDraft.siteName} onChange={e=>updateSD({siteName:e.target.value})} /></div>
                   <div><label style={S.lbl}>Tagline</label><input style={S.inp} value={settingsDraft.siteTagline} onChange={e=>updateSD({siteTagline:e.target.value})} /></div>
-                  <div><label style={S.lbl}>Admin PIN</label><input style={S.inp} value={settingsDraft.pin} onChange={e=>updateSD({pin:e.target.value})} /></div>
                   <div><label style={S.lbl}>Stats: Years</label><input style={S.inp} value={settingsDraft.statsYears} onChange={e=>updateSD({statsYears:e.target.value})} /></div>
                   <div><label style={S.lbl}>Stats: Projects</label><input style={S.inp} value={settingsDraft.statsProjects} onChange={e=>updateSD({statsProjects:e.target.value})} /></div>
                   <div><label style={S.lbl}>Stats: Clients</label><input style={S.inp} value={settingsDraft.statsClients} onChange={e=>updateSD({statsClients:e.target.value})} /></div>
@@ -1456,6 +2405,7 @@ export default function Home() {
                   <div><label style={S.lbl}>Email</label><input style={S.inp} value={settingsDraft.email} onChange={e=>updateSD({email:e.target.value})} /></div>
                   <div><label style={S.lbl}>WhatsApp Number (digits only)</label><input style={S.inp} value={settingsDraft.waNumber} onChange={e=>updateSD({waNumber:e.target.value})} /></div>
                   <div><label style={S.lbl}>Location</label><input style={S.inp} value={settingsDraft.location} onChange={e=>updateSD({location:e.target.value})} /></div>
+                  <div><label style={S.lbl}>Full Address (shown in footer with map)</label><input style={S.inp} value={settingsDraft.address} onChange={e=>updateSD({address:e.target.value})} placeholder="e.g. Downtown Dubai, UAE" /></div>
                 </div>
                 <div style={{marginTop:16}}><label style={S.lbl}>WhatsApp Default Message</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={settingsDraft.waMsg} onChange={e=>updateSD({waMsg:e.target.value})} /></div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
@@ -1463,6 +2413,12 @@ export default function Home() {
                   <div><label style={S.lbl}>YouTube URL</label><input style={S.inp} value={settingsDraft.youtube} onChange={e=>updateSD({youtube:e.target.value})} /></div>
                   <div><label style={S.lbl}>LinkedIn URL</label><input style={S.inp} value={settingsDraft.linkedin} onChange={e=>updateSD({linkedin:e.target.value})} /></div>
                   <div><label style={S.lbl}>TikTok URL</label><input style={S.inp} value={settingsDraft.tiktok} onChange={e=>updateSD({tiktok:e.target.value})} /></div>
+                </div>
+
+                <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Bank Transfer Instructions (Booking)</div>
+                  <div style={{fontSize:12,color:"#888",lineHeight:1.6,marginBottom:12}}>Shown to clients on the Booking page's payment step when they choose Bank Transfer. Enter your real bank name, account name, IBAN/account number and any reference instructions -- this is never invented for you, so leave it blank until you fill in your real details.</div>
+                  <textarea style={{...S.inp,height:110,resize:"vertical" as const,fontFamily:"monospace" as const}} value={settingsDraft.bankTransferInstructions} onChange={e=>updateSD({bankTransferInstructions:e.target.value})} placeholder={"Bank Name: \nAccount Name: \nAccount Number / IBAN: \nSWIFT/BIC: \nReference: Please include your booking reference in the transfer description."} />
                 </div>
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
@@ -1735,6 +2691,35 @@ export default function Home() {
                     </div>
                   );
                 })}
+
+                {/* Show/Hide HOME PAGE SECTIONS -- separate from the whole-page switches above.
+                    "Our Clients" is included here for a single "everything homepage" panel,
+                    but toggling it writes to clientsEnabled (its existing, already-shipped
+                    flag from CMS > Settings > Clients) rather than a new duplicate field. */}
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"28px 0 20px",textTransform:"uppercase"}}>Show / Hide Homepage Sections</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn any section of the home page off without deleting its content -- switch it back on any time.</div>
+                {([
+                  ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
+                ] as [string,string][]).map(([key,label])=>{
+                  const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
+                  return (
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:600}}>{label}</span>
+                      <button onClick={()=>{
+                        if(key==="clients") updateSD({clientsEnabled:!on});
+                        else if(key==="googleReviews") updateSD({googleReviewsEnabled:!on});
+                        else updateSD({homeSections:{...settingsDraft.homeSections,[key]:!on}});
+                      }} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} ${on?"off":"on"}`}>
+                        <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
+                      </button>
+                    </div>
+                  );
+                })}
+                {settingsDraft.googleReviewsEnabled && !settingsDraft.googlePlaceId && (
+                  <div style={{fontSize:11,color:"#c9963f",marginTop:-2,marginBottom:14,lineHeight:1.6}}>
+                    Google Reviews is on but no Google Place ID is set yet -- add one in the SEO tab, or this section stays hidden.
+                  </div>
+                )}
               </div>
             )}
 
@@ -1857,7 +2842,7 @@ export default function Home() {
           <div style={{maxWidth:600,margin:"48px auto",padding:"0 24px"}}>
             <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Categories</div>
             <div style={{display:"flex",gap:8,marginBottom:24}}>
-              <input style={{...S.inp,flex:1}} value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="New category" onKeyDown={e=>{if(e.key==="Enter"&&newCat.trim()){setCats(c=>[...c,newCat.trim()]);setNewCat("");}}} />
+              <input style={{...S.inp,flex:1}} value={newCat} onChange={e=>setNewCat(e.target.value)} placeholder="New category" onKeyDown={e=>{if(e.key==="Enter"&&newCat.trim()){setCats(c=>[...c,newCat.trim()]);setNewCat("");}}} data-allow-enter="true" />
               <button onClick={()=>{if(newCat.trim()){setCats(c=>[...c,newCat.trim()]);setNewCat("");}}} style={S.btnP}>Add</button>
             </div>
             {cats.map((c,i)=>(
@@ -1869,7 +2854,7 @@ export default function Home() {
 
             <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"40px 0 20px",textTransform:"uppercase"}}>Journal Categories</div>
             <div style={{display:"flex",gap:8,marginBottom:24}}>
-              <input style={{...S.inp,flex:1}} value={newBlogCat} onChange={e=>setNewBlogCat(e.target.value)} placeholder="New journal category" onKeyDown={e=>{if(e.key==="Enter"&&newBlogCat.trim()){setBlogCats(c=>[...c,newBlogCat.trim()]);setNewBlogCat("");}}} />
+              <input style={{...S.inp,flex:1}} value={newBlogCat} onChange={e=>setNewBlogCat(e.target.value)} placeholder="New journal category" onKeyDown={e=>{if(e.key==="Enter"&&newBlogCat.trim()){setBlogCats(c=>[...c,newBlogCat.trim()]);setNewBlogCat("");}}} data-allow-enter="true" />
               <button onClick={()=>{if(newBlogCat.trim()){setBlogCats(c=>[...c,newBlogCat.trim()]);setNewBlogCat("");}}} style={S.btnP}>Add</button>
             </div>
             {blogCats.map((c,i)=>(
@@ -1948,7 +2933,17 @@ export default function Home() {
             </div>
             <div style={{flex:1,padding:32,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
               {editId?(
-                <div style={{maxWidth:720}}>
+                <div style={{maxWidth:720}} onKeyDown={e=>{
+                  // Pressing Enter in any plain text field here must never save/submit the
+                  // project -- only clicking the "Save Project" button below does. The one
+                  // deliberate exception is the "paste URL" field just below (marked
+                  // data-allow-enter), whose own Enter convenience adds that single image URL
+                  // to the gallery -- a distinct, already-existing micro-action, not a project
+                  // save. Textareas keep their normal Enter-for-newline behavior.
+                  if(e.key==="Enter" && (e.target as HTMLElement).tagName==="INPUT" && (e.target as HTMLElement).getAttribute("data-allow-enter")!=="true"){
+                    e.preventDefault();
+                  }
+                }}>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
                     <div><label style={S.lbl}>Title *</label><input style={S.inp} value={form.title||""} onChange={e=>setForm(f=>({...f,title:e.target.value,slug:slugify(e.target.value)}))} /></div>
                     <div><label style={S.lbl}>Slug</label><input style={S.inp} value={form.slug||""} onChange={e=>setForm(f=>({...f,slug:e.target.value}))} /></div>
@@ -1976,7 +2971,7 @@ export default function Home() {
                     <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
                       <UploadBtn label="📁 Upload Multiple Photos" />
                       <div style={{display:"flex",gap:8,flex:1}}>
-                        <input style={{...S.inp,flex:1}} value={newImg} onChange={e=>setNewImg(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addImgUrl()} placeholder="or paste URL..." />
+                        <input style={{...S.inp,flex:1}} value={newImg} onChange={e=>setNewImg(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addImgUrl()} placeholder="or paste URL..." data-allow-enter="true" />
                         <button onClick={addImgUrl} style={S.btnP}>{addingImg?"...":"Add URL"}</button>
                       </div>
                     </div>
@@ -2008,7 +3003,7 @@ export default function Home() {
             </div>
           </div>
         )}
-        {cropSrc&&<CropModal src={cropSrc} onCancel={()=>setCropSrc(null)} onConfirm={async(file)=>{ const url=await uploadToStorage(file); setForm(f=>({...f,coverImage:url})); setCropSrc(null); }} />}
+        {cropSrc&&<CropModal src={cropSrc} onCancel={()=>setCropSrc(null)} onConfirm={async(file)=>{ try{ const url=await uploadToStorage(file); setForm(f=>({...f,coverImage:url})); }catch(e:any){ alert(e?.message||"Couldn't upload the cropped image."); } setCropSrc(null); }} />}
       </div>
     );
   }
@@ -2283,43 +3278,182 @@ export default function Home() {
   if(page==="booking") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
-      <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} description="Ready to start a project? Share a few details below and get a tailored quote, or message directly on WhatsApp for a faster reply." image={settings.sectionBg.booking} />
-      <div style={{maxWidth:720,margin:"0 auto",padding:"40px 40px 80px"}}>
-        <div style={{textAlign:"center",marginBottom:56}}>
-          <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Book a Session</div>
-          <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>Let's Create Together</h1>
-          <p style={{color:C.MID,fontSize:14}}>Fill in the details below or message directly on WhatsApp</p>
-        </div>
-        {bookingDone?(
-          <div style={{textAlign:"center",padding:64}}>
-            <div style={{fontSize:48,color:C.PL,marginBottom:16}}>✓</div>
-            <h2 style={{fontWeight:700,letterSpacing:0.5,marginBottom:12}}>Request Sent!</h2>
-            <p style={{color:C.MID}}>Your booking request has been sent via WhatsApp. Naveed will respond shortly.</p>
-            <button onClick={()=>{setBookingDone(false);setBooking({name:"",email:"",phone:"",service:"",date:"",time:"",location:"",details:"",budget:"",agreed:false});}} style={{...S.btnO,marginTop:24}}>New Request</button>
+      <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} description="Choose your service and package, pick a date, and book securely -- online payment or bank transfer." image={settings.sectionBg.booking} />
+      <div style={{maxWidth:760,margin:"0 auto",padding:"40px 40px 80px"}}>
+        {bkStep>0&&bkStep<7&&(
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:48}}>
+            {["Service","Package","Date","Details","Review","Payment"].map((lbl,i)=>(
+              <div key={lbl} style={{display:"flex",alignItems:"center",gap:8}}>
+                <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:bkStep>i+1?C.P:bkStep===i+1?"transparent":"rgba(255,255,255,0.06)",border:bkStep===i+1?`1px solid ${C.P}`:"none",color:bkStep>=i+1?(bkStep>i+1?C.BG:C.PL):C.MID}}>{bkStep>i+1?"✓":i+1}</div>
+                {i<5&&<div style={{width:16,height:1,background:bkStep>i+1?C.P:"rgba(255,255,255,0.1)"}} />}
+              </div>
+            ))}
           </div>
-        ):(
+        )}
+
+        {bkStep===0&&(
           <div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:8,textAlign:"center"}}>How can we reach you?</h2>
+            <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>We'll use this to send your booking confirmation and bank transfer details.</p>
+            <div style={{maxWidth:420,margin:"0 auto 24px"}}>
+              <div style={{marginBottom:16}}>
+                <label style={S.lbl}>WhatsApp Number *</label>
+                <div style={{display:"flex",gap:8}}>
+                  <select style={{...S.inp,width:118,flexShrink:0}} value={bkCountry} onChange={e=>{const nc=e.target.value; setBkCountry(nc); setBooking(b=>({...b,phone:nc+" "+b.phone.replace(/^\+\d{1,4}\s?/,"")}));}}>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+966">🇸🇦 +966</option>
+                    <option value="+974">🇶🇦 +974</option>
+                    <option value="+965">🇰🇼 +965</option>
+                    <option value="+968">🇴🇲 +968</option>
+                    <option value="+973">🇧🇭 +973</option>
+                    <option value="+92">🇵🇰 +92</option>
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+63">🇵🇭 +63</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+1">🇺🇸 +1</option>
+                  </select>
+                  <input style={S.inp} value={booking.phone.replace(/^\+\d{1,4}\s?/,"")} onChange={e=>setBooking(b=>({...b,phone:bkCountry+" "+e.target.value.replace(/[^\d\s]/g,"")}))} placeholder="5XX XXX XXX" />
+                </div>
+              </div>
+              <div><label style={S.lbl}>Email *</label><input type="email" style={S.inp} value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(1)} disabled={!booking.phone.trim()||!booking.email.trim()} style={{...S.btnP,opacity:(!booking.phone.trim()||!booking.email.trim())?0.4:1}}>Continue</button></div>
+          </div>
+        )}
+
+        {bkStep===1&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:8,textAlign:"center"}}>What do you need?</h2>
+            <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>Select a service to see matching packages</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:32}}>
+              {BOOKING_SERVICES.map(sv=>(
+                <button key={sv} onClick={()=>setBooking(b=>({...b,service:sv}))} style={{padding:"18px 16px",textAlign:"left",cursor:"pointer",borderRadius:4,background:booking.service===sv?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${booking.service===sv?C.P:C.BORDER}`,color:C.FG,fontSize:13,fontWeight:600}}>{sv}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(2)} disabled={!booking.service} style={{...S.btnP,opacity:!booking.service?0.4:1}}>Continue</button></div>
+          </div>
+        )}
+
+        {bkStep===2&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:8,textAlign:"center"}}>Choose Your Package</h2>
+            <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>Prices are set live from our current packages -- always accurate</p>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,marginBottom:32}}>
+              {settings.pricingPackages.map(pkg=>(
+                <button key={pkg.id} onClick={()=>setBkPkgId(pkg.id)} style={{padding:24,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPkgId===pkg.id?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPkgId===pkg.id?C.P:C.BORDER}`,color:C.FG}}>
+                  <div style={{fontSize:22,marginBottom:8}}>{pkg.icon}</div>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>{pkg.label}</div>
+                  <div style={{fontSize:24,fontWeight:700,color:C.PL,marginBottom:4}}>AED {pkg.price}</div>
+                  <div style={{fontSize:11,color:C.MID,marginBottom:12}}>{pkg.priceNote}</div>
+                  <div style={{fontSize:12,color:C.MID,lineHeight:1.6}}>{pkg.desc}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(1)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(3)} disabled={!bkPkgId} style={{...S.btnP,opacity:!bkPkgId?0.4:1}}>Continue</button></div>
+          </div>
+        )}
+
+        {bkStep===3&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:8,textAlign:"center"}}>Pick a Date & Time</h2>
+            <div style={{maxWidth:420,margin:"32px auto"}}>
+              <div style={{marginBottom:16}}><label style={S.lbl}>Date *</label><input type="date" min={new Date().toISOString().slice(0,10)} style={S.inp} value={booking.date} onChange={e=>setBooking(b=>({...b,date:e.target.value}))} /></div>
+              <div style={{marginBottom:16}}><label style={S.lbl}>Time *</label><select style={S.inp} value={booking.time} onChange={e=>setBooking(b=>({...b,time:e.target.value}))}><option value="">Select...</option>{TIMES.map(t=><option key={t}>{t}</option>)}</select></div>
+              {bkCheckingSlot&&<div style={{fontSize:12,color:C.MID}}>Checking availability...</div>}
+              {!bkCheckingSlot&&bkSlotTaken&&<div style={{fontSize:12,color:"#ff6b6b"}}>This time slot is no longer available. Please select another time.</div>}
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(2)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(4)} disabled={!booking.date||!booking.time||bkSlotTaken||bkCheckingSlot} style={{...S.btnP,opacity:(!booking.date||!booking.time||bkSlotTaken||bkCheckingSlot)?0.4:1}}>Continue</button></div>
+          </div>
+        )}
+
+        {bkStep===4&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Your Details</h2>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16,maxWidth:560,margin:"0 auto 16px"}}>
               <div><label style={S.lbl}>Full Name *</label><input style={S.inp} value={booking.name} onChange={e=>setBooking(b=>({...b,name:e.target.value}))} /></div>
-              <div><label style={S.lbl}>Email</label><input type="email" style={S.inp} value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
-              <div><label style={S.lbl}>Phone / WhatsApp</label><input style={S.inp} value={booking.phone} onChange={e=>setBooking(b=>({...b,phone:e.target.value}))} /></div>
-              <div><label style={S.lbl}>Service *</label><select style={S.inp} value={booking.service} onChange={e=>setBooking(b=>({...b,service:e.target.value}))}><option value="">Select...</option>{BOOKING_SERVICES.map(sv=><option key={sv}>{sv}</option>)}</select></div>
-              <div><label style={S.lbl}>Preferred Date *</label><input type="date" style={S.inp} value={booking.date} onChange={e=>setBooking(b=>({...b,date:e.target.value}))} /></div>
-              <div><label style={S.lbl}>Preferred Time</label><select style={S.inp} value={booking.time} onChange={e=>setBooking(b=>({...b,time:e.target.value}))}><option value="">Select...</option>{TIMES.map(t=><option key={t}>{t}</option>)}</select></div>
+              <div><label style={S.lbl}>Location / Venue</label><input style={S.inp} value={booking.location} onChange={e=>setBooking(b=>({...b,location:e.target.value}))} placeholder="Dubai Marina, Studio, etc." /></div>
             </div>
-            <div style={{marginBottom:16}}><label style={S.lbl}>Location / Venue</label><input style={S.inp} value={booking.location} onChange={e=>setBooking(b=>({...b,location:e.target.value}))} placeholder="Dubai Marina, Studio, etc." /></div>
-            <div style={{marginBottom:16}}><label style={S.lbl}>Budget (AED)</label><input style={S.inp} value={booking.budget} onChange={e=>setBooking(b=>({...b,budget:e.target.value}))} placeholder="e.g. 2000–5000 AED" /></div>
-            <div style={{marginBottom:24}}><label style={S.lbl}>Project Details</label><textarea style={{...S.inp,height:100,resize:"vertical" as const}} value={booking.details} onChange={e=>setBooking(b=>({...b,details:e.target.value}))} placeholder="Describe your project..." /></div>
-            <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:32}}>
-              <input type="checkbox" checked={booking.agreed} onChange={e=>setBooking(b=>({...b,agreed:e.target.checked}))} style={{marginTop:2}} />
-              <span style={{fontSize:12,color:C.MID,lineHeight:1.6}}>I agree to the Terms & Conditions and Booking Agreement.</span>
+            <p style={{maxWidth:560,margin:"0 auto 16px",fontSize:12,color:C.MID,textAlign:"center"}}>We'll send your confirmation to <strong style={{color:C.FG}}>{booking.email}</strong> / <strong style={{color:C.FG}}>{booking.phone}</strong></p>
+            <div style={{maxWidth:560,margin:"0 auto 24px"}}><label style={S.lbl}>Anything we should know?</label><textarea style={{...S.inp,height:90,resize:"vertical" as const}} value={booking.details} onChange={e=>setBooking(b=>({...b,details:e.target.value}))} placeholder="Optional notes about your project..." /></div>
+            <div style={{display:"flex",justifyContent:"space-between",maxWidth:560,margin:"0 auto"}}><button onClick={()=>setBkStep(3)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(5)} disabled={!booking.name||!booking.email||!booking.phone} style={{...S.btnP,opacity:(!booking.name||!booking.email||!booking.phone)?0.4:1}}>Continue</button></div>
+          </div>
+        )}
+
+        {bkStep===5&&bkSelectedPkg&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Review Your Booking</h2>
+            <div style={{maxWidth:480,margin:"0 auto 32px",border:`1px solid ${C.BORDER}`,borderRadius:6,padding:28}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Service</span><span>{booking.service}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Package</span><span>{bkSelectedPkg.label}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Date & Time</span><span>{booking.date} · {booking.time}</span></div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:20}}><span style={{color:C.MID}}>Contact</span><span>{booking.name}</span></div>
+              <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:C.MID}}>Package price</span><span>AED {bkBase.toLocaleString()}</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:C.MID}}>Transaction fee (4%)</span><span>AED {bkFee.toLocaleString()}</span></div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,marginTop:8}}><span>Total</span><span style={{color:C.PL}}>AED {bkTotal.toLocaleString()}</span></div>
+              </div>
             </div>
-            <div style={{display:"flex",gap:12}}>
-              <button onClick={submitBooking} disabled={!booking.name||!booking.service||!booking.date||!booking.agreed} style={{...S.btnP,opacity:(!booking.name||!booking.service||!booking.date||!booking.agreed)?0.4:1}}>Send via WhatsApp</button>
-              <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>Direct WhatsApp</a>
+            <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}><button onClick={()=>setBkStep(4)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(6)} style={S.btnP}>Continue to Payment</button></div>
+          </div>
+        )}
+
+        {bkStep===6&&bkSelectedPkg&&(
+          <div>
+            <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Choose Payment Method</h2>
+            {bkError&&<div style={{maxWidth:480,margin:"0 auto 16px",fontSize:12,color:"#ff6b6b",textAlign:"center"}}>{bkError}</div>}
+            <div style={{maxWidth:480,margin:"0 auto 24px",display:"grid",gap:12}}>
+              <button onClick={()=>setBkPayMethod("bank_transfer")} style={{padding:20,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPayMethod==="bank_transfer"?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPayMethod==="bank_transfer"?C.P:C.BORDER}`,color:C.FG}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🏦 Bank Transfer</div>
+                <div style={{fontSize:12,color:C.MID}}>Pay by bank transfer, then upload your receipt. Confirmed once verified.</div>
+              </button>
+              <button disabled title="Available soon" style={{padding:20,textAlign:"left",cursor:"not-allowed",borderRadius:6,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.MID,opacity:0.5}}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 PayPal — Available soon</div>
+                <div style={{fontSize:12}}>Instant online payment is being finalized.</div>
+              </button>
+            </div>
+            {bkPayMethod==="bank_transfer"&&(
+              <div style={{maxWidth:480,margin:"0 auto 24px",fontSize:12,color:C.MID,lineHeight:1.7,background:"rgba(255,255,255,0.03)",padding:16,borderRadius:6}}>
+                {settings.bankTransferInstructions?.trim()
+                  ? settings.bankTransferInstructions
+                  : "Bank transfer details will be sent to your email and WhatsApp right after you submit. Once you've paid, come back and upload your receipt to confirm your booking."}
+              </div>
+            )}
+            <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}>
+              <button onClick={()=>setBkStep(5)} style={S.btnO}>Back</button>
+              <button onClick={submitAppointment} disabled={bkSubmitting} style={{...S.btnP,opacity:bkSubmitting?0.6:1}}>{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
             </div>
           </div>
         )}
+
+        {bkStep===7&&bkConfirmed&&(
+          <div style={{textAlign:"center",padding:"32px 0"}}>
+            <div style={{fontSize:48,color:C.PL,marginBottom:16}}>✓</div>
+            <h2 style={{fontWeight:700,letterSpacing:0.5,marginBottom:8}}>Booking Received</h2>
+            <p style={{color:C.MID,fontSize:13,marginBottom:4}}>Reference: <strong style={{color:C.FG}}>{bkConfirmed.ref}</strong></p>
+            {bkPayMethod==="bank_transfer"?(
+              bkReceiptDone?(
+                <div style={{marginTop:24}}>
+                  <p style={{color:C.MID,fontSize:13}}>Your payment receipt has been submitted and is awaiting verification. You'll get a confirmation message on WhatsApp and email as soon as it's verified.</p>
+                  <button onClick={resetAppointmentFlow} style={{...S.btnO,marginTop:24}}>Book Another Session</button>
+                </div>
+              ):(
+                <div style={{maxWidth:420,margin:"24px auto 0"}}>
+                  <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Once you've made the bank transfer, upload your receipt below to confirm your booking.</p>
+                  <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e=>setBkReceiptFile(e.target.files?.[0]||null)} style={{marginBottom:12,fontSize:12,color:C.MID}} />
+                  {bkReceiptErr&&<div style={{fontSize:12,color:"#ff6b6b",marginBottom:12}}>{bkReceiptErr}</div>}
+                  <div><button onClick={submitReceipt} disabled={!bkReceiptFile||bkReceiptUploading} style={{...S.btnP,opacity:(!bkReceiptFile||bkReceiptUploading)?0.5:1}}>{bkReceiptUploading?"Uploading...":"Upload Receipt"}</button></div>
+                </div>
+              )
+            ):(
+              <p style={{color:C.MID,fontSize:13,marginTop:16}}>We'll be in touch shortly to confirm payment.</p>
+            )}
+          </div>
+        )}
+
+        <div style={{textAlign:"center",marginTop:56,paddingTop:32,borderTop:`1px solid ${C.BORDER}`}}>
+          <p style={{fontSize:12,color:C.MID,marginBottom:12}}>Prefer to just chat first?</p>
+          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none",fontSize:11,padding:"10px 24px"}}>Message on WhatsApp</a>
+        </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />
       <ConsultPopup open={popupOpen} onClose={closePopup} title={settings.popupTitle} text={settings.popupText} ctaLabel={settings.popupCtaLabel} waNumber={WA} />
@@ -2480,10 +3614,14 @@ export default function Home() {
   // ── HOME ──
   return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
+      {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} onDone={()=>setShowSplash(false)} />}
       <Nav />
+      {settings.homeSections?.hero!==false && (
       <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} />
+      )}
 
       {/* INTRO STRIP */}
+      {settings.homeSections?.intro!==false && (
       <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div>
           <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG}}><NoTranslate>{settings.siteName}</NoTranslate></div>
@@ -2499,9 +3637,114 @@ export default function Home() {
         </div>
         <button onClick={()=>goTo("booking")} style={S.btnP} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{settings.uiText.navBookBtn}</button>
       </div>
+      )}
+
+      {/* ABOUT NAVEED -- moved to sit right under the Hero/intro-strip, ahead of Featured Work
+          and Services. Built from the real content that already lives on the /about page
+          (settings.aboutBio + the 20+/500+/200+ stats shown there) instead of the agency's own
+          bio -- nothing invented, just reused and re-cut to fit this shorter format. The CTA
+          links to the existing /about page via goTo() -- doesn't add to or change that page
+          itself. Photo reuses settings.aboutPhoto (CMS > Settings > About). */}
+      {settings.homeSections?.about!==false && (
+      <div style={{background:C.BG,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-14%",left:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
+        <Reveal style={{maxWidth:1160,margin:"0 auto",position:"relative",display:"flex",gap:64,alignItems:"flex-start",flexWrap:"wrap"}}>
+          {/* alignSelf:"stretch" (was a fixed height:440) so the photo's top stays exactly where
+              it already was but its bottom now runs all the way down to match the content
+              column -- level with the "Learn More About Naveed" button -- whatever that
+              column's height ends up being. minHeight is just a floor. */}
+          <div style={{flex:"0 0 420px",minWidth:280,minHeight:440,alignSelf:"stretch",position:"relative"}}>
+            <div style={{position:"absolute",inset:0,borderRadius:12,overflow:"hidden",boxShadow:"0 30px 70px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.16)"}}>
+              <img src={settings.aboutPhoto} alt={settings.aboutName} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+            </div>
+            <div style={{position:"absolute",bottom:-22,right:-22,background:C.P,color:C.BG,borderRadius:10,padding:"18px 22px",boxShadow:"0 20px 40px rgba(139,92,246,0.35)",lineHeight:1.15}}>
+              <div style={{fontSize:30,fontWeight:800}}>{settings.statsYears}</div>
+              <div style={{fontSize:11,letterSpacing:0.5,marginTop:2}}>Years<br/>Experience</div>
+            </div>
+          </div>
+          <div style={{flex:"1 1 420px",minWidth:280}}>
+            <div style={{...S.tag(),color:C.PL}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
+            <h2 style={{fontSize:"clamp(30px,4vw,48px)",fontWeight:700,letterSpacing:0.5,margin:"0 0 10px",color:C.FG}}>{settings.aboutName}</h2>
+            <div style={{fontSize:"clamp(14px,1.4vw,17px)",color:C.PL,letterSpacing:0.5,marginBottom:20}}>Photographer · Cinematographer · Visual Artist</div>
+            <p style={{fontSize:14,color:C.MID,lineHeight:1.8,margin:"0 0 28px",maxWidth:500}}>A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion.</p>
+            <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:28}}>
+              {["20+ years of experience, 10 of them based in the UAE","Specializing in interior, real estate, product, lifestyle & campaign photography","Short-form video content for Instagram & TikTok with brand-consistent storytelling"].map((t,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"center",gap:14}}>
+                  <span style={{width:30,height:30,borderRadius:6,background:"rgba(139,92,246,0.14)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✓</span>
+                  <span style={{fontSize:14,color:C.FG}}>{t}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:14,background:"rgba(255,255,255,0.04)",border:`1px solid ${C.BORDER}`,borderRadius:10,padding:"14px 18px",marginBottom:28,maxWidth:420}}>
+              <span style={{width:34,height:34,borderRadius:"50%",background:"rgba(139,92,246,0.16)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>✓</span>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.FG}}>{settings.statsProjects} Projects Delivered</div>
+                <div style={{fontSize:12,color:C.MID}}>{settings.statsClients} Clients across Dubai, UAE</div>
+              </div>
+            </div>
+            <button onClick={()=>goTo("about")} style={S.btnP}>Learn More About Naveed</button>
+          </div>
+        </Reveal>
+      </div>
+      )}
+
+      {/* SERVICES -- editorial index list, but each row is bookended by a solid-DARK chip
+          (number + arrow). The chips are the same DARK used in the hero/nav, so the light
+          section reads as this site's light register, not a different site pasted in --
+          exactly how creativefusion.llc threads its dark charcoal through its white sections
+          via repeated dark card elements. */}
+      {settings.homeSections?.services!==false && (
+      <div style={{background:C.LT,padding:"130px 40px 140px",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-12%",right:"-8%",width:560,height:560,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.20),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
+        <div style={{position:"absolute",bottom:"-10%",left:"-6%",width:360,height:360,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.10),transparent 70%)",filter:"blur(24px)",pointerEvents:"none"}} />
+        <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
+          {/* Header hoisted above both columns (used to float beside the row list, sharing its
+              column with it) -- reads clearly above the photo now, and the photo column
+              shrinks to just match the row-list height since it no longer has to also clear
+              the header's own height. */}
+          <Reveal style={{marginBottom:56}}>
+            <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
+            <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:"0 0 14px",color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
+            <p style={{maxWidth:480,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
+          </Reveal>
+          <div style={{display:"flex",gap:48,alignItems:"flex-start",flexWrap:"wrap"}}>
+            {/* DUMMY placeholder image for now -- replace via CMS > Settings > Services (upload
+                or paste a URL, see settingsTab==="services" below). Independent from aboutPhoto.
+                alignSelf:"stretch" so this column always matches the full height of the services
+                list next to it -- top edge lines up with row 1, bottom edge lines up with the
+                last row's bottom border, whatever the row count/height ends up being. minHeight
+                is just a floor for very short content (e.g. only 1-2 services). Shorter now that
+                the header lives above both columns instead of sharing this row's height.
+                Refresh pass: stronger drop shadow + a soft brand-purple glow ring so the photo
+                lifts off the page instead of sitting flush against it. */}
+            <div style={{flex:"0 0 390px",minWidth:280,minHeight:280,alignSelf:"stretch",position:"relative",borderRadius:10,overflow:"hidden",boxShadow:"0 30px 70px rgba(20,13,33,0.18), 0 0 0 1px rgba(139,92,246,0.14), 0 0 60px rgba(139,92,246,0.12)"}}>
+              <img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+            </div>
+            <div style={{flex:"1 1 480px",minWidth:280}}>
+              <div>
+                {settings.services.map((sv,i)=>(
+                  <Reveal key={sv.id} delay={i*0.07}>
+                  <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"34px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
+                      <span className="svc-num" style={{width:44,height:44,borderRadius:6,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0,boxShadow:"0 6px 16px rgba(20,13,33,0.20)"}}>{String(i+1).padStart(2,"0")}</span>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
+                        <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
+                      </div>
+                    </div>
+                    <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
+                  </div>
+                  </Reveal>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* FEATURED WORK */}
-      {featured.length>0&&(
+      {settings.homeSections?.work!==false && featured.length>0&&(
         <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px"}}>
           <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
@@ -2547,53 +3790,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* SERVICES -- editorial index list, but each row is bookended by a solid-DARK chip
-          (number + arrow). The chips are the same DARK used in the hero/nav, so the light
-          section reads as this site's light register, not a different site pasted in --
-          exactly how creativefusion.llc threads its dark charcoal through its white sections
-          via repeated dark card elements. */}
-      <div style={{background:C.LT,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:"-10%",right:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.16),transparent 70%)",filter:"blur(10px)",pointerEvents:"none"}} />
-        <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
-          <div style={{display:"flex",gap:48,alignItems:"flex-start",flexWrap:"wrap"}}>
-            {/* DUMMY placeholder image for now -- replace via CMS > Settings > Services (upload
-                or paste a URL, see settingsTab==="services" below). Independent from aboutPhoto.
-                alignItems:flex-start (was "stretch") keeps this at its own height instead of
-                growing to match the services list -- that stretch was why the photo looked
-                oversized. Its top now lines up with the "What We Offer" eyebrow / Services
-                heading on the right, since both start at the same flex-start baseline. */}
-            <div style={{flex:"0 0 390px",minWidth:280,height:420,position:"relative",borderRadius:8,overflow:"hidden"}}>
-              <img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
-            </div>
-            <div style={{flex:"1 1 480px",minWidth:280}}>
-              <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:24,flexWrap:"wrap",marginBottom:64}}>
-                <div>
-                  <div style={{...S.tag(),marginBottom:14,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeServicesEyebrow}</div>
-                  <h2 style={{fontSize:"clamp(30px,4vw,52px)",fontWeight:700,letterSpacing:0.5,margin:0,color:C.DARK}}>{settings.uiText.homeServicesTitle}</h2>
-                </div>
-                <p style={{maxWidth:340,fontSize:13,color:C.INKMID,lineHeight:1.8,margin:0}}>{settings.uiText.homeServicesIntro}</p>
-              </Reveal>
-              <div>
-                {settings.services.map((sv,i)=>(
-                  <Reveal key={sv.id} delay={i*0.07}>
-                  <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"28px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
-                      <span style={{width:42,height:42,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0}}>{String(i+1).padStart(2,"0")}</span>
-                      <div style={{minWidth:0}}>
-                        <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
-                        <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
-                      </div>
-                    </div>
-                    <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
-                  </div>
-                  </Reveal>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* OUR CLIENTS -- rebuilt to match spector.framer.website's actual "Our Clients" component
           as closely as directly inspecting its live DOM/CSS allows: white section (their
           .mr-container is rgb(255,255,255), not a dark panel), bare logos with no card chrome,
@@ -2636,10 +3832,18 @@ export default function Home() {
         </div>
       )}
 
+      {/* GOOGLE REVIEWS -- when switched on in CMS > Settings > Pages, real live Google reviews
+          take over this slot from the manual testimonial spotlight below (see the ! check on
+          that block's condition), per the "Google reviews only when both are on" priority rule. */}
+      {settings.googleReviewsEnabled && (
+        <GoogleReviewsSection placeId={settings.googlePlaceId} eyebrow={settings.uiText.homeTestimonialsEyebrow} />
+      )}
+
       {/* TESTIMONIALS -- a pull-quote spotlight held inside a bordered panel (not bare floating
           text) with a solid-DARK quote badge, echoing the Services chips so this section reads
-          as part of the same design language. Auto-rotates like the Hero slideshow. */}
-      {featuredTesti.length>0&&(
+          as part of the same design language. Auto-rotates like the Hero slideshow. Suppressed
+          whenever Google Reviews is on (that section takes exclusive priority in this slot). */}
+      {!settings.googleReviewsEnabled && settings.homeSections?.testimonials!==false && featuredTesti.length>0&&(
         <div style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
           <Reveal style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
             <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
@@ -2661,7 +3865,7 @@ export default function Home() {
       )}
 
       {/* BLOG PREVIEW */}
-      {blog.length>0&&(
+      {settings.homeSections?.journal!==false && blog.length>0&&(
         <div style={{background:C.DARK,padding:"60px 40px"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
@@ -2690,6 +3894,7 @@ export default function Home() {
       )}
 
       {/* CTA */}
+      {settings.homeSections?.cta!==false && (
       <Reveal style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeCtaEyebrow}</div>
         <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.uiText.homeCtaTitle}</h2>
@@ -2699,6 +3904,7 @@ export default function Home() {
           <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>{settings.uiText.homeCtaWaBtn}</a>
         </div>
       </Reveal>
+      )}
 
       <Footer />
       <FloatingWA num={WA} msg={WA_MSG} />

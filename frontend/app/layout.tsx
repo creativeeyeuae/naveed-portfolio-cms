@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri, Noto_Sans_Devanagari, Noto_Nastaliq_Urdu } from "next/font/google";
 import "../styles/globals.css";
 
@@ -61,12 +61,23 @@ const SITE_DESC =
 // Same photo already used as the About-page portrait, at a wider crop for social share cards.
 const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
 
+// Home-screen install support (manifest lives at app/manifest.ts). apple-mobile-web-app-*
+// is Apple-specific -- Safari on iOS ignores the web manifest's own display/icon fields,
+// so these are still needed even though manifest.ts already covers Android/Chrome. This is
+// also the prerequisite Apple imposes before Web Push notifications work on iPhone at all.
+export const viewport: Viewport = { themeColor: "#140D21" };
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: SITE_TITLE,
   description: SITE_DESC,
   alternates: { canonical: "/" },
+  icons: { icon: "/icon", apple: "/apple-touch-icon.png" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Creative Fusion" },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  // Google Search Console ownership verification for the bynaveedanjum.com URL-prefix
+  // property (separate from the creativefusion.llc agency-site property).
+  verification: { google: "vJ5J4thHJdnpQayu1nWXVdO4qnucLWqJHMtuF4IXUhI" },
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESC,

@@ -1511,7 +1511,7 @@ export default function Home() {
   // can trigger the browser's own real install prompt; iPhone/Safari has no API for any
   // website to trigger or detect this, so iOS just gets a one-time instructional banner.
   const [showInstallBanner,setShowInstallBanner]=useState(false);
-  const [installPlatform,setInstallPlatform]=useState<"ios"|"android"|null>(null);
+  const [installPlatform,setInstallPlatform]=useState<"ios"|"android"|"android-manual"|null>(null);
   const [deferredInstallEvent,setDeferredInstallEvent]=useState<any>(null);
   const [adminSignInEmail,setAdminSignInEmail]=useState("");
   const [adminSignInPassword,setAdminSignInPassword]=useState("");
@@ -1596,12 +1596,26 @@ export default function Home() {
     try{ localStorage.setItem("na_install_dismissed","1"); }catch{}
   }
   async function triggerInstall(){
+    // Chrome's own install prompt is genuinely flaky in the wild: the captured event can
+    // go stale (backgrounding the tab, too much time passed) and .prompt() then just does
+    // nothing, silently -- a known Chromium quirk, not something this code can force past.
+    // So this never claims success; it only ever reports what actually happened, and the
+    // banner's own text (below) already gives a manual path that works regardless.
     if(deferredInstallEvent){
-      deferredInstallEvent.prompt();
-      try{ await deferredInstallEvent.userChoice; }catch{}
-      setDeferredInstallEvent(null);
+      try{
+        deferredInstallEvent.prompt();
+        await deferredInstallEvent.userChoice;
+        setDeferredInstallEvent(null);
+        dismissInstallBanner();
+        return;
+      }catch(e){
+        console.warn("Install prompt failed, falling back to manual instructions:",e);
+      }
     }
-    dismissInstallBanner();
+    // Either there was no captured event, or prompting it failed -- don't hide the banner
+    // (that would strand the visitor with no path at all); switch its own text to the
+    // manual Chrome-menu steps instead, which always works.
+    setInstallPlatform("android-manual");
   }
   useEffect(()=>{
     if(!authed) return;
@@ -1951,6 +1965,8 @@ export default function Home() {
           <div style={{fontSize:11,color:C.MID,lineHeight:1.4}}>
             {installPlatform==="ios"
               ? "Tap the Share icon below, then \"Add to Home Screen.\""
+              : installPlatform==="android-manual"
+              ? "Tap your browser's ⋮ menu, then \"Add to Home screen\" / \"Install app.\""
               : "Add a quick-access icon to your home screen."}
           </div>
         </div>

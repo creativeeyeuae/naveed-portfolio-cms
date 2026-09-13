@@ -1514,6 +1514,10 @@ export default function Home() {
   const [seoRunning,setSeoRunning]=useState(false);
   const [seoErr,setSeoErr]=useState("");
   const [seoFilter,setSeoFilter]=useState<"all"|"critical"|"high"|"medium"|"low"|"opportunity">("all");
+  // Image alt-text automation (Cloudflare Workers AI) -- see functions/api/admin/seo/alt-text.ts.
+  const [altTextRunning,setAltTextRunning]=useState(false);
+  const [altTextResult,setAltTextResult]=useState<any>(null);
+  const [altTextErr,setAltTextErr]=useState("");
   // "Add to Home Screen" prompt for regular visitors (not the admin panel). Android/Chrome
   // can trigger the browser's own real install prompt; iPhone/Safari has no API for any
   // website to trigger or detect this, so iOS just gets a one-time instructional banner.
@@ -1727,6 +1731,21 @@ export default function Home() {
       if(!res.ok) throw new Error(data.error||"Action failed");
       await loadSeoAudit();
     }catch(e:any){ setSeoErr(e.message||"Action failed"); }
+  }
+
+  // Generates real alt text for any portfolio images that don't have it yet, using
+  // Cloudflare Workers AI to actually look at each image (see functions/api/admin/seo/alt-text.ts).
+  // Never touches an image that already has admin-written alt text.
+  async function runAltTextGen(){
+    if(!adminSession) return;
+    setAltTextRunning(true); setAltTextErr(""); setAltTextResult(null);
+    try{
+      const res=await fetch("/api/admin/seo/alt-text",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Alt-text generation failed");
+      setAltTextResult(data);
+    }catch(e:any){ setAltTextErr(e.message||"Alt-text generation failed"); }
+    setAltTextRunning(false);
   }
 
   async function approvePayment(paymentId:string){
@@ -2389,6 +2408,27 @@ export default function Home() {
             )}
 
             <div style={{marginTop:32,padding:"16px 18px",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:"#140D21",marginBottom:6}}>Image Alt Text (Cloudflare Workers AI)</div>
+              <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6,marginBottom:10}}>
+                Scans every portfolio image with no alt text yet and generates a real, one-sentence description by analyzing that exact image with Cloudflare Workers AI -- already part of this Cloudflare account, no new service. Existing alt text is never overwritten.
+              </div>
+              <button onClick={runAltTextGen} disabled={altTextRunning} style={{...S.btnP,opacity:altTextRunning?0.6:1,cursor:altTextRunning?"default":"pointer"}}>{altTextRunning?"⏳ Generating…":"✨ Generate Missing Alt Text"}</button>
+              {altTextErr&&<div style={{fontSize:12,color:"#c0392b",marginTop:10}}>⚠️ {altTextErr}</div>}
+              {altTextResult&&(
+                <div style={{marginTop:10,fontSize:12,color:"#140D21"}}>
+                  <b>{altTextResult.updated}</b> image(s) updated.
+                  {(altTextResult.results||[]).some((r:any)=>r.error)&&(
+                    <div style={{marginTop:6,color:"#6E6480"}}>
+                      {(altTextResult.results||[]).filter((r:any)=>r.error).map((r:any,i:number)=>(
+                        <div key={i}>⚠ {r.project}: {r.error}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div style={{marginTop:16,padding:"16px 18px",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10}}>
               <div style={{fontSize:11,fontWeight:600,color:"#140D21",marginBottom:6}}>Integrations</div>
               <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6}}>
                 Google Search Console: <b>Not connected yet</b> · Google Analytics 4: <b>Not connected</b> · Semrush: <b>Not connected</b><br/>

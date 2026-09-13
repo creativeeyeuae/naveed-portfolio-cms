@@ -1,0 +1,15 @@
+# Cloudflare Pages project config for naveed-portfolio-cms (deployed via
+# `npx wrangler pages deploy out --project-name=naveed-portfolio-cms` from this
+# folder). This file did not exist before -- Pages bindings were previously
+# only configurable via the dashboard. Its only purpose right now is to bind
+# Workers AI (already available on this Cloudflare account, no new service or
+# subscription) as `env.AI` inside the Pages Functions under functions/api/**,
+# specifically for real image alt-text generation in
+# functions/api/admin/seo/alt-text.ts. Nothing else about the deploy changes:
+# pages_build_output_dir just names the same "out" folder already used today.
+name = "naveed-portfolio-cms"
+pages_build_output_dir = "out"
+compatibility_date = "2026-09-01"
+
+[ai]
+binding = "AI"

@@ -1507,6 +1507,13 @@ export default function Home() {
   const [pushStatus,setPushStatus]=useState<"unknown"|"unsupported"|"off"|"on"|"denied">("unknown");
   const [pushBusy,setPushBusy]=useState(false);
   const [pushErr,setPushErr]=useState("");
+  // SEO Agent (CMS > SEO Agent) -- real crawl+audit data from /api/admin/seo/*, never
+  // fabricated. See functions/api/admin/seo/run.ts for what actually gets checked.
+  const [seoAudit,setSeoAudit]=useState<any>(null);
+  const [seoLoading,setSeoLoading]=useState(false);
+  const [seoRunning,setSeoRunning]=useState(false);
+  const [seoErr,setSeoErr]=useState("");
+  const [seoFilter,setSeoFilter]=useState<"all"|"critical"|"high"|"medium"|"low"|"opportunity">("all");
   // "Add to Home Screen" prompt for regular visitors (not the admin panel). Android/Chrome
   // can trigger the browser's own real install prompt; iPhone/Safari has no API for any
   // website to trigger or detect this, so iOS just gets a one-time instructional banner.
@@ -1686,6 +1693,41 @@ export default function Home() {
     setBookingsLoading(false);
   }
   useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+
+  async function loadSeoAudit(){
+    if(!adminSession) return;
+    setSeoLoading(true); setSeoErr("");
+    try{
+      const res=await fetch("/api/admin/seo/audits",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load SEO data");
+      setSeoAudit(data);
+    }catch(e:any){ setSeoErr(e.message||"Failed to load SEO data"); }
+    setSeoLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="seoagent"&&adminSession) loadSeoAudit(); },[cmsTab,adminSession]);
+
+  async function runSeoAudit(){
+    if(!adminSession) return;
+    setSeoRunning(true); setSeoErr("");
+    try{
+      const res=await fetch("/api/admin/seo/run",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Audit run failed");
+      await loadSeoAudit();
+    }catch(e:any){ setSeoErr(e.message||"Audit run failed"); }
+    setSeoRunning(false);
+  }
+
+  async function seoIssueAction(issueId:string,action:"ignore"|"reopen"){
+    if(!adminSession) return;
+    try{
+      const res=await fetch("/api/admin/seo/issue",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({issueId,action})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Action failed");
+      await loadSeoAudit();
+    }catch(e:any){ setSeoErr(e.message||"Action failed"); }
+  }
 
   async function approvePayment(paymentId:string){
     if(!adminSession) return;
@@ -2099,7 +2141,7 @@ export default function Home() {
     const cmsPageTitle:Record<string,string> = {
       dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
-      activity:"Activity", errorlog:"Error Logs", access:"Admin & Access",
+      activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent",
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
@@ -2145,6 +2187,7 @@ export default function Home() {
         <CmsNavItem icon="🎨" label="Colors" active={cmsTab==="settings"&&settingsTab==="colors"} onClick={()=>{setCmsTab("settings");setSettingsTab("colors");}} />
         <CmsNavItem icon="🔤" label="Text & Banners" active={cmsTab==="settings"&&settingsTab==="text"} onClick={()=>{setCmsTab("settings");setSettingsTab("text");}} />
         <CmsNavSection label="SEO" />
+        <CmsNavItem icon="🤖" label="SEO Agent" active={cmsTab==="seoagent"} onClick={()=>setCmsTab("seoagent")} />
         <CmsNavItem icon="🔍" label="SEO & Metadata" active={cmsTab==="settings"&&settingsTab==="seo"} onClick={()=>{setCmsTab("settings");setSettingsTab("seo");}} />
         <CmsNavSection label="System" />
         <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
@@ -2267,6 +2310,91 @@ export default function Home() {
             <div style={{fontSize:32,marginBottom:12}}>{cmsTab==="activity"?"📈":"⚠️"}</div>
             <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:8}}>{cmsTab==="activity"?"Activity log":"Error logs"} coming soon</div>
             <div style={{fontSize:12.5,color:"#6E6480",lineHeight:1.6}}>{cmsTab==="activity"?"A real, persisted history of changes made in this CMS will appear here.":"Application errors will appear here with a friendly summary and expandable technical detail, without exposing raw errors to visitors."} This section isn't wired up yet -- ask to have it built next and it will show genuine data only, never placeholder entries.</div>
+          </div>
+        )}
+
+        {/* SEO AGENT -- real crawler + audit engine (Phase 1). Every number on this screen
+            comes from an actual fetch of the real live site, done when "Run Full SEO
+            Audit" is clicked (see functions/api/admin/seo/run.ts). No fake data, ever --
+            an empty state means no audit has run yet, not that everything is perfect. */}
+        {cmsTab==="seoagent"&&(
+          <div style={{maxWidth:1100,margin:"0 auto",padding:"32px 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap" as const,gap:16,marginBottom:24}}>
+              <div style={{maxWidth:480}}>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:6,textTransform:"uppercase" as const}}>SEO Agent</div>
+                <div style={{fontSize:12.5,color:C.MID,lineHeight:1.6}}>Crawls the real live site and audits every real, public page from your sitemap -- titles, meta descriptions, headings, images, canonical tags, Open Graph, structured data, mobile viewport and content depth. No fake data, ever.</div>
+              </div>
+              <button onClick={runSeoAudit} disabled={seoRunning} style={{...S.btnP,opacity:seoRunning?0.6:1,cursor:seoRunning?"default":"pointer"}}>{seoRunning?"⏳ Crawling site…":"▶ Run Full SEO Audit"}</button>
+            </div>
+
+            {seoErr&&<div style={{background:"#3a1414",border:"1px solid #ff6b6b",color:"#ff9b9b",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:16}}>⚠️ {seoErr}</div>}
+            {seoLoading&&!seoAudit&&<div style={{fontSize:12.5,color:C.MID}}>Loading…</div>}
+
+            {!seoLoading&&!seoAudit?.lastAudit&&(
+              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"40px 24px",textAlign:"center" as const}}>
+                <div style={{fontSize:32,marginBottom:12}}>🤖</div>
+                <div style={{fontSize:14,fontWeight:600,color:"#140D21",marginBottom:8}}>No audit has run yet</div>
+                <div style={{fontSize:12.5,color:"#6E6480"}}>Click "Run Full SEO Audit" above to crawl bynaveedanjum.com and generate real findings.</div>
+              </div>
+            )}
+
+            {seoAudit?.lastAudit&&(
+              <>
+                <div style={{fontSize:11,color:C.MID,marginBottom:16}}>
+                  Last run: {new Date(seoAudit.lastAudit.finished_at||seoAudit.lastAudit.started_at).toLocaleString()} · {seoAudit.lastAudit.status} · {seoAudit.lastAudit.pages_crawled} pages crawled · {(seoAudit.issues||[]).length} findings
+                </div>
+
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:12,marginBottom:28}}>
+                  {Object.entries(seoAudit.lastAudit.score_by_category||{}).map(([cat,score]:[string,any])=>(
+                    <div key={cat} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:"14px 16px"}}>
+                      <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase" as const,color:"#6E6480",marginBottom:6}}>{cat}</div>
+                      <div style={{fontSize:22,fontWeight:700,color:score>=80?"#22c55e":score>=50?"#f59e0b":"#ef4444"}}>{score}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap" as const}}>
+                  {(["all","critical","high","medium","low","opportunity"] as const).map(f=>(
+                    <button key={f} onClick={()=>setSeoFilter(f)} style={{...S.btnSm,background:seoFilter===f?C.P:"transparent",color:seoFilter===f?"#fff":undefined,borderColor:seoFilter===f?C.P:undefined,textTransform:"capitalize" as const}}>{f}</button>
+                  ))}
+                </div>
+
+                <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+                  {(seoAudit.issues||[]).filter((i:any)=>seoFilter==="all"||i.severity===seoFilter).map((issue:any)=>(
+                    <div key={issue.id} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:"14px 16px",opacity:issue.status==="ignored"?0.55:1}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap" as const}}>
+                        <div style={{flex:1,minWidth:220}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap" as const}}>
+                            <span style={{fontSize:9.5,fontWeight:700,letterSpacing:0.5,textTransform:"uppercase" as const,padding:"2px 7px",borderRadius:4,background:issue.severity==="critical"?"#ef4444":issue.severity==="high"?"#f59e0b":issue.severity==="medium"?"#eab308":issue.severity==="low"?"#3b82f6":"#8b5cf6",color:"#fff"}}>{issue.severity}</span>
+                            <span style={{fontSize:9.5,color:"#8a8098"}}>{issue.category}</span>
+                            <span style={{fontSize:12.5,fontWeight:600,color:"#140D21"}}>{issue.title}</span>
+                          </div>
+                          <div style={{fontSize:11.5,color:"#6E6480",marginBottom:4}}>{issue.page_path}</div>
+                          <div style={{fontSize:12,color:"#4a4458",lineHeight:1.5}}>{issue.description}</div>
+                          {issue.recommendation&&<div style={{fontSize:11.5,color:"#6E6480",marginTop:4}}><b>Fix:</b> {issue.recommendation}</div>}
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"flex-start",flexShrink:0}}>
+                          {issue.status!=="ignored"?(
+                            <button onClick={()=>seoIssueAction(issue.id,"ignore")} style={S.btnSm}>Ignore</button>
+                          ):(
+                            <button onClick={()=>seoIssueAction(issue.id,"reopen")} style={S.btnSm}>Reopen</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {(seoAudit.issues||[]).length===0&&<div style={{fontSize:12.5,color:C.MID}}>No issues found on the last run. 🎉</div>}
+                </div>
+              </>
+            )}
+
+            <div style={{marginTop:32,padding:"16px 18px",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:"#140D21",marginBottom:6}}>Integrations</div>
+              <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6}}>
+                Google Search Console: <b>Not connected yet</b> · Google Analytics 4: <b>Not connected</b> · Semrush: <b>Not connected</b><br/>
+                This first version audits your real live pages directly. Connecting Search Console for real click/impression data, and one-click safe auto-fixes for real issues, are the next steps.
+              </div>
+            </div>
           </div>
         )}
 

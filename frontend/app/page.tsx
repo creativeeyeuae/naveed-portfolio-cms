@@ -5,7 +5,19 @@ import { SERVICE_PAGES } from "@/lib/servicePagesData";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
-type Project = { id:string;title:string;slug:string;categories:string[];description:string;fullDescription:string;clientName:string;location:string;projectDate:string;tags:string[];featured:boolean;coverImage:string;images:Img[];videos:string[];reels:string[];youtubeUrl:string; };
+type Project = { id:string;title:string;slug:string;categories:string[];description:string;fullDescription:string;clientName:string;location:string;projectDate:string;tags:string[];featured:boolean;coverImage:string;images:Img[];videos:string[];reels:string[];youtubeUrl:string;
+  // Additive fields (spec: "extend the existing project detail page, never rebuild") for the
+  // canonical /work/[slug] page -- all optional so every existing project (which has none of
+  // these set) renders identically to before until an admin fills one in.
+  projectName?:string;   // Prominent display name shown on the /work/[slug] page body, separate
+                          // from `title` (which stays the banner heading + nav/listing label).
+  bannerTitle?:string;   // Optional override for the banner heading on /work/[slug]; supports
+                          // literal newlines (rendered as <br/>) so it isn't crammed into `title`'s
+                          // single-line usage elsewhere (Featured Work cards, Work grid, nav-adjacent
+                          // listings). Falls back to `title` when blank -- zero visual change until set.
+  bannerImage?:string;   // Optional banner-only image, distinct from `coverImage` (used for grid/
+                          // card thumbnails everywhere else). Falls back to `coverImage` when blank.
+};
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
 type Service = { id:string;icon:string;title:string;desc:string;detail:string;deliverables:string[]; };
@@ -96,6 +108,9 @@ type SiteSettings = {
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
+  imagePermissionEnabled:boolean; // CMS on/off switch for the whole Image Permission Request
+                                   // feature (spec point 22) -- when off, /work/[slug] hides
+                                   // every "Request Image Permission" control.
   emailjsServiceId:string; emailjsTemplateId:string; emailjsPublicKey:string;
   theme:ThemeColors; uiText:UiText; sectionBg:SectionBg; pageEnabled:PageEnabled; homeSections:HomeSections; heroTypography:HeroTypography;
   pricingPackages:PricingPackage[]; pricingCardStyle:PricingCardStyle;
@@ -235,6 +250,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
+  imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
@@ -1539,6 +1555,22 @@ export default function Home() {
   const [bookingsErr,setBookingsErr]=useState("");
   const [bookingActionBusy,setBookingActionBusy]=useState<string|null>(null);
   const [rejectReasonFor,setRejectReasonFor]=useState<string|null>(null);
+  // Comments moderation (CMS > Comments) -- same requireAdmin/adminSession pattern as Bookings.
+  const [commentsList,setCommentsList]=useState<any[]|null>(null);
+  const [commentsLoading,setCommentsLoading]=useState(false);
+  const [commentsErr,setCommentsErr]=useState("");
+  const [commentActionBusy,setCommentActionBusy]=useState<string|null>(null);
+  // Image Permission Requests (CMS > Image Requests) -- manual-approval-only workflow.
+  const [permReqList,setPermReqList]=useState<any[]|null>(null);
+  const [permReqLoading,setPermReqLoading]=useState(false);
+  const [permReqErr,setPermReqErr]=useState("");
+  const [permReqActionBusy,setPermReqActionBusy]=useState<string|null>(null);
+  const [permReqOpenId,setPermReqOpenId]=useState<string|null>(null);
+  const [permReqNotes,setPermReqNotes]=useState("");
+  const [permReqRejectReason,setPermReqRejectReason]=useState("");
+  const [permReqApprovedUsage,setPermReqApprovedUsage]=useState("");
+  const [permReqCreditRequired,setPermReqCreditRequired]=useState(true);
+  const [permReqCreditText,setPermReqCreditText]=useState("Photography: Naveed Anjum / Creative Fusion LLC");
   const [rejectReasonText,setRejectReasonText]=useState("");
 
   // Restore an existing session on load, and react to sign-in/out and password-recovery
@@ -1698,6 +1730,67 @@ export default function Home() {
   }
   useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
 
+  async function loadComments(){
+    if(!adminSession) return;
+    setCommentsLoading(true); setCommentsErr("");
+    try{
+      const res=await fetch("/api/admin/comments",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load comments");
+      setCommentsList(data.comments||[]);
+    }catch(e:any){ setCommentsErr(e.message||"Failed to load comments"); }
+    setCommentsLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="comments"&&adminSession) loadComments(); },[cmsTab,adminSession]);
+
+  async function moderateComment(commentId:string,action:"approve"|"hide"|"delete"){
+    if(!adminSession) return;
+    setCommentActionBusy(commentId);
+    try{
+      const res=await fetch("/api/admin/comments",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({commentId,action})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to update comment");
+      await loadComments();
+    }catch(e:any){ alert(e.message||"Failed to update comment"); }
+    setCommentActionBusy(null);
+  }
+
+  async function loadPermReqs(){
+    if(!adminSession) return;
+    setPermReqLoading(true); setPermReqErr("");
+    try{
+      const res=await fetch("/api/admin/permission-requests",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load permission requests");
+      setPermReqList(data.requests||[]);
+    }catch(e:any){ setPermReqErr(e.message||"Failed to load permission requests"); }
+    setPermReqLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="permrequests"&&adminSession) loadPermReqs(); },[cmsTab,adminSession]);
+  // Refresh the pending-count badge in the CMS nav regardless of which tab is open, so the
+  // admin notices a new request without having to click into the tab first.
+  useEffect(()=>{ if(adminSession) loadPermReqs(); },[adminSession]);
+
+  async function decidePermReq(requestId:string,action:"approve"|"reject"){
+    if(!adminSession) return;
+    setPermReqActionBusy(requestId);
+    try{
+      const res=await fetch("/api/admin/permission-requests",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({
+        requestId,action,
+        adminNotes:permReqNotes,
+        rejectionReason:permReqRejectReason,
+        approvedUsage:permReqApprovedUsage,
+        creditRequired:permReqCreditRequired,
+        creditText:permReqCreditText,
+      })});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to update request");
+      setPermReqOpenId(null); setPermReqNotes(""); setPermReqRejectReason(""); setPermReqApprovedUsage("");
+      await loadPermReqs();
+    }catch(e:any){ alert(e.message||"Failed to update request"); }
+    setPermReqActionBusy(null);
+  }
+
   async function loadSeoAudit(){
     if(!adminSession) return;
     setSeoLoading(true); setSeoErr("");
@@ -1771,7 +1864,7 @@ export default function Home() {
     }catch(e:any){ setBookingsErr(e.message||"Reject failed"); }
     setBookingActionBusy(null);
   }
-  const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});
+  const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:"",projectName:"",bannerTitle:"",bannerImage:""});
   const [newImg,setNewImg]=useState(""); const [addingImg,setAddingImg]=useState(false);
   const [newReel,setNewReel]=useState(""); const [newCat,setNewCat]=useState(""); const [newBlogCat,setNewBlogCat]=useState("");
   const [cropSrc,setCropSrc]=useState<string|null>(null);
@@ -1872,7 +1965,7 @@ export default function Home() {
   function saveSettings(){setSettings(settingsDraft);}
   function updateSD(patch:Partial<SiteSettings>){setSettingsDraft(d=>({...d,...patch}));}
 
-  function startEdit(p:Project|null){setEditId(p?.id||"new");setForm(p?{...p,tags:p.tags||[],categories:p.categories||[]}:{title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:""});}
+  function startEdit(p:Project|null){setEditId(p?.id||"new");setForm(p?{...p,tags:p.tags||[],categories:p.categories||[]}:{title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:"",projectName:"",bannerTitle:"",bannerImage:""});}
 
   async function addImgUrl(){if(!newImg.trim())return;setAddingImg(true);const o=await detectOrientation(newImg.trim());setForm(f=>({...f,images:[...(f.images||[]),{url:newImg.trim(),orientation:o}],coverImage:f.coverImage||newImg.trim()}));setNewImg("");setAddingImg(false);}
 
@@ -2185,6 +2278,8 @@ export default function Home() {
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
+        <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
+        <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
         <CmsNavSection label="Content" />
         <CmsNavItem icon="🖼" label="Portfolio" active={cmsTab==="projects"} onClick={()=>setCmsTab("projects")} />
         <CmsNavItem icon="🏷" label="Categories" active={cmsTab==="categories"} onClick={()=>setCmsTab("categories")} />
@@ -2559,6 +2654,110 @@ export default function Home() {
           </div>
         )}
 
+        {/* COMMENTS -- moderation queue. Public visitors only ever see status="approved"
+            (see functions/api/comments.ts); everything lands here first. */}
+        {cmsTab==="comments"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Comments</div>
+              <button onClick={loadComments} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {commentsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{commentsErr}</div>}
+            {commentsLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!commentsList||commentsList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No comments yet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {commentsList.map((c:any)=>{
+                  const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",hidden:"#888",deleted:"#e74c3c"};
+                  const proj=projects.find(p=>p.id===c.projectId);
+                  return(
+                    <div key={c.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:18}}>
+                      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
+                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{c.visitorName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.visitorEmail}</span></div>
+                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[c.status]||C.MID,border:`1px solid ${statusColor[c.status]||C.BORDER}`}}>{c.status}</span>
+                      </div>
+                      <div style={{fontSize:11,color:"#666",marginBottom:8}}>{proj?.title||c.projectId} · {new Date(c.createdAt).toLocaleString()}</div>
+                      <div style={{fontSize:13,color:"#ccc",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-wrap"}}>{c.comment}</div>
+                      <div style={{display:"flex",gap:8}}>
+                        {c.status!=="approved"&&<button onClick={()=>moderateComment(c.id,"approve")} disabled={commentActionBusy===c.id} style={S.btnSm}>✓ Approve</button>}
+                        {c.status!=="hidden"&&<button onClick={()=>moderateComment(c.id,"hide")} disabled={commentActionBusy===c.id} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Hide</button>}
+                        {c.status!=="deleted"&&<button onClick={()=>{if(confirm("Delete this comment?"))moderateComment(c.id,"delete");}} disabled={commentActionBusy===c.id} style={{...S.btnO,padding:"8px 14px",fontSize:10,borderColor:"#e74c3c",color:"#e74c3c"}}>Delete</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* IMAGE PERMISSION REQUESTS -- manual-approval-only. Nothing here or anywhere else in
+            this codebase can auto-grant a request; every approve/reject is a deliberate click
+            that hits functions/api/admin/permission-requests.ts behind requireAdmin. */}
+        {cmsTab==="permrequests"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Image Permission Requests</div>
+              <button onClick={loadPermReqs} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {permReqErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{permReqErr}</div>}
+            {permReqLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!permReqList||permReqList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No permission requests yet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                {permReqList.map((r:any)=>{
+                  const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",rejected:"#e74c3c",cancelled:"#666"};
+                  const open=permReqOpenId===r.id;
+                  return(
+                    <div key={r.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                      <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                        <img src={r.imageUrl} alt="" style={{width:96,height:96,objectFit:"cover",background:"#000",flexShrink:0,borderRadius:2}} />
+                        <div style={{flex:1,minWidth:200}}>
+                          <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
+                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{r.requesterName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {r.requesterEmail}{r.requesterWhatsapp&&` · ${r.requesterWhatsapp}`}</span></div>
+                            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[r.status]||C.MID,border:`1px solid ${statusColor[r.status]||C.BORDER}`,flexShrink:0}}>{r.status}</span>
+                          </div>
+                          <div style={{fontSize:11,color:"#666",margin:"4px 0 8px"}}>{r.projectName||r.projectId} · {new Date(r.createdAt).toLocaleString()}</div>
+                          <div style={{fontSize:12,color:C.MID,marginBottom:4}}>Intended usage: {(r.usageTypes||[]).join(", ")}</div>
+                          {r.usageUrl&&<div style={{fontSize:12,color:C.MID,marginBottom:4}}>URL: <a href={r.usageUrl} target="_blank" rel="noreferrer" style={{color:C.PL}}>{r.usageUrl}</a></div>}
+                          {r.usageDescription&&<div style={{fontSize:12,color:"#ccc",marginBottom:4,whiteSpace:"pre-wrap"}}>{r.usageDescription}</div>}
+                          {r.status==="approved"&&<div style={{fontSize:12,color:"#2ecc71",marginTop:6}}>✓ Approved{r.approvedUsage?` — ${r.approvedUsage}`:""}{r.creditRequired?` (credit required: "${r.creditText}")`:""}</div>}
+                          {r.status==="rejected"&&<div style={{fontSize:12,color:"#e74c3c",marginTop:6}}>✕ Rejected — {r.rejectionReason}</div>}
+                        </div>
+                      </div>
+                      {r.status==="pending"&&(
+                        open?(
+                          <div style={{marginTop:16,paddingTop:16,borderTop:`1px solid ${C.BORDER}`,display:"flex",flexDirection:"column",gap:10}}>
+                            <div><label style={S.lbl}>Admin Notes (internal)</label><textarea style={{...S.inp,height:50,resize:"vertical" as const}} value={permReqNotes} onChange={e=>setPermReqNotes(e.target.value)} /></div>
+                            <div><label style={S.lbl}>Approved Usage (shown to requester if approved)</label><input style={S.inp} value={permReqApprovedUsage} onChange={e=>setPermReqApprovedUsage(e.target.value)} placeholder="e.g. Website use approved, non-exclusive" /></div>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              <input type="checkbox" checked={permReqCreditRequired} onChange={e=>setPermReqCreditRequired(e.target.checked)} />
+                              <span style={{fontSize:11,color:C.MID}}>Require photo credit</span>
+                            </div>
+                            {permReqCreditRequired&&<div><label style={S.lbl}>Credit Text</label><input style={S.inp} value={permReqCreditText} onChange={e=>setPermReqCreditText(e.target.value)} /></div>}
+                            <div><label style={S.lbl}>Rejection Reason (required if rejecting)</label><input style={S.inp} value={permReqRejectReason} onChange={e=>setPermReqRejectReason(e.target.value)} /></div>
+                            <div style={{display:"flex",gap:8}}>
+                              <button onClick={()=>decidePermReq(r.id,"approve")} disabled={permReqActionBusy===r.id} style={S.btnP}>✓ Approve</button>
+                              <button onClick={()=>decidePermReq(r.id,"reject")} disabled={permReqActionBusy===r.id||!permReqRejectReason.trim()} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>✕ Reject</button>
+                              <button onClick={()=>{setPermReqOpenId(null);setPermReqNotes("");setPermReqRejectReason("");setPermReqApprovedUsage("");}} style={S.btnSm}>Cancel</button>
+                            </div>
+                          </div>
+                        ):(
+                          <div style={{marginTop:14}}><button onClick={()=>{setPermReqOpenId(r.id);setPermReqCreditText("Photography: Naveed Anjum / Creative Fusion LLC");setPermReqCreditRequired(true);}} style={S.btnSm}>Review Request</button></div>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* SETTINGS TAB */}
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
@@ -2577,6 +2776,13 @@ export default function Home() {
                   <div><label style={S.lbl}>Stats: Years</label><input style={S.inp} value={settingsDraft.statsYears} onChange={e=>updateSD({statsYears:e.target.value})} /></div>
                   <div><label style={S.lbl}>Stats: Projects</label><input style={S.inp} value={settingsDraft.statsProjects} onChange={e=>updateSD({statsProjects:e.target.value})} /></div>
                   <div><label style={S.lbl}>Stats: Clients</label><input style={S.inp} value={settingsDraft.statsClients} onChange={e=>updateSD({statsClients:e.target.value})} /></div>
+                </div>
+                <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Image Permission Requests</div>
+                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+                    <input type="checkbox" checked={settingsDraft.imagePermissionEnabled!==false} onChange={e=>updateSD({imagePermissionEnabled:e.target.checked})} />
+                    <span style={{fontSize:13,color:"#ccc"}}>Allow visitors to request permission to use project images (shown on every /work project page)</span>
+                  </label>
                 </div>
               </div>
             )}
@@ -3131,10 +3337,18 @@ export default function Home() {
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
                     <div><label style={S.lbl}>Title *</label><input style={S.inp} value={form.title||""} onChange={e=>setForm(f=>({...f,title:e.target.value,slug:slugify(e.target.value)}))} /></div>
                     <div><label style={S.lbl}>Slug</label><input style={S.inp} value={form.slug||""} onChange={e=>setForm(f=>({...f,slug:e.target.value}))} /></div>
+                    <div><label style={S.lbl}>Project Name</label><input style={S.inp} value={form.projectName||""} onChange={e=>setForm(f=>({...f,projectName:e.target.value}))} placeholder="Defaults to Title if left blank" /></div>
                     <div><label style={S.lbl}>Client</label><input style={S.inp} value={form.clientName||""} onChange={e=>setForm(f=>({...f,clientName:e.target.value}))} /></div>
                     <div><label style={S.lbl}>Location</label><input style={S.inp} value={form.location||""} onChange={e=>setForm(f=>({...f,location:e.target.value}))} /></div>
                     <div><label style={S.lbl}>Date</label><input type="date" style={S.inp} value={form.projectDate||""} onChange={e=>setForm(f=>({...f,projectDate:e.target.value}))} /></div>
                     <div><label style={S.lbl}>YouTube URL</label><input style={S.inp} value={form.youtubeUrl||""} onChange={e=>setForm(f=>({...f,youtubeUrl:e.target.value}))} /></div>
+                  </div>
+                  <div style={{marginBottom:16}}>
+                    <label style={S.lbl}>Banner Title (optional -- press Enter for a line break; defaults to Title if left blank)</label>
+                    <textarea style={{...S.inp,height:60,resize:"vertical" as const}} value={form.bannerTitle||""} onChange={e=>setForm(f=>({...f,bannerTitle:e.target.value}))} placeholder={form.title||"e.g. World Investment\\nConference 2025"} />
+                  </div>
+                  <div style={{marginBottom:16}}>
+                    <SingleImageUpload value={form.bannerImage||""} onChange={url=>setForm(f=>({...f,bannerImage:url}))} label="Banner Image (optional -- defaults to Cover Image if left blank)" />
                   </div>
                   <div style={{marginBottom:16}}>
                     <label style={S.lbl}>Categories</label>
@@ -3215,10 +3429,10 @@ export default function Home() {
             <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:20}}>Related Projects</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:3}}>
               {projects.filter(p=>p.id!==selProj.id&&p.categories?.some(c=>selProj.categories?.includes(c))).slice(0,3).map(p=>(
-                <div key={p.id} onClick={()=>openProj(p)} style={{cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:C.DARK}}>
+                <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:C.DARK,textDecoration:"none"}}>
                   <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.5s, filter 0.5s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.05)";e.currentTarget.style.filter="grayscale(0)";}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.filter="grayscale(1)";}} />
                   <div style={{position:"absolute",bottom:0,left:0,right:0,padding:16,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent)"}}><div style={{fontSize:13,color:"#fff"}}>{p.title}</div></div>
-                </div>
+                </a>
               ))}
             </div>
           </div>
@@ -3774,7 +3988,7 @@ export default function Home() {
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:3}}>
           {filtered.map(p=>(
-            <div key={p.id} onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
+            <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
               onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
               onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
               {/* B&W-by-default, full color on hover -- same reveal treatment requested from kima.framer.media */}
@@ -3786,7 +4000,7 @@ export default function Home() {
                 {p.location&&<div style={{fontSize:11,color:C.MID,marginTop:4}}>📍 {p.location}</div>}
               </div>
               {p.featured&&<div style={{position:"absolute",top:14,right:14,background:C.P,color:"#fff",fontSize:9,letterSpacing:2,padding:"3px 8px",textTransform:"uppercase"}}>Featured</div>}
-            </div>
+            </a>
           ))}
         </div>
       </div>
@@ -3940,7 +4154,7 @@ export default function Home() {
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
               <Reveal key={p.id} style={{gridColumn:isMobile?"1/2":"1/3"}}>
-              <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK}}
+              <a href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
@@ -3951,12 +4165,12 @@ export default function Home() {
                     <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
                   </div>
                 </div>
-              </div>
+              </a>
               </Reveal>
             ))}
             {featured.slice(1,4).map((p,idx)=>(
               <Reveal key={p.id} delay={0.1+idx*0.08}>
-              <div onClick={()=>openProj(p)} style={{position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK}}
+              <a href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
@@ -3967,7 +4181,7 @@ export default function Home() {
                     <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
                   </div>
                 </div>
-              </div>
+              </a>
               </Reveal>
             ))}
           </div>

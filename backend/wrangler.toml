@@ -57,3 +57,6 @@ DB_NAME = "postgres"
 #                             REQUIRED for that login to work at all -- there is
 #                             no default/fallback value. Set a real, non-guessable
 #                             value with: wrangler secret put ADMIN_PIN
+[[env.preview.hyperdrive]]
+binding = "HYPERDRIVE"
+id = "cc34f24b2800475c8dfae9ab3b342d95"

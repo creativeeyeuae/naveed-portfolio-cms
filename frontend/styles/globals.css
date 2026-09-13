@@ -110,15 +110,17 @@ html[lang="hi"] * {
    faint violet wash on hover, the arrow slides further right and the description
    darkens a touch -- a quiet, confident reveal instead of an icon swap. */
 .svc-row {
-  transition: background-color 0.3s ease, padding-left 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.3s ease, padding-left 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   margin: 0 -6px;
   padding-left: 6px !important;
   padding-right: 6px !important;
+  border-radius: 8px;
 }
 .svc-row:hover {
   background-color: rgba(139, 92, 246, 0.05);
   padding-left: 22px !important;
   border-color: rgba(139, 92, 246, 0.3) !important;
+  box-shadow: 0 14px 34px rgba(139, 92, 246, 0.12);
 }
 .svc-row:hover .svc-arrow {
   transform: translateX(6px);
@@ -129,11 +131,18 @@ html[lang="hi"] * {
 .svc-row:hover .svc-desc {
   color: #4A4258;
 }
+.svc-row:hover .svc-num {
+  box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.14), 0 10px 24px rgba(139, 92, 246, 0.35);
+  transform: scale(1.05);
+}
 .svc-arrow {
   transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 .svc-desc {
   transition: color 0.3s ease;
+}
+.svc-num {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Testimonial spotlight: each auto-rotated or dot-clicked quote crossfades in via
@@ -215,4 +224,29 @@ html[lang="hi"] * {
 @media (max-width: 639px) {
   .egallery { grid-template-columns: 1fr; gap: 12px; }
   .eg-span-1, .eg-span-2, .eg-span-3, .eg-span-4 { grid-column: span 1; }
+}
+
+/* Google Reviews marquee (home): every fetched review scrolls continuously right-to-left in
+   a duplicated track for a seamless loop; hovering pauses it so a visitor can actually read. */
+@keyframes grScroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.gr-fade {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.gr-track {
+  animation: grScroll linear infinite;
+}
+.gr-fade:hover .gr-track {
+  animation-play-state: paused;
+}
+.gr-card {
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+.gr-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 30px 60px rgba(139,92,246,0.26), 0 8px 20px rgba(236,72,153,0.12);
+  border-color: rgba(139,92,246,0.4) !important;
 }

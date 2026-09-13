@@ -1,11 +1,13 @@
-// POST /api/notify/trigger   body: { type: "new_booking" | "receipt_uploaded" | "new_lead", id: string }
+// POST /api/notify/trigger   body: { type: "new_booking" | "receipt_uploaded" | "new_lead" |
+//        "permission_request", id: string }
 //
 // Called by the PUBLIC site right after a real, successful write (booking created, receipt
-// uploaded, contact form submitted) to alert the admin via push. Deliberately has no admin
-// auth -- the visitor who just booked isn't the admin -- but it never trusts the caller for
-// notification CONTENT: every message is built here from a fresh, real lookup of the row by
-// id using the service-role key, and only sent if that row is real and recent. A caller can
-// only ever re-trigger a push about something that genuinely just happened, never invent one.
+// uploaded, contact form submitted, image permission request submitted) to alert the admin
+// via push. Deliberately has no admin auth -- the visitor who just acted isn't the admin --
+// but it never trusts the caller for notification CONTENT: every message is built here from
+// a fresh, real lookup of the row by id using the service-role key, and only sent if that row
+// is real and recent. A caller can only ever re-trigger a push about something that genuinely
+// just happened, never invent one.
 import { json, corsHeaders } from "../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
 
@@ -67,6 +69,16 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
         payload = {
           title: "New contact message",
           body: `${lead.name}${lead.subject ? " — " + lead.subject : ""}`,
+          url: "/?admin=1",
+        };
+      }
+    } else if (type === "permission_request") {
+      const res = await supa(env, `image_permission_requests?id=eq.${id}&select=requester_name,project_name_snapshot,created_at`);
+      const row = (await res.json())?.[0];
+      if (row && isRecent(row.created_at)) {
+        payload = {
+          title: "New image permission request",
+          body: `${row.requester_name} requested permission — ${row.project_name_snapshot || "a project image"}`,
           url: "/?admin=1",
         };
       }

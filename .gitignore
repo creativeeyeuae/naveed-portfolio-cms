@@ -27,6 +27,9 @@ backups/
 .DS_Store
 Thumbs.db
 
+# TypeScript incremental build cache -- machine/build-specific, never committed
+*.tsbuildinfo
+
 # Editor
 .vscode/
 .idea/

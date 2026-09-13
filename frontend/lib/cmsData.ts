@@ -170,6 +170,18 @@ export type PublicSiteInfo = {
   youtube: string;
   linkedin: string;
   footerCopyright: string;
+  // Additive fields below -- needed to faithfully mirror app/page.tsx's own <Nav>/<Footer>
+  // on /work/[slug] (see components/work/SiteHeader.tsx / SiteFooter.tsx). Nothing above this
+  // line changed; every existing caller keeps working unmodified.
+  address: string;
+  waNumber: string;
+  waMsg: string;
+  tiktok: string;
+  pageEnabled: Record<string, boolean>;
+  footerLinks: { label: string; page: string }[];
+  services: { id: string; title: string }[];
+  navBookBtn: string;
+  footerWhatsappBtn: string;
 };
 
 // Same defaults as DEF_SETTINGS in app/page.tsx (the CMS's own fallback values) -- used so
@@ -185,18 +197,74 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   youtube: "https://youtube.com/@creativeeyeuae",
   linkedin: "https://linkedin.com/in/naveedanjumch",
   footerCopyright: "© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
+  // Same defaults as DEF_SETTINGS in app/page.tsx for these additive fields too.
+  address: "Downtown Dubai, UAE",
+  waNumber: "971581174911",
+  waMsg: "Hello Naveed, I visited your portfolio and would like to discuss a project.",
+  tiktok: "",
+  pageEnabled: { work: true, about: true, packages: true, blog: true, cv: true, booking: true, contact: true },
+  footerLinks: [
+    { label: "Work", page: "work" },
+    { label: "About", page: "about" },
+    { label: "Packages", page: "packages" },
+    { label: "CV", page: "cv" },
+    { label: "Booking", page: "booking" },
+    { label: "Contact", page: "contact" },
+  ],
+  services: [
+    { id: "s1", title: "Photography" },
+    { id: "s2", title: "Videography" },
+    { id: "s3", title: "Content Creation" },
+    { id: "s4", title: "Creative Production" },
+  ],
+  navBookBtn: "Book a Project",
+  footerWhatsappBtn: "WhatsApp Us",
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
 // footer (site name, contact info, social links) on /work/[slug] -- the same source the
 // homepage's own <Nav>/<Footer> read from, so branding stays in sync with the CMS without
 // duplicating the full SiteSettings shape here.
+type StringInfoKey =
+  | "siteName" | "siteTagline" | "phone" | "email" | "location"
+  | "instagram" | "youtube" | "linkedin" | "footerCopyright"
+  | "address" | "waNumber" | "waMsg" | "tiktok";
+
 export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   const settings = await readSiteSettingsObject();
-  const pick = (key: keyof PublicSiteInfo): string => {
+  const pick = (key: StringInfoKey): string => {
     const v = settings[key];
     return typeof v === "string" && v ? v : DEFAULT_PUBLIC_SITE_INFO[key];
   };
+
+  // uiText / pageEnabled / footerLinks / services are nested/typed objects in the real
+  // SiteSettings shape (see app/page.tsx) -- read them defensively since this is parsed
+  // straight from a JSON column, and fall back to the same defaults per-field.
+  const uiTextRaw = settings.uiText;
+  const uiText = uiTextRaw && typeof uiTextRaw === "object" && !Array.isArray(uiTextRaw) ? (uiTextRaw as Record<string, unknown>) : {};
+  const pickUi = (key: string, fallback: string): string => {
+    const v = uiText[key];
+    return typeof v === "string" && v ? v : fallback;
+  };
+
+  const pageEnabledRaw = settings.pageEnabled;
+  const pageEnabled =
+    pageEnabledRaw && typeof pageEnabledRaw === "object" && !Array.isArray(pageEnabledRaw)
+      ? (pageEnabledRaw as Record<string, boolean>)
+      : DEFAULT_PUBLIC_SITE_INFO.pageEnabled;
+
+  const footerLinksRaw = settings.footerLinks;
+  const footerLinks = Array.isArray(footerLinksRaw)
+    ? (footerLinksRaw as { label: string; page: string }[])
+    : DEFAULT_PUBLIC_SITE_INFO.footerLinks;
+
+  const servicesRaw = settings.services;
+  const services = Array.isArray(servicesRaw)
+    ? (servicesRaw as { id?: string; title?: string }[])
+        .filter((s) => s && typeof s.title === "string")
+        .map((s, i) => ({ id: s.id || `s${i}`, title: s.title as string }))
+    : DEFAULT_PUBLIC_SITE_INFO.services;
+
   return {
     siteName: pick("siteName"),
     siteTagline: pick("siteTagline"),
@@ -207,5 +275,14 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     youtube: pick("youtube"),
     linkedin: pick("linkedin"),
     footerCopyright: pick("footerCopyright"),
+    address: pick("address"),
+    waNumber: pick("waNumber"),
+    waMsg: pick("waMsg"),
+    tiktok: pick("tiktok"),
+    pageEnabled,
+    footerLinks,
+    services,
+    navBookBtn: pickUi("navBookBtn", DEFAULT_PUBLIC_SITE_INFO.navBookBtn),
+    footerWhatsappBtn: pickUi("footerWhatsappBtn", DEFAULT_PUBLIC_SITE_INFO.footerWhatsappBtn),
   };
 }

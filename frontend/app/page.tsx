@@ -2,6 +2,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient as _createSupabaseClient } from "@supabase/supabase-js";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
+import type { PublicSiteInfo } from "@/lib/cmsData";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -2042,76 +2045,50 @@ export default function Home() {
   // always shown regardless.
   const visibleNavLinks=NAV_LINKS.filter(([k])=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[k]!==false);
 
+  const site: PublicSiteInfo = {
+    siteName: settings.siteName,
+    siteTagline: settings.siteTagline,
+    phone: settings.phone,
+    email: settings.email,
+    location: settings.location,
+    instagram: settings.instagram,
+    youtube: settings.youtube,
+    linkedin: settings.linkedin,
+    footerCopyright: settings.footerCopyright,
+    address: settings.address,
+    waNumber: WA,
+    waMsg: WA_MSG,
+    tiktok: settings.tiktok,
+    pageEnabled: settings.pageEnabled as Record<string, boolean>,
+    footerLinks: settings.footerLinks.map(l => {
+      const tk = PAGE_LABEL_KEY[l.page];
+      return { label: (lang === "en" || !tk) ? l.label : T[tk], page: l.page };
+    }),
+    services: settings.services.map(sv => ({ id: sv.id, title: sv.title })),
+    navBookBtn: settings.uiText.navBookBtn,
+    footerWhatsappBtn: settings.uiText.footerWhatsappBtn,
+  };
+  const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
+
   const Nav=()=>(
     <>
-    {/* Sitewide motion: a soft fade plays once whenever the page div below remounts (React
-        remounts it on every nav change because of its key={page}), giving every page switch a
-        smooth transition instead of an abrupt cut. Defined once here since Nav renders at the
-        top of every public page. Opacity-only on purpose -- animating `transform` on the page
-        wrapper (which contains this fixed Nav) would make the browser treat "fixed" as relative
-        to that wrapper instead of the viewport for the animation's duration, visibly shifting
-        the nav/top-strip and opening a gap above the hero image. Never add transform here. */}
-    <style>{`@keyframes pgFadeIn{from{opacity:0}to{opacity:1}}
-      @keyframes clientsOrbit{
-        0%{transform:rotateY(0deg) translateZ(var(--r));filter:blur(0px);opacity:1}
-        12.5%{transform:rotateY(45deg) translateZ(var(--r));filter:blur(1.1px);opacity:0.9}
-        25%{transform:rotateY(90deg) translateZ(var(--r));filter:blur(3.75px);opacity:0.65}
-        37.5%{transform:rotateY(135deg) translateZ(var(--r));filter:blur(6.4px);opacity:0.4}
-        50%{transform:rotateY(180deg) translateZ(var(--r));filter:blur(7.5px);opacity:0.3}
-        62.5%{transform:rotateY(225deg) translateZ(var(--r));filter:blur(6.4px);opacity:0.4}
-        75%{transform:rotateY(270deg) translateZ(var(--r));filter:blur(3.75px);opacity:0.65}
-        87.5%{transform:rotateY(315deg) translateZ(var(--r));filter:blur(1.1px);opacity:0.9}
-        100%{transform:rotateY(360deg) translateZ(var(--r));filter:blur(0px);opacity:1}
-      }
-      /* Reference (spector.framer.website) keeps auto-rotating on hover -- it only responds to an
-         actual mouse-DOWN drag ("grab" cursor), not a plain hover. So no hover-pause here either;
-         the ring just spins continuously, same as the reference, and the per-item scale-up on
-         hover below is the only hover feedback (matches the reference's tile-level interaction). */
-      .client-tile{transition:transform 0.3s}
-      .client-tile:hover{transform:scale(1.15)}`}</style>
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:501,height:32,boxSizing:"border-box",padding:isMobile?"0 20px":"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,opacity:scrolled?0:1,transform:scrolled?"translateY(-100%)":"translateY(0)",pointerEvents:scrolled?"none":"auto",transition:"opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)"}}>
-      <a href="/?admin=1" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Admin</a>
-      <div style={{display:"flex",gap:18,alignItems:"center"}}>
-        {/* Language switcher -- translates nav/buttons/contact form only, see UI_STRINGS. */}
-        <select aria-label="Language" value={lang} onChange={e=>setLang(e.target.value as Lang)} style={{background:"transparent",border:"none",color:C.MID,fontSize:10,letterSpacing:1,textTransform:"uppercase",cursor:"pointer",outline:"none"}}>
-          {LANGS.map(l=><option key={l.code} value={l.code} style={{color:"#000"}}>{l.flag} {l.label}</option>)}
-        </select>
-        {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
-        {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{fontSize:10,letterSpacing:2,color:C.MID,textTransform:"uppercase",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
-      </div>
-    </div>
-    <nav role="navigation" aria-label="Main navigation" style={{position:"fixed",top:scrolled?0:32,left:0,right:0,zIndex:500,padding:isMobile?"21px 20px":"23px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"rgba(9,6,14,0.85)",backdropFilter:"blur(16px)",borderBottom:`1px solid ${C.BORDER}`,transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
-      <div onClick={()=>{goTo("home");setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:4,textTransform:"uppercase",cursor:"pointer",color:C.FG,fontFamily:"var(--font-serif),'Plus Jakarta Sans',sans-serif"}}><NoTranslate>{settings.siteName}</NoTranslate></div>
-
-      {isMobile?(
-        <button aria-label={mobileNavOpen?"Close menu":"Open menu"} onClick={()=>setMobileNavOpen(o=>!o)} style={{background:"none",border:`1px solid ${C.BORDER}`,color:C.FG,width:40,height:36,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,cursor:"pointer"}}>
-          <span style={{display:"block",width:18,height:1,background:C.FG}} />
-          <span style={{display:"block",width:18,height:1,background:C.FG}} />
-          <span style={{display:"block",width:18,height:1,background:C.FG}} />
-        </button>
-      ):(
-        <div style={{display:"flex",gap:16,alignItems:"center"}}>
-          {visibleNavLinks.map(([k,l])=>(
-            <span key={k} onClick={()=>goTo(k)} style={{fontSize:11,letterSpacing:3,color:page===k?C.PL:C.MID,textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s",borderBottom:page===k?`1px solid ${C.PL}`:"1px solid transparent",paddingBottom:2}}>{l}</span>
-          ))}
-          <button onClick={()=>goTo("booking")} style={{...S.btnP,padding:"9px 20px",fontSize:10}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{lang==="en"?settings.uiText.navBookBtn:T.bookBtn}</button>
-        </div>
-      )}
-
-      {isMobile&&mobileNavOpen&&(
-        // Explicit height (not top+bottom, which some mobile browsers resolve to a
-        // zero-height box here) -- without it this panel's dark backdrop silently paints
-        // nothing, leaving the menu labels floating unreadably over the hero image.
-        <div style={{position:"fixed",top:scrolled?78:110,left:0,right:0,height:`calc(100vh - ${scrolled?78:110}px)`,background:"rgba(9,6,14,0.97)",zIndex:499,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:26,overflowY:"auto",transition:"top 0.35s cubic-bezier(.16,.84,.44,1)"}}>
-          {visibleNavLinks.map(([k,l])=>(
-            <span key={k} onClick={()=>{goTo(k);setMobileNavOpen(false);}} style={{fontSize:15,letterSpacing:3,color:page===k?C.PL:C.FG,textTransform:"uppercase",cursor:"pointer"}}>{l}</span>
-          ))}
-          <button onClick={()=>{goTo("booking");setMobileNavOpen(false);}} style={{...S.btnP,padding:"13px 32px",fontSize:11}}>{lang==="en"?settings.uiText.navBookBtn:T.bookBtn}</button>
-        </div>
-      )}
-    </nav>
-
-    {showInstallBanner&&(
+      <SiteHeader
+        site={site}
+        spa={{
+          page,
+          lang,
+          onLangChange: setLang,
+          goTo,
+          scrolled,
+          isMobile,
+          mobileNavOpen,
+          onToggleMobileNav: () => setMobileNavOpen(o => !o),
+          onCloseMobileNav: () => setMobileNavOpen(false),
+          visibleLinks: visibleNavLinks,
+          bookBtnLabel,
+        }}
+      />
+      {showInstallBanner&&(
       <div style={{position:"fixed",left:12,right:12,bottom:12,zIndex:600,background:"rgba(20,13,33,0.98)",border:`1px solid ${C.BORDER}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 30px rgba(0,0,0,0.4)",backdropFilter:"blur(10px)"}}>
         <div style={{width:36,height:36,borderRadius:9,background:"#140D21",display:"flex",alignItems:"center",justifyContent:"center",color:"#A855F7",fontSize:14,fontWeight:700,flexShrink:0}}>NA</div>
         <div style={{flex:1,minWidth:0}}>
@@ -2135,51 +2112,7 @@ export default function Home() {
 
   // ── FOOTER ──
   const Footer=()=>(
-    <footer style={{background:"#0C0817",borderTop:`1px solid ${C.BORDER}`}}>
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"48px 40px 24px",display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:40}}>
-        <div>
-          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG,marginBottom:12}}><NoTranslate>{settings.siteName}</NoTranslate></div>
-          <p style={{color:C.MID,fontSize:13,lineHeight:1.7,marginBottom:16,maxWidth:280}}>{settings.siteTagline}</p>
-          <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.phone}</div>
-          <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.email}</div>
-          <div style={{fontSize:13,color:C.MID,marginBottom:6}}>{settings.location}</div>
-          {settings.address&&(
-            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(settings.address)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:12,color:C.MID,marginBottom:16,textDecoration:"underline",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>📍 {settings.address} — Get Directions</a>
-          )}
-          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnP,textDecoration:"none",fontSize:10,padding:"8px 20px",display:"inline-block"}}>{lang==="en"?settings.uiText.footerWhatsappBtn:T.whatsappBtn}</a>
-        </div>
-        <div>
-          <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Services</div>
-          {settings.services.map(sv=><div key={sv.id} onClick={()=>goTo("work")} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{sv.title}</div>)}
-        </div>
-        <div>
-          <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Quick Links</div>
-          {settings.footerLinks.filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l.page]!==false).map((l,i)=>{ const tk=PAGE_LABEL_KEY[l.page]; const label=lang==="en"||!tk?l.label:T[tk]; return <div key={i} onClick={()=>goTo(l.page)} style={{fontSize:13,color:C.MID,marginBottom:10,cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>{label}</div>; })}
-        </div>
-        <div>
-          <div style={{fontSize:10,letterSpacing:4,color:C.PL,textTransform:"uppercase",marginBottom:16}}>Follow</div>
-          {settings.instagram&&<a href={settings.instagram} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:C.MID,marginBottom:10,textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>Instagram</a>}
-          {settings.youtube&&<a href={settings.youtube} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:C.MID,marginBottom:10,textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>YouTube</a>}
-          {settings.linkedin&&<a href={settings.linkedin} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:C.MID,marginBottom:10,textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>LinkedIn</a>}
-          {settings.tiktok&&<a href={settings.tiktok} target="_blank" rel="noopener noreferrer" style={{display:"block",fontSize:13,color:C.MID,marginBottom:10,textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color=C.MID)}>TikTok</a>}
-        </div>
-      </div>
-      {/* Real, plain <a href> links (not the client-side goTo() used above) to the standalone
-          SEO service pages -- so search engines crawling the homepage's actual HTML can
-          discover and follow links into them, and a visitor can jump straight to the
-          specialty they came for. */}
-      <div style={{maxWidth:1200,margin:"0 auto",padding:"0 40px 28px",display:"flex",flexWrap:"wrap",gap:"8px 18px"}}>
-        {SERVICE_PAGES.map(s=>(
-          <a key={s.slug} href={`/${s.slug}`} style={{fontSize:11,letterSpacing:0.5,color:"#4a4460",textDecoration:"none",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color="#4a4460")}>{s.label} Dubai</a>
-        ))}
-      </div>
-      <div style={{borderTop:`1px solid ${C.BORDER}`,padding:"16px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-        <div style={{fontSize:11,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase"}}>{settings.footerCopyright}</div>
-        <div style={{display:"flex",gap:16}}>
-          {["work","about","booking","contact"].filter(l=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[l]!==false).map(l=><span key={l} onClick={()=>goTo(l)} style={{fontSize:10,letterSpacing:2,color:"#2a2a3a",textTransform:"uppercase",cursor:"pointer",transition:"color 0.2s"}} onMouseEnter={e=>(e.currentTarget.style.color=C.PL)} onMouseLeave={e=>(e.currentTarget.style.color="#2a2a3a")}>{l}</span>)}
-        </div>
-      </div>
-    </footer>
+    <SiteFooter site={site} spa={{ goTo }} />
   );
 
   // ── CMS ──

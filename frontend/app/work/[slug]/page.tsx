@@ -4,8 +4,8 @@ import { getRealProjects, getImagePermissionEnabled, getPublicSiteInfo } from "@
 import { buildMetadata, creativeWorkJsonLd, jsonLdScriptProps } from "@/lib/seo";
 import ProjectGallery from "@/components/work/ProjectGallery";
 import ProjectEngagement from "@/components/work/ProjectEngagement";
-import SiteHeader from "@/components/work/SiteHeader";
-import SiteFooter from "@/components/work/SiteFooter";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 // Real, indexable per-project URL: /work/[slug]/ -- the SINGLE canonical project detail page
 // for the whole site (consolidated from the two pre-existing, independent implementations:

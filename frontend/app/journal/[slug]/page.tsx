@@ -47,8 +47,7 @@ async function getPost(slug: string): Promise<BlogPostDetail | null> {
     title: p.title,
     slug: p.slug,
     excerpt: p.excerpt,
-    // Real posts written so far only have an excerpt, no full body yet -- fall back to
-    // that real text rather than rendering a blank article (never invented, just reused).
+    // Fall back to the excerpt only if a post genuinely has no body yet (never invented).
     content: p.content || p.excerpt || "",
     category: p.category,
     publishedAt: p.date,

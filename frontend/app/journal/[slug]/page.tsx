@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { api } from "@/lib/api";
+import { getRealBlogPosts } from "@/lib/cmsData";
 import { buildMetadata, articleJsonLd, jsonLdScriptProps } from "@/lib/seo";
 
 // Real, indexable per-post URL: /journal/[slug]/. Not one of the 4
@@ -35,23 +35,31 @@ function coverImageUrl(post: BlogPostDetail): string | undefined {
   return undefined;
 }
 
+// Real posts come from the same site_settings("nap_blog") row the CMS Journal tab
+// already reads/writes -- see lib/cmsData.ts.
 async function getPost(slug: string): Promise<BlogPostDetail | null> {
   if (slug === PLACEHOLDER_SLUG) return null;
-  try {
-    return (await api.blog.get(slug)) as BlogPostDetail;
-  } catch {
-    return null;
-  }
+  const posts = await getRealBlogPosts();
+  const p = posts.find((x) => x.slug === slug);
+  if (!p) return null;
+  return {
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    excerpt: p.excerpt,
+    // Real posts written so far only have an excerpt, no full body yet -- fall back to
+    // that real text rather than rendering a blank article (never invented, just reused).
+    content: p.content || p.excerpt || "",
+    category: p.category,
+    publishedAt: p.date,
+    coverMedia: p.coverImage ? { externalUrl: p.coverImage } : null,
+  };
 }
 
 export async function generateStaticParams() {
-  try {
-    const posts = (await api.blog.list()) as { slug: string }[];
-    if (posts.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
-    return posts.map((p) => ({ slug: p.slug }));
-  } catch {
-    return [{ slug: PLACEHOLDER_SLUG }];
-  }
+  const posts = await getRealBlogPosts();
+  if (posts.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
+  return posts.map((p) => ({ slug: p.slug }));
 }
 
 // output:"export" requires every dynamic param to be known at build time;

@@ -55,9 +55,13 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({ weight: ["400", "700"], subsets: [
 const arabicFontVars = `${cairoArabic.variable} ${elMessiri.variable} ${notoDevanagari.variable} ${notoNastaliqUrdu.variable}`;
 
 const SITE_URL = "https://bynaveedanjum.com";
-const SITE_TITLE = "Creative Fusion — Naveed Anjum | Photography & Cinematography";
+// SEO Agent change (homepage metadata, approved by owner): lead with the exact
+// commercial search terms ("photographer" + "videographer" + "Dubai") instead of
+// the generic brand-only title, while keeping every claim already true of the
+// business (20+ years, real service list, Creative Fusion brand, Naveed Anjum name).
+const SITE_TITLE = "Photographer & Videographer in Dubai | Naveed Anjum — Creative Fusion";
 const SITE_DESC =
-  "Dubai-based photographer and cinematographer specializing in landscape, portrait, editorial, commercial, product, real estate, and street photography, plus commercial, documentary, fashion, automotive, and sports cinematography.";
+  "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography & cinematography across the UAE.";
 // Same photo already used as the About-page portrait, at a wider crop for social share cards.
 const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
 

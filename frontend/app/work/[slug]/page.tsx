@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { api } from "@/lib/api";
+import { getRealProjects } from "@/lib/cmsData";
 import { buildMetadata, creativeWorkJsonLd, jsonLdScriptProps } from "@/lib/seo";
 
 // Real, indexable per-project URL: /work/[slug]/. Deliberately NOT one of
@@ -44,23 +44,36 @@ type AlbumDetail = {
   media?: { id: string; webKey?: string | null; externalUrl?: string | null; orientation?: string | null; altText?: string | null }[];
 };
 
+// Real projects come from the same site_settings("nap_projects") row the CMS Portfolio
+// tab and the homepage's "Featured Work" section already read/write -- see lib/cmsData.ts.
 async function getAlbum(slug: string): Promise<AlbumDetail | null> {
   if (slug === PLACEHOLDER_SLUG) return null;
-  try {
-    return (await api.albums.get(slug)) as AlbumDetail;
-  } catch {
-    return null;
-  }
+  const projects = await getRealProjects();
+  const p = projects.find((x) => x.slug === slug);
+  if (!p) return null;
+  return {
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    description: p.description,
+    fullDescription: p.fullDescription,
+    location: p.location,
+    projectDate: p.projectDate,
+    youtubeUrl: p.youtubeUrl,
+    clientName: p.clientName,
+    media: (p.images || []).map((img, i) => ({
+      id: `${p.id}-${i}`,
+      externalUrl: img.url,
+      orientation: img.orientation,
+      altText: img.altText,
+    })),
+  };
 }
 
 export async function generateStaticParams() {
-  try {
-    const albums = (await api.albums.list()) as { slug: string }[];
-    if (albums.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
-    return albums.map((a) => ({ slug: a.slug }));
-  } catch {
-    return [{ slug: PLACEHOLDER_SLUG }];
-  }
+  const projects = await getRealProjects();
+  if (projects.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
+  return projects.map((p) => ({ slug: p.slug }));
 }
 
 export const dynamicParams = false;

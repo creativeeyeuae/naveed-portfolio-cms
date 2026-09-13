@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
-import { api } from "@/lib/api";
+import { getRealProjects, getRealBlogPosts } from "@/lib/cmsData";
+import { SERVICE_PAGES } from "@/lib/servicePagesData";
 
 export const dynamic = "force-static";
 
@@ -15,32 +16,39 @@ export const dynamic = "force-static";
 // helps. Add real entries here once those routes carry finished content, or once the
 // site moves to real per-section URLs (see the SEO report for that recommendation).
 
+// Real entries from site_settings("nap_projects"/"nap_blog") -- the same data the CMS
+// Portfolio/Journal tabs and the homepage already read/write. See lib/cmsData.ts for why
+// this replaced the old lib/api.ts calls (that backend was never actually deployed).
 async function getWorkEntries(): Promise<MetadataRoute.Sitemap> {
-  try {
-    const albums = (await api.albums.list()) as { slug: string; updatedAt?: string }[];
-    return albums.map((a) => ({
-      url: `https://bynaveedanjum.com/work/${a.slug}/`,
-      lastModified: a.updatedAt ? new Date(a.updatedAt) : new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
-  } catch {
-    return [];
-  }
+  const projects = await getRealProjects();
+  return projects.map((p) => ({
+    url: `https://bynaveedanjum.com/work/${p.slug}/`,
+    lastModified: p.projectDate ? new Date(p.projectDate) : new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
 }
 
 async function getJournalEntries(): Promise<MetadataRoute.Sitemap> {
-  try {
-    const posts = (await api.blog.list()) as { slug: string; publishedAt?: string }[];
-    return posts.map((p) => ({
-      url: `https://bynaveedanjum.com/journal/${p.slug}/`,
-      lastModified: p.publishedAt ? new Date(p.publishedAt) : new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.6,
-    }));
-  } catch {
-    return [];
-  }
+  const posts = await getRealBlogPosts();
+  return posts.map((p) => ({
+    url: `https://bynaveedanjum.com/journal/${p.slug}/`,
+    lastModified: p.date ? new Date(p.date) : new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+}
+
+// The six real, standalone SEO service pages (app/<slug>/page.tsx) -- unlike the stub
+// route folders mentioned above, these carry finished, unique content, so they belong in
+// the sitemap. SERVICE_PAGES is the single shared list also used for their cross-linking.
+function getServicePageEntries(): MetadataRoute.Sitemap {
+  return SERVICE_PAGES.map((s) => ({
+    url: `https://bynaveedanjum.com/${s.slug}/`,
+    lastModified: new Date("2026-09-11"),
+    changeFrequency: "monthly" as const,
+    priority: 0.9,
+  }));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -52,6 +60,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
+    ...getServicePageEntries(),
     ...work,
     ...journal,
   ];

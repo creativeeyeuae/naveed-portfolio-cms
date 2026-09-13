@@ -33,6 +33,11 @@ export type CmsProject = {
   projectName?: string;
   bannerTitle?: string;
   bannerImage?: string;
+  // Every slug this project has ever had (oldest first), tracked automatically by the CMS's
+  // saveProj() whenever the title/slug changes -- see app/page.tsx's Project type for the
+  // full rationale. app/work/[slug]/page.tsx uses this to soft-redirect an old shared link
+  // to the project's current slug instead of 404ing.
+  previousSlugs?: string[];
 };
 
 export type CmsBlogPost = {

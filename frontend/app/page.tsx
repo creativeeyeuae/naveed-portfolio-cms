@@ -20,6 +20,10 @@ type Project = { id:string;title:string;slug:string;categories:string[];descript
                           // listings). Falls back to `title` when blank -- zero visual change until set.
   bannerImage?:string;   // Optional banner-only image, distinct from `coverImage` (used for grid/
                           // card thumbnails everywhere else). Falls back to `coverImage` when blank.
+  previousSlugs?:string[]; // Every slug this project has ever had (oldest first), tracked
+                          // automatically when the title/slug changes so old shared links keep
+                          // working -- /work/[slug] renders a soft redirect to the current slug
+                          // for any of these instead of a hard 404.
 };
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
@@ -1976,7 +1980,24 @@ export default function Home() {
 
   function saveProj(){
     if(!form.title?.trim())return;
-    const p:Project={id:editId!=="new"?editId!:Date.now().toString(),title:form.title||"",slug:form.slug||slugify(form.title||""),categories:form.categories||[],description:form.description||"",fullDescription:form.fullDescription||"",clientName:form.clientName||"",location:form.location||"",projectDate:form.projectDate||"",tags:Array.isArray(form.tags)?form.tags:[],featured:!!form.featured,coverImage:form.coverImage||"",images:form.images||[],videos:form.videos||[],reels:form.reels||[],youtubeUrl:form.youtubeUrl||""};
+    const id=editId!=="new"?editId!:Date.now().toString();
+    const prior=editId!=="new"?projects.find(x=>x.id===id):undefined;
+    // Slug: explicit form.slug wins, else derive from title. Never blank.
+    let slug=(form.slug||slugify(form.title||"")||id).trim();
+    // Prevent duplicate slugs -- if any OTHER project already has this slug, suffix with
+    // -2, -3, etc. until it's unique, instead of silently letting two projects collide on
+    // the same /work/[slug] URL (which would make the wrong one win the lookup).
+    if(projects.some(x=>x.id!==id&&x.slug===slug)){
+      let n=2; const base=slug;
+      while(projects.some(x=>x.id!==id&&x.slug===`${base}-${n}`)) n++;
+      slug=`${base}-${n}`;
+    }
+    // Track every slug this project has ever had (oldest first, deduped, current slug
+    // excluded) so /work/[slug] can soft-redirect an old shared link instead of 404ing.
+    const previousSlugs=prior&&prior.slug&&prior.slug!==slug
+      ? Array.from(new Set([...(prior.previousSlugs||[]),prior.slug])).filter(s=>s!==slug)
+      : (prior?.previousSlugs||[]);
+    const p:Project={id,title:form.title||"",slug,categories:form.categories||[],description:form.description||"",fullDescription:form.fullDescription||"",clientName:form.clientName||"",location:form.location||"",projectDate:form.projectDate||"",tags:Array.isArray(form.tags)?form.tags:[],featured:!!form.featured,coverImage:form.coverImage||"",images:form.images||[],videos:form.videos||[],reels:form.reels||[],youtubeUrl:form.youtubeUrl||"",projectName:form.projectName||"",bannerTitle:form.bannerTitle||"",bannerImage:form.bannerImage||"",previousSlugs};
     if(editId!=="new")setProjects(ps=>ps.map(x=>x.id===editId?p:x));else setProjects(ps=>[...ps,p]);
     setEditId(null);
   }

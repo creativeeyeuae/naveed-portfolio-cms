@@ -53,12 +53,15 @@ const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packag
   tl: { home: "Home", work: "Mga Trabaho", about: "Tungkol Sa Amin", packages: "Mga Package", journal: "Journal", cv: "CV", contact: "Makipag-ugnayan", bookBtn: "I-book ang Proyekto" },
 };
 
-// Static-route-only: real routes for the 7 nav keys. Work/Packages/CV have no standalone URL
-// anywhere on this site (same as on the homepage -- they're in-memory-only sections there
-// too), so they fall back to "/"; Journal has a real "/journal" route; About/Contact are
-// used exactly as they already exist. Not used at all in `spa` mode (the homepage keeps its
-// own goTo() in-memory navigation, unchanged).
-const STATIC_HREF: Record<string, string> = { home: "/", work: "/", about: "/about", packages: "/", blog: "/journal", cv: "/", contact: "/contact", booking: "/contact" };
+// Static-route-only: real routes for the 7 nav keys. Work/Packages/CV/Journal have no
+// standalone index URL anywhere on this site (same as on the homepage -- they're in-memory-
+// only sections there too; Journal's individual posts ARE real pages at /journal/[slug], but
+// there is no /journal index), so all four fall back to "/"; About/Contact are used exactly
+// as they already exist. Not used at all in `spa` mode (the homepage keeps its own goTo()
+// in-memory navigation, unchanged). ("blog" was wrongly pointing at "/journal" itself, a
+// route that doesn't exist and 404s under static export -- fixed here and in the matching
+// PAGE_HREF map in SiteFooter.tsx.)
+const STATIC_HREF: Record<string, string> = { home: "/", work: "/", about: "/about", packages: "/", blog: "/", cv: "/", contact: "/contact", booking: "/contact" };
 const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: keyof (typeof NAV_TEXT)["en"] }[] = [
   { key: "home", textKey: "home" },
   { key: "work", textKey: "work" },

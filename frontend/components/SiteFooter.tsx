@@ -30,11 +30,16 @@ const C = {
 };
 
 // Real page-key -> real URL map (used only in static mode).
+// "blog" (Journal) has no standalone index route -- only individual posts (/journal/[slug])
+// exist as real pages, same situation as Work/Packages/CV -- so it falls back to "/" too,
+// same as those. (Was wrongly pointing at "/journal" itself, a route that doesn't exist and
+// 404s under static export -- fixed, matching the identical fix already applied in
+// SiteHeader.tsx's STATIC_HREF map.)
 const PAGE_HREF: Record<string, string> = {
   work: "/",
   about: "/about",
   packages: "/",
-  blog: "/journal",
+  blog: "/",
   cv: "/",
   booking: "/contact",
   contact: "/contact",

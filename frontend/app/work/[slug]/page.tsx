@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getRealProjects, getImagePermissionEnabled } from "@/lib/cmsData";
+import { getRealProjects, getImagePermissionEnabled, getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata, creativeWorkJsonLd, jsonLdScriptProps } from "@/lib/seo";
 import ProjectGallery from "@/components/work/ProjectGallery";
 import ProjectEngagement from "@/components/work/ProjectEngagement";
+import SiteHeader from "@/components/work/SiteHeader";
+import SiteFooter from "@/components/work/SiteFooter";
 
 // Real, indexable per-project URL: /work/[slug]/ -- the SINGLE canonical project detail page
 // for the whole site (consolidated from the two pre-existing, independent implementations:
@@ -107,7 +109,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function WorkProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [album, permissionEnabled] = await Promise.all([getAlbum(slug), getImagePermissionEnabled()]);
+  const [album, permissionEnabled, site] = await Promise.all([getAlbum(slug), getImagePermissionEnabled(), getPublicSiteInfo()]);
 
   if (!album) notFound();
 
@@ -133,8 +135,10 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
       <script {...jsonLdScriptProps(jsonLd)} />
 
+      <SiteHeader site={site} />
+
       {/* BANNER */}
-      <div style={{ position: "relative", overflow: "hidden", background: "var(--bg-surface-1, #140D21)", minHeight: "clamp(220px,36vh,400px)", display: "flex", alignItems: "center", padding: "110px 24px 32px" }}>
+      <div style={{ position: "relative", overflow: "hidden", background: "var(--bg-surface-1, #140D21)", minHeight: "clamp(220px,36vh,400px)", display: "flex", alignItems: "center", padding: "48px 24px 32px" }}>
         {bannerImageUrl && (
           <>
             <img src={bannerImageUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
@@ -202,6 +206,8 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           © {new Date().getFullYear()} Naveed Anjum / Creative Fusion LLC. All images and video on this page are protected by copyright and may not be copied, reproduced or reused without permission. Use the "Request Permission" button on any image above to ask about licensing it.
         </div>
       </div>
+
+      <SiteFooter site={site} />
     </main>
   );
 }

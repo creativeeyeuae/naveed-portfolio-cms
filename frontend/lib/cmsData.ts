@@ -159,3 +159,53 @@ export async function getImagePermissionEnabled(): Promise<boolean> {
   const settings = await readSiteSettingsObject();
   return settings.imagePermissionEnabled !== false;
 }
+
+export type PublicSiteInfo = {
+  siteName: string;
+  siteTagline: string;
+  phone: string;
+  email: string;
+  location: string;
+  instagram: string;
+  youtube: string;
+  linkedin: string;
+  footerCopyright: string;
+};
+
+// Same defaults as DEF_SETTINGS in app/page.tsx (the CMS's own fallback values) -- used so
+// /work/[slug]'s header/footer show real branding even before the CMS settings row exists,
+// exactly like the homepage does today.
+const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
+  siteName: "Naveed Anjum",
+  siteTagline: "Photography & Cinematography",
+  phone: "+971 581 174 911",
+  email: "creativeeyeuae@gmail.com",
+  location: "Dubai, UAE",
+  instagram: "https://www.instagram.com/bynaveedanjum/",
+  youtube: "https://youtube.com/@creativeeyeuae",
+  linkedin: "https://linkedin.com/in/naveedanjumch",
+  footerCopyright: "© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
+};
+
+// Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
+// footer (site name, contact info, social links) on /work/[slug] -- the same source the
+// homepage's own <Nav>/<Footer> read from, so branding stays in sync with the CMS without
+// duplicating the full SiteSettings shape here.
+export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
+  const settings = await readSiteSettingsObject();
+  const pick = (key: keyof PublicSiteInfo): string => {
+    const v = settings[key];
+    return typeof v === "string" && v ? v : DEFAULT_PUBLIC_SITE_INFO[key];
+  };
+  return {
+    siteName: pick("siteName"),
+    siteTagline: pick("siteTagline"),
+    phone: pick("phone"),
+    email: pick("email"),
+    location: pick("location"),
+    instagram: pick("instagram"),
+    youtube: pick("youtube"),
+    linkedin: pick("linkedin"),
+    footerCopyright: pick("footerCopyright"),
+  };
+}

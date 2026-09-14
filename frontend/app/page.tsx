@@ -126,6 +126,13 @@ type SiteSettings = {
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
   bankTransferInstructions:string;
+  // Generic hosted "Pay Online" link (Mamo / Tap / Stripe Payment Link / anything similar)
+  // Naveed pastes in once he sets up a merchant account -- when empty, the "Pay Online"
+  // booking option stays disabled ("Available soon") exactly as before, so nothing changes
+  // for anyone until this is actually configured. Reuses the existing "paypal" method value
+  // already wired into the appointments/payments tables (bkPayMethod, createAppointment) --
+  // no schema/DB change, just makes that long-planned slot real instead of a placeholder.
+  paymentLinkUrl:string;
 };
 type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:string;img:string;page:string; };
 
@@ -351,6 +358,7 @@ const DEF_SETTINGS: SiteSettings = {
     {dept:"Languages",items:["English","Urdu","Punjabi","Hindi","Arabic (Basic)"]},
   ],
   bankTransferInstructions:"",
+  paymentLinkUrl:"",
 };
 
 const DEF_PROJECTS: Project[] = [
@@ -2040,7 +2048,7 @@ export default function Home() {
     notifyServer("new_booking", created.id);
     setBkStep(7);
     // Existing WhatsApp notification stays as a bonus heads-up -- real record of truth is now the database above.
-    try{ const msg=`New paid appointment ${created.ref}\n${bkSelectedPkg.label} (${booking.service})\n${booking.date} ${booking.time}\nAED ${bkTotal} via ${bkPayMethod==="paypal"?"PayPal":"Bank Transfer"}\n${booking.name} / ${booking.email} / ${booking.phone}`; window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,"_blank"); }catch{}
+    try{ const msg=`New paid appointment ${created.ref}\n${bkSelectedPkg.label} (${booking.service})\n${booking.date} ${booking.time}\nAED ${bkTotal} via ${bkPayMethod==="paypal"?"Online Payment":"Bank Transfer"}\n${booking.name} / ${booking.email} / ${booking.phone}`; window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,"_blank"); }catch{}
   }
   async function submitReceipt(){
     if(!bkReceiptFile||!bkConfirmed) return;
@@ -2777,6 +2785,14 @@ export default function Home() {
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Bank Transfer Instructions (Booking)</div>
                   <div style={{fontSize:12,color:"#888",lineHeight:1.6,marginBottom:12}}>Shown to clients on the Booking page's payment step when they choose Bank Transfer. Enter your real bank name, account name, IBAN/account number and any reference instructions -- this is never invented for you, so leave it blank until you fill in your real details.</div>
                   <textarea style={{...S.inp,height:110,resize:"vertical" as const,fontFamily:"monospace" as const}} value={settingsDraft.bankTransferInstructions} onChange={e=>updateSD({bankTransferInstructions:e.target.value})} placeholder={"Bank Name: \nAccount Name: \nAccount Number / IBAN: \nSWIFT/BIC: \nReference: Please include your booking reference in the transfer description."} />
+                </div>
+
+                <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
+                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Online Payment Link (Booking)</div>
+                  <div style={{fontSize:12,color:"#888",lineHeight:1.6,marginBottom:12}}>
+                    Paste a real hosted payment link here once you've set one up (e.g. a Mamo Business or Tap Payments payment link, or a Stripe Payment Link) and the &quot;Pay Online&quot; option on the Booking page's payment step turns on automatically -- until then it stays disabled exactly as it is now. When a client picks it, they&apos;re sent to this link to pay; you confirm the booking the same way you already confirm bank transfers.
+                  </div>
+                  <input style={S.inp} value={settingsDraft.paymentLinkUrl} onChange={e=>updateSD({paymentLinkUrl:e.target.value})} placeholder="https://pay.mamopay.com/... or https://pay.tap.company/..." />
                 </div>
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
@@ -3772,16 +3788,33 @@ export default function Home() {
                 <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🏦 Bank Transfer</div>
                 <div style={{fontSize:12,color:C.MID}}>Pay by bank transfer, then upload your receipt. Confirmed once verified.</div>
               </button>
-              <button disabled title="Available soon" style={{padding:20,textAlign:"left",cursor:"not-allowed",borderRadius:6,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.MID,opacity:0.5}}>
-                <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 PayPal — Available soon</div>
-                <div style={{fontSize:12}}>Instant online payment is being finalized.</div>
-              </button>
+              {/* "Pay Online" -- reuses the existing "paypal" method value already wired into
+                  createAppointment/payments (no schema change). Only enabled once Naveed has
+                  pasted a real hosted payment link (CMS > Settings > Online Payment Link);
+                  until then it stays disabled exactly as the old "PayPal -- Available soon"
+                  placeholder did, so nothing changes for anyone until it's configured. */}
+              {settings.paymentLinkUrl?.trim() ? (
+                <button onClick={()=>setBkPayMethod("paypal")} style={{padding:20,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPayMethod==="paypal"?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPayMethod==="paypal"?C.P:C.BORDER}`,color:C.FG}}>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 Pay Online</div>
+                  <div style={{fontSize:12,color:C.MID}}>Pay securely online by card. Confirmed as soon as we see your payment.</div>
+                </button>
+              ) : (
+                <button disabled title="Available soon" style={{padding:20,textAlign:"left",cursor:"not-allowed",borderRadius:6,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.MID,opacity:0.5}}>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 Pay Online — Available soon</div>
+                  <div style={{fontSize:12}}>Instant online payment is being finalized.</div>
+                </button>
+              )}
             </div>
             {bkPayMethod==="bank_transfer"&&(
               <div style={{maxWidth:480,margin:"0 auto 24px",fontSize:12,color:C.MID,lineHeight:1.7,background:"rgba(255,255,255,0.03)",padding:16,borderRadius:6}}>
                 {settings.bankTransferInstructions?.trim()
                   ? settings.bankTransferInstructions
                   : "Bank transfer details will be sent to your email and WhatsApp right after you submit. Once you've paid, come back and upload your receipt to confirm your booking."}
+              </div>
+            )}
+            {bkPayMethod==="paypal"&&(
+              <div style={{maxWidth:480,margin:"0 auto 24px",fontSize:12,color:C.MID,lineHeight:1.7,background:"rgba(255,255,255,0.03)",padding:16,borderRadius:6}}>
+                After you confirm below, a secure payment page will open in a new tab for <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong>. Please complete the payment there and include your booking reference (shown next) so we can match it to your booking.
               </div>
             )}
             <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}>
@@ -3811,7 +3844,17 @@ export default function Home() {
                 </div>
               )
             ):(
-              <p style={{color:C.MID,fontSize:13,marginTop:16}}>We'll be in touch shortly to confirm payment.</p>
+              // Real "Pay Online" confirmation -- an explicit button (not an auto-opened tab,
+              // which popup blockers tend to kill right after an async submit) linking out to
+              // the CMS-configured payment link, with the exact amount and reference so the
+              // client knows what to pay and Naveed can match it. Same manual-confirm model as
+              // bank transfer -- he marks it paid from the CMS Bookings tab once he sees it.
+              <div style={{maxWidth:420,margin:"24px auto 0"}}>
+                <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> using the secure payment link below. Please include your reference <strong style={{color:C.FG}}>{bkConfirmed.ref}</strong> if there's a note field -- we'll confirm your booking as soon as we see the payment.</p>
+                <a href={settings.paymentLinkUrl} target="_blank" rel="noopener noreferrer" style={{...S.btnP,textDecoration:"none",display:"inline-block"}}>Pay Now</a>
+                <p style={{color:C.MID,fontSize:12,marginTop:20}}>Already paid? We'll be in touch on WhatsApp/email to confirm.</p>
+                <button onClick={resetAppointmentFlow} style={{...S.btnO,marginTop:16}}>Book Another Session</button>
+              </div>
             )}
           </div>
         )}

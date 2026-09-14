@@ -270,7 +270,10 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
             <span style={{ width: 24, height: 1, background: C.PL, display: "inline-block" }} />
             {album.categories && album.categories.length > 0 ? album.categories.join(" · ") : "Portfolio"}
           </div>
-          <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, letterSpacing: 0.5, margin: 0, color: "#fff" }}>
+          {/* Banner title -- reduced ~60% from the original clamp(32,5.2vw,64) size: the
+              hero picture is now the star, this is a smaller caption over it. The full-size
+              title lives in the body below instead (see the always-shown heading there). */}
+          <h1 style={{ fontSize: "clamp(13px,2.1vw,26px)", fontWeight: 700, letterSpacing: 0.5, margin: 0, color: "#fff" }}>
             {bannerTitle.split("\n").map((line, i, arr) => (
               <span key={i}>
                 {line}
@@ -285,14 +288,18 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           description fields. */}
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 0" }}>
-        {/* PROJECT NAME -- only shown when it actually differs from the banner title, so the
-            same words never appear twice back to back. */}
-        {displayName && displayName !== bannerTitle && (
+        {/* ALL WORK LINK -- moved out of the banner overlay (see hero above); sits here,
+            above the project title, instead. */}
+        <a href="/" style={{ color: C.MID, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "inline-block", marginBottom: 18 }}>&larr; All Work</a>
+
+        {/* PROJECT TITLE -- now always shown here (previously only when it differed from the
+            banner title, which is now the smaller caption over the hero picture). */}
+        {displayName && (
           <h2 style={{ fontSize: "clamp(22px,3vw,30px)", fontWeight: 700, letterSpacing: 0.3, margin: "0 0 28px" }}>{displayName}</h2>
         )}
 
-        {/* SHORT DESCRIPTION -- the intro, moved up to sit directly under the title/banner,
-            before the Gallery. Shown once, here only. */}
+        {/* SHORT DESCRIPTION -- the intro, sits directly under the title, before the
+            Gallery. Shown once, here only. */}
         {album.description && (
           <p style={{ marginTop: 0, marginBottom: 40, maxWidth: 720, lineHeight: 1.8, color: C.MID, fontSize: 16 }}>{album.description}</p>
         )}

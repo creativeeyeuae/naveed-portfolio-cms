@@ -12,7 +12,7 @@ import VisitorIdentityForm from "./VisitorIdentityForm";
 
 type Comment = { id: string; name: string; comment: string; createdAt: string };
 
-export default function ProjectEngagement({ projectId }: { projectId: string }) {
+export default function ProjectEngagement({ projectId, compact, anchorId }: { projectId: string; compact?: boolean; anchorId?: string }) {
   const identity = useVisitorIdentity();
   const [likeCount, setLikeCount] = useState<number | null>(null);
   const [liked, setLiked] = useState(false);
@@ -102,6 +102,38 @@ export default function ProjectEngagement({ projectId }: { projectId: string }) 
       setShowIdentityFor(null);
       submitComment();
     }
+  }
+
+  // COMPACT MODE -- a single inline summary line (Likes + Comments count) meant to sit
+  // directly under the project title, above the fold, like a post header on Instagram/
+  // Medium/Behance. Clicking either pill smooth-scrolls down to the full interactive
+  // engagement block (the like button + comment thread + form), which keeps rendering
+  // right after the gallery exactly as before -- this is purely an additional, lighter-
+  // weight view of the same real data (same /api/likes + /api/comments endpoints), not a
+  // second engagement system.
+  if (compact) {
+    const targetId = anchorId || "engagement";
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <a
+          href={`#${targetId}`}
+          onClick={(e) => { e.preventDefault(); document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 7, color: liked ? "var(--accent-primary, #8B5CF6)" : "var(--text-muted, #A892C6)", fontSize: 13, textDecoration: "none" }}
+        >
+          <span>{liked ? "♥" : "♡"}</span>
+          <span>{likeCount === null ? "…" : likeCount} {likeCount === 1 ? "Like" : "Likes"}</span>
+        </a>
+        <span style={{ color: "var(--border-subtle, #2D1F45)" }}>·</span>
+        <a
+          href={`#${targetId}`}
+          onClick={(e) => { e.preventDefault(); document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" }); }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 7, color: "var(--text-muted, #A892C6)", fontSize: 13, textDecoration: "none" }}
+        >
+          <span>💬</span>
+          <span>{comments === null ? "…" : comments.length} {comments?.length === 1 ? "Comment" : "Comments"}</span>
+        </a>
+      </div>
+    );
   }
 
   return (

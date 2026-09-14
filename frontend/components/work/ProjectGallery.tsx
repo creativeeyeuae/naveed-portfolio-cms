@@ -5,7 +5,7 @@
 // than introducing a new visual language. Each tile also gets a small "Request Permission"
 // trigger (only rendered when `permissionEnabled` is true) that opens PermissionRequestModal
 // pre-populated with that exact image.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PermissionRequestModal from "./PermissionRequestModal";
 
 type GalleryImage = { id: string; url: string; caption?: string; orientation?: string };
@@ -16,6 +16,7 @@ type GalleryImage = { id: string; url: string; caption?: string; orientation?: s
 function GalleryTile({
   img,
   index,
+  total,
   projectName,
   permissionEnabled,
   onOpen,
@@ -23,11 +24,13 @@ function GalleryTile({
 }: {
   img: GalleryImage;
   index: number;
+  total: number;
   projectName: string;
   permissionEnabled: boolean;
   onOpen: () => void;
   onRequestPermission: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   const guess = img.orientation === "landscape" ? 2 : 1;
   const [span, setSpan] = useState(index === 0 && guess === 2 ? 3 : guess);
   const [ratio, setRatio] = useState(img.orientation === "landscape" ? 3 / 2 : 3 / 4);
@@ -44,7 +47,12 @@ function GalleryTile({
   }
 
   return (
-    <div className={`egallery-item eg-span-${span}`} style={{ position: "relative", aspectRatio: loaded ? "auto" : ratio, background: "var(--bg-surface-1, #140D21)" }}>
+    <div
+      className={`egallery-item eg-span-${span}`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: "relative", aspectRatio: loaded ? "auto" : ratio, background: "var(--bg-surface-1, #140D21)" }}
+    >
       <img
         src={img.url}
         alt={img.caption || projectName}
@@ -52,8 +60,31 @@ function GalleryTile({
         decoding="async"
         onLoad={handleLoad}
         onClick={onOpen}
-        style={{ width: "100%", height: loaded ? "auto" : "100%", objectFit: loaded ? undefined : "cover", display: "block", cursor: "pointer" }}
+        style={{ width: "100%", height: loaded ? "auto" : "100%", objectFit: loaded ? undefined : "cover", display: "block", cursor: "pointer", transition: "transform 0.5s ease", transform: hovered ? "scale(1.03)" : "scale(1)" }}
       />
+      {/* Hover affordance -- a subtle dark wash + expand icon signals the tile is clickable
+          (opens the lightbox), and a "03 / 08" counter gives context within the set. Both
+          fade in only on hover so the gallery itself stays clean. */}
+      <div
+        onClick={onOpen}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(9,6,14,0.28)",
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 0.3s ease",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          pointerEvents: hovered ? "auto" : "none",
+        }}
+      >
+        <span style={{ width: 44, height: 44, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18 }}>⤢</span>
+      </div>
+      <div style={{ position: "absolute", left: 10, bottom: 10, fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.85)", background: "rgba(9,6,14,0.6)", padding: "3px 8px", borderRadius: 20, opacity: hovered ? 1 : 0, transition: "opacity 0.3s ease" }}>
+        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+      </div>
       {permissionEnabled && (
         <button
           onClick={(e) => {
@@ -100,6 +131,19 @@ export default function ProjectGallery({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [permissionFor, setPermissionFor] = useState<GalleryImage | null>(null);
 
+  // Keyboard navigation while the lightbox is open -- Left/Right to step through images,
+  // Escape to close. Only attaches the listener while a lightbox is actually showing.
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") setLightboxIndex((i) => (i === null ? 0 : Math.max(0, i - 1)));
+      else if (e.key === "ArrowRight") setLightboxIndex((i) => (i === null ? 0 : Math.min(images.length - 1, i + 1)));
+      else if (e.key === "Escape") setLightboxIndex(null);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxIndex, images.length]);
+
   if (!images.length && !(reels && reels.length)) return null;
 
   return (
@@ -111,6 +155,7 @@ export default function ProjectGallery({
               key={img.id}
               img={img}
               index={i}
+              total={images.length}
               projectName={projectName}
               permissionEnabled={permissionEnabled}
               onOpen={() => setLightboxIndex(i)}
@@ -183,9 +228,40 @@ export default function ProjectGallery({
           >
             ✕
           </button>
-          <div style={{ position: "absolute", bottom: 16, color: "#777", fontSize: 12, letterSpacing: 3 }}>
+          <div style={{ position: "absolute", bottom: images.length > 1 ? 76 : 16, color: "#777", fontSize: 12, letterSpacing: 3 }}>
             {String(lightboxIndex + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
           </div>
+
+          {/* THUMBNAIL STRIP -- quick-jump between images without stepping one at a time.
+              Only rendered when there's more than one image. */}
+          {images.length > 1 && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ position: "absolute", bottom: 16, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 8, padding: "0 16px", overflowX: "auto" }}
+            >
+              {images.map((img, i) => (
+                <button
+                  key={img.id}
+                  aria-label={`Go to image ${i + 1}`}
+                  onClick={() => setLightboxIndex(i)}
+                  style={{
+                    flexShrink: 0,
+                    width: 52,
+                    height: 40,
+                    padding: 0,
+                    border: i === lightboxIndex ? "2px solid var(--accent-primary, #8B5CF6)" : "1px solid rgba(255,255,255,0.2)",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    cursor: "pointer",
+                    opacity: i === lightboxIndex ? 1 : 0.55,
+                    transition: "opacity 0.2s, border-color 0.2s",
+                  }}
+                >
+                  <img src={img.url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

@@ -304,6 +304,14 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           description fields. */}
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 0" }}>
+        {/* ENGAGEMENT SUMMARY -- single line right under the title: Likes + Comments count,
+            each a smooth-scroll link down to the full interactive block (id="engagement")
+            that still sits after the gallery below. Same real data/endpoints, just a second,
+            lighter view of it placed where a visitor looks first. */}
+        <div style={{ marginBottom: 24 }}>
+          <ProjectEngagement projectId={album.id} compact />
+        </div>
+
         {/* PROJECT NAME -- only shown when it actually differs from the banner title, so the
             same words never appear twice back to back. */}
         {displayName && displayName !== bannerTitle && (
@@ -338,8 +346,10 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           <ProjectGallery projectId={album.id} projectName={displayName} images={items} reels={album.reels || undefined} permissionEnabled={permissionEnabled} />
         </div>
 
-        {/* LIKES / COMMENTS */}
-        <div style={{ marginBottom: 56 }}>
+        {/* LIKES / COMMENTS -- the full interactive block (like button + comment thread +
+            form). id="engagement" is the scroll target for the compact summary line under
+            the title above. */}
+        <div id="engagement" style={{ marginBottom: 56, scrollMarginTop: 100 }}>
           <ProjectEngagement projectId={album.id} />
         </div>
 

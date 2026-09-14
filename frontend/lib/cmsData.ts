@@ -187,6 +187,20 @@ export type PublicSiteInfo = {
   services: { id: string; title: string }[];
   navBookBtn: string;
   footerWhatsappBtn: string;
+  // Additive fields for the standalone /about and /contact pages -- sourced from the same
+  // DEF_SETTINGS fields the homepage SPA's own About/Contact page-views already render
+  // (app/page.tsx, page==="about" / page==="contact"). Nothing above this line changed.
+  aboutName: string;
+  aboutTitle: string;
+  aboutBio: string;
+  aboutPhoto: string;
+  statsYears: string;
+  statsProjects: string;
+  statsClients: string;
+  aboutBannerEyebrow: string;
+  aboutBannerTitle: string;
+  contactBannerEyebrow: string;
+  contactBannerTitle: string;
 };
 
 // Same defaults as DEF_SETTINGS in app/page.tsx (the CMS's own fallback values) -- used so
@@ -224,6 +238,19 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   ],
   navBookBtn: "Book a Project",
   footerWhatsappBtn: "WhatsApp Us",
+  // Same defaults as DEF_SETTINGS/uiText in app/page.tsx for the About/Contact fields.
+  aboutName: "Naveed Anjum",
+  aboutTitle: "Photographer · Cinematographer · Creative Director",
+  aboutBio:
+    "A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion, specializing in interior, real estate, product, lifestyle and campaign photography, plus short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces.",
+  aboutPhoto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
+  statsYears: "20+",
+  statsProjects: "500+",
+  statsClients: "200+",
+  aboutBannerEyebrow: "About",
+  aboutBannerTitle: "About",
+  contactBannerEyebrow: "Get In Touch",
+  contactBannerTitle: "Let's Work Together",
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
@@ -233,7 +260,9 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
 type StringInfoKey =
   | "siteName" | "siteTagline" | "phone" | "email" | "location"
   | "instagram" | "youtube" | "linkedin" | "footerCopyright"
-  | "address" | "waNumber" | "waMsg" | "tiktok";
+  | "address" | "waNumber" | "waMsg" | "tiktok"
+  | "aboutName" | "aboutTitle" | "aboutBio" | "aboutPhoto"
+  | "statsYears" | "statsProjects" | "statsClients";
 
 export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   const settings = await readSiteSettingsObject();
@@ -289,5 +318,87 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     services,
     navBookBtn: pickUi("navBookBtn", DEFAULT_PUBLIC_SITE_INFO.navBookBtn),
     footerWhatsappBtn: pickUi("footerWhatsappBtn", DEFAULT_PUBLIC_SITE_INFO.footerWhatsappBtn),
+    aboutName: pick("aboutName"),
+    aboutTitle: pick("aboutTitle"),
+    aboutBio: pick("aboutBio"),
+    aboutPhoto: pick("aboutPhoto"),
+    statsYears: pick("statsYears"),
+    statsProjects: pick("statsProjects"),
+    statsClients: pick("statsClients"),
+    aboutBannerEyebrow: pickUi("aboutBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.aboutBannerEyebrow),
+    aboutBannerTitle: pickUi("aboutBannerTitle", DEFAULT_PUBLIC_SITE_INFO.aboutBannerTitle),
+    contactBannerEyebrow: pickUi("contactBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.contactBannerEyebrow),
+    contactBannerTitle: pickUi("contactBannerTitle", DEFAULT_PUBLIC_SITE_INFO.contactBannerTitle),
   };
+}
+
+// Mirrors app/page.tsx's submitContact()'s Supabase write step (addContactLead): read the
+// existing nap_contact_submissions array, prepend the new lead, cap at 500, write back with
+// the same upsert pattern. Runs client-side (browser fetch against Supabase's PostgREST
+// endpoint using the public anon key) from the standalone /contact page's form -- the same
+// anon key the CMS itself uses for unauthenticated writes, so this works identically for a
+// visitor who has never logged in. Best-effort: never throws, since a lead that fails to
+// persist to Supabase should not block the WhatsApp deep-link (the caller's other real
+// notification path) from opening.
+export type ContactLeadInput = {
+  id: string;
+  date: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+};
+
+export async function submitContactLead(entry: ContactLeadInput): Promise<boolean> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return false;
+  try {
+    const getRes = await fetchWithRetry(
+      `${url}/rest/v1/site_settings?select=value&key=eq.nap_contact_submissions`,
+      { headers: { apikey: anonKey, Authorization: `Bearer ${anonKey}` } },
+      2
+    );
+    let existing: ContactLeadInput[] = [];
+    if (getRes) {
+      const rows = (await getRes.json()) as { value?: string }[];
+      const raw = rows?.[0]?.value;
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) existing = parsed;
+        } catch {
+          existing = [];
+        }
+      }
+    }
+    const next = [entry, ...existing].slice(0, 500);
+    const putRes = await fetchWithRetry(
+      `${url}/rest/v1/site_settings?on_conflict=key`,
+      {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${anonKey}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({ key: "nap_contact_submissions", value: JSON.stringify(next) }),
+      },
+      2
+    );
+    if (putRes) {
+      try {
+        fetch("/api/notify/trigger", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "new_lead", id: entry.id }),
+        }).catch(() => {});
+      } catch {}
+    }
+    return !!putRes;
+  } catch {
+    return false;
+  }
 }

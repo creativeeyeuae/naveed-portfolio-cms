@@ -2088,6 +2088,20 @@ export default function Home() {
     services: settings.services.map(sv => ({ id: sv.id, title: sv.title })),
     navBookBtn: settings.uiText.navBookBtn,
     footerWhatsappBtn: settings.uiText.footerWhatsappBtn,
+    // Additive fields for the standalone /about and /contact routes (lib/cmsData.ts's
+    // PublicSiteInfo) -- same underlying CMS fields this SPA's own About/Contact
+    // page-views already render below, just also exposed via this shared `site` object.
+    aboutName: settings.aboutName,
+    aboutTitle: settings.aboutTitle,
+    aboutBio: settings.aboutBio,
+    aboutPhoto: settings.aboutPhoto,
+    statsYears: settings.statsYears,
+    statsProjects: settings.statsProjects,
+    statsClients: settings.statsClients,
+    aboutBannerEyebrow: settings.uiText.aboutBannerEyebrow,
+    aboutBannerTitle: settings.uiText.aboutBannerTitle,
+    contactBannerEyebrow: settings.uiText.contactBannerEyebrow,
+    contactBannerTitle: settings.uiText.contactBannerTitle,
   };
   const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
 

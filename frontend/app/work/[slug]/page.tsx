@@ -230,11 +230,6 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
   const bannerTitle = (album.bannerTitle || album.title || "").trim();
   const displayName = (album.projectName || album.title || "").trim();
 
-  // Feature image: the project's Cover Image, shown once as a full-bleed break between the
-  // short description and the gallery -- but only when it's a distinct image from the banner
-  // (otherwise the same photo would appear twice, back to back).
-  const featureImageUrl = album.coverImage && album.coverImage !== bannerImageUrl ? album.coverImage : undefined;
-
   const metaFields: MetaField[] = [];
   if (album.clientName) metaFields.push({ label: "Client", value: album.clientName });
   if (album.location) metaFields.push({ label: "Location", value: album.location });
@@ -328,19 +323,12 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         )}
       </div>
 
-      {/* FEATURE IMAGE -- a full-bleed break between the intro and the gallery. Only the
-          project's Cover Image, and only when it isn't the same photo already used as the
-          banner. */}
-      {featureImageUrl && (
-        <div style={{ maxWidth: 1400, margin: "0 auto 56px", padding: "0 24px" }}>
-          <img src={featureImageUrl} alt={displayName} loading="lazy" style={{ width: "100%", maxHeight: "78vh", objectFit: "cover", display: "block" }} />
-        </div>
-      )}
-
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
-        {/* EDITORIAL GALLERY (existing bento/masonry layout + lightbox + per-image "Request
-            Permission" + reel pills -- reused as-is, just introduced with the same eyebrow
-            treatment as every other section here). */}
+        {/* GALLERY -- one large hero photo + small thumbnail row, lightbox, per-image
+            "Request Permission" and reel pills. The separate full-bleed "Feature Image"
+            break that used to sit above this (a second, disconnected copy of the cover
+            photo) has been removed -- the hero image below now does that job once, instead
+            of the same/another photo appearing twice on the page. */}
         <SectionEyebrow>Gallery</SectionEyebrow>
         <div style={{ marginBottom: 56 }}>
           <ProjectGallery projectId={album.id} projectName={displayName} images={items} reels={album.reels || undefined} permissionEnabled={permissionEnabled} />

@@ -156,24 +156,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-// Small label+value metadata field -- shared by the Project Information row below. A field
-// simply isn't pushed onto the list when its CMS value is empty, so nothing ever renders an
-// empty label (per the "hide empty fields entirely" requirement).
+// Small label+value metadata field -- rendered inline as part of the combined
+// engagement+info single-line row below. A field simply isn't pushed onto the list when its
+// CMS value is empty, so nothing ever renders an empty label (per the "hide empty fields
+// entirely" requirement).
 type MetaField = { label: string; value: string };
-
-function MetaRow({ fields }: { fields: MetaField[] }) {
-  if (fields.length === 0) return null;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "18px 32px", padding: "28px 0", borderTop: `1px solid ${C.BORDER}`, borderBottom: `1px solid ${C.BORDER}`, marginBottom: 40 }}>
-      {fields.map((f) => (
-        <div key={f.label}>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: C.MID, textTransform: "uppercase", marginBottom: 6 }}>{f.label}</div>
-          <div style={{ fontSize: 15, color: C.FG, letterSpacing: 0.2 }}>{f.value}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // Small eyebrow used to introduce each body section (Gallery / The Story / Watch the Film /
 // More Work) -- the exact same eyebrow treatment as <PageBanner/>'s own eyebrow line, just
@@ -268,7 +255,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           with the identical gradient overlay, eyebrow+dash line, clamp()-sized title. Adapted
           here (not reused directly) so the "← All Work" back-link and a slightly shorter
           intro paragraph can sit inside it -- both specific to a project detail page. */}
-      <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(320px,46vh,520px)", display: "flex", alignItems: "center", padding: "120px 40px 40px" }}>
+      <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(380px,56vh,640px)", display: "flex", alignItems: "center", padding: "120px 40px 56px" }}>
         {bannerImageUrl && (
           <>
             <img src={bannerImageUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
@@ -276,10 +263,9 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           </>
         )}
         <div style={{ position: "relative", zIndex: 1, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
-          {/* "/work" has no standalone index route (same static-export limitation as
-              Journal/Packages/CV -- see SiteHeader.tsx's STATIC_HREF), so this back-link
-              goes to "/" exactly like the header/footer's own Work link does. */}
-          <a href="/" style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "inline-block", marginBottom: 22 }}>&larr; All Work</a>
+          {/* "← All Work" back-link removed from the banner -- the picture now runs
+              uninterrupted, with only the category tag + title over it. Header nav still has
+              a "Work" link back to the grid. */}
           <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
             <span style={{ width: 24, height: 1, background: C.PL, display: "inline-block" }} />
             {album.categories && album.categories.length > 0 ? album.categories.join(" · ") : "Portfolio"}
@@ -299,25 +285,14 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           description fields. */}
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 0" }}>
-        {/* ENGAGEMENT SUMMARY -- single line right under the title: Likes + Comments count,
-            each a smooth-scroll link down to the full interactive block (id="engagement")
-            that still sits after the gallery below. Same real data/endpoints, just a second,
-            lighter view of it placed where a visitor looks first. */}
-        <div style={{ marginBottom: 24 }}>
-          <ProjectEngagement projectId={album.id} compact />
-        </div>
-
         {/* PROJECT NAME -- only shown when it actually differs from the banner title, so the
             same words never appear twice back to back. */}
         {displayName && displayName !== bannerTitle && (
           <h2 style={{ fontSize: "clamp(22px,3vw,30px)", fontWeight: 700, letterSpacing: 0.3, margin: "0 0 28px" }}>{displayName}</h2>
         )}
 
-        {/* PROJECT INFORMATION -- Client / Location / Date / Category, each hidden entirely
-            when the CMS field is empty rather than showing a blank label. */}
-        <MetaRow fields={metaFields} />
-
-        {/* SHORT DESCRIPTION -- the intro. Shown once, here only. */}
+        {/* SHORT DESCRIPTION -- the intro, moved up to sit directly under the title/banner,
+            before the Gallery. Shown once, here only. */}
         {album.description && (
           <p style={{ marginTop: 0, marginBottom: 40, maxWidth: 720, lineHeight: 1.8, color: C.MID, fontSize: 16 }}>{album.description}</p>
         )}
@@ -325,18 +300,29 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
         {/* GALLERY -- one large hero photo + small thumbnail row, lightbox, per-image
-            "Request Permission" and reel pills. The separate full-bleed "Feature Image"
-            break that used to sit above this (a second, disconnected copy of the cover
-            photo) has been removed -- the hero image below now does that job once, instead
-            of the same/another photo appearing twice on the page. */}
+            "Request Permission" and reel pills. */}
         <SectionEyebrow>Gallery</SectionEyebrow>
-        <div style={{ marginBottom: 56 }}>
+        <div style={{ marginBottom: 32 }}>
           <ProjectGallery projectId={album.id} projectName={displayName} images={items} reels={album.reels || undefined} permissionEnabled={permissionEnabled} />
         </div>
 
+        {/* ENGAGEMENT + PROJECT INFO -- one single combined line right under the gallery:
+            Likes/Comments (smooth-scroll links to the full interactive block just below),
+            then Client / Location / Date / Category, each hidden entirely when the CMS field
+            is empty. Everything inline instead of the old stacked label/value blocks. */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 56, paddingBottom: 24, borderBottom: `1px solid ${C.BORDER}`, fontSize: 13 }}>
+          <ProjectEngagement projectId={album.id} compact />
+          {metaFields.map((f) => (
+            <span key={f.label} style={{ display: "inline-flex", alignItems: "center", gap: 6, color: C.MID }}>
+              <span style={{ opacity: 0.5 }}>·</span>
+              <span style={{ color: C.PL, textTransform: "uppercase", fontSize: 11, letterSpacing: 1 }}>{f.label}:</span>
+              <span style={{ color: C.FG }}>{f.value}</span>
+            </span>
+          ))}
+        </div>
+
         {/* LIKES / COMMENTS -- the full interactive block (like button + comment thread +
-            form). id="engagement" is the scroll target for the compact summary line under
-            the title above. */}
+            form). id="engagement" is the scroll target for the compact summary line above. */}
         <div id="engagement" style={{ marginBottom: 56, scrollMarginTop: 100 }}>
           <ProjectEngagement projectId={album.id} />
         </div>

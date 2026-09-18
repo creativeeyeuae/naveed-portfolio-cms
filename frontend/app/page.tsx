@@ -1337,7 +1337,7 @@ function Hero({slides,onNav,waNumber,typography,ready}:{slides:HeroSlide[];onNav
       {/* Same B&W-to-color hover treatment as the Featured Work / project grids -- the hero
           photo reads black & white until the visitor's mouse is anywhere over the hero, then
           eases into full color, and back to grayscale on mouse-leave. */}
-      {/* Gated on `ready` (see heroReady in Home()) so the very first paint -- server-rendered
+      {/* Gated on `ready` (see cmsPhotosReady in Home()) so the very first paint -- server-rendered
           static HTML included -- never shows a photo at all rather than briefly showing the
           hardcoded default/stale-cached one before the real current CMS photo replaces it.
           Same dark background (C.BG on the wrapper above) is visible underneath in the
@@ -1418,13 +1418,15 @@ export default function Home() {
   // isMobile/cms above) -- fetchCloudData() overwrites all of this moments later with the
   // live Supabase values regardless, so nothing about the eventual content changes.
   const [settings,setSettings]=useState<SiteSettings>(DEF_SETTINGS);
-  // Hero's own <img> stays unrendered (same dark background, no photo) until this flips true --
-  // see the "locally-cached CMS data" effect below. Without this, every page load/refresh
-  // painted the hardcoded default Unsplash stock photo for a moment before the real cached/
-  // live CMS hero photo replaced it, which read as "the old photo flashes then the new one
-  // loads". Gated on the SAME effect that already runs local-cache hydration (one React tick,
-  // not a network wait), so this adds no perceptible delay when the cache is already correct.
-  const [heroReady,setHeroReady]=useState(false);
+  // CMS photo <img>s (Hero, homepage About section) stay unrendered -- same dark background,
+  // no photo -- until this flips true, see the "locally-cached CMS data" effect below.
+  // Without this, every page load/refresh painted whatever photo was baked into the plain
+  // code defaults (or, right after updating a photo in the admin panel on this same device,
+  // this browser's still-previous localStorage copy) for a moment before the real current
+  // photo replaced it, which read as "the old photo flashes then the new one loads". Gated
+  // on the SAME effect that already runs local-cache hydration (one React tick, not a network
+  // wait), so this adds no perceptible delay when the cache is already correct.
+  const [cmsPhotosReady,setCmsPhotosReady]=useState(false);
   const [projects,setProjects]=useState<Project[]>(DEF_PROJECTS);
   const [cats,setCats]=useState<string[]>(DEF_CATS);
   const [testimonials,setTestimonials]=useState<Testimonial[]>(DEF_TESTIMONIALS);
@@ -1476,7 +1478,7 @@ export default function Home() {
     setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
     setBlog(ls("nap_blog",DEF_BLOG));
     setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
-    setHeroReady(true);
+    setCmsPhotosReady(true);
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
@@ -4249,7 +4251,7 @@ export default function Home() {
       {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} onDone={()=>setShowSplash(false)} />}
       <Nav />
       {settings.homeSections?.hero!==false && (
-      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} ready={heroReady} />
+      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} ready={cmsPhotosReady} />
       )}
 
       {/* INTRO STRIP */}
@@ -4284,7 +4286,11 @@ export default function Home() {
               column's height ends up being. minHeight is just a floor. */}
           <div style={{flex:"0 0 420px",minWidth:280,minHeight:440,alignSelf:"stretch",position:"relative"}}>
             <div style={{position:"absolute",inset:0,borderRadius:12,overflow:"hidden",boxShadow:"0 30px 70px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.16)"}}>
-              <img src={settings.aboutPhoto} alt={settings.aboutName} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+              {/* Gated on cmsPhotosReady (see Home()) so a fresh page load/refresh -- including
+                  right after saving a new photo in the admin panel on this same device --
+                  never paints the previous photo for a moment before the current one replaces
+                  it; the container's own dark background shows through until it's ready. */}
+              {cmsPhotosReady && <img src={settings.aboutPhoto} alt={settings.aboutName} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
             <div style={{position:"absolute",bottom:-22,right:-22,background:C.P,color:C.BG,borderRadius:10,padding:"18px 22px",boxShadow:"0 20px 40px rgba(139,92,246,0.35)",lineHeight:1.15}}>
               <div style={{fontSize:30,fontWeight:800}}>{settings.statsYears}</div>

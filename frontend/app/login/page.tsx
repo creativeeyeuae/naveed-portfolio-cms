@@ -9,13 +9,21 @@
 // user_roles table before letting the visitor through; a real client account that
 // happens to try the Admin tab authenticates fine but is immediately signed back out
 // and told it has no admin access, exactly like the CMS's own ?admin=1 gate now does).
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signInWithPassword, signOut, getMyRoles } from "@/lib/authClient";
 
 const ADMIN_ROLES = ["admin", "staff", "super_admin"];
 
 export default function LoginPage() {
   const [tab, setTab] = useState<"client" | "admin">("client");
+  // The CMS's ?admin=1 gate redirects unauthenticated/unauthorized visitors to
+  // /login?tab=admin -- this is the ONE login page for the whole site now, so it needs
+  // to be able to land straight on the right tab instead of always defaulting to Client.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("tab") === "admin") setTab("admin");
+    } catch {}
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);

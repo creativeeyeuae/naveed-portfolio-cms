@@ -2212,61 +2212,20 @@ export default function Home() {
       </div>
     );
 
-    if(resetMode) return(
-      <div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{textAlign:"left",width:340}}>
-          <div style={{fontSize:11,letterSpacing:6,color:C.MID,marginBottom:24,textTransform:"uppercase",textAlign:"center"}}>Set New Password</div>
-          {resetDone?(
-            <div style={{textAlign:"center"}}>
-              <div style={{color:"#2ecc71",fontSize:13,marginBottom:16}}>✅ Password updated.</div>
-              <button onClick={()=>{setResetMode(false);setResetDone(false);setNewPass1("");setNewPass2("");}} style={{...S.btnP,width:"100%"}}>Continue to CMS</button>
-            </div>
-          ):(
-            <>
-              <div style={{fontSize:12,color:"#888",marginBottom:16,lineHeight:1.6}}>Choose a new password for the admin account.</div>
-              <input type="password" value={newPass1} onChange={e=>setNewPass1(e.target.value)} placeholder="New password (min 6 characters)" style={{...S.inp,marginBottom:12}} />
-              <input type="password" value={newPass2} onChange={e=>setNewPass2(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitNewPassword()} placeholder="Confirm new password" style={{...S.inp,marginBottom:16}} />
-              {resetErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{resetErr}</div>}
-              <button onClick={submitNewPassword} disabled={resetBusy} style={{...S.btnP,width:"100%",opacity:resetBusy?0.6:1}}>{resetBusy?"Saving…":"Set Password"}</button>
-            </>
-          )}
-        </div>
-      </div>
-    );
+    // Centralized auth, Naveed's request: this CMS gate no longer has its own separate
+    // sign-in / forgot-password / set-new-password screens -- /login (+ its Admin tab)
+    // and /reset-password + /reset-password/update are now the ONE login and ONE
+    // password-reset system for the whole site, admin and client alike. Both branches
+    // below just hand off to that centralized system instead of duplicating it here.
+    if(resetMode){
+      if(typeof window!=="undefined") window.location.href="/reset-password/update";
+      return (<div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#444",fontSize:13}}>Redirecting…</div></div>);
+    }
 
-    if(!authed) return(
-      <div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}>
-        <div style={{textAlign:"left",width:340}}>
-          <div style={{fontSize:11,letterSpacing:6,color:C.MID,marginBottom:24,textTransform:"uppercase",textAlign:"center"}}>Admin Access</div>
-          {forgotMode?(
-            forgotSent?(
-              <div style={{textAlign:"center"}}>
-                <div style={{fontSize:13,color:"#888",marginBottom:20,lineHeight:1.6}}>If an account exists for that email, a password reset link has been sent. Open it on this site to set a new password.</div>
-                <div onClick={()=>{setForgotMode(false);setForgotSent(false);}} style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back to Sign In</div>
-              </div>
-            ):(
-              <>
-                <div style={{fontSize:12,color:"#888",marginBottom:16,lineHeight:1.6}}>Enter your admin email and we'll send a link to set a new password.</div>
-                <input type="email" value={adminSignInEmail} onChange={e=>setAdminSignInEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendForgotPassword()} placeholder="Email" style={{...S.inp,marginBottom:16}} />
-                <button onClick={sendForgotPassword} disabled={forgotBusy||!adminSignInEmail.trim()} style={{...S.btnP,width:"100%",marginBottom:12,opacity:forgotBusy?0.6:1}}>{forgotBusy?"Sending…":"Send Reset Link"}</button>
-                <div style={{textAlign:"center"}} onClick={()=>setForgotMode(false)}><span style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back to Sign In</span></div>
-              </>
-            )
-          ):(
-            <>
-              <input type="email" value={adminSignInEmail} onChange={e=>setAdminSignInEmail(e.target.value)} placeholder="Email" style={{...S.inp,marginBottom:12}} />
-              <input type="password" value={adminSignInPassword} onChange={e=>setAdminSignInPassword(e.target.value)} onKeyDown={e=>e.key==="Enter"&&adminSignIn()} placeholder="Password" style={{...S.inp,marginBottom:16}} />
-              {adminSignInErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{adminSignInErr}</div>}
-              <button onClick={adminSignIn} disabled={adminSignInBusy||!adminSignInEmail.trim()||!adminSignInPassword} style={{...S.btnP,width:"100%",marginBottom:14,opacity:adminSignInBusy?0.6:1}}>{adminSignInBusy?"Signing in…":"Sign In"}</button>
-              <div style={{textAlign:"center"}}>
-                <div onClick={()=>setForgotMode(true)} style={{color:"#666",fontSize:11,letterSpacing:1,cursor:"pointer",marginBottom:20}}>Forgot Password?</div>
-                <div onClick={()=>setCms(false)} style={{color:"#444",fontSize:11,letterSpacing:2,cursor:"pointer",textTransform:"uppercase"}}>← Back</div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
+    if(!authed){
+      if(typeof window!=="undefined") window.location.href="/login?tab=admin";
+      return (<div style={{...S.base,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{color:"#444",fontSize:13}}>Redirecting…</div></div>);
+    }
 
     // CMS_NAV -- grouped sidebar navigation. Each leaf routes to the SAME cmsTab/settingsTab
     // state the old flat tab bar used -- this is a navigation/layout reorganization only,

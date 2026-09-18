@@ -61,7 +61,7 @@ type SectionBg = { work:string;about:string;packages:string;blog:string;cv:strin
 // other public pages, each independently turn-off-able without touching any content or code.
 // A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
 // something still points at it, so nothing 404s and no content is deleted.
-type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean; };
+type PageEnabled = { work:boolean;about:boolean;packages:boolean;blog:boolean;cv:boolean;booking:boolean;contact:boolean;gear:boolean; };
 // Per-SECTION visibility switch for the home page itself (CMS > Settings > Pages, second
 // group below). Different from PageEnabled above (which hides/shows whole other pages) --
 // this toggles individual blocks of the home page on/off without touching their content.
@@ -303,7 +303,7 @@ const DEF_SETTINGS: SiteSettings = {
   // gear photo already used on the page itself so its banner matches Journal/Work/Packages
   // out of the box, same as every other page here.
   sectionBg:{work:"https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=1600&q=80",about:"",packages:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1600&q=80",blog:"https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",cv:"https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",booking:"https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1600&q=80",contact:"",gear:"/gear/sony-a7r-v.jpg"},
-  pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
+  pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true,gear:true},
   homeSections:{hero:true,intro:true,about:true,services:true,work:true,testimonials:true,journal:true,cta:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
   // Matches the padding/sizes/colors already hardcoded in the card markup, so shipping this
@@ -3215,7 +3215,7 @@ export default function Home() {
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Show / Hide Pages</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn a page off to remove it from the menu and footer everywhere on the site -- nothing is deleted, its content is just hidden until you switch it back on. Home always stays on.</div>
                 {([
-                  ["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
+                  ["work","Work"],["about","About"],["packages","Packages"],["gear","Gear"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
                 ] as [keyof PageEnabled,string][]).map(([key,label])=>{
                   const on=settingsDraft.pageEnabled[key]!==false;
                   return (

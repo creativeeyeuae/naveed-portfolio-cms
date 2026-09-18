@@ -295,7 +295,7 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   waNumber: "971581174911",
   waMsg: "Hello Naveed, I visited your portfolio and would like to discuss a project.",
   tiktok: "",
-  pageEnabled: { work: true, about: true, packages: true, blog: true, cv: true, booking: true, contact: true },
+  pageEnabled: { work: true, about: true, packages: true, blog: true, cv: true, booking: true, contact: true, gear: true },
   footerLinks: [
     { label: "Work", page: "work" },
     { label: "About", page: "about" },

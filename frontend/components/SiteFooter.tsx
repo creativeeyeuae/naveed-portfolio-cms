@@ -104,9 +104,12 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
               <Link key={i} href={PAGE_HREF[l.page] || "/"} style={mutedStyle} {...hoverMid}>{l.label}</Link>
             )
           )}
-          {/* Real route, not part of any in-memory SPA page -- always a real internal link
-              in both spa and static mode, same reasoning as the SERVICE_PAGES links below. */}
-          <Link href="/gear" style={mutedStyle} {...hoverMid}>Gear</Link>
+          {/* Real route, not part of any in-memory SPA page -- a real internal link in both
+              spa and static mode, same reasoning as the SERVICE_PAGES links below. Gear isn't
+              part of the footerLinks list quickLinks is built from (it's a fixed extra, not a
+              CMS-reorderable custom link), so its own CMS > Settings > Pages toggle is
+              checked directly here instead. */}
+          {site.pageEnabled.gear !== false && <Link href="/gear" style={mutedStyle} {...hoverMid}>Gear</Link>}
         </div>
 
         <div>

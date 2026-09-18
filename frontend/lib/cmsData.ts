@@ -60,8 +60,14 @@ export type CmsBlogPost = {
 // -> notFound() on a route already committed to in generateStaticParams -> a broken static
 // export for that page (Next's generic client-only error shell instead of real content,
 // without failing the overall build). Plain fetch (Next's default, static-safe caching)
-// is correct here anyway: every `next build` is a fresh process, so there is no stale
-// cross-build response to worry about -- each build always performs a real network call.
+// is correct here for that reason -- but Next's default fetch caching is NOT process-scoped:
+// it persists to disk at .next/cache/fetch-cache and survives across separate `next build`
+// runs on the same machine, so a real CMS change (confirmed live: Settings > Pages toggles
+// for Gear/CV) can silently keep baking the OLD cached response into every static page,
+// build after build, deploy after deploy, until that cache happens to be cleared. Fixed by
+// package.json's "prebuild" script, which deletes .next/cache/fetch-cache before every
+// `next build` -- so each production build is guaranteed a real network call here, without
+// touching the static-export-safe caching mode this fetch still uses.
 //
 // Also memoized per build-process: generateStaticParams, generateMetadata and the page
 // component each call this independently for the same key; one shared promise avoids

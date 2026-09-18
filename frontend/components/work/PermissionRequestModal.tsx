@@ -117,7 +117,7 @@ export default function PermissionRequestModal({
     <div style={overlayStyle} onClick={onClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: "var(--text-secondary, #E2D9F3)", textTransform: "uppercase" }}>Request Image Permission</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: "var(--text-secondary, #E2D9F3)", textTransform: "uppercase" }}>Picture Permission Request</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-muted, #A892C6)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>✕</button>
         </div>
 

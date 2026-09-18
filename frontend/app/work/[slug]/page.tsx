@@ -308,9 +308,11 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 0" }}>
-        {/* ALL WORK LINK -- sits here, directly under the banner. */}
-        <a href="/" style={{ color: C.MID, fontSize: 12.6, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "block", textAlign: "left", marginBottom: 18 }}>&larr; All Work</a>
+      <div style={{ maxWidth: 980, margin: "0 auto", padding: "48px 24px 0" }}>
+        {/* ALL WORK LINK -- sits here, directly under the banner. Same 980px max-width as the
+            gallery below so this link's left edge lines up with the main photo's left edge.
+            Points at the real /work grid (not the homepage). */}
+        <a href="/work" style={{ color: C.MID, fontSize: 12.6, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "block", textAlign: "left", marginBottom: 18 }}>&larr; All Work</a>
 
         {/* PROJECT TITLE + SHORT DESCRIPTION deliberately NOT repeated here -- both now live
             once, in the banner above (see hero). */}
@@ -319,7 +321,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
         {/* GALLERY -- one large hero photo + small thumbnail row, lightbox, per-image
             "Request Permission" and reel pills. */}
-        <SectionEyebrow>Gallery</SectionEyebrow>
+        {/* "Gallery" eyebrow label removed per request -- the photo grid speaks for itself. */}
         {/* Centered on the page (not stretched edge-to-edge of the 1400px section) so the
             main photo and every thumbnail beneath it read as one centered composition,
             per Naveed's request. */}
@@ -409,7 +411,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
 
         {/* COPYRIGHT NOTICE */}
         <div style={{ marginTop: 8, paddingTop: 24, borderTop: `1px solid ${C.BORDER}`, fontSize: 12, color: C.MID, lineHeight: 1.7 }}>
-          © {new Date().getFullYear()} Naveed Anjum / Creative Fusion LLC. All images and video on this page are protected by copyright and may not be copied, reproduced or reused without permission. Use the "Request Permission" button on any image above to ask about licensing it.
+          © {new Date().getFullYear()} Naveed Anjum / Creative Fusion LLC. All images and video on this page are protected by copyright and may not be copied, reproduced or reused without permission. Use the "Picture Permission Request" button on any image above to ask about licensing it.
         </div>
       </div>
 

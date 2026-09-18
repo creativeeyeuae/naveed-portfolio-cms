@@ -89,7 +89,7 @@ function MainImageTile({
             opacity: 0.9,
           }}
         >
-          Request Permission
+          Picture Permission Request
         </button>
       )}
       {img.caption && <div className="egallery-caption">{img.caption}</div>}
@@ -214,13 +214,34 @@ export default function ProjectGallery({
           onClick={() => setLightboxIndex(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.98)", zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center" }}
         >
+          {/* Prev/Next -- a solid circular pill (not bare text) so the arrows read clearly
+              against any photo, on both mobile touch and desktop hover, without relying on
+              a hover state that touch screens never trigger. */}
           <button
             aria-label="Previous image"
             onClick={(e) => {
               e.stopPropagation();
               setLightboxIndex((i) => (i === null ? 0 : Math.max(0, i - 1)));
             }}
-            style={{ position: "absolute", left: 16, color: "#fff", background: "none", border: "none", fontSize: 48, cursor: "pointer", opacity: 0.5 }}
+            style={{
+              position: "absolute",
+              left: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 48,
+              height: 48,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.35)",
+              borderRadius: "50%",
+              fontSize: 26,
+              lineHeight: 1,
+              cursor: "pointer",
+              opacity: 0.95,
+            }}
           >
             ‹
           </button>
@@ -236,7 +257,25 @@ export default function ProjectGallery({
               e.stopPropagation();
               setLightboxIndex((i) => (i === null ? 0 : Math.min(images.length - 1, i + 1)));
             }}
-            style={{ position: "absolute", right: 16, color: "#fff", background: "none", border: "none", fontSize: 48, cursor: "pointer", opacity: 0.5 }}
+            style={{
+              position: "absolute",
+              right: 12,
+              top: "50%",
+              transform: "translateY(-50%)",
+              width: 48,
+              height: 48,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              background: "rgba(255,255,255,0.12)",
+              border: "1px solid rgba(255,255,255,0.35)",
+              borderRadius: "50%",
+              fontSize: 26,
+              lineHeight: 1,
+              cursor: "pointer",
+              opacity: 0.95,
+            }}
           >
             ›
           </button>
@@ -270,10 +309,25 @@ export default function ProjectGallery({
                 cursor: "pointer",
               }}
             >
-              Request Permission
+              Picture Permission Request
             </button>
           )}
-          <div style={{ position: "absolute", bottom: images.length > 1 ? 76 : 16, color: "#777", fontSize: 12, letterSpacing: 3 }}>
+          {/* Image counter -- solid pill (instead of plain low-contrast gray text) so the
+              current position is legible on any photo, on mobile and desktop alike. */}
+          <div
+            style={{
+              position: "absolute",
+              bottom: images.length > 1 ? 76 : 16,
+              color: "rgba(255,255,255,0.95)",
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 2,
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 20,
+              padding: "6px 14px",
+            }}
+          >
             {String(lightboxIndex + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
           </div>
 

@@ -3615,42 +3615,79 @@ export default function Home() {
     </div>
   );
 
-  // ── CV ──
+  // ── CV ── redesigned as a two-column, animated layout (per Naveed's request): a sticky
+  // left profile/skills column beside a right-hand animated timeline of CV sections, with a
+  // portrait+identity hero on top. Falls back to a single stacked column on mobile via the
+  // shared `isMobile` flag already used elsewhere in this file. All content still comes
+  // straight from settings.aboutPhoto/aboutName/aboutTitle/cvSections/skills -- nothing here
+  // is hardcoded.
   if(page==="cv") return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} description="20+ years behind the camera across photography, cinematography and creative direction -- skills, tools and experience, at a glance." image={settings.sectionBg.cv} />
-      <div style={{maxWidth:900,margin:"0 auto",padding:"40px 40px 80px"}}>
-        <div style={{textAlign:"center",marginBottom:64}}>
-          <div style={{...S.tag(true),marginBottom:16}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
-          <h1 style={{fontSize:"clamp(36px,5.5vw,64px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
-          <p style={{color:C.MID,fontSize:14,letterSpacing:2}}>{settings.aboutTitle}</p>
-          <p style={{color:C.MID,fontSize:13,marginTop:8}}>{settings.phone} · {settings.email}</p>
-          <div style={{display:"flex",justifyContent:"center",gap:16,marginTop:24}}>
-            <a href={`https://wa.me/${WA}`} target="_blank" style={{...S.btnP,textDecoration:"none"}}>WhatsApp</a>
-            <button onClick={()=>goTo("booking")} style={S.btnO}>Book Now</button>
+      <style>{`
+        @keyframes cvItemIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes cvGlow{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0.55)}50%{box-shadow:0 0 0 6px rgba(139,92,246,0.12)}}
+        .cv-item{animation:cvItemIn 0.6s cubic-bezier(.16,.84,.44,1) both}
+        .cv-dot{animation:cvGlow 2.6s ease-in-out infinite}
+        .cv-skill-row{transition:color 0.2s,padding-left 0.2s}
+        .cv-skill-row:hover{color:${C.PL};padding-left:6px}
+      `}</style>
+      <div style={{maxWidth:1140,margin:"0 auto",padding:"48px 40px 100px"}}>
+
+        {/* PROFILE HERO -- portrait beside identity/contact, stacks on mobile. */}
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"220px 1fr",gap:40,alignItems:"center",marginBottom:72}}>
+          <div style={{display:"flex",justifyContent:isMobile?"center":"flex-start"}}>
+            <div style={{width:180,height:180,borderRadius:"50%",padding:3,background:`linear-gradient(135deg,${C.P},${C.PD})`,flexShrink:0}}>
+              {settings.aboutPhoto?(
+                <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover",display:"block",border:`4px solid ${C.BG}`}} />
+              ):(
+                <div style={{width:"100%",height:"100%",borderRadius:"50%",background:C.DARK,border:`4px solid ${C.BG}`}} />
+              )}
+            </div>
+          </div>
+          <div style={{textAlign:isMobile?"center":"left"}}>
+            <div style={S.tag(isMobile)}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
+            <h1 style={{fontSize:"clamp(32px,5vw,54px)",fontWeight:700,letterSpacing:1,margin:"0 0 10px"}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
+            <p style={{color:C.MID,fontSize:14,letterSpacing:2,marginBottom:6}}>{settings.aboutTitle}</p>
+            <p style={{color:C.MID,fontSize:13}}>{settings.phone} · {settings.email}</p>
+            <div style={{display:"flex",justifyContent:isMobile?"center":"flex-start",gap:16,marginTop:22}}>
+              <a href={`https://wa.me/${WA}`} target="_blank" style={{...S.btnP,textDecoration:"none"}}>WhatsApp</a>
+              <button onClick={()=>goTo("booking")} style={S.btnO}>Book Now</button>
+            </div>
           </div>
         </div>
-        {settings.cvSections.map((sec,i)=>(
-          <div key={i} style={{marginBottom:40,paddingBottom:40,borderBottom:`1px solid ${C.BORDER}`}}>
-            <div style={{...S.tag(),marginBottom:12}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />{sec.title}</div>
-            <p style={{color:C.MID,fontSize:14,lineHeight:1.9,margin:0}}>{sec.content}</p>
-          </div>
-        ))}
-        {settings.skills.length>0&&(
-          <div style={{marginBottom:40,paddingBottom:40,borderBottom:`1px solid ${C.BORDER}`}}>
-            <div style={{...S.tag(),marginBottom:24}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />Skills by Department</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:24}}>
+
+        {/* TWO-COLUMN BODY -- left: sticky skills-by-department card; right: animated
+            timeline of CV sections (profile / experience / expertise). Single stacked
+            column on mobile -- `sticky` simply has no visible effect there. */}
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"280px 1fr",gap:isMobile?48:56,alignItems:"start"}}>
+
+          {settings.skills.length>0&&(
+            <div style={isMobile?{}:{position:"sticky",top:100}}>
               {settings.skills.map((sk,i)=>(
-                <div key={i}>
-                  <div style={{fontSize:11,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>{sk.dept}</div>
-                  {sk.items.map((item,j)=><div key={j} style={{fontSize:13,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>→ {item}</div>)}
+                <div key={i} className="cv-item" style={{marginBottom:28,animationDelay:`${i*0.08}s`}}>
+                  <div style={{fontSize:11,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{width:6,height:6,borderRadius:"50%",background:C.P,display:"inline-block"}} />{sk.dept}
+                  </div>
+                  {sk.items.map((item,j)=><div key={j} className="cv-skill-row" style={{fontSize:13,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>→ {item}</div>)}
                 </div>
               ))}
             </div>
+          )}
+
+          <div style={{position:"relative",paddingLeft:isMobile?0:28,borderLeft:isMobile?"none":`1px solid ${C.BORDER}`}}>
+            {settings.cvSections.map((sec,i)=>(
+              <div key={i} className="cv-item" style={{position:"relative",marginBottom:40,paddingBottom:i===settings.cvSections.length-1?0:40,borderBottom:i===settings.cvSections.length-1?"none":`1px solid ${C.BORDER}`,animationDelay:`${i*0.1}s`}}>
+                {!isMobile&&<span className="cv-dot" style={{position:"absolute",left:-33,top:4,width:10,height:10,borderRadius:"50%",background:C.P}} />}
+                <div style={{...S.tag(),marginBottom:12}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />{sec.title}</div>
+                <p style={{color:C.MID,fontSize:14,lineHeight:1.9,margin:0}}>{sec.content}</p>
+              </div>
+            ))}
           </div>
-        )}
-        <div style={{textAlign:"center",paddingTop:16,display:"flex",justifyContent:"center",gap:16}}>
+        </div>
+
+        <div style={{textAlign:"center",marginTop:64,paddingTop:40,borderTop:`1px solid ${C.BORDER}`,display:"flex",justifyContent:"center",gap:16}}>
           <button onClick={()=>goTo("booking")} style={S.btnP}>Book a Session</button>
           <a href={`https://wa.me/${WA}`} target="_blank" style={{...S.btnO,textDecoration:"none"}}>WhatsApp</a>
         </div>

@@ -74,10 +74,7 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
           <p style={{ color: C.MID, fontSize: 13, lineHeight: 1.7, marginBottom: 16, maxWidth: 280 }}>{site.siteTagline}</p>
           <div style={{ fontSize: 13, color: C.MID, marginBottom: 6 }}>{site.phone}</div>
           <div style={{ fontSize: 13, color: C.MID, marginBottom: 6 }}>{site.email}</div>
-          <div style={{ fontSize: 13, color: C.MID, marginBottom: 6 }}>{site.location}</div>
-          {site.address && (
-            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(site.address)}`} target="_blank" rel="noopener noreferrer" style={{ display: "block", fontSize: 12, color: C.MID, marginBottom: 16, textDecoration: "underline", transition: "color 0.2s" }} {...hoverMid}>📍 {site.address} — Get Directions</a>
-          )}
+          <div style={{ fontSize: 13, color: C.MID, marginBottom: 16 }}>{site.location}</div>
           <a href={waHref} target="_blank" rel="noopener noreferrer" style={{ background: C.P, border: "none", color: C.BG, padding: "8px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none", display: "inline-block" }}>{site.footerWhatsappBtn}</a>
         </div>
 

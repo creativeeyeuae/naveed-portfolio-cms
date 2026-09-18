@@ -36,7 +36,7 @@ const C = {
 // 404s under static export -- fixed, matching the identical fix already applied in
 // SiteHeader.tsx's STATIC_HREF map.)
 const PAGE_HREF: Record<string, string> = {
-  work: "/",
+  work: "/work",
   about: "/about",
   packages: "/",
   blog: "/",

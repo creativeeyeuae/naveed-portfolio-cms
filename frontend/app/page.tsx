@@ -2126,6 +2126,11 @@ export default function Home() {
     aboutBannerTitle: settings.uiText.aboutBannerTitle,
     contactBannerEyebrow: settings.uiText.contactBannerEyebrow,
     contactBannerTitle: settings.uiText.contactBannerTitle,
+    // Additive fields for the standalone /work index route (lib/cmsData.ts's PublicSiteInfo)
+    // -- same underlying CMS fields this SPA's own all-projects Work page-view already reads
+    // below (settings.uiText.workBannerEyebrow/workBannerTitle), just also exposed here.
+    workBannerEyebrow: settings.uiText.workBannerEyebrow,
+    workBannerTitle: settings.uiText.workBannerTitle,
   };
   const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
 

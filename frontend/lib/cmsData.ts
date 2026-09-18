@@ -203,6 +203,11 @@ export type PublicSiteInfo = {
   aboutBannerTitle: string;
   contactBannerEyebrow: string;
   contactBannerTitle: string;
+  // Additive fields for the standalone /work index page -- same rationale as the About/
+  // Contact banner fields above, sourced from the same uiText.workBannerEyebrow/workBannerTitle
+  // the homepage SPA's own all-projects Work view already reads (app/page.tsx, page==="work").
+  workBannerEyebrow: string;
+  workBannerTitle: string;
 };
 
 // Same defaults as DEF_SETTINGS in app/page.tsx (the CMS's own fallback values) -- used so
@@ -253,6 +258,8 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   aboutBannerTitle: "About",
   contactBannerEyebrow: "Get In Touch",
   contactBannerTitle: "Let's Work Together",
+  workBannerEyebrow: "Portfolio",
+  workBannerTitle: "Selected Work",
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
@@ -331,6 +338,8 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     aboutBannerTitle: pickUi("aboutBannerTitle", DEFAULT_PUBLIC_SITE_INFO.aboutBannerTitle),
     contactBannerEyebrow: pickUi("contactBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.contactBannerEyebrow),
     contactBannerTitle: pickUi("contactBannerTitle", DEFAULT_PUBLIC_SITE_INFO.contactBannerTitle),
+    workBannerEyebrow: pickUi("workBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.workBannerEyebrow),
+    workBannerTitle: pickUi("workBannerTitle", DEFAULT_PUBLIC_SITE_INFO.workBannerTitle),
   };
 }
 

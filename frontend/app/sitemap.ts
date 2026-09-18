@@ -60,10 +60,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1,
     },
-    // Real, finished content (not a stub like about/contact/photography/cinematography
-    // above) -- the dedicated gear/equipment page, so it belongs in the sitemap.
+    // Real, finished content (not a stub like the photography/cinematography folders
+    // mentioned above) -- the dedicated gear/equipment page, so it belongs in the sitemap.
     {
       url: "https://bynaveedanjum.com/gear/",
+      lastModified: new Date("2026-09-18"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    // Real, finished, CMS-driven packages/pricing page (new standalone /packages route),
+    // so it belongs in the sitemap too.
+    {
+      url: "https://bynaveedanjum.com/packages/",
       lastModified: new Date("2026-09-18"),
       changeFrequency: "monthly",
       priority: 0.7,

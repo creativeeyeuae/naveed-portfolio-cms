@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
+import InternalPageTemplate from "@/components/InternalPageTemplate";
 import ContactForm from "./ContactForm";
 
 // Real, indexable static route (/contact) -- previously a broken legacy stub: a form using
@@ -42,18 +41,7 @@ export default async function ContactPage() {
   ].filter((c) => c.value);
 
   return (
-    <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
-      <SiteHeader site={site} />
-
-      {/* HERO -- same visual language as the shared PageBanner (app/page.tsx) */}
-      <div style={{ background: C.DARK, padding: "120px 40px 36px", minHeight: "clamp(252px,39.6vh,432px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ display: "inline-block", width: 24, height: 1, background: C.PL }} />
-          {site.contactBannerEyebrow}
-        </div>
-        <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, margin: 0, maxWidth: 800 }}>{site.contactBannerTitle}</h1>
-      </div>
-
+    <InternalPageTemplate site={site} eyebrow={site.contactBannerEyebrow} title={site.contactBannerTitle}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px" }}>
         {/* CONTACT METHOD CARDS -- real CMS data only, empty fields hidden entirely */}
         {cards.length > 0 && (
@@ -76,8 +64,6 @@ export default async function ContactPage() {
 
         <ContactForm site={site} />
       </div>
-
-      <SiteFooter site={site} />
-    </main>
+    </InternalPageTemplate>
   );
 }

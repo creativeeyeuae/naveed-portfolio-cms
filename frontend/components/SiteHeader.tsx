@@ -38,35 +38,37 @@ export const LANGS: { code: Lang; label: string; flag: string }[] = [
 // prop is given. On the homepage, translation is driven by app/page.tsx's own UI_STRINGS
 // (unchanged); this table exists only so a standalone route without that state still gets a
 // working language switcher for its own fixed chrome, exactly like the homepage's.
-const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packages: string; journal: string; cv: string; contact: string; bookBtn: string }> = {
-  en: { home: "Home", work: "Work", about: "About", packages: "Packages", journal: "Journal", cv: "CV", contact: "Contact", bookBtn: "Book a Project" },
-  ar: { home: "الرئيسية", work: "أعمالنا", about: "من نحن", packages: "الباقات", journal: "المجلة", cv: "السيرة الذاتية", contact: "تواصل معنا", bookBtn: "احجز مشروعك" },
-  fr: { home: "Accueil", work: "Travaux", about: "À propos", packages: "Forfaits", journal: "Journal", cv: "CV", contact: "Contact", bookBtn: "Réserver un projet" },
-  ru: { home: "Главная", work: "Работы", about: "О нас", packages: "Пакеты", journal: "Журнал", cv: "Резюме", contact: "Контакты", bookBtn: "Заказать проект" },
-  zh: { home: "首页", work: "作品", about: "关于", packages: "套餐", journal: "期刊", cv: "简历", contact: "联系我们", bookBtn: "预约项目" },
-  de: { home: "Startseite", work: "Arbeiten", about: "Über uns", packages: "Pakete", journal: "Journal", cv: "Lebenslauf", contact: "Kontakt", bookBtn: "Projekt buchen" },
-  es: { home: "Inicio", work: "Trabajos", about: "Sobre nosotros", packages: "Paquetes", journal: "Revista", cv: "CV", contact: "Contacto", bookBtn: "Reservar un proyecto" },
-  it: { home: "Home", work: "Lavori", about: "Chi siamo", packages: "Pacchetti", journal: "Giornale", cv: "CV", contact: "Contatti", bookBtn: "Prenota un progetto" },
-  tr: { home: "Ana Sayfa", work: "Çalışmalar", about: "Hakkımızda", packages: "Paketler", journal: "Dergi", cv: "Özgeçmiş", contact: "İletişim", bookBtn: "Proje Rezervasyonu Yap" },
-  hi: { home: "होम", work: "कार्य", about: "परिचय", packages: "पैकेज", journal: "जर्नल", cv: "सीवी", contact: "संपर्क करें", bookBtn: "प्रोजेक्ट बुक करें" },
-  ur: { home: "صفحہ اول", work: "کام", about: "ہمارے بارے میں", packages: "پیکجز", journal: "جرنل", cv: "سی وی", contact: "رابطہ کریں", bookBtn: "پراجیکٹ بک کریں" },
-  tl: { home: "Home", work: "Mga Trabaho", about: "Tungkol Sa Amin", packages: "Mga Package", journal: "Journal", cv: "CV", contact: "Makipag-ugnayan", bookBtn: "I-book ang Proyekto" },
+const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packages: string; gear: string; journal: string; cv: string; contact: string; bookBtn: string }> = {
+  en: { home: "Home", work: "Work", about: "About", packages: "Packages", gear: "Gear", journal: "Journal", cv: "CV", contact: "Contact", bookBtn: "Book a Project" },
+  ar: { home: "الرئيسية", work: "أعمالنا", about: "من نحن", packages: "الباقات", gear: "المعدات", journal: "المجلة", cv: "السيرة الذاتية", contact: "تواصل معنا", bookBtn: "احجز مشروعك" },
+  fr: { home: "Accueil", work: "Travaux", about: "À propos", packages: "Forfaits", gear: "Équipement", journal: "Journal", cv: "CV", contact: "Contact", bookBtn: "Réserver un projet" },
+  ru: { home: "Главная", work: "Работы", about: "О нас", packages: "Пакеты", gear: "Оборудование", journal: "Журнал", cv: "Резюме", contact: "Контакты", bookBtn: "Заказать проект" },
+  zh: { home: "首页", work: "作品", about: "关于", packages: "套餐", gear: "器材", journal: "期刊", cv: "简历", contact: "联系我们", bookBtn: "预约项目" },
+  de: { home: "Startseite", work: "Arbeiten", about: "Über uns", packages: "Pakete", gear: "Ausrüstung", journal: "Journal", cv: "Lebenslauf", contact: "Kontakt", bookBtn: "Projekt buchen" },
+  es: { home: "Inicio", work: "Trabajos", about: "Sobre nosotros", packages: "Paquetes", gear: "Equipo", journal: "Revista", cv: "CV", contact: "Contacto", bookBtn: "Reservar un proyecto" },
+  it: { home: "Home", work: "Lavori", about: "Chi siamo", packages: "Pacchetti", gear: "Attrezzatura", journal: "Giornale", cv: "CV", contact: "Contatti", bookBtn: "Prenota un progetto" },
+  tr: { home: "Ana Sayfa", work: "Çalışmalar", about: "Hakkımızda", packages: "Paketler", gear: "Ekipman", journal: "Dergi", cv: "Özgeçmiş", contact: "İletişim", bookBtn: "Proje Rezervasyonu Yap" },
+  hi: { home: "होम", work: "कार्य", about: "परिचय", packages: "पैकेज", gear: "गियर", journal: "जर्नल", cv: "सीवी", contact: "संपर्क करें", bookBtn: "प्रोजेक्ट बुक करें" },
+  ur: { home: "صفحہ اول", work: "کام", about: "ہمارے بارے میں", packages: "پیکجز", gear: "آلات", journal: "جرنل", cv: "سی وی", contact: "رابطہ کریں", bookBtn: "پراجیکٹ بک کریں" },
+  tl: { home: "Home", work: "Mga Trabaho", about: "Tungkol Sa Amin", packages: "Mga Package", gear: "Kagamitan", journal: "Journal", cv: "CV", contact: "Makipag-ugnayan", bookBtn: "I-book ang Proyekto" },
 };
 
-// Static-route-only: real destinations for the 7 nav keys. Work and About/Contact have their
-// own real pages. Packages/CV/Journal still have no standalone index URL of their own (same as
-// on the homepage -- they're in-memory-only sections there too; Journal's individual posts ARE
-// real pages at /journal/[slug], but there is no /journal index) -- those three route to
-// /?page=packages|cv|blog instead of a bare "/", which the homepage reads on mount (see
-// app/page.tsx) to land directly on that section rather than always showing the Home hero.
-// Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory navigation,
-// unchanged). Kept in sync with the matching PAGE_HREF map in SiteFooter.tsx.
-const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/?page=packages", blog: "/?page=blog", cv: "/?page=cv", contact: "/contact", booking: "/contact" };
+// Static-route-only: real destinations for the nav keys. Work/About/Packages/Gear/Contact
+// all have their own real pages now. CV/Journal still have no standalone index URL of their
+// own (same as on the homepage -- they're in-memory-only sections there too; Journal's
+// individual posts ARE real pages at /journal/[slug], but there is no /journal index) --
+// those two route to /?page=cv|blog instead of a bare "/", which the homepage reads on mount
+// (see app/page.tsx) to land directly on that section rather than always showing the Home
+// hero. Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory
+// navigation, unchanged). Kept in sync with the matching PAGE_HREF map in SiteFooter.tsx.
+const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/packages", gear: "/gear", blog: "/?page=blog", cv: "/?page=cv", contact: "/contact", booking: "/contact" };
+// Nav order everywhere: Home | Work | About | Packages | Gear | Journal | CV | Contact | Book
 const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: keyof (typeof NAV_TEXT)["en"] }[] = [
   { key: "home", textKey: "home" },
   { key: "work", textKey: "work" },
   { key: "about", textKey: "about" },
   { key: "packages", textKey: "packages" },
+  { key: "gear", textKey: "gear" },
   { key: "blog", textKey: "journal" },
   { key: "cv", textKey: "cv" },
   { key: "contact", textKey: "contact" },

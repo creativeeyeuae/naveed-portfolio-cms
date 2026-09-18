@@ -30,15 +30,16 @@ const C = {
 };
 
 // Real page-key -> real destination map (used only in static mode).
-// "blog" (Journal) has no standalone index route -- only individual posts (/journal/[slug])
-// exist as real pages, same situation as Packages/CV -- so those three route to
-// /?page=packages|cv|blog instead of a bare "/", which the homepage reads on mount to land
-// directly on that section instead of always showing the Home hero. Kept in sync with the
-// matching STATIC_HREF map in SiteHeader.tsx.
+// Work/About/Packages/Gear/Contact all have real standalone routes. "blog" (Journal) has no
+// standalone index route -- only individual posts (/journal/[slug]) exist as real pages,
+// same situation as CV -- so those two route to /?page=cv|blog instead of a bare "/", which
+// the homepage reads on mount to land directly on that section instead of always showing the
+// Home hero. Kept in sync with the matching STATIC_HREF map in SiteHeader.tsx.
 const PAGE_HREF: Record<string, string> = {
   work: "/work",
   about: "/about",
-  packages: "/?page=packages",
+  packages: "/packages",
+  gear: "/gear",
   blog: "/?page=blog",
   cv: "/?page=cv",
   booking: "/contact",

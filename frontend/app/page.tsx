@@ -2052,6 +2052,12 @@ export default function Home() {
     // view, so there's only one Work page (with a real, bookmarkable bynaveedanjum.com/work URL)
     // instead of two different ones depending on how the visitor got there.
     if(p==="work"){ window.location.href="/work"; return; }
+    // Packages and Gear now have the same kind of real, indexable static route as Work
+    // (/packages, /gear) -- send nav/link clicks there too instead of the old in-page
+    // Packages view / the old "/?page=packages" query-param workaround, so the address bar
+    // always shows a real bynaveedanjum.com/packages or /gear URL. Gear has no in-memory
+    // page view at all; it only ever existed as this real static route.
+    if(p==="packages"||p==="gear"){ window.location.href="/"+p; return; }
     setPage(p);window.scrollTo(0,0);
   }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
@@ -2168,7 +2174,11 @@ export default function Home() {
   }
 
   // ── NAV ──
-  const NAV_LINKS:[string,string][]=[["home",T.home],["work",T.work],["about",T.about],["packages",T.packages],["blog",T.journal],["cv",T.cv],["contact",T.contact]];
+  // Nav order everywhere: Home | Work | About | Packages | Gear | Journal | CV | Contact | Book
+  // (kept in sync with SiteHeader.tsx's STATIC_NAV_ORDER for the static routes). "Gear" has
+  // no translation key of its own in T (its content is English-only, same as the /gear page
+  // itself) -- literal label here matches SiteHeader.tsx's static-mode NAV_TEXT.gear default.
+  const NAV_LINKS:[string,string][]=[["home",T.home],["work",T.work],["about",T.about],["packages",T.packages],["gear","Gear"],["blog",T.journal],["cv",T.cv],["contact",T.contact]];
   // Skip any page CMS-disabled via Settings > Pages. Home is never in pageEnabled, so it's
   // always shown regardless.
   const visibleNavLinks=NAV_LINKS.filter(([k])=>(settings.pageEnabled as Record<string,boolean>|undefined)?.[k]!==false);
@@ -2214,6 +2224,20 @@ export default function Home() {
     // below (settings.uiText.workBannerEyebrow/workBannerTitle), just also exposed here.
     workBannerEyebrow: settings.uiText.workBannerEyebrow,
     workBannerTitle: settings.uiText.workBannerTitle,
+    // Additive fields for the standalone /packages route (lib/cmsData.ts's PublicSiteInfo)
+    // -- same underlying CMS fields this SPA's own in-memory Packages page-view already
+    // reads below (settings.uiText.packagesBannerEyebrow/Title, settings.pricingPackages,
+    // settings.services), just also exposed here so the static /packages page renders the
+    // same real data instead of duplicating it.
+    packagesBannerEyebrow: settings.uiText.packagesBannerEyebrow,
+    packagesBannerTitle: settings.uiText.packagesBannerTitle,
+    pricingPackages: settings.pricingPackages.map(p => ({
+      id: p.id, icon: p.icon, label: p.label, price: p.price, priceNote: p.priceNote,
+      desc: p.desc, image: p.image, ctaLabel: p.ctaLabel, features: p.features,
+    })),
+    packagesServices: settings.services.map(sv => ({
+      id: sv.id, icon: sv.icon, title: sv.title, desc: sv.desc, deliverables: sv.deliverables,
+    })),
   };
   const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
 

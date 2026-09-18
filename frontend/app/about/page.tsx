@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
+import InternalPageTemplate from "@/components/InternalPageTemplate";
 
 // Real, indexable static route (/about) -- previously a bare, unstyled legacy stub (no
 // SiteHeader/SiteFooter, no CMS data, disconnected Tailwind classes, from an earlier phase
@@ -36,22 +35,11 @@ export default async function AboutPage() {
   const site = await getPublicSiteInfo();
 
   return (
-    <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
+    <InternalPageTemplate site={site} eyebrow={site.aboutBannerEyebrow} title={site.aboutBannerTitle}>
       <style>{`
         .about-grid { display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:start; }
         @media (max-width: 780px) { .about-grid { grid-template-columns: 1fr; } }
       `}</style>
-      <SiteHeader site={site} />
-
-      {/* HERO -- same visual language as the shared PageBanner (app/page.tsx) */}
-      <div style={{ background: C.DARK, padding: "120px 40px 36px", minHeight: "clamp(252px,39.6vh,432px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ display: "inline-block", width: 24, height: 1, background: C.PL }} />
-          {site.aboutBannerEyebrow}
-        </div>
-        <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, margin: 0, maxWidth: 800 }}>{site.aboutBannerTitle}</h1>
-      </div>
-
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px" }}>
         <div className="about-grid">
           {/* LEFT: bio */}
@@ -109,8 +97,6 @@ export default async function AboutPage() {
           <a href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Get In Touch</a>
         </div>
       </div>
-
-      <SiteFooter site={site} />
-    </main>
+    </InternalPageTemplate>
   );
 }

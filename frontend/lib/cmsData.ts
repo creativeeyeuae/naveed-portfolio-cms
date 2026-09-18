@@ -225,6 +225,37 @@ export type PublicSiteInfo = {
   // the homepage SPA's own all-projects Work view already reads (app/page.tsx, page==="work").
   workBannerEyebrow: string;
   workBannerTitle: string;
+  // Additive fields for the standalone /packages page -- same rationale as the Work banner
+  // fields above (sourced from uiText.packagesBannerEyebrow/Title, already real CMS fields
+  // the homepage SPA's own in-memory Packages view already reads). pricingPackages mirrors
+  // settings.pricingPackages (Settings > Packages) and packagesServices mirrors the richer
+  // settings.services shape (icon/desc/deliverables) the SPA's Packages view uses -- kept as
+  // separate fields from the existing `services` above (title-only) so no existing caller of
+  // that field changes shape.
+  packagesBannerEyebrow: string;
+  packagesBannerTitle: string;
+  pricingPackages: CmsPricingPackage[];
+  packagesServices: CmsServiceDetail[];
+};
+
+export type CmsPricingPackage = {
+  id: string;
+  icon?: string;
+  label: string;
+  price: string;
+  priceNote?: string;
+  desc?: string;
+  image?: string;
+  ctaLabel?: string;
+  features?: string[];
+};
+
+export type CmsServiceDetail = {
+  id: string;
+  icon?: string;
+  title: string;
+  desc?: string;
+  deliverables?: string[];
 };
 
 // Same defaults as DEF_SETTINGS in app/page.tsx (the CMS's own fallback values) -- used so
@@ -277,6 +308,15 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   contactBannerTitle: "Let's Work Together",
   workBannerEyebrow: "Portfolio",
   workBannerTitle: "Selected Work",
+  packagesBannerEyebrow: "Packages",
+  packagesBannerTitle: "Your Investment",
+  pricingPackages: [],
+  packagesServices: [
+    { id: "s1", title: "Photography" },
+    { id: "s2", title: "Videography" },
+    { id: "s3", title: "Content Creation" },
+    { id: "s4", title: "Creative Production" },
+  ],
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
@@ -325,6 +365,40 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
         .map((s, i) => ({ id: s.id || `s${i}`, title: s.title as string }))
     : DEFAULT_PUBLIC_SITE_INFO.services;
 
+  // Richer version of the same settings.services row (icon/desc/deliverables), for the
+  // standalone /packages page -- real CMS data, same source as `services` above, just kept
+  // in its own field so nothing existing changes shape.
+  const packagesServices = Array.isArray(servicesRaw)
+    ? (servicesRaw as { id?: string; icon?: string; title?: string; desc?: string; deliverables?: string[] }[])
+        .filter((s) => s && typeof s.title === "string")
+        .map((s, i) => ({
+          id: s.id || `s${i}`,
+          icon: typeof s.icon === "string" ? s.icon : undefined,
+          title: s.title as string,
+          desc: typeof s.desc === "string" ? s.desc : undefined,
+          deliverables: Array.isArray(s.deliverables) ? s.deliverables.filter((d) => typeof d === "string") : undefined,
+        }))
+    : DEFAULT_PUBLIC_SITE_INFO.packagesServices;
+
+  // Real pricing tiers from Settings > Packages (settings.pricingPackages) -- the same data
+  // the homepage SPA's own in-memory Packages view renders as flip-cards.
+  const pricingPackagesRaw = settings.pricingPackages;
+  const pricingPackages = Array.isArray(pricingPackagesRaw)
+    ? (pricingPackagesRaw as { id?: string; icon?: string; label?: string; price?: string; priceNote?: string; desc?: string; image?: string; ctaLabel?: string; features?: string[] }[])
+        .filter((p) => p && typeof p.label === "string")
+        .map((p, i) => ({
+          id: p.id || `p${i}`,
+          icon: typeof p.icon === "string" ? p.icon : undefined,
+          label: p.label as string,
+          price: typeof p.price === "string" ? p.price : "",
+          priceNote: typeof p.priceNote === "string" ? p.priceNote : undefined,
+          desc: typeof p.desc === "string" ? p.desc : undefined,
+          image: typeof p.image === "string" ? p.image : undefined,
+          ctaLabel: typeof p.ctaLabel === "string" ? p.ctaLabel : undefined,
+          features: Array.isArray(p.features) ? p.features.filter((f) => typeof f === "string") : undefined,
+        }))
+    : DEFAULT_PUBLIC_SITE_INFO.pricingPackages;
+
   return {
     siteName: pick("siteName"),
     siteTagline: pick("siteTagline"),
@@ -357,6 +431,10 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     contactBannerTitle: pickUi("contactBannerTitle", DEFAULT_PUBLIC_SITE_INFO.contactBannerTitle),
     workBannerEyebrow: pickUi("workBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.workBannerEyebrow),
     workBannerTitle: pickUi("workBannerTitle", DEFAULT_PUBLIC_SITE_INFO.workBannerTitle),
+    packagesBannerEyebrow: pickUi("packagesBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.packagesBannerEyebrow),
+    packagesBannerTitle: pickUi("packagesBannerTitle", DEFAULT_PUBLIC_SITE_INFO.packagesBannerTitle),
+    pricingPackages,
+    packagesServices,
   };
 }
 

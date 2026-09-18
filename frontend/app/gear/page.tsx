@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getPublicSiteInfo, getGearImages } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
-import SiteHeader from "@/components/SiteHeader";
-import SiteFooter from "@/components/SiteFooter";
+import InternalPageTemplate from "@/components/InternalPageTemplate";
 import GearGrid from "@/components/gear/GearGrid";
 
 const C = {
@@ -245,38 +244,11 @@ export default async function GearPage() {
   }));
 
   return (
-    <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
-      <SiteHeader site={site} />
-
-      {/* HERO -- same visual language as the shared PageBanner (app/page.tsx / about page) */}
-      <div
-        style={{
-          background: C.DARK,
-          padding: "clamp(96px,20vw,120px) clamp(20px,6vw,40px) clamp(32px,6vw,44px)",
-          minHeight: "clamp(252px,39.6vh,432px)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: 6,
-            color: C.PL,
-            textTransform: "uppercase",
-            marginBottom: 14,
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
-        >
-          <span style={{ display: "inline-block", width: 24, height: 1, background: C.PL }} />
-          Equipment
-        </div>
-        <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, margin: "0 0 18px", maxWidth: 800 }}>
-          Photography &amp; Videography Gear
-        </h1>
+    <InternalPageTemplate site={site} eyebrow="Equipment" title="Photography & Videography Gear">
+      {/* Page-specific intro (description + stats) -- kept here rather than in the shared
+          banner since no other internal page has a stats row; the banner itself (nav,
+          height, padding, typography) is now identical across every internal page. */}
+      <div style={{ background: C.DARK, padding: "0 clamp(20px,6vw,40px) clamp(32px,6vw,44px)" }}>
         <p style={{ fontSize: 15, lineHeight: 1.8, color: "rgba(255,255,255,0.62)", maxWidth: 640, margin: "0 0 28px" }}>
           The equipment behind every shoot -- cameras, lenses, lighting, stabilization and post-production tools used for photography, videography and editing on location and in the studio.
         </p>
@@ -339,8 +311,6 @@ export default async function GearPage() {
           </a>
         </div>
       </div>
-
-      <SiteFooter site={site} />
-    </main>
+    </InternalPageTemplate>
   );
 }

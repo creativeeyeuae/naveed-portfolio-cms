@@ -12,7 +12,7 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-type GearItem = { name: string; desc: string; img: string; alt: string };
+type GearItem = { name: string; desc: string; img: string; alt: string; features: string[] };
 type GearCategory = { label: string; items: GearItem[] };
 type FlatItem = GearItem & { category: string };
 
@@ -149,11 +149,51 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
                   lineHeight: 1.9,
                   color: "rgba(255,255,255,0.55)",
                   maxWidth: 420,
-                  margin: 0,
+                  margin: "0 0 20px",
                 }}
               >
                 {item.desc}
               </p>
+              {item.features && item.features.length > 0 && (
+                <ul
+                  style={{
+                    listStyle: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    maxWidth: 420,
+                  }}
+                >
+                  {item.features.map((f) => (
+                    <li
+                      key={f}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        fontSize: 13,
+                        lineHeight: 1.55,
+                        color: "rgba(255,255,255,0.72)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: "50%",
+                          background: C.P,
+                          display: "inline-block",
+                          marginTop: 6,
+                          flexShrink: 0,
+                        }}
+                      />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         ))}

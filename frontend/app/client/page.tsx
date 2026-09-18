@@ -10,6 +10,7 @@
 // confirmed, and send anyone without one back to /login rather than showing an empty
 // shell.
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getSession, getUser, signOut, type User } from "@/lib/authClient";
 
 export default function ClientPortalPage() {
@@ -50,7 +51,7 @@ export default function ClientPortalPage() {
           features go live -- for now, get in touch directly and we'll take care of it.
         </p>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          <a href="/contact" style={{ background: "var(--accent-primary, #8B5CF6)", color: "#fff", padding: "12px 24px", borderRadius: 6, textDecoration: "none", fontWeight: 600, fontSize: 13 }}>Contact Us</a>
+          <Link href="/contact" style={{ background: "var(--accent-primary, #8B5CF6)", color: "#fff", padding: "12px 24px", borderRadius: 6, textDecoration: "none", fontWeight: 600, fontSize: 13 }}>Contact Us</Link>
           <button
             onClick={async () => {
               await signOut();

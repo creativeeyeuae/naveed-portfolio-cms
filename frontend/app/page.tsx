@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient as _createSupabaseClient } from "@supabase/supabase-js";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
 import type { PublicSiteInfo } from "@/lib/cmsData";
@@ -1398,6 +1400,7 @@ function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:st
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 export default function Home() {
+  const router = useRouter();
   // Seeded with the plain code defaults -- byte-for-byte what the static export's own
   // pre-rendered HTML used -- not read from localStorage here. Reading ls() directly inside
   // these initializers made the very first CLIENT render differ from that static HTML
@@ -2055,13 +2058,18 @@ export default function Home() {
     // send every Work nav/link click there instead of flipping to this SPA's own in-page Work
     // view, so there's only one Work page (with a real, bookmarkable bynaveedanjum.com/work URL)
     // instead of two different ones depending on how the visitor got there.
-    if(p==="work"){ window.location.href="/work"; return; }
+    // Client-side router.push() instead of window.location.href -- a hard navigation here
+    // reloads the entire page (full JS re-download + re-hydration), which is exactly what
+    // made the Home page visibly stay on screen for a few seconds before Work/Packages/Gear
+    // appeared. router.push() does the same real-URL navigation but through Next's own
+    // client-side transition, so the target route swaps in immediately.
+    if(p==="work"){ router.push("/work"); return; }
     // Packages and Gear now have the same kind of real, indexable static route as Work
     // (/packages, /gear) -- send nav/link clicks there too instead of the old in-page
     // Packages view / the old "/?page=packages" query-param workaround, so the address bar
     // always shows a real bynaveedanjum.com/packages or /gear URL. Gear has no in-memory
     // page view at all; it only ever existed as this real static route.
-    if(p==="packages"||p==="gear"){ window.location.href="/"+p; return; }
+    if(p==="packages"||p==="gear"){ router.push("/"+p); return; }
     setPage(p);window.scrollTo(0,0);
   }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
@@ -4364,7 +4372,7 @@ export default function Home() {
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
               <Reveal key={p.id} style={{gridColumn:isMobile?"1/2":"1/3"}}>
-              <a href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
+              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
@@ -4375,12 +4383,12 @@ export default function Home() {
                     <div style={{fontSize:22,letterSpacing:2,color:"#fff"}}>{p.title}</div>
                   </div>
                 </div>
-              </a>
+              </Link>
               </Reveal>
             ))}
             {featured.slice(1,4).map((p,idx)=>(
               <Reveal key={p.id} delay={0.1+idx*0.08}>
-              <a href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
+              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
@@ -4391,7 +4399,7 @@ export default function Home() {
                     <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
                   </div>
                 </div>
-              </a>
+              </Link>
               </Reveal>
             ))}
           </div>

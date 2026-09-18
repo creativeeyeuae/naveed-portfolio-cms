@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
@@ -69,7 +70,7 @@ export default async function PackagesPage() {
                     ))}
                   </ul>
                 )}
-                <a
+                <Link
                   href="/contact"
                   style={{
                     marginTop: 10,
@@ -86,7 +87,7 @@ export default async function PackagesPage() {
                   }}
                 >
                   {p.ctaLabel || "Book Now"}
-                </a>
+                </Link>
               </div>
             ))}
           </div>
@@ -122,9 +123,9 @@ export default async function PackagesPage() {
         <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 48, borderTop: `1px solid ${C.BORDER}` }}>
           <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let&apos;s Talk</div>
           <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
-          <a href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>
+          <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>
             Get In Touch
-          </a>
+          </Link>
         </div>
       </div>
     </InternalPageTemplate>

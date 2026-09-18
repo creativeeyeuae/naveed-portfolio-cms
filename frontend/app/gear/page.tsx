@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getPublicSiteInfo, getGearImages } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
@@ -299,7 +300,7 @@ export default async function GearPage() {
           <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>
             Have a Project In Mind?
           </h3>
-          <a
+          <Link
             href="/contact"
             style={{
               background: C.P,
@@ -314,7 +315,7 @@ export default async function GearPage() {
             }}
           >
             Get In Touch
-          </a>
+          </Link>
         </div>
       </div>
     </InternalPageTemplate>

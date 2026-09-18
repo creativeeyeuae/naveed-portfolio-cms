@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRealBlogPosts } from "@/lib/cmsData";
 import { buildMetadata, articleJsonLd, jsonLdScriptProps } from "@/lib/seo";
@@ -98,7 +99,7 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
       <script {...jsonLdScriptProps(jsonLd)} />
       <article style={{ maxWidth: 720, margin: "0 auto", padding: "64px 24px 80px" }}>
-        <a href="/" style={{ color: "var(--text-muted)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</a>
+        <Link href="/" style={{ color: "var(--text-muted)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</Link>
         {post.category && (
           <div style={{ marginTop: 24, color: "var(--accent-primary)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>{post.category}</div>
         )}

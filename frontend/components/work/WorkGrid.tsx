@@ -13,6 +13,7 @@
 // -- so tiles vary big/small the way the homepage's own layouts do, without inventing a second
 // bento system.
 import { useState } from "react";
+import Link from "next/link";
 import { CmsProject } from "@/lib/cmsData";
 
 const C = {
@@ -34,7 +35,7 @@ function bentoSpan(i: number) {
 
 function ProjectCard({ p, span }: { p: CmsProject; span?: number }) {
   return (
-    <a
+    <Link
       key={p.id}
       href={`/work/${p.slug}/`}
       className={span ? `egallery-item eg-span-${span}` : undefined}
@@ -69,7 +70,7 @@ function ProjectCard({ p, span }: { p: CmsProject; span?: number }) {
       {p.featured && (
         <div style={{ position: "absolute", top: 14, right: 14, background: C.P, color: "#fff", fontSize: 9, letterSpacing: 2, padding: "3px 8px", textTransform: "uppercase" }}>Featured</div>
       )}
-    </a>
+    </Link>
   );
 }
 

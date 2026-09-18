@@ -14,6 +14,7 @@
 //     `spa` prop -- real <a href> links to actual routes instead of goTo().
 //
 // There is exactly one footer implementation. Nothing else should define its own Footer.
+import Link from "next/link";
 import { PublicSiteInfo } from "@/lib/cmsData";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
 
@@ -89,7 +90,7 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
             spa ? (
               <div key={sv.id} onClick={() => spa.goTo("work")} style={mutedStyle} {...hoverMid}>{sv.title}</div>
             ) : (
-              <a key={sv.id} href="/work" style={mutedStyle} {...hoverMid}>{sv.title}</a>
+              <Link key={sv.id} href="/work" style={mutedStyle} {...hoverMid}>{sv.title}</Link>
             )
           )}
         </div>
@@ -100,12 +101,12 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
             spa ? (
               <div key={i} onClick={() => spa.goTo(l.page)} style={mutedStyle} {...hoverMid}>{l.label}</div>
             ) : (
-              <a key={i} href={PAGE_HREF[l.page] || "/"} style={mutedStyle} {...hoverMid}>{l.label}</a>
+              <Link key={i} href={PAGE_HREF[l.page] || "/"} style={mutedStyle} {...hoverMid}>{l.label}</Link>
             )
           )}
-          {/* Real route, not part of any in-memory SPA page -- always a plain <a href>
+          {/* Real route, not part of any in-memory SPA page -- always a real internal link
               in both spa and static mode, same reasoning as the SERVICE_PAGES links below. */}
-          <a href="/gear" style={mutedStyle} {...hoverMid}>Gear</a>
+          <Link href="/gear" style={mutedStyle} {...hoverMid}>Gear</Link>
         </div>
 
         <div>
@@ -122,7 +123,7 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
           both spa and static mode, letting search engines crawl and follow them either way. */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px 28px", display: "flex", flexWrap: "wrap", gap: "8px 18px" }}>
         {SERVICE_PAGES.map((s) => (
-          <a key={s.slug} href={`/${s.slug}`} style={{ fontSize: 11, letterSpacing: 0.5, color: "#4a4460", textDecoration: "none", transition: "color 0.2s" }} {...hoverSeo}>{s.label} Dubai</a>
+          <Link key={s.slug} href={`/${s.slug}`} style={{ fontSize: 11, letterSpacing: 0.5, color: "#4a4460", textDecoration: "none", transition: "color 0.2s" }} {...hoverSeo}>{s.label} Dubai</Link>
         ))}
       </div>
       <div style={{ borderTop: `1px solid ${C.BORDER}`, padding: "16px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
@@ -132,7 +133,7 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
             spa ? (
               <span key={l} onClick={() => spa.goTo(l)} style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s" }} {...hoverDark}>{l}</span>
             ) : (
-              <a key={l} href={PAGE_HREF[l] || "/"} style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>{l}</a>
+              <Link key={l} href={PAGE_HREF[l] || "/"} style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>{l}</Link>
             )
           )}
         </div>

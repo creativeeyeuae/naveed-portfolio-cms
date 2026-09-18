@@ -20,6 +20,7 @@
 // There is exactly one nav implementation. Nothing else should define its own Header/Nav.
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { PublicSiteInfo } from "@/lib/cmsData";
 
 export type Lang = "en" | "ar" | "fr" | "ru" | "zh" | "de" | "es" | "it" | "tr" | "hi" | "ur" | "tl";
@@ -155,7 +156,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         .client-tile:hover{transform:scale(1.15)}`}</style>
 
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 501, height: 32, boxSizing: "border-box", padding: isMobile ? "0 20px" : "0 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--c-dark,#140D21)", opacity: scrolled ? 0 : 1, transform: scrolled ? "translateY(-100%)" : "translateY(0)", pointerEvents: scrolled ? "none" : "auto", transition: "opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)" }}>
-        <a href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</a>
+        <Link href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</Link>
         <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
           <select aria-label="Language" value={lang} onChange={(e) => (spa ? spa.onLangChange(e.target.value as Lang) : setStaticLang(e.target.value as Lang))} style={{ background: "transparent", border: "none", color: "var(--c-mid,#A892C6)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", outline: "none" }}>
             {LANGS.map((l) => <option key={l.code} value={l.code} style={{ color: "#000" }}>{l.flag} {l.label}</option>)}
@@ -168,7 +169,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         {spa ? (
           <div onClick={() => { spa.goTo("home"); onCloseMobileNav(); }} style={{ fontSize: 15, letterSpacing: 4, textTransform: "uppercase", cursor: "pointer", color: "var(--c-fg,#FFFFFF)", fontFamily: "var(--font-serif),'Plus Jakarta Sans',sans-serif" }}><NoTranslate>{site.siteName}</NoTranslate></div>
         ) : (
-          <a href="/" onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 4, textTransform: "uppercase", textDecoration: "none", color: "var(--c-fg,#FFFFFF)", fontFamily: "var(--font-serif),'Plus Jakarta Sans',sans-serif" }}><NoTranslate>{site.siteName}</NoTranslate></a>
+          <Link href="/" onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 4, textTransform: "uppercase", textDecoration: "none", color: "var(--c-fg,#FFFFFF)", fontFamily: "var(--font-serif),'Plus Jakarta Sans',sans-serif" }}><NoTranslate>{site.siteName}</NoTranslate></Link>
         )}
 
         {isMobile ? (
@@ -187,9 +188,9 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         ) : (
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             {staticVisibleLinks.map((l) => (
-              <a key={l.key} href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</a>
+              <Link key={l.key} href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
             ))}
-            <a href={STATIC_HREF.booking} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</a>
+            <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
           </div>
         )}
 
@@ -205,9 +206,9 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             ) : (
               <>
                 {staticVisibleLinks.map((l) => (
-                  <a key={l.key} href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</a>
+                  <Link key={l.key} href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
                 ))}
-                <a href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</a>
+                <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
               </>
             )}
           </div>

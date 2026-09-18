@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRealProjects, getImagePermissionEnabled, getPublicSiteInfo, CmsProject } from "@/lib/cmsData";
 import { buildMetadata, creativeWorkJsonLd, jsonLdScriptProps, absoluteUrl } from "@/lib/seo";
@@ -215,7 +216,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         <SiteHeader site={site} />
         <div style={{ minHeight: "60vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "80px 24px" }}>
           <div style={{ fontSize: 11, letterSpacing: 4, color: C.MID, textTransform: "uppercase", marginBottom: 14 }}>This project has moved</div>
-          <a href={target} style={{ color: C.PL, fontSize: 16, textDecoration: "underline" }}>Continue to the current page &rarr;</a>
+          <Link href={target} style={{ color: C.PL, fontSize: 16, textDecoration: "underline" }}>Continue to the current page &rarr;</Link>
         </div>
         <SiteFooter site={site} />
       </main>
@@ -312,7 +313,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         {/* ALL WORK LINK -- sits here, directly under the banner. Same 980px max-width as the
             gallery below so this link's left edge lines up with the main photo's left edge.
             Points at the real /work grid (not the homepage). */}
-        <a href="/work" style={{ color: C.MID, fontSize: 12.6, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "block", textAlign: "left", marginBottom: 18 }}>&larr; All Work</a>
+        <Link href="/work" style={{ color: C.MID, fontSize: 12.6, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "block", textAlign: "left", marginBottom: 18 }}>&larr; All Work</Link>
 
         {/* PROJECT TITLE + SHORT DESCRIPTION deliberately NOT repeated here -- both now live
             once, in the banner above (see hero). */}
@@ -387,13 +388,13 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
             <SectionEyebrow>More Work</SectionEyebrow>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 3 }}>
               {related.map((p) => (
-                <a key={p.id} href={`/work/${p.slug}`} className="related-tile" style={{ display: "block", position: "relative", cursor: "pointer", overflow: "hidden", aspectRatio: "4/3", background: C.DARK, textDecoration: "none" }}>
+                <Link key={p.id} href={`/work/${p.slug}`} className="related-tile" style={{ display: "block", position: "relative", cursor: "pointer", overflow: "hidden", aspectRatio: "4/3", background: C.DARK, textDecoration: "none" }}>
                   <img src={p.coverImage || p.images?.[0]?.url || ""} alt={p.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                   <div className="ov" style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(9,6,14,0.92) 0%,transparent 55%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 22 }}>
                     <div style={{ fontSize: 10, letterSpacing: 3, color: C.PL, textTransform: "uppercase", marginBottom: 6 }}>{p.categories?.join(" · ")}</div>
                     <div style={{ fontSize: 16, letterSpacing: 1, color: "#fff" }}>{p.title}</div>
                   </div>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -405,7 +406,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Let's Create Something Together</h3>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
             <a href={`https://wa.me/${site.waNumber}?text=${encodeURIComponent(site.waMsg || "")}`} target="_blank" rel="noopener noreferrer" style={{ background: C.P, border: "none", color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>WhatsApp Now</a>
-            <a href="/contact" style={{ background: "none", border: "1px solid rgba(255,255,255,0.18)", color: C.FG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book a Project</a>
+            <Link href="/contact" style={{ background: "none", border: "1px solid rgba(255,255,255,0.18)", color: C.FG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book a Project</Link>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
@@ -56,7 +57,7 @@ export default async function AboutPage() {
             </div>
 
             <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
-              <a href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 32px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book Now</a>
+              <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 32px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book Now</Link>
               <a href={`https://wa.me/${site.waNumber}?text=${encodeURIComponent(site.waMsg || "")}`} target="_blank" rel="noopener noreferrer" style={{ background: "none", border: `1px solid ${C.BORDER}`, color: C.FG, padding: "13px 32px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>WhatsApp</a>
             </div>
 
@@ -94,7 +95,7 @@ export default async function AboutPage() {
         <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 48, borderTop: `1px solid ${C.BORDER}` }}>
           <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let's Talk</div>
           <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
-          <a href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Get In Touch</a>
+          <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Get In Touch</Link>
         </div>
       </div>
     </InternalPageTemplate>

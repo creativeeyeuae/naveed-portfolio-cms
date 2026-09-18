@@ -98,6 +98,9 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
               <a key={i} href={PAGE_HREF[l.page] || "/"} style={mutedStyle} {...hoverMid}>{l.label}</a>
             )
           )}
+          {/* Real route, not part of any in-memory SPA page -- always a plain <a href>
+              in both spa and static mode, same reasoning as the SERVICE_PAGES links below. */}
+          <a href="/gear" style={mutedStyle} {...hoverMid}>Gear</a>
         </div>
 
         <div>

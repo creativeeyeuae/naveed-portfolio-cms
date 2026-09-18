@@ -3648,9 +3648,12 @@ export default function Home() {
           </div>
           <div style={{textAlign:isMobile?"center":"left"}}>
             <div style={S.tag(isMobile)}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />Curriculum Vitae<span style={{width:32,height:1,background:C.PL,display:"inline-block"}} /></div>
-            <h1 style={{fontSize:"clamp(32px,5vw,54px)",fontWeight:700,letterSpacing:1,margin:"0 0 10px"}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
-            <p style={{color:C.MID,fontSize:14,letterSpacing:2,marginBottom:6}}>{settings.aboutTitle}</p>
-            <p style={{color:C.MID,fontSize:13}}>{settings.phone} · {settings.email}</p>
+            {/* H1 = name (full white, highest emphasis). Subheading = role tagline, bold
+                accent color -- one clear step down from the H1, not just a smaller copy of
+                the same muted body tone. Contact line is the quietest text on the page. */}
+            <h1 style={{fontSize:"clamp(32px,5vw,54px)",fontWeight:700,letterSpacing:1,margin:"0 0 10px",color:C.FG}}><NoTranslate>{settings.aboutName}</NoTranslate></h1>
+            <p style={{color:C.PL,fontSize:15,fontWeight:600,letterSpacing:1.5,marginBottom:10}}>{settings.aboutTitle}</p>
+            <p style={{color:"rgba(255,255,255,0.42)",fontSize:13}}>{settings.phone} · {settings.email}</p>
             <div style={{display:"flex",justifyContent:isMobile?"center":"flex-start",gap:16,marginTop:22}}>
               <a href={`https://wa.me/${WA}`} target="_blank" style={{...S.btnP,textDecoration:"none"}}>WhatsApp</a>
               <button onClick={()=>goTo("booking")} style={S.btnO}>Book Now</button>
@@ -3658,32 +3661,55 @@ export default function Home() {
           </div>
         </div>
 
-        {/* TWO-COLUMN BODY -- left: sticky skills-by-department card; right: animated
-            timeline of CV sections (profile / experience / expertise). Single stacked
-            column on mobile -- `sticky` simply has no visible effect there. */}
+        {/* TYPOGRAPHY RULE for everything below: eyebrow (11-12px, wide-tracked, uppercase,
+            accent) marks a SECTION; h3 (19px, 700, pure white) is an ENTRY HEADING -- the
+            role/skill-group name itself; the small accent meta line under it is the
+            SUBHEADING (company · location · dates, or a short divider when there's none);
+            CV_BODY is the one body-copy color used for every paragraph and list line --
+            dimmed off-white, never pure white, so it always reads a clear step quieter than
+            the headings above it. Every CV entry is also its own bordered card -- a real,
+            visually separate "section" rather than a line under a thin divider. */}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"280px 1fr",gap:isMobile?48:56,alignItems:"start"}}>
 
           {settings.skills.length>0&&(
             <div style={isMobile?{}:{position:"sticky",top:100}}>
+              <div style={{...S.tag(),marginBottom:20,fontSize:12,letterSpacing:5}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />Skills &amp; Expertise</div>
               {settings.skills.map((sk,i)=>(
-                <div key={i} className="cv-item" style={{marginBottom:28,animationDelay:`${i*0.08}s`}}>
-                  <div style={{fontSize:11,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{width:6,height:6,borderRadius:"50%",background:C.P,display:"inline-block"}} />{sk.dept}
-                  </div>
-                  {sk.items.map((item,j)=><div key={j} className="cv-skill-row" style={{fontSize:13,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>→ {item}</div>)}
+                <div key={i} className="cv-item" style={{marginBottom:16,padding:"20px 20px",background:"rgba(255,255,255,0.035)",border:`1px solid ${C.BORDER}`,borderRadius:10,animationDelay:`${i*0.08}s`}}>
+                  <h4 style={{fontSize:12.5,fontWeight:700,letterSpacing:2,color:C.PL,textTransform:"uppercase",margin:"0 0 12px",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{width:6,height:6,borderRadius:"50%",background:C.P,display:"inline-block",flexShrink:0}} />{sk.dept}
+                  </h4>
+                  {sk.items.map((item,j)=><div key={j} className="cv-skill-row" style={{fontSize:13.5,color:"rgba(255,255,255,0.62)",padding:"5px 0",borderBottom:j===sk.items.length-1?"none":`1px solid ${C.BORDER}`}}>→ {item}</div>)}
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{position:"relative",paddingLeft:isMobile?0:28,borderLeft:isMobile?"none":`1px solid ${C.BORDER}`}}>
-            {settings.cvSections.map((sec,i)=>(
-              <div key={i} className="cv-item" style={{position:"relative",marginBottom:40,paddingBottom:i===settings.cvSections.length-1?0:40,borderBottom:i===settings.cvSections.length-1?"none":`1px solid ${C.BORDER}`,animationDelay:`${i*0.1}s`}}>
-                {!isMobile&&<span className="cv-dot" style={{position:"absolute",left:-33,top:4,width:10,height:10,borderRadius:"50%",background:C.P}} />}
-                <div style={{...S.tag(),marginBottom:12}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />{sec.title}</div>
-                <p style={{color:C.MID,fontSize:14,lineHeight:1.9,margin:0}}>{sec.content}</p>
-              </div>
-            ))}
+          <div>
+            <div style={{...S.tag(),marginBottom:28,fontSize:12,letterSpacing:5}}><span style={{width:20,height:1,background:C.PL,display:"inline-block"}} />Experience &amp; Background</div>
+            <div style={{position:"relative",paddingLeft:isMobile?0:28,borderLeft:isMobile?"none":`1px solid ${C.BORDER}`}}>
+              {settings.cvSections.map((sec,i)=>{
+                // CMS entries are free text -- most job entries follow "Role — Company,
+                // Location · Dates" (an em dash), which we split into a heading + a
+                // subheading. Plain category entries ("Profile", "Creative Expertise")
+                // have no dash and just get a short accent divider instead of a blank line.
+                const dashIdx=sec.title.indexOf(" — ");
+                const heading=dashIdx>-1?sec.title.slice(0,dashIdx):sec.title;
+                const meta=dashIdx>-1?sec.title.slice(dashIdx+3):"";
+                return (
+                  <div key={i} className="cv-item" style={{position:"relative",marginBottom:24,padding:"26px 28px",background:"rgba(255,255,255,0.035)",border:`1px solid ${C.BORDER}`,borderRadius:10,animationDelay:`${i*0.1}s`}}>
+                    {!isMobile&&<span className="cv-dot" style={{position:"absolute",left:-38,top:30,width:10,height:10,borderRadius:"50%",background:C.P}} />}
+                    <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.2,color:C.FG,margin:"0 0 6px",lineHeight:1.35}}>{heading}</h3>
+                    {meta?(
+                      <div style={{fontSize:12,fontWeight:600,letterSpacing:1,color:C.PL,textTransform:"uppercase",marginBottom:16}}>{meta}</div>
+                    ):(
+                      <div style={{width:24,height:2,background:C.P,marginBottom:16,borderRadius:1}} />
+                    )}
+                    <p style={{color:"rgba(255,255,255,0.62)",fontSize:14.5,lineHeight:1.85,margin:0}}>{sec.content}</p>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicSiteInfo } from "@/lib/cmsData";
+import { getPublicSiteInfo, getGearImages } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -15,7 +15,7 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-type GearItem = { name: string; desc: string; img: string; alt: string; features: string[] };
+type GearItem = { name: string; desc: string; img: string; alt: string; features: string[]; isCustomImg?: boolean };
 type GearCategory = { label: string; items: GearItem[] };
 
 // Naveed's real, current photography/videography/editing gear -- exactly as supplied.
@@ -226,7 +226,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function GearPage() {
-  const site = await getPublicSiteInfo();
+  const [site, gearImages] = await Promise.all([getPublicSiteInfo(), getGearImages()]);
   const totalItems = GEAR.reduce((n, c) => n + c.items.length, 0);
   const totalCats = GEAR.length;
   const stats = [
@@ -234,6 +234,15 @@ export default async function GearPage() {
     { n: `${totalCats}`, l: "Categories" },
     { n: "100%", l: "Personally Used" },
   ];
+  // Merge in any photo Naveed has uploaded via CMS > Settings > Gear Photos for a given item
+  // (matched by exact name) -- items without an upload keep their default photo untouched.
+  const gearWithPhotos = GEAR.map((cat) => ({
+    ...cat,
+    items: cat.items.map((item) => {
+      const custom = gearImages[item.name];
+      return custom ? { ...item, img: custom, isCustomImg: true } : { ...item, isCustomImg: false };
+    }),
+  }));
 
   return (
     <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
@@ -299,7 +308,7 @@ export default async function GearPage() {
       </div>
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px 40px" }}>
-        <GearGrid categories={GEAR} />
+        <GearGrid categories={gearWithPhotos} />
 
         {/* CTA -- same pattern as /about */}
         <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 16, borderTop: `1px solid ${C.BORDER}` }}>

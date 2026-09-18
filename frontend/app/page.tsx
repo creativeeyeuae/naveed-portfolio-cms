@@ -125,6 +125,11 @@ type SiteSettings = {
   clients:{id:string;name:string;logo:string}[]; clientsEnabled:boolean;
   cvSections:{title:string;content:string}[];
   skills:{dept:string;items:string[]}[];
+  // Per-item override photo for the /gear page -- keyed by the gear item's exact name
+  // (matching frontend/app/gear/page.tsx's hardcoded GEAR list). Empty/missing entries fall
+  // back to the code's own default product photo, so nothing breaks until Naveed uploads his
+  // own designed image for a given item.
+  gearImages:{name:string;img:string}[];
   bankTransferInstructions:string;
   // Generic hosted "Pay Online" link (Mamo / Tap / Stripe Payment Link / anything similar)
   // Naveed pastes in once he sets up a merchant account -- when empty, the "Pay Online"
@@ -357,9 +362,24 @@ const DEF_SETTINGS: SiteSettings = {
     {dept:"AI & Creative Tools",items:["ChatGPT","Google AI Studio","Versal AI Tools","CapCut","CapCut Template Creator","Adobe Template Designer"]},
     {dept:"Languages",items:["English","Urdu","Punjabi","Hindi","Arabic (Basic)"]},
   ],
+  gearImages:[],
   bankTransferInstructions:"",
   paymentLinkUrl:"",
 };
+
+// Exact item names from frontend/app/gear/page.tsx's own hardcoded GEAR list (name/desc/
+// features/category stay code-controlled -- only the photo is CMS-editable here), grouped
+// the same way that page groups them, purely so this settings screen reads in a sensible
+// order. Editing this list does not change the live /gear page; it only has to match those
+// names exactly for an uploaded photo to be picked up.
+const GEAR_PHOTO_SECTIONS: {label:string;items:string[]}[] = [
+  {label:"Camera",items:["Sony α7R V"]},
+  {label:"Lenses",items:["Sony FE 24–70mm F2.8 GM II","Sony FE 70–200mm F2.8 GM II"]},
+  {label:"Lighting",items:["Godox V1","4× Godox Receivers","Amaran 300c","2× GVM RGB LED Panels","105 cm Softbox","80 cm Softbox / Light Box"]},
+  {label:"Stabilization",items:["DJI RS 3","DJI Osmo Mobile"]},
+  {label:"Action & 360 Cameras",items:["DJI Osmo Action 4","Insta360 X4"]},
+  {label:"Computer / Editing",items:["Alienware m15 R5"]},
+];
 
 const DEF_PROJECTS: Project[] = [
   // DUMMY placeholder projects/testimonials for design review -- deliberately generic
@@ -2275,6 +2295,7 @@ export default function Home() {
         <CmsNavItem icon="👤" label="About" active={cmsTab==="settings"&&settingsTab==="about"} onClick={()=>{setCmsTab("settings");setSettingsTab("about");}} />
         <CmsNavItem icon="🤝" label="Clients" active={cmsTab==="settings"&&settingsTab==="clients"} onClick={()=>{setCmsTab("settings");setSettingsTab("clients");}} />
         <CmsNavItem icon="🎓" label="CV & Skills" active={cmsTab==="settings"&&settingsTab==="cv"} onClick={()=>{setCmsTab("settings");setSettingsTab("cv");}} />
+        <CmsNavItem icon="📦" label="Gear Photos" active={cmsTab==="settings"&&settingsTab==="gear"} onClick={()=>{setCmsTab("settings");setSettingsTab("gear");}} />
         <CmsNavItem icon="⬇️" label="Footer" active={cmsTab==="settings"&&settingsTab==="footer"} onClick={()=>{setCmsTab("settings");setSettingsTab("footer");}} />
         <CmsNavItem icon="✉️" label="Contact" active={cmsTab==="settings"&&settingsTab==="contact"} onClick={()=>{setCmsTab("settings");setSettingsTab("contact");}} />
         <CmsNavItem icon="🔔" label="Popup" active={cmsTab==="settings"&&settingsTab==="popup"} onClick={()=>{setCmsTab("settings");setSettingsTab("popup");}} />
@@ -2742,7 +2763,7 @@ export default function Home() {
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
             <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["clients","🤝 Clients"],["cv","CV & Skills"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
+              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["clients","🤝 Clients"],["cv","CV & Skills"],["gear","📦 Gear Photos"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
               ))}
             </div>
@@ -2951,6 +2972,38 @@ export default function Home() {
                     <div style={{marginBottom:12}}><label style={S.lbl}>Department</label><input style={S.inp} value={sk.dept} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,dept:e.target.value}:x)})} /></div>
                     <div style={{marginBottom:8}}><label style={S.lbl}>Skills (comma separated)</label><input style={S.inp} value={sk.items.join(", ")} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,items:e.target.value.split(",").map(s=>s.trim()).filter(Boolean)}:x)})} placeholder="Skill 1, Skill 2, Skill 3" /></div>
                     <button onClick={()=>updateSD({skills:settingsDraft.skills.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {settingsTab==="gear"&&(
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Gear Page Photos</div>
+                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>
+                  Upload your own photo for any item on the /gear page -- it replaces the current default photo for that item only, everywhere it appears. Leave an item blank to keep its default photo; nothing on the live page changes until you upload here and Save.
+                </div>
+                {GEAR_PHOTO_SECTIONS.map(section=>(
+                  <div key={section.label} style={{marginBottom:28}}>
+                    <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{section.label}</div>
+                    {section.items.map(name=>{
+                      const current = settingsDraft.gearImages.find(g=>g.name===name)?.img || "";
+                      return (
+                        <div key={name} style={{background:"#10101c",padding:16,marginBottom:10,border:`1px solid ${C.BORDER}`}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.FG,marginBottom:8}}>{name}</div>
+                          <SingleImageUpload
+                            label="Photo"
+                            value={current}
+                            onChange={url=>updateSD({
+                              gearImages: settingsDraft.gearImages.some(g=>g.name===name)
+                                ? settingsDraft.gearImages.map(g=>g.name===name?{...g,img:url}:g)
+                                : [...settingsDraft.gearImages,{name,img:url}],
+                            })}
+                          />
+                          {current&&<button onClick={()=>updateSD({gearImages:settingsDraft.gearImages.filter(g=>g.name!==name)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove (use default photo)</button>}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>

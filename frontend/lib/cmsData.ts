@@ -167,6 +167,23 @@ export async function getImagePermissionEnabled(): Promise<boolean> {
   return settings.imagePermissionEnabled !== false;
 }
 
+// Per-item photo overrides for the /gear page, uploaded via CMS > Settings > Gear Photos
+// (app/page.tsx, settingsTab==="gear"). Keyed by the gear item's exact name so the page can
+// do `gearImages[item.name] || item.defaultImg`. Missing/malformed data (nothing uploaded
+// yet, or an old settings row from before this field existed) safely returns {}.
+export async function getGearImages(): Promise<Record<string, string>> {
+  const settings = await readSiteSettingsObject();
+  const raw = settings.gearImages;
+  if (!Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const entry of raw as { name?: unknown; img?: unknown }[]) {
+    if (entry && typeof entry.name === "string" && typeof entry.img === "string" && entry.img) {
+      out[entry.name] = entry.img;
+    }
+  }
+  return out;
+}
+
 export type PublicSiteInfo = {
   siteName: string;
   siteTagline: string;

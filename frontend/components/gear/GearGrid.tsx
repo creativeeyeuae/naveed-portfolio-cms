@@ -12,7 +12,7 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-type GearItem = { name: string; desc: string; img: string; alt: string; features: string[] };
+type GearItem = { name: string; desc: string; img: string; alt: string; features: string[]; isCustomImg?: boolean };
 type GearCategory = { label: string; items: GearItem[] };
 type FlatItem = GearItem & { category: string };
 
@@ -37,7 +37,7 @@ function GearFeatureRow({ item, index }: { item: FlatItem; index: number }) {
 
   return (
     <div ref={ref} className={`gear-feature${index % 2 === 1 ? " reverse" : ""}`}>
-      <div className="gear-feature-img">
+      <div className={`gear-feature-img${item.isCustomImg ? " custom" : ""}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={item.img} alt={item.alt} loading="lazy" />
       </div>
@@ -84,6 +84,8 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
         .gear-feature-img { flex:1 1 50%; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background: radial-gradient(circle at 50% 40%, rgba(139,92,246,0.16), transparent 65%), ${C.DARK}; }
         .gear-feature-img img { width:86%; height:86%; object-fit:contain; filter: drop-shadow(0 30px 54px rgba(0,0,0,0.5)); transform: scale(0.9); transition: transform 1.1s cubic-bezier(0.16,0.84,0.44,1); }
         .gear-feature.in-view .gear-feature-img img { transform: scale(1); }
+        .gear-feature-img.custom { background:${C.DARK}; }
+        .gear-feature-img.custom img { width:100%; height:100%; object-fit:cover; filter:none; }
 
         .gear-feature-text { flex:1 1 50%; display:flex; flex-direction:column; justify-content:center; padding: 56px 64px; background: ${C.BG}; }
         .gear-feature-num { font-size:60px; font-weight:800; color:rgba(255,255,255,0.06); line-height:1; margin-bottom:-24px; }
@@ -99,6 +101,7 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
           .gear-feature, .gear-feature.reverse { flex-direction:column; min-height:auto; }
           .gear-feature-img { flex: 0 0 auto; width:100%; height:320px; }
           .gear-feature-img img { width:72%; height:72%; }
+          .gear-feature-img.custom img { width:100%; height:100%; }
           .gear-feature-text { flex: 0 0 auto; width:100%; padding:40px 24px; }
         }
 

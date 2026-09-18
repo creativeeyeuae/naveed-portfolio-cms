@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState<"verify" | "signed-in" | null>(null);
+  const [done, setDone] = useState<"verify" | "signed-in" | "existing" | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +32,33 @@ export default function RegisterPage() {
       window.location.href = "/client";
       return;
     }
+    // Supabase's anti-account-enumeration behavior: signing up with an email that
+    // ALREADY has a confirmed account returns a user object with no session and no
+    // error, but an empty `identities` array -- and it never actually sends an email
+    // in this case. Without this check we'd show "Check your email" for a mail that
+    // was never sent, which is exactly what was silently happening before.
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      setDone("existing");
+      return;
+    }
     setDone("verify");
+  }
+
+  if (done === "existing") {
+    return (
+      <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
+        <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
+          <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>You already have an account</h1>
+          <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14, marginBottom: 24 }}>
+            An account already exists for <strong>{email}</strong> -- no new email is sent in this case. Sign in below, or reset your password if you don't remember it.
+          </p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+            <a href="/login" style={{ display: "inline-block", padding: "12px 24px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, textDecoration: "none" }}>Sign in</a>
+            <a href="/reset-password" style={{ display: "inline-block", padding: "12px 24px", color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Forgot password?</a>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (done === "verify") {

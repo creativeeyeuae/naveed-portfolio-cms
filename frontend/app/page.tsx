@@ -4276,7 +4276,7 @@ export default function Home() {
           bio -- nothing invented, just reused and re-cut to fit this shorter format. The CTA
           links to the existing /about page via goTo() -- doesn't add to or change that page
           itself. Photo reuses settings.aboutPhoto (CMS > Settings > About). */}
-      {settings.homeSections?.about!==false && (
+      {settings.homeSections?.about!==false && settings.pageEnabled.about!==false && (
       <div style={{background:C.BG,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-14%",left:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
         <Reveal style={{maxWidth:1160,margin:"0 auto",position:"relative",display:"flex",gap:64,alignItems:"flex-start",flexWrap:"wrap"}}>
@@ -4378,8 +4378,10 @@ export default function Home() {
       </div>
       )}
 
-      {/* FEATURED WORK */}
-      {settings.homeSections?.work!==false && featured.length>0&&(
+      {/* FEATURED WORK -- also gated on pageEnabled.work (CMS > Settings > Pages) so switching
+          the whole Work page off hides this teaser too, in the same single action, instead of
+          needing a second separate toggle in Homepage Sections. */}
+      {settings.homeSections?.work!==false && settings.pageEnabled.work!==false && featured.length>0&&(
         <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px"}}>
           <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
@@ -4499,8 +4501,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* BLOG PREVIEW */}
-      {settings.homeSections?.journal!==false && blog.length>0&&(
+      {/* BLOG PREVIEW -- also gated on pageEnabled.blog, same reasoning as Featured Work above. */}
+      {settings.homeSections?.journal!==false && settings.pageEnabled.blog!==false && blog.length>0&&(
         <div style={{background:C.DARK,padding:"60px 40px"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>

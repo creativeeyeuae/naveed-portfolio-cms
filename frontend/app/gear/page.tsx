@@ -243,7 +243,7 @@ export default async function GearPage() {
       <div
         style={{
           background: C.DARK,
-          padding: "120px 40px 44px",
+          padding: "clamp(96px,20vw,120px) clamp(20px,6vw,40px) clamp(32px,6vw,44px)",
           minHeight: "clamp(252px,39.6vh,432px)",
           display: "flex",
           flexDirection: "column",
@@ -282,10 +282,10 @@ export default async function GearPage() {
                 background: "rgba(255,255,255,0.03)",
               }}
             >
-              <div style={{ fontSize: 20, fontWeight: 700, color: C.PL }}>{s.n}</div>
+              <div style={{ fontSize: "clamp(17px,2.2vw,20px)", fontWeight: 700, color: C.PL }}>{s.n}</div>
               <div
                 style={{
-                  fontSize: 10.5,
+                  fontSize: "clamp(9.5px,1.1vw,10.5px)",
                   letterSpacing: 1.5,
                   textTransform: "uppercase",
                   color: "rgba(255,255,255,0.5)",

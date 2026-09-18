@@ -175,7 +175,7 @@ export default function ProjectGallery({
             onRequestPermission={() => setPermissionFor(images[0])}
           />
           {images.length > 1 && (
-            <div style={{ display: "flex", gap: 10, marginTop: 12, overflowX: "auto", paddingBottom: 4 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12, overflowX: "auto", paddingBottom: 4 }}>
               {images.map((img, i) => (
                 <ThumbTile key={img.id} img={img} index={i} active={false} onOpen={() => setLightboxIndex(i)} />
               ))}

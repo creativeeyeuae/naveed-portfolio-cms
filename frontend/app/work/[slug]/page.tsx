@@ -272,7 +272,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           with the identical gradient overlay, eyebrow+dash line, clamp()-sized title. Adapted
           here (not reused directly) so the "← All Work" back-link and a slightly shorter
           intro paragraph can sit inside it -- both specific to a project detail page. */}
-      <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(380px,56vh,640px)", display: "flex", alignItems: "center", padding: "120px 40px 56px" }}>
+      <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(228px,34vh,384px)", display: "flex", alignItems: "center", padding: "120px 40px 34px" }}>
         {bannerImageUrl && (
           <>
             <img src={bannerImageUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
@@ -287,10 +287,11 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
             <span style={{ width: 24, height: 1, background: C.PL, display: "inline-block" }} />
             {album.categories && album.categories.length > 0 ? album.categories.join(" · ") : "Portfolio"}
           </div>
-          {/* Banner title -- reduced ~60% from the original clamp(32,5.2vw,64) size: the
-              hero picture is now the star, this is a smaller caption over it. The full-size
-              title lives in the body below instead (see the always-shown heading there). */}
-          <h1 style={{ fontSize: "clamp(13px,2.1vw,26px)", fontWeight: 700, letterSpacing: 0.5, margin: 0, color: "#fff" }}>
+          {/* Banner title -- sized clamp(16,2.5vw,31) (~20% up from the previous
+              clamp(13,2.1,26)): the hero picture is still the star, this is a caption over
+              it, just a touch more legible now that the description line below needs a
+              title to visually anchor to. */}
+          <h1 style={{ fontSize: "clamp(16px,2.5vw,31px)", fontWeight: 700, letterSpacing: 0.5, margin: 0, color: "#fff" }}>
             {bannerTitle.split("\n").map((line, i, arr) => (
               <span key={i}>
                 {line}
@@ -298,28 +299,21 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
               </span>
             ))}
           </h1>
+          {/* SHORT DESCRIPTION -- now shown once, here in the banner under the title
+              (previously shown once in the body below; moved up so the banner carries the
+              full title+description and the body doesn't repeat either). */}
+          {album.description && (
+            <p style={{ margin: "10px 0 0", maxWidth: 620, lineHeight: 1.6, fontSize: 14, color: "rgba(255,255,255,0.75)" }}>{album.description}</p>
+          )}
         </div>
       </div>
-      {/* Note: the Short Description CMS field is deliberately shown once, in its own section
-          below (not repeated here in the hero) -- per the "no duplication" rule for project
-          description fields. */}
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 24px 0" }}>
-        {/* ALL WORK LINK -- moved out of the banner overlay (see hero above); sits here,
-            above the project title, instead. */}
-        <a href="/" style={{ color: C.MID, fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "inline-block", marginBottom: 18 }}>&larr; All Work</a>
+        {/* ALL WORK LINK -- sits here, directly under the banner. */}
+        <a href="/" style={{ color: C.MID, fontSize: 12.6, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none", display: "block", textAlign: "left", marginBottom: 18 }}>&larr; All Work</a>
 
-        {/* PROJECT TITLE -- now always shown here (previously only when it differed from the
-            banner title, which is now the smaller caption over the hero picture). */}
-        {displayName && (
-          <h2 style={{ fontSize: "clamp(22px,3vw,30px)", fontWeight: 700, letterSpacing: 0.3, margin: "0 0 28px" }}>{displayName}</h2>
-        )}
-
-        {/* SHORT DESCRIPTION -- the intro, sits directly under the title, before the
-            Gallery. Shown once, here only. */}
-        {album.description && (
-          <p style={{ marginTop: 0, marginBottom: 40, maxWidth: 720, lineHeight: 1.8, color: C.MID, fontSize: 16 }}>{album.description}</p>
-        )}
+        {/* PROJECT TITLE + SHORT DESCRIPTION deliberately NOT repeated here -- both now live
+            once, in the banner above (see hero). */}
       </div>
 
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 24px 24px" }}>
@@ -331,9 +325,9 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         </div>
 
         {/* ENGAGEMENT + PROJECT INFO -- one single combined line right under the gallery:
-            Likes/Comments (smooth-scroll links to the full interactive block just below),
-            then Client / Location / Date / Category, each hidden entirely when the CMS field
-            is empty. Everything inline instead of the old stacked label/value blocks. */}
+            Like/Comment (both now real links straight out to the Google review page -- see
+            ProjectEngagement's own comment), then Client / Location / Date / Category, each
+            hidden entirely when the CMS field is empty. */}
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 56, paddingBottom: 24, borderBottom: `1px solid ${C.BORDER}`, fontSize: 13 }}>
           <ProjectEngagement projectId={album.id} compact />
           {metaFields.map((f) => (
@@ -343,12 +337,6 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
               <span style={{ color: C.FG }}>{f.value}</span>
             </span>
           ))}
-        </div>
-
-        {/* LIKES / COMMENTS -- the full interactive block (like button + comment thread +
-            form). id="engagement" is the scroll target for the compact summary line above. */}
-        <div id="engagement" style={{ marginBottom: 56, scrollMarginTop: 100 }}>
-          <ProjectEngagement projectId={album.id} />
         </div>
 
         {/* FULL DESCRIPTION / STORY -- the main narrative, line breaks preserved, shown once. */}

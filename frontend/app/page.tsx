@@ -429,6 +429,19 @@ const ls = <T,>(k:string,d:T):T => { if(typeof window==="undefined") return d; e
 const _sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const _sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const sb = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey) : null;
+// Real role check (migration 0005's user_roles table) for the CMS gate below -- a valid
+// Supabase session used to be enough to flip `authed` true regardless of who it belonged
+// to; now it only counts as admin access when that account actually holds one of these
+// roles. Reads via `sb` (the session-carrying client) so RLS's "read your own roles only"
+// policy resolves against the signed-in user -- never leaks anyone else's roles.
+async function hasAdminAccess(): Promise<boolean> {
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from("user_roles").select("role");
+    if(error || !data) return false;
+    return data.some((r:{role:string})=>["admin","staff","super_admin"].includes(r.role));
+  } catch { return false; }
+}
 // Dedicated client for the CMS's own content saves (the six nap_* keys below), kept
 // completely separate from `sb` on purpose. `sb` picks up the real admin's Supabase Auth
 // session once they sign in (see adminSignIn/onAuthStateChange) and from that point sends
@@ -1594,11 +1607,16 @@ export default function Home() {
   // the live site itself, instead of needing a one-off manual page.
   useEffect(()=>{
     if(!sb){ setAdminSessionChecked(true); return; }
-    sb.auth.getSession().then(({data})=>{ setAdminSession(data.session||null); setAuthed(!!data.session); setAdminSessionChecked(true); });
+    sb.auth.getSession().then(async ({data})=>{
+      const session=data.session||null;
+      setAdminSession(session);
+      setAuthed(session ? await hasAdminAccess() : false);
+      setAdminSessionChecked(true);
+    });
     const {data:sub}=sb.auth.onAuthStateChange((event:string,session:any)=>{
       if(event==="PASSWORD_RECOVERY") setResetMode(true);
       setAdminSession(session||null);
-      setAuthed(!!session);
+      if(session) hasAdminAccess().then(setAuthed); else setAuthed(false);
     });
     return ()=>{ sub?.subscription?.unsubscribe?.(); };
   },[]);
@@ -1608,8 +1626,14 @@ export default function Home() {
     if(!sb) return;
     setAdminSignInBusy(true); setAdminSignInErr("");
     const {data,error}=await sb.auth.signInWithPassword({email:adminSignInEmail.trim(),password:adminSignInPassword});
+    if(error||!data.session){ setAdminSignInBusy(false); setAdminSignInErr("Incorrect email or password."); return; }
+    // Real credentials, but does this account actually hold an admin/staff/super_admin
+    // role (migration 0005's user_roles table)? A plain client account authenticates
+    // successfully here but must never see the CMS -- sign it back out immediately so no
+    // session lingers, rather than just leaving `authed` false.
+    const ok = await hasAdminAccess();
     setAdminSignInBusy(false);
-    if(error||!data.session){ setAdminSignInErr("Incorrect email or password."); return; }
+    if(!ok){ await sb.auth.signOut(); setAdminSession(null); setAdminSignInErr("This account doesn't have admin access."); return; }
     setAdminSession(data.session); setAuthed(true); setAdminSignInPassword("");
   }
   async function adminSignOut(){ if(sb) await sb.auth.signOut(); setAdminSession(null); setAuthed(false); setBookingsList(null); setCms(false); }

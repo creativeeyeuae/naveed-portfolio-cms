@@ -80,11 +80,15 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
 
         <div>
           <div style={headingStyle}>Services</div>
+          {/* Static mode used to hardcode href="/" here (always Home, no matter which
+              service was clicked) while spa mode correctly sent the visitor to Work --
+              same class of bug as the nav's Packages/CV/Journal links. Matches spa mode now:
+              real /work link, same real destination either way. */}
           {site.services.map((sv) =>
             spa ? (
               <div key={sv.id} onClick={() => spa.goTo("work")} style={mutedStyle} {...hoverMid}>{sv.title}</div>
             ) : (
-              <a key={sv.id} href="/" style={mutedStyle} {...hoverMid}>{sv.title}</a>
+              <a key={sv.id} href="/work" style={mutedStyle} {...hoverMid}>{sv.title}</a>
             )
           )}
         </div>

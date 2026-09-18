@@ -1,0 +1,112 @@
+# Auto-publishes CMS changes: every 5 minutes this checks whether the CMS content saved to
+# Supabase (site_settings rows: nap_settings, nap_projects, nap_cats, nap_testimonials,
+# nap_blog, nap_blogcats) has changed since the last successful deploy. If it has, it runs the
+# exact same pipeline used for every manual deploy in this repo (tsc --noEmit -> next build ->
+# wrangler pages deploy) and records the new content hash so the next tick is a no-op unless
+# something changes again. This is what makes CMS edits go live on every page (About, Contact,
+# Work, Gear, Journal, SEO tags, header/footer nav) -- not just the homepage, which already had
+# its own live client-side refresh. Those other pages are static HTML baked at build time, so
+# they need a fresh build+deploy to pick up a CMS edit, and this workflow supplies that
+# automatically instead of a human running the build/deploy commands by hand.
+#
+# One-time setup required, in this GitHub repo's Settings > Secrets and variables > Actions:
+#   CLOUDFLARE_API_TOKEN   - a Cloudflare API token with "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID  - the Cloudflare account ID that owns the naveed-portfolio-cms Pages project
+# Nothing else needs to be added -- the NEXT_PUBLIC_* values below are Supabase's public anon
+# key and other NEXT_PUBLIC_ vars, which are not secret (they already ship inside the deployed
+# site's own JS bundle for everyone to see), so they're safe to keep in this file directly.
+name: Auto-publish CMS changes
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: auto-publish
+  cancel-in-progress: false
+
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://ziwaocjrpbrksnepbpxi.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_g1v9wJwn_CYnK8vbikzVVg_97kvEoT1
+  NEXT_PUBLIC_R2_PUBLIC_URL: https://media.creativefusion.llc
+  NEXT_PUBLIC_SITE_URL: https://portfolio.creativefusion.llc
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: BJ2naEI7RDoNwwh69F6pWEfu_-vU0kMYYhP2-07QkHcygdGo8GREnfTpKBbOdKmlAf5SZl-208zhRX6smpgMdgo
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute current CMS content hash
+        id: diff
+        run: |
+          set -e
+          URL="$NEXT_PUBLIC_SUPABASE_URL/rest/v1/site_settings?select=key,value&key=in.(nap_settings,nap_projects,nap_cats,nap_testimonials,nap_blog,nap_blogcats)&order=key"
+          HASH=$(curl -sS "$URL" -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" | sha256sum | cut -d' ' -f1)
+          echo "hash=$HASH" >> "$GITHUB_OUTPUT"
+
+          LAST=""
+          if [ -f .deploy-state.json ]; then
+            LAST=$(grep -o '"hash":"[^"]*"' .deploy-state.json | cut -d'"' -f4 || true)
+          fi
+
+          if [ "$HASH" != "$LAST" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type-check
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+      - name: Build (next build + static export)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler pages deploy out --project-name=naveed-portfolio-cms --commit-dirty=true
+
+      - name: Record the content hash that just went live
+        run: |
+          set -e
+          URL="$NEXT_PUBLIC_SUPABASE_URL/rest/v1/site_settings?select=key,value&key=in.(nap_settings,nap_projects,nap_cats,nap_testimonials,nap_blog,nap_blogcats)&order=key"
+          HASH=$(curl -sS "$URL" -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" | sha256sum | cut -d' ' -f1)
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf '{"hash":"%s","deployedAt":"%s"}\n' "$HASH" "$NOW" > .deploy-state.json
+
+          git config user.name "cms-auto-publish"
+          git config user.email "actions@users.noreply.github.com"
+          git add .deploy-state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: record auto-published CMS content hash"
+            git push
+          fi

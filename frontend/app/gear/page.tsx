@@ -15,7 +15,7 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-type GearItem = { name: string; desc: string; img: string; alt: string; features: string[]; isCustomImg?: boolean };
+type GearItem = { name: string; desc: string; img: string; alt: string; features: string[] };
 type GearCategory = { label: string; items: GearItem[] };
 
 // Naveed's real, current photography/videography/editing gear -- exactly as supplied.
@@ -240,7 +240,7 @@ export default async function GearPage() {
     ...cat,
     items: cat.items.map((item) => {
       const custom = gearImages[item.name];
-      return custom ? { ...item, img: custom, isCustomImg: true } : { ...item, isCustomImg: false };
+      return custom ? { ...item, img: custom } : item;
     }),
   }));
 
@@ -307,9 +307,12 @@ export default async function GearPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px 40px" }}>
-        <GearGrid categories={gearWithPhotos} />
+      {/* Full-bleed hero-style gear sections -- deliberately OUTSIDE the maxWidth wrapper below
+          so each item's image/background spans the full viewport width, matching the
+          homepage Hero component's own layout technique. */}
+      <GearGrid categories={gearWithPhotos} />
 
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 40px" }}>
         {/* CTA -- same pattern as /about */}
         <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 16, borderTop: `1px solid ${C.BORDER}` }}>
           <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>

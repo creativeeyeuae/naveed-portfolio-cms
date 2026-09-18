@@ -12,11 +12,11 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-type GearItem = { name: string; desc: string; img: string; alt: string; features: string[]; isCustomImg?: boolean };
+type GearItem = { name: string; desc: string; img: string; alt: string; features: string[] };
 type GearCategory = { label: string; items: GearItem[] };
 type FlatItem = GearItem & { category: string };
 
-function GearFeatureRow({ item, index }: { item: FlatItem; index: number }) {
+function GearHeroSection({ item, index, total }: { item: FlatItem; index: number; total: number }) {
   const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -29,35 +29,36 @@ function GearFeatureRow({ item, index }: { item: FlatItem; index: number }) {
           observer.disconnect();
         }
       },
-      { threshold: 0.18, rootMargin: "0px 0px -60px 0px" }
+      { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div ref={ref} className={`gear-feature${index % 2 === 1 ? " reverse" : ""}`}>
-      <div className={`gear-feature-img${item.isCustomImg ? " custom" : ""}`}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.img} alt={item.alt} loading="lazy" />
+    <div ref={ref} className="gear-hero">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={item.img} alt={item.alt} loading="lazy" className="gear-hero-img" />
+      <div className="gear-hero-overlay-1" />
+      <div className="gear-hero-overlay-2" />
+      <div className="gear-hero-index">
+        0{index + 1} / 0{total}
       </div>
-      <div className="gear-feature-text">
-        <div className="gear-feature-num">{String(index + 1).padStart(2, "0")}</div>
-        <div className="gear-feature-tag">
-          <span className="gear-feature-tag-dot" />
+      <div className="gear-hero-content">
+        <div className="gear-hero-eyebrow">
+          <span className="gear-hero-eyebrow-line" />
           {item.category}
         </div>
-        <h3 className="gear-feature-name">{item.name}</h3>
-        <p className="gear-feature-desc">{item.desc}</p>
+        <h3 className="gear-hero-title">{item.name}</h3>
+        <p className="gear-hero-sub">{item.desc}</p>
         {item.features.length > 0 && (
-          <ul className="gear-feature-list">
+          <div className="gear-hero-chips">
             {item.features.map((f) => (
-              <li key={f}>
-                <span className="gear-feature-dot" />
+              <span key={f} className="gear-hero-chip">
                 {f}
-              </li>
+              </span>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
@@ -75,79 +76,64 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
     <div>
       <style>{`
         .gear-pill { transition: background 0.2s, border-color 0.2s, color 0.2s; cursor:pointer; white-space:nowrap; }
+        .gear-pill-row { max-width:1100px; margin:0 auto; padding:0 24px 44px; display:flex; gap:10px; flex-wrap:wrap; }
 
-        .gear-feature { display:flex; min-height: clamp(420px, 44vw, 560px); border-bottom:1px solid ${C.BORDER}; opacity:0; transform: translateY(40px); transition: opacity 0.9s cubic-bezier(0.16,0.84,0.44,1), transform 0.9s cubic-bezier(0.16,0.84,0.44,1); }
-        .gear-feature.in-view { opacity:1; transform: translateY(0); }
-        .gear-feature:last-child { border-bottom:none; }
-        .gear-feature.reverse { flex-direction: row-reverse; }
+        .gear-hero { position:relative; width:100%; height:clamp(320px,42vw,640px); overflow:hidden; border-bottom:1px solid ${C.BORDER}; opacity:0; transform:translateY(30px); transition: opacity 0.9s cubic-bezier(0.16,0.84,0.44,1), transform 0.9s cubic-bezier(0.16,0.84,0.44,1); }
+        .gear-hero.in-view { opacity:1; transform:translateY(0); }
+        .gear-hero:last-child { border-bottom:none; }
 
-        .gear-feature-img { flex:1 1 50%; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center; background: radial-gradient(circle at 50% 40%, rgba(139,92,246,0.16), transparent 65%), ${C.DARK}; }
-        .gear-feature-img img { width:86%; height:86%; object-fit:contain; filter: drop-shadow(0 30px 54px rgba(0,0,0,0.5)); transform: scale(0.9); transition: transform 1.1s cubic-bezier(0.16,0.84,0.44,1); }
-        .gear-feature.in-view .gear-feature-img img { transform: scale(1); }
-        .gear-feature-img.custom { background:${C.DARK}; }
-        .gear-feature-img.custom img { width:100%; height:100%; object-fit:cover; filter:none; }
+        .gear-hero-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scale(1.06); transition: transform 6s cubic-bezier(0.16,0.84,0.44,1); }
+        .gear-hero.in-view .gear-hero-img { transform:scale(1); }
 
-        .gear-feature-text { flex:1 1 50%; display:flex; flex-direction:column; justify-content:center; padding: 56px 64px; background: ${C.BG}; }
-        .gear-feature-num { font-size:60px; font-weight:800; color:rgba(255,255,255,0.06); line-height:1; margin-bottom:-24px; }
-        .gear-feature-tag { font-size:11px; letter-spacing:3px; color:${C.PL}; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:10px; }
-        .gear-feature-tag-dot { width:20px; height:1px; background:${C.PL}; display:inline-block; }
-        .gear-feature-name { font-size: clamp(24px,3vw,34px); font-weight:700; margin:0 0 14px; color:${C.FG}; letter-spacing:-0.3px; }
-        .gear-feature-desc { font-size:14.5px; line-height:1.9; color:rgba(255,255,255,0.55); max-width:420px; margin:0 0 20px; }
-        .gear-feature-list { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:10px; max-width:420px; }
-        .gear-feature-list li { display:flex; align-items:flex-start; gap:10px; font-size:13px; line-height:1.55; color:rgba(255,255,255,0.72); }
-        .gear-feature-dot { width:5px; height:5px; border-radius:50%; background:${C.P}; display:inline-block; margin-top:6px; flex-shrink:0; }
+        .gear-hero-overlay-1 { position:absolute; inset:0; background:linear-gradient(105deg,rgba(9,6,14,0.88) 0%,rgba(9,6,14,0.45) 55%,rgba(9,6,14,0.15) 100%); }
+        .gear-hero-overlay-2 { position:absolute; inset:0; background:linear-gradient(to top,rgba(9,6,14,0.85) 0%,transparent 45%); }
+        .gear-hero-index { position:absolute; top:24px; right:28px; color:rgba(255,255,255,0.4); font-size:11px; letter-spacing:4px; z-index:3; }
 
-        @media (max-width: 860px) {
-          .gear-feature, .gear-feature.reverse { flex-direction:column; min-height:auto; }
-          .gear-feature-img { flex: 0 0 auto; width:100%; height:320px; }
-          .gear-feature-img img { width:72%; height:72%; }
-          .gear-feature-img.custom img { width:100%; height:100%; }
-          .gear-feature-text { flex: 0 0 auto; width:100%; padding:40px 24px; }
+
+        .gear-hero-content { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; padding:0 6vw; z-index:3; max-width:640px; }
+        .gear-hero-eyebrow { display:flex; align-items:center; gap:12px; font-size:11px; letter-spacing:6px; color:${C.PL}; text-transform:uppercase; margin-bottom:14px; }
+        .gear-hero-eyebrow-line { width:28px; height:1px; background:${C.PL}; display:inline-block; }
+        .gear-hero-title { font-size:clamp(26px,4vw,44px); font-weight:700; color:${C.FG}; margin:0 0 12px; line-height:1.1; }
+        .gear-hero-sub { font-size:14px; line-height:1.7; color:rgba(255,255,255,0.68); max-width:460px; margin:0 0 20px; }
+        .gear-hero-chips { display:flex; gap:8px; flex-wrap:wrap; max-width:560px; }
+        .gear-hero-chip { font-size:11.5px; color:rgba(255,255,255,0.85); background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.16); border-radius:20px; padding:6px 14px; backdrop-filter: blur(4px); }
+
+        @media (max-width:700px) {
+          .gear-hero { height:clamp(300px,90vw,420px); }
+          .gear-hero-content { padding:0 24px; max-width:100%; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .gear-feature, .gear-feature-img img { transition:none !important; opacity:1 !important; transform:none !important; }
+          .gear-hero, .gear-hero-img { transition:none !important; opacity:1 !important; transform:none !important; }
         }
       `}</style>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 64 }}>
+      <div className="gear-pill-row">
         {["All", ...categories.map((c) => c.label)].map((label) => {
-          const count =
-            label === "All"
-              ? flat.length
-              : categories.find((c) => c.label === label)?.items.length ?? 0;
           const active = filter === label;
           return (
-            <span
+            <button
               key={label}
-              className="gear-pill"
               onClick={() => setFilter(label)}
+              className="gear-pill"
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                padding: "9px 18px",
-                borderRadius: 20,
+                padding: "8px 16px",
                 fontSize: 12,
-                fontWeight: 700,
-                letterSpacing: 1,
-                textTransform: "uppercase",
+                borderRadius: 999,
                 border: `1px solid ${active ? C.P : C.BORDER}`,
-                background: active ? C.PL : "transparent",
-                color: active ? C.BG : C.MID,
+                background: active ? C.P : "transparent",
+                color: active ? "#fff" : C.MID,
               }}
             >
-              {label} <span style={{ opacity: 0.7 }}>({count})</span>
-            </span>
+              {label}
+            </button>
           );
         })}
       </div>
 
-      <div>
-        {shown.map((item, i) => (
-          <GearFeatureRow key={item.name} item={item} index={i} />
-        ))}
-      </div>
+      {shown.map((item, i) => (
+        <GearHeroSection key={item.name} item={item} index={i} total={shown.length} />
+      ))}
     </div>
   );
 }

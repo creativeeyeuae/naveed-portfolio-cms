@@ -4152,10 +4152,7 @@ export default function Home() {
       {/* INTRO STRIP */}
       {settings.homeSections?.intro!==false && (
       <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
-        <div>
-          <div style={{fontSize:14,letterSpacing:4,textTransform:"uppercase",color:C.FG}}><NoTranslate>{settings.siteName}</NoTranslate></div>
-          <div style={{fontSize:12,color:C.MID,letterSpacing:1,marginTop:4}}>{settings.aboutTitle} · {settings.location}</div>
-        </div>
+        <div style={{fontSize:16,fontWeight:600,letterSpacing:0.3,color:C.FG,maxWidth:440}}>Photography That Makes Your Business Stand Out.</div>
         <div style={{display:"flex",gap:28}}>
           {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"]].map(([n,l])=>(
             <div key={l} style={{textAlign:"left",borderLeft:`2px solid ${C.GOLD}`,paddingLeft:14}}>

@@ -1301,7 +1301,7 @@ const HERO_FONT_LABELS: [string,string][] = [
   ["default","Default (Site Font)"], ["playfair","Playfair Display"], ["cormorant","Cormorant Garamond"],
   ["montserrat","Montserrat"], ["oswald","Oswald"], ["spacegrotesk","Space Grotesk"],
 ];
-function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string;typography:HeroTypography}) {
+function Hero({slides,onNav,waNumber,typography,ready}:{slides:HeroSlide[];onNav:(p:string)=>void;waNumber:string;typography:HeroTypography;ready:boolean}) {
   const ht=typography;
   const [slide,setSlide]=useState(0); const [prog,setProg]=useState(0);
   // Real React state (not imperative DOM style mutation) for the hover-to-color toggle --
@@ -1337,7 +1337,12 @@ function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:st
       {/* Same B&W-to-color hover treatment as the Featured Work / project grids -- the hero
           photo reads black & white until the visitor's mouse is anywhere over the hero, then
           eases into full color, and back to grayscale on mouse-leave. */}
-      {slides.map((s,i)=>(
+      {/* Gated on `ready` (see heroReady in Home()) so the very first paint -- server-rendered
+          static HTML included -- never shows a photo at all rather than briefly showing the
+          hardcoded default/stale-cached one before the real current CMS photo replaces it.
+          Same dark background (C.BG on the wrapper above) is visible underneath in the
+          meantime, so this reads as a normal instant load, not a blank flash. */}
+      {ready && slides.map((s,i)=>(
         <div key={i} style={{position:"absolute",inset:0,opacity:i===slide?1:0,transition:"opacity 1.4s ease",zIndex:i===slide?1:0}}>
           <img src={s.img} alt={s.label} style={{width:"100%",height:"100%",objectFit:"cover",transform:i===slide?"scale(1.06)":"scale(1)",filter:heroHover?"grayscale(0)":"grayscale(1)",transition:"transform 7s ease, filter 0.6s ease"}} />
         </div>
@@ -1413,6 +1418,13 @@ export default function Home() {
   // isMobile/cms above) -- fetchCloudData() overwrites all of this moments later with the
   // live Supabase values regardless, so nothing about the eventual content changes.
   const [settings,setSettings]=useState<SiteSettings>(DEF_SETTINGS);
+  // Hero's own <img> stays unrendered (same dark background, no photo) until this flips true --
+  // see the "locally-cached CMS data" effect below. Without this, every page load/refresh
+  // painted the hardcoded default Unsplash stock photo for a moment before the real cached/
+  // live CMS hero photo replaced it, which read as "the old photo flashes then the new one
+  // loads". Gated on the SAME effect that already runs local-cache hydration (one React tick,
+  // not a network wait), so this adds no perceptible delay when the cache is already correct.
+  const [heroReady,setHeroReady]=useState(false);
   const [projects,setProjects]=useState<Project[]>(DEF_PROJECTS);
   const [cats,setCats]=useState<string[]>(DEF_CATS);
   const [testimonials,setTestimonials]=useState<Testimonial[]>(DEF_TESTIMONIALS);
@@ -1464,6 +1476,7 @@ export default function Home() {
     setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
     setBlog(ls("nap_blog",DEF_BLOG));
     setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
+    setHeroReady(true);
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
@@ -4236,7 +4249,7 @@ export default function Home() {
       {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} onDone={()=>setShowSplash(false)} />}
       <Nav />
       {settings.homeSections?.hero!==false && (
-      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} />
+      <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} ready={heroReady} />
       )}
 
       {/* INTRO STRIP */}

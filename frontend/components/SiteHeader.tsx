@@ -53,17 +53,15 @@ const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packag
   tl: { home: "Home", work: "Mga Trabaho", about: "Tungkol Sa Amin", packages: "Mga Package", journal: "Journal", cv: "CV", contact: "Makipag-ugnayan", bookBtn: "I-book ang Proyekto" },
 };
 
-// Static-route-only: real routes for the 7 nav keys. Work now has its own real index page
-// (app/work/page.tsx -- every real project, not just the homepage's featured picks) so it
-// points there instead of falling back to "/". Packages/CV/Journal still have no standalone
-// index URL anywhere on this site (same as on the homepage -- they're in-memory-only sections
-// there too; Journal's individual posts ARE real pages at /journal/[slug], but there is no
-// /journal index), so those three still fall back to "/"; About/Contact are used exactly as
-// they already exist. Not used at all in `spa` mode (the homepage keeps its own goTo()
-// in-memory navigation, unchanged). ("blog" was wrongly pointing at "/journal" itself, a
-// route that doesn't exist and 404s under static export -- fixed here and in the matching
-// PAGE_HREF map in SiteFooter.tsx.)
-const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/", blog: "/", cv: "/", contact: "/contact", booking: "/contact" };
+// Static-route-only: real destinations for the 7 nav keys. Work and About/Contact have their
+// own real pages. Packages/CV/Journal still have no standalone index URL of their own (same as
+// on the homepage -- they're in-memory-only sections there too; Journal's individual posts ARE
+// real pages at /journal/[slug], but there is no /journal index) -- those three route to
+// /?page=packages|cv|blog instead of a bare "/", which the homepage reads on mount (see
+// app/page.tsx) to land directly on that section rather than always showing the Home hero.
+// Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory navigation,
+// unchanged). Kept in sync with the matching PAGE_HREF map in SiteFooter.tsx.
+const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/?page=packages", blog: "/?page=blog", cv: "/?page=cv", contact: "/contact", booking: "/contact" };
 const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: keyof (typeof NAV_TEXT)["en"] }[] = [
   { key: "home", textKey: "home" },
   { key: "work", textKey: "work" },

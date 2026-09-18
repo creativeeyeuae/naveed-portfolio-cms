@@ -1436,10 +1436,17 @@ export default function Home() {
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
+  // Packages/CV/Journal have no standalone URL of their own (same as this SPA's other
+  // in-memory-only sections), so the static routes' own nav/footer (SiteHeader.tsx's
+  // STATIC_HREF, SiteFooter.tsx's PAGE_HREF) link to them as /?page=packages etc. instead of
+  // just falling back to a bare "/" that always shows the Home hero -- this lands the visitor
+  // on the actual section they clicked, centralizing on one real, working destination per link.
   useEffect(()=>{
     try{
       const params=new URLSearchParams(window.location.search);
       if(params.get("admin")==="1") setCms(true);
+      const p=params.get("page");
+      if(p==="packages"||p==="cv"||p==="blog") goTo(p);
     }catch{}
   },[]);
 

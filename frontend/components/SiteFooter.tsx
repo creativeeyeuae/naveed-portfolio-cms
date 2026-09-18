@@ -29,18 +29,18 @@ const C = {
   BORDER: "var(--c-border,#2D1F45)",
 };
 
-// Real page-key -> real URL map (used only in static mode).
+// Real page-key -> real destination map (used only in static mode).
 // "blog" (Journal) has no standalone index route -- only individual posts (/journal/[slug])
-// exist as real pages, same situation as Work/Packages/CV -- so it falls back to "/" too,
-// same as those. (Was wrongly pointing at "/journal" itself, a route that doesn't exist and
-// 404s under static export -- fixed, matching the identical fix already applied in
-// SiteHeader.tsx's STATIC_HREF map.)
+// exist as real pages, same situation as Packages/CV -- so those three route to
+// /?page=packages|cv|blog instead of a bare "/", which the homepage reads on mount to land
+// directly on that section instead of always showing the Home hero. Kept in sync with the
+// matching STATIC_HREF map in SiteHeader.tsx.
 const PAGE_HREF: Record<string, string> = {
   work: "/work",
   about: "/about",
-  packages: "/",
-  blog: "/",
-  cv: "/",
+  packages: "/?page=packages",
+  blog: "/?page=blog",
+  cv: "/?page=cv",
   booking: "/contact",
   contact: "/contact",
 };

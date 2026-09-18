@@ -225,6 +225,16 @@ export type PublicSiteInfo = {
   // the homepage SPA's own all-projects Work view already reads (app/page.tsx, page==="work").
   workBannerEyebrow: string;
   workBannerTitle: string;
+  // Optional per-page banner background photos -- sourced from settings.sectionBg (Settings
+  // > Pages > Banner Background Image), the same real CMS field the homepage SPA's own
+  // in-memory Work/About/Contact/Packages/CV/etc. views already pass into PageBanner's
+  // `image` prop. Previously NOT exposed here at all, which is why these standalone pages
+  // rendered a flat color banner while the SPA's own versions of the same pages showed a
+  // real photo banner. Empty string = no photo (flat banner), matching the SPA's own
+  // behavior when a section has no banner image configured.
+  workBannerImage: string;
+  aboutBannerImage: string;
+  contactBannerImage: string;
   // Additive fields for the standalone /packages page -- same rationale as the Work banner
   // fields above (sourced from uiText.packagesBannerEyebrow/Title, already real CMS fields
   // the homepage SPA's own in-memory Packages view already reads). pricingPackages mirrors
@@ -234,6 +244,7 @@ export type PublicSiteInfo = {
   // that field changes shape.
   packagesBannerEyebrow: string;
   packagesBannerTitle: string;
+  packagesBannerImage: string;
   pricingPackages: CmsPricingPackage[];
   packagesServices: CmsServiceDetail[];
 };
@@ -308,8 +319,12 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   contactBannerTitle: "Let's Work Together",
   workBannerEyebrow: "Portfolio",
   workBannerTitle: "Selected Work",
+  workBannerImage: "",
+  aboutBannerImage: "",
+  contactBannerImage: "",
   packagesBannerEyebrow: "Packages",
   packagesBannerTitle: "Your Investment",
+  packagesBannerImage: "",
   pricingPackages: [],
   packagesServices: [
     { id: "s1", title: "Photography" },
@@ -345,6 +360,16 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   const pickUi = (key: string, fallback: string): string => {
     const v = uiText[key];
     return typeof v === "string" && v ? v : fallback;
+  };
+
+  // Per-page banner background photos (Settings > Pages > Banner Background Image) -- real
+  // CMS data, same object the homepage SPA's own PageBanner calls already read from
+  // (settings.sectionBg.work/about/contact/packages). Empty/missing = no photo (flat banner).
+  const sectionBgRaw = settings.sectionBg;
+  const sectionBg = sectionBgRaw && typeof sectionBgRaw === "object" && !Array.isArray(sectionBgRaw) ? (sectionBgRaw as Record<string, unknown>) : {};
+  const pickBg = (key: string): string => {
+    const v = sectionBg[key];
+    return typeof v === "string" ? v : "";
   };
 
   const pageEnabledRaw = settings.pageEnabled;
@@ -431,8 +456,12 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     contactBannerTitle: pickUi("contactBannerTitle", DEFAULT_PUBLIC_SITE_INFO.contactBannerTitle),
     workBannerEyebrow: pickUi("workBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.workBannerEyebrow),
     workBannerTitle: pickUi("workBannerTitle", DEFAULT_PUBLIC_SITE_INFO.workBannerTitle),
+    workBannerImage: pickBg("work"),
+    aboutBannerImage: pickBg("about"),
+    contactBannerImage: pickBg("contact"),
     packagesBannerEyebrow: pickUi("packagesBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.packagesBannerEyebrow),
     packagesBannerTitle: pickUi("packagesBannerTitle", DEFAULT_PUBLIC_SITE_INFO.packagesBannerTitle),
+    packagesBannerImage: pickBg("packages"),
     pricingPackages,
     packagesServices,
   };

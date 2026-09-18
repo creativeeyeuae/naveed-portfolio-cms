@@ -2224,6 +2224,13 @@ export default function Home() {
     // below (settings.uiText.workBannerEyebrow/workBannerTitle), just also exposed here.
     workBannerEyebrow: settings.uiText.workBannerEyebrow,
     workBannerTitle: settings.uiText.workBannerTitle,
+    // Same real banner-background photos (Settings > Pages > Banner Background Image) the
+    // SPA's own PageBanner calls below already read from settings.sectionBg, just also
+    // exposed here so the standalone /work, /about, /contact, /packages pages show the same
+    // photo banner instead of a flat color one.
+    workBannerImage: settings.sectionBg.work,
+    aboutBannerImage: settings.sectionBg.about,
+    contactBannerImage: settings.sectionBg.contact,
     // Additive fields for the standalone /packages route (lib/cmsData.ts's PublicSiteInfo)
     // -- same underlying CMS fields this SPA's own in-memory Packages page-view already
     // reads below (settings.uiText.packagesBannerEyebrow/Title, settings.pricingPackages,
@@ -2231,6 +2238,7 @@ export default function Home() {
     // same real data instead of duplicating it.
     packagesBannerEyebrow: settings.uiText.packagesBannerEyebrow,
     packagesBannerTitle: settings.uiText.packagesBannerTitle,
+    packagesBannerImage: settings.sectionBg.packages,
     pricingPackages: settings.pricingPackages.map(p => ({
       id: p.id, icon: p.icon, label: p.label, price: p.price, priceNote: p.priceNote,
       desc: p.desc, image: p.image, ctaLabel: p.ctaLabel, features: p.features,

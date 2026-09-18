@@ -29,6 +29,7 @@ export default async function WorkIndexPage() {
       eyebrow={site.workBannerEyebrow}
       title={site.workBannerTitle}
       description="A curated selection of photography and cinematography work across the UAE -- brand campaigns, weddings, real estate and editorial, all in one place."
+      image={site.workBannerImage}
     >
       <WorkGrid projects={projects} />
     </InternalPageTemplate>

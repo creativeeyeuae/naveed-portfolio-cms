@@ -41,7 +41,7 @@ export default async function ContactPage() {
   ].filter((c) => c.value);
 
   return (
-    <InternalPageTemplate site={site} eyebrow={site.contactBannerEyebrow} title={site.contactBannerTitle}>
+    <InternalPageTemplate site={site} eyebrow={site.contactBannerEyebrow} title={site.contactBannerTitle} image={site.contactBannerImage}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px" }}>
         {/* CONTACT METHOD CARDS -- real CMS data only, empty fields hidden entirely */}
         {cards.length > 0 && (

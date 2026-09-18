@@ -35,7 +35,7 @@ export default async function PackagesPage() {
   const site = await getPublicSiteInfo();
 
   return (
-    <InternalPageTemplate site={site} eyebrow={site.packagesBannerEyebrow} title={site.packagesBannerTitle}>
+    <InternalPageTemplate site={site} eyebrow={site.packagesBannerEyebrow} title={site.packagesBannerTitle} image={site.packagesBannerImage}>
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px" }}>
         {/* PRICING TIERS -- real CMS data (Settings > Packages), no invented pricing */}
         {site.pricingPackages.length > 0 && (

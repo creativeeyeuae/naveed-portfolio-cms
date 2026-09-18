@@ -4,12 +4,11 @@ import SiteFooter from "@/components/SiteFooter";
 import type { PublicSiteInfo } from "@/lib/cmsData";
 
 // THE single shared template for every standalone internal page (/work, /about, /packages,
-// /gear, /contact, ...). Ports the exact PageBanner reference implementation from the
-// homepage SPA (app/page.tsx's `function PageBanner`) so every internal page gets byte-for-
-// byte the same header, banner height/padding/typography, spacing and footer -- only the
-// eyebrow/title/description (banner) and the page-specific body (children) differ per page.
-// This does not replace SiteHeader/SiteFooter (still the single real nav/footer); it just
-// wraps them + the shared banner so no page hand-duplicates that banner markup anymore.
+// /gear, /contact, ...). This banner is an EXACT port of the homepage SPA's own
+// `function PageBanner` (app/page.tsx) -- same markup, same styling, same optional
+// photo-background + gradient overlay treatment the SPA's CV/Booking/Journal/Packages/Work
+// in-memory views already use via settings.sectionBg, now reaching every internal page too
+// via the `image` prop.
 const C = {
   P: "var(--c-p,#8B5CF6)",
   PL: "var(--c-pl,#E2D9F3)",
@@ -25,26 +24,32 @@ export default function InternalPageTemplate({
   eyebrow,
   title,
   description,
+  image,
   children,
 }: {
   site: PublicSiteInfo;
   eyebrow: string;
   title: string;
   description?: string;
+  image?: string;
   children: ReactNode;
 }) {
   return (
     <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
       <SiteHeader site={site} />
 
-      {/* Standard internal-page banner -- identical on every internal page. */}
-      <div style={{ background: C.DARK, padding: "120px 40px 36px", minHeight: "clamp(252px,39.6vh,432px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ display: "inline-block", width: 24, height: 1, background: C.PL }} />
-          {eyebrow}
+      {/* Standard internal-page banner -- identical everywhere, exact port of PageBanner. */}
+      <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(252px,39.6vh,432px)", display: "flex", alignItems: "center", padding: "120px 40px 36px" }}>
+        {image && <img src={image} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />}
+        {image && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)" }} />}
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+          <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+            <span style={{ width: 24, height: 1, background: C.PL, display: "inline-block" }} />
+            {eyebrow}
+          </div>
+          <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, letterSpacing: 0.5, margin: 0, color: "#fff" }}>{title}</h1>
+          {description && <p style={{ maxWidth: 560, fontSize: 14, lineHeight: 1.7, color: "rgba(255,255,255,0.75)", margin: "16px 0 0" }}>{description}</p>}
         </div>
-        <h1 style={{ fontSize: "clamp(32px,5.2vw,64px)", fontWeight: 700, margin: description ? "0 0 16px" : 0, maxWidth: 800 }}>{title}</h1>
-        {description && <p style={{ fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.7)", maxWidth: 620, margin: 0 }}>{description}</p>}
       </div>
 
       {/* Page-specific hero/content -- everything below the banner differs per page. */}

@@ -35,7 +35,7 @@ export default async function AboutPage() {
   const site = await getPublicSiteInfo();
 
   return (
-    <InternalPageTemplate site={site} eyebrow={site.aboutBannerEyebrow} title={site.aboutBannerTitle}>
+    <InternalPageTemplate site={site} eyebrow={site.aboutBannerEyebrow} title={site.aboutBannerTitle} image={site.aboutBannerImage}>
       <style>{`
         .about-grid { display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:start; }
         @media (max-width: 780px) { .about-grid { grid-template-columns: 1fr; } }

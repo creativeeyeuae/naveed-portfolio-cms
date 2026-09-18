@@ -244,7 +244,7 @@ export default async function GearPage() {
   }));
 
   return (
-    <InternalPageTemplate site={site} eyebrow="Equipment" title="Photography & Videography Gear">
+    <InternalPageTemplate site={site} eyebrow={site.gearBannerEyebrow} title={site.gearBannerTitle} image={site.gearBannerImage}>
       {/* Page-specific intro (description + stats) -- kept here rather than in the shared
           banner since no other internal page has a stats row; the banner itself (nav,
           height, padding, typography) is now identical across every internal page. */}

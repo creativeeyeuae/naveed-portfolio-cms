@@ -48,12 +48,13 @@ type UiText = {
   cvBannerEyebrow:string; cvBannerTitle:string;
   bookingBannerEyebrow:string; bookingBannerTitle:string;
   contactBannerEyebrow:string; contactBannerTitle:string;
+  gearBannerEyebrow:string; gearBannerTitle:string;
 };
 // Optional per-page banner background image (CMS > Settings > Colors & Banners). Empty string
 // (the default for every page) means "no image" -- the banner renders as a plain solid-color
 // band using theme.DARK, identical to how these pages look today. Adding a URL overlays a dark
 // scrim automatically so the banner title stays readable over any photo.
-type SectionBg = { work:string;about:string;packages:string;blog:string;cv:string;booking:string;contact:string; };
+type SectionBg = { work:string;about:string;packages:string;blog:string;cv:string;booking:string;contact:string;gear:string; };
 // Per-page visibility switch (CMS > Settings > Pages). Home always stays on -- these are the
 // other public pages, each independently turn-off-able without touching any content or code.
 // A disabled page is simply skipped from nav/footer links and goTo() bounces back to Home if
@@ -291,12 +292,15 @@ const DEF_SETTINGS: SiteSettings = {
     cvBannerEyebrow:"Curriculum Vitae", cvBannerTitle:"CV",
     bookingBannerEyebrow:"Book a Session", bookingBannerTitle:"Let's Create Together",
     contactBannerEyebrow:"Get In Touch", contactBannerTitle:"Let's Work Together",
+    gearBannerEyebrow:"Equipment", gearBannerTitle:"Photography & Videography Gear",
   },
   // Unsplash photos as default banner backgrounds for the pages that were blank -- editable/
   // replaceable any time via CMS > Settings > Text & Banners. About and Contact are left blank
   // on purpose (those two routes are off-limits for changes), and Photography/Cinematography
-  // don't use sectionBg at all (separate routes, also off-limits).
-  sectionBg:{work:"https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=1600&q=80",about:"",packages:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1600&q=80",blog:"https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",cv:"https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",booking:"https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1600&q=80",contact:""},
+  // don't use sectionBg at all (separate routes, also off-limits). Gear defaults to a real
+  // gear photo already used on the page itself so its banner matches Journal/Work/Packages
+  // out of the box, same as every other page here.
+  sectionBg:{work:"https://images.unsplash.com/photo-1554048612-b6a482bc67e5?w=1600&q=80",about:"",packages:"https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=1600&q=80",blog:"https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",cv:"https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",booking:"https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=1600&q=80",contact:"",gear:"/gear/sony-a7r-v.jpg"},
   pageEnabled:{work:true,about:true,packages:true,blog:true,cv:true,booking:true,contact:true},
   homeSections:{hero:true,intro:true,about:true,services:true,work:true,testimonials:true,journal:true,cta:true},
   heroTypography:{headlineFont:"default",headlineWeight:700,headlineSize:86,headlineSpacing:0.5,headlineItalic:false,headlineColor:"#ffffff",subFont:"default",subWeight:400,subSize:22,subColor:""},
@@ -2246,6 +2250,12 @@ export default function Home() {
     packagesServices: settings.services.map(sv => ({
       id: sv.id, icon: sv.icon, title: sv.title, desc: sv.desc, deliverables: sv.deliverables,
     })),
+    // Additive fields for the standalone /gear route -- same rationale as Work/About/
+    // Packages above, so its banner matches the real photo-banner treatment (incl. Journal)
+    // instead of the flat banner it had before.
+    gearBannerEyebrow: settings.uiText.gearBannerEyebrow,
+    gearBannerTitle: settings.uiText.gearBannerTitle,
+    gearBannerImage: settings.sectionBg.gear,
   };
   const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
 
@@ -3163,7 +3173,7 @@ export default function Home() {
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Page Banners</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Each inner page shows a banner under the menu with the eyebrow/title below, plus an optional background photo (leave blank for a plain color band).</div>
                 {([
-                  ["work","Work"],["about","About"],["packages","Packages"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
+                  ["work","Work"],["about","About"],["packages","Packages"],["gear","Gear"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
                 ] as [keyof SectionBg,string][]).map(([key,label])=>(
                   <div key={key} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,marginBottom:12}}>
                     <div style={{fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{label} Page</div>

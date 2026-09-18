@@ -247,6 +247,14 @@ export type PublicSiteInfo = {
   packagesBannerImage: string;
   pricingPackages: CmsPricingPackage[];
   packagesServices: CmsServiceDetail[];
+  // Additive fields for the standalone /gear page -- same rationale as Work/About/Packages
+  // above. Gear previously had no CMS-editable banner eyebrow/title and no sectionBg key at
+  // all, so its banner never matched the photo-banner treatment every other inner page (incl.
+  // the SPA's own Journal/blog view) uses. Sourced from uiText.gearBannerEyebrow/Title and
+  // settings.sectionBg.gear, the same real CMS fields as every other banner.
+  gearBannerEyebrow: string;
+  gearBannerTitle: string;
+  gearBannerImage: string;
 };
 
 export type CmsPricingPackage = {
@@ -332,6 +340,12 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
     { id: "s3", title: "Content Creation" },
     { id: "s4", title: "Creative Production" },
   ],
+  gearBannerEyebrow: "Equipment",
+  gearBannerTitle: "Photography & Videography Gear",
+  // Falls back to a real gear photo already used on the page itself (not a placeholder),
+  // so the banner shows a real photo by default -- same as Work/Packages/Journal -- even
+  // before Naveed uploads a custom one via CMS > Settings > Pages > Gear.
+  gearBannerImage: "/gear/sony-a7r-v.jpg",
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
@@ -367,9 +381,9 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   // (settings.sectionBg.work/about/contact/packages). Empty/missing = no photo (flat banner).
   const sectionBgRaw = settings.sectionBg;
   const sectionBg = sectionBgRaw && typeof sectionBgRaw === "object" && !Array.isArray(sectionBgRaw) ? (sectionBgRaw as Record<string, unknown>) : {};
-  const pickBg = (key: string): string => {
+  const pickBg = (key: string, fallback: string = ""): string => {
     const v = sectionBg[key];
-    return typeof v === "string" ? v : "";
+    return typeof v === "string" && v ? v : fallback;
   };
 
   const pageEnabledRaw = settings.pageEnabled;
@@ -464,6 +478,9 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     packagesBannerImage: pickBg("packages"),
     pricingPackages,
     packagesServices,
+    gearBannerEyebrow: pickUi("gearBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.gearBannerEyebrow),
+    gearBannerTitle: pickUi("gearBannerTitle", DEFAULT_PUBLIC_SITE_INFO.gearBannerTitle),
+    gearBannerImage: pickBg("gear", DEFAULT_PUBLIC_SITE_INFO.gearBannerImage),
   };
 }
 

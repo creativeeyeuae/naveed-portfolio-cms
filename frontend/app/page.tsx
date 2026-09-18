@@ -1394,12 +1394,23 @@ function Hero({slides,onNav,waNumber,typography}:{slides:HeroSlide[];onNav:(p:st
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 export default function Home() {
-  const [settings,setSettings]=useState<SiteSettings>(()=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
-  const [projects,setProjects]=useState<Project[]>(()=>ls("nap_projects",DEF_PROJECTS));
-  const [cats,setCats]=useState<string[]>(()=>ls("nap_cats",DEF_CATS));
-  const [testimonials,setTestimonials]=useState<Testimonial[]>(()=>ls("nap_testimonials",DEF_TESTIMONIALS));
-  const [blog,setBlog]=useState<BlogPost[]>(()=>ls("nap_blog",DEF_BLOG));
-  const [blogCats,setBlogCats]=useState<string[]>(()=>ls("nap_blogcats",DEF_BLOG_CATS));
+  // Seeded with the plain code defaults -- byte-for-byte what the static export's own
+  // pre-rendered HTML used -- not read from localStorage here. Reading ls() directly inside
+  // these initializers made the very first CLIENT render differ from that static HTML
+  // whenever this specific browser already had non-empty cached CMS data (e.g. after using
+  // the admin panel here), which is a hydration mismatch (React error #418): React then
+  // discards and re-renders the whole tree, and a click landing in that split-second window
+  // gets silently dropped -- intermittent, hard to reproduce, and exactly this kind of "nav
+  // sometimes doesn't respond" report. The locally-cached values are now applied in the
+  // effect just below instead, right after mount (same pattern already used for showSplash/
+  // isMobile/cms above) -- fetchCloudData() overwrites all of this moments later with the
+  // live Supabase values regardless, so nothing about the eventual content changes.
+  const [settings,setSettings]=useState<SiteSettings>(DEF_SETTINGS);
+  const [projects,setProjects]=useState<Project[]>(DEF_PROJECTS);
+  const [cats,setCats]=useState<string[]>(DEF_CATS);
+  const [testimonials,setTestimonials]=useState<Testimonial[]>(DEF_TESTIMONIALS);
+  const [blog,setBlog]=useState<BlogPost[]>(DEF_BLOG);
+  const [blogCats,setBlogCats]=useState<string[]>(DEF_BLOG_CATS);
   const [page,setPage]=useState("home");
   const [selProj,setSelProj]=useState<Project|null>(null);
   const [selBlog,setSelBlog]=useState<BlogPost|null>(null);
@@ -1433,6 +1444,19 @@ export default function Home() {
       if(sessionStorage.getItem("nap_introSeen")) setShowSplash(false);
       else sessionStorage.setItem("nap_introSeen","1");
     }catch{ setShowSplash(false); }
+  },[]);
+
+  // Applies this browser's locally-cached CMS data (see the state initializers above) right
+  // after mount, once the static HTML has already hydrated cleanly against the plain code
+  // defaults -- avoids the React error #418 hydration mismatch that reading localStorage
+  // directly in those initializers used to cause.
+  useEffect(()=>{
+    setSettings(s=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
+    setProjects(ls("nap_projects",DEF_PROJECTS));
+    setCats(ls("nap_cats",DEF_CATS));
+    setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
+    setBlog(ls("nap_blog",DEF_BLOG));
+    setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.

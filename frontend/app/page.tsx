@@ -2014,7 +2014,15 @@ export default function Home() {
   const filteredBlog=blogFilterCat==="All"?blog:blog.filter(b=>b.category===blogFilterCat);
   const WA=settings.waNumber; const WA_MSG=settings.waMsg;
 
-  function goTo(p:string){ const pe=settings.pageEnabled as Record<string,boolean>|undefined; if(pe&&pe[p]===false) p="home"; setPage(p);window.scrollTo(0,0); }
+  function goTo(p:string){
+    const pe=settings.pageEnabled as Record<string,boolean>|undefined; if(pe&&pe[p]===false) p="home";
+    // "Work" has a real, indexable static route (/work) built from the same CMS project data --
+    // send every Work nav/link click there instead of flipping to this SPA's own in-page Work
+    // view, so there's only one Work page (with a real, bookmarkable bynaveedanjum.com/work URL)
+    // instead of two different ones depending on how the visitor got there.
+    if(p==="work"){ window.location.href="/work"; return; }
+    setPage(p);window.scrollTo(0,0);
+  }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
   function openBlog(b:BlogPost){setSelBlog(b);setPage("blog-post");window.scrollTo(0,0);}
 

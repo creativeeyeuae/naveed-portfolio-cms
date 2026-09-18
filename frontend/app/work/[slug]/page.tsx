@@ -320,7 +320,10 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
         {/* GALLERY -- one large hero photo + small thumbnail row, lightbox, per-image
             "Request Permission" and reel pills. */}
         <SectionEyebrow>Gallery</SectionEyebrow>
-        <div style={{ marginBottom: 32 }}>
+        {/* Centered on the page (not stretched edge-to-edge of the 1400px section) so the
+            main photo and every thumbnail beneath it read as one centered composition,
+            per Naveed's request. */}
+        <div style={{ maxWidth: 980, margin: "0 auto 32px" }}>
           <ProjectGallery projectId={album.id} projectName={displayName} images={items} reels={album.reels || undefined} permissionEnabled={permissionEnabled} />
         </div>
 

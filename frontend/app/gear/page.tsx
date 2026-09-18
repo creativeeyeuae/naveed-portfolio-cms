@@ -151,7 +151,7 @@ export default async function GearPage() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "64px 24px 40px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "72px 24px 40px" }}>
         <GearGrid categories={GEAR} />
 
         {/* CTA -- same pattern as /about */}

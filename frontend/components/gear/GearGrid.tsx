@@ -26,17 +26,20 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
   return (
     <div>
       <style>{`
-        .gear-grid-v2 { display:grid; grid-template-columns:repeat(4,1fr); gap:22px; }
-        @media (max-width: 1080px) { .gear-grid-v2 { grid-template-columns:repeat(3,1fr); } }
-        @media (max-width: 780px) { .gear-grid-v2 { grid-template-columns:repeat(2,1fr); } }
-        @media (max-width: 480px) { .gear-grid-v2 { grid-template-columns:1fr; } }
         .gear-pill { transition: background 0.2s, border-color 0.2s, color 0.2s; cursor:pointer; white-space:nowrap; }
-        .gear-card { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
-        .gear-card-img img { transition: transform 0.35s ease; }
+        .gear-feature { display:flex; align-items:center; gap:64px; padding:72px 0; border-bottom:1px solid ${C.BORDER}; }
+        .gear-feature:last-child { border-bottom:none; }
+        .gear-feature.reverse { flex-direction:row-reverse; }
+        .gear-feature-img { flex:1 1 46%; display:flex; align-items:center; justify-content:center; }
+        .gear-feature-img img { transition: transform 0.5s ease; }
+        .gear-feature:hover .gear-feature-img img { transform: scale(1.04); }
+        .gear-feature-text { flex:1 1 54%; }
+        @media (max-width: 860px) {
+          .gear-feature, .gear-feature.reverse { flex-direction:column; gap:28px; padding:48px 0; }
+        }
       `}</style>
 
-      {/* Filter pills */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 40 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 64 }}>
         {["All", ...categories.map((c) => c.label)].map((label) => {
           const count =
             label === "All"
@@ -69,94 +72,88 @@ export default function GearGrid({ categories }: { categories: GearCategory[] })
         })}
       </div>
 
-      <div className="gear-grid-v2">
-        {shown.map((item) => (
-          <div
-            key={item.name}
-            className="gear-card"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-6px)";
-              e.currentTarget.style.borderColor = C.P;
-              e.currentTarget.style.boxShadow =
-                "0 20px 48px -12px rgba(139,92,246,0.45)";
-              const img = e.currentTarget.querySelector("img") as HTMLElement;
-              if (img) img.style.transform = "scale(1.08)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.borderColor = C.BORDER;
-              e.currentTarget.style.boxShadow = "none";
-              const img = e.currentTarget.querySelector("img") as HTMLElement;
-              if (img) img.style.transform = "scale(1)";
-            }}
-            style={{
-              background: "rgba(255,255,255,0.035)",
-              border: `1px solid ${C.BORDER}`,
-              borderRadius: 16,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <div
-              className="gear-card-img"
-              style={{
-                position: "relative",
-                aspectRatio: "1 / 1",
-                background: `radial-gradient(circle at 50% 40%, rgba(139,92,246,0.16), transparent 70%), ${C.DARK}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.img}
-                alt={item.alt}
-                loading="lazy"
-                style={{ width: "78%", height: "78%", objectFit: "contain" }}
-              />
-            </div>
-            <div
-              style={{
-                padding: "18px 20px 22px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-                flex: 1,
-              }}
-            >
+      <div>
+        {shown.map((item, i) => (
+          <div key={item.name} className={`gear-feature${i % 2 === 1 ? " reverse" : ""}`}>
+            <div className="gear-feature-img">
               <div
                 style={{
-                  fontSize: 10.5,
-                  fontWeight: 700,
-                  letterSpacing: 2,
-                  color: C.PL,
-                  textTransform: "uppercase",
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: 400,
+                  aspectRatio: "1 / 1",
+                  borderRadius: 24,
+                  background:
+                    "radial-gradient(circle at 50% 38%, rgba(139,92,246,0.14), transparent 70%)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 8,
+                  justifyContent: "center",
+                  overflow: "hidden",
                 }}
               >
-                <span
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.img}
+                  alt={item.alt}
+                  loading="lazy"
                   style={{
-                    width: 5,
-                    height: 5,
-                    borderRadius: "50%",
-                    background: C.P,
-                    display: "inline-block",
-                    flexShrink: 0,
+                    width: "70%",
+                    height: "70%",
+                    objectFit: "contain",
+                    filter: "drop-shadow(0 28px 44px rgba(0,0,0,0.45))",
                   }}
                 />
+              </div>
+            </div>
+            <div className="gear-feature-text">
+              <div
+                style={{
+                  fontSize: 64,
+                  fontWeight: 800,
+                  color: "rgba(255,255,255,0.06)",
+                  lineHeight: 1,
+                  marginBottom: -30,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  letterSpacing: 3,
+                  color: C.PL,
+                  textTransform: "uppercase",
+                  marginBottom: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <span style={{ width: 20, height: 1, background: C.PL, display: "inline-block" }} />
                 {item.category}
               </div>
-              <div style={{ fontSize: 15.5, fontWeight: 700, color: C.FG, lineHeight: 1.3 }}>
+              <h3
+                style={{
+                  fontSize: "clamp(24px,3vw,34px)",
+                  fontWeight: 700,
+                  margin: "0 0 14px",
+                  color: C.FG,
+                  letterSpacing: -0.3,
+                }}
+              >
                 {item.name}
-              </div>
-              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", letterSpacing: 0.2 }}>
+              </h3>
+              <p
+                style={{
+                  fontSize: 14.5,
+                  lineHeight: 1.9,
+                  color: "rgba(255,255,255,0.55)",
+                  maxWidth: 420,
+                  margin: 0,
+                }}
+              >
                 {item.desc}
-              </div>
+              </p>
             </div>
           </div>
         ))}

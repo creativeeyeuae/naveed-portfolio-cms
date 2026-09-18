@@ -77,10 +77,18 @@ const siteSettingsCache = new Map<string, Promise<any[]>>();
 // [] }` -- silently treating "the real project list" as "there are no projects" for whichever
 // one route happened to render in that unlucky worker, which then baked a real 404 into that
 // route's static HTML even though the project genuinely exists (confirmed live case: WIC 2025
-// intermittently 404'd while the other two real projects on the same build succeeded). Retrying
-// a few times before giving up closes that window without changing behavior for the genuinely-
-// empty/misconfigured case (which still falls back to [] once every attempt fails).
-async function fetchWithRetry(url: string, init: RequestInit, attempts = 3): Promise<Response | null> {
+// intermittently 404'd while the other two real projects on the same build succeeded).
+//
+// The retry loop below closed part of that window but not all of it: 3 attempts over ~1.2s of
+// backoff is thin for a real hiccup, and -- the actual bug -- once every attempt was exhausted
+// this used to swallow the failure into a silent `[]`, letting `next build` finish "successfully"
+// and get deployed with real project pages quietly missing (WIC 2025 404'd again after this same
+// retry logic was already live, exactly because of this). A build-time data fetch failing should
+// stop the build, not ship a broken site: readSiteSettingsKey now throws once retries are
+// exhausted, so `next build` fails loudly and nothing broken ever reaches `wrangler pages deploy`.
+// The empty-table / missing-env-var case is unchanged and still resolves to [] on purpose (that's
+// a real "no projects yet" state, not a fetch failure).
+async function fetchWithRetry(url: string, init: RequestInit, attempts = 6): Promise<Response> {
   let lastErr: unknown;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -90,10 +98,9 @@ async function fetchWithRetry(url: string, init: RequestInit, attempts = 3): Pro
     } catch (err) {
       lastErr = err;
     }
-    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 600 * (i + 1)));
   }
-  console.error(`cmsData: fetch failed after ${attempts} attempts for ${url}`, lastErr);
-  return null;
+  throw new Error(`cmsData: fetch failed after ${attempts} attempts for ${url}: ${lastErr}`);
 }
 
 async function readSiteSettingsKey<T>(key: string): Promise<T[]> {
@@ -102,20 +109,15 @@ async function readSiteSettingsKey<T>(key: string): Promise<T[]> {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !anonKey) return [];
-    try {
-      const res = await fetchWithRetry(
-        `${url}/rest/v1/site_settings?select=value&key=eq.${encodeURIComponent(key)}`,
-        { headers: { apikey: anonKey } }
-      );
-      if (!res) return [];
-      const rows = (await res.json()) as { value?: string }[];
-      const value = rows?.[0]?.value;
-      if (!value) return [];
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? (parsed as T[]) : [];
-    } catch {
-      return [];
-    }
+    const res = await fetchWithRetry(
+      `${url}/rest/v1/site_settings?select=value&key=eq.${encodeURIComponent(key)}`,
+      { headers: { apikey: anonKey } }
+    );
+    const rows = (await res.json()) as { value?: string }[];
+    const value = rows?.[0]?.value;
+    if (!value) return [];
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
   })();
   siteSettingsCache.set(key, promise);
   return promise;

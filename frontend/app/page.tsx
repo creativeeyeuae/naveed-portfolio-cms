@@ -1924,27 +1924,43 @@ export default function Home() {
     const ok = await pushCloudData(key,value);
     setCloudSyncError(ok?null:`Unable to save your last change (${label}) to the server. Check your internet connection and try again -- this browser is showing it, but other visitors and devices are not.`);
   }
-  // Only push to the shared cloud copy while an authenticated CMS session made the change --
-  // never on a plain public page load, otherwise an ordinary visitor's own (possibly stale)
-  // locally-cached copy could momentarily clobber the real live content for everyone.
-  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed) pushCloudDataChecked("nap_settings",settings,"Settings");},[settings,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed) pushCloudDataChecked("nap_projects",projects,"Projects");},[projects,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed) pushCloudDataChecked("nap_cats",cats,"Categories");},[cats,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed]);
-  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed]);
+  // Guards the six push effects below against a real clobbering bug (confirmed: newly-added
+  // project images going missing from the CMS after being saved). On mount, every piece of
+  // state above starts from THIS browser's own localStorage snapshot, which can be stale the
+  // moment another device/session saved something more recent. If the admin session is
+  // already authenticated at mount (it usually is), the push effects used to fire with that
+  // stale snapshot the instant React committed the initial render -- often before the cloud
+  // fetch below had a chance to correct it -- overwriting the real, newer cloud copy with old
+  // local data. Nothing pushes until the initial cloud fetch has resolved at least once, so
+  // every push effect always starts from the real current state, never a stale local guess.
+  const [cloudLoaded,setCloudLoaded]=useState(false);
+  // Only push to the shared cloud copy while an authenticated CMS session made the change AND
+  // the initial cloud sync has completed (see cloudLoaded above) -- never on a plain public
+  // page load, otherwise an ordinary visitor's own (possibly stale) locally-cached copy could
+  // momentarily clobber the real live content for everyone.
+  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_settings",settings,"Settings");},[settings,authed,cloudLoaded]);
+  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_projects",projects,"Projects");},[projects,authed,cloudLoaded]);
+  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_cats",cats,"Categories");},[cats,authed,cloudLoaded]);
+  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed,cloudLoaded]);
+  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed,cloudLoaded]);
+  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed,cloudLoaded]);
   // On first mount, pull the shared cloud copy (if reachable) so every visitor/device sees the
-  // same latest content instead of whatever this particular browser cached locally.
+  // same latest content instead of whatever this particular browser cached locally. cloudLoaded
+  // flips to true whether or not the fetch actually found cloud data (an offline first load
+  // must still be able to save eventually), unblocking the push effects above exactly once.
   useEffect(()=>{
     let cancelled=false;
     fetchCloudData().then(cloud=>{
-      if(cancelled||!cloud) return;
-      if(cloud.nap_settings) setSettings(s=>({...DEF_SETTINGS,...cloud.nap_settings}));
-      if(cloud.nap_projects) setProjects(cloud.nap_projects);
-      if(cloud.nap_cats) setCats(cloud.nap_cats);
-      if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
-      if(cloud.nap_blog) setBlog(cloud.nap_blog);
-      if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
+      if(cancelled) return;
+      if(cloud){
+        if(cloud.nap_settings) setSettings(s=>({...DEF_SETTINGS,...cloud.nap_settings}));
+        if(cloud.nap_projects) setProjects(cloud.nap_projects);
+        if(cloud.nap_cats) setCats(cloud.nap_cats);
+        if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
+        if(cloud.nap_blog) setBlog(cloud.nap_blog);
+        if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
+      }
+      setCloudLoaded(true);
     });
     return ()=>{cancelled=true;};
   },[]);

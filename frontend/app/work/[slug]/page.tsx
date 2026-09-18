@@ -44,6 +44,16 @@ const C = {
 };
 
 const MEDIA_CDN_HOST = process.env.NEXT_PUBLIC_MEDIA_CDN_HOST || "media.naveedanjum.com";
+
+// Tolerant slug comparison -- a slug typed/edited in the CMS can pick up leading/trailing
+// whitespace or inconsistent casing without anyone noticing (the CMS's own slug field never
+// normalizes on input). Comparing raw strings turned that into a silent, permanent 404 for a
+// project that visibly exists in the CMS. Trim + lowercase + strip stray slashes before every
+// comparison below (both here and in generateStaticParams) so a cosmetic slug mismatch can
+// never be the reason a real project's page won't open.
+function normalizeSlug(value: string | null | undefined): string {
+  return (value || "").trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+}
 function mediaUrl(m: { webKey?: string | null; externalUrl?: string | null }): string {
   if (m.externalUrl) return m.externalUrl;
   if (m.webKey) return `https://${MEDIA_CDN_HOST}/${m.webKey}`;
@@ -108,11 +118,12 @@ function toAlbum(p: CmsProject): AlbumDetail {
 // the page component can render a soft redirect instead of duplicating content under two URLs.
 async function getAlbum(slug: string): Promise<{ album: AlbumDetail; redirectTo?: string } | null> {
   if (slug === PLACEHOLDER_SLUG) return null;
+  const wanted = normalizeSlug(slug);
   const projects = await getRealProjects();
-  let p = projects.find((x) => x.slug === slug);
+  let p = projects.find((x) => normalizeSlug(x.slug) === wanted);
   let redirectTo: string | undefined;
   if (!p) {
-    p = projects.find((x) => (x.previousSlugs || []).includes(slug));
+    p = projects.find((x) => (x.previousSlugs || []).some((old) => normalizeSlug(old) === wanted));
     if (p) redirectTo = p.slug;
   }
   if (!p) return null;
@@ -122,14 +133,20 @@ async function getAlbum(slug: string): Promise<{ album: AlbumDetail; redirectTo?
 // Every current slug AND every historical slug (from previousSlugs) needs its own static
 // path -- dynamicParams=false means any path not returned here 404s outright, which would
 // break old links the moment a title/slug changes. Deduped via a Set since a project's own
-// current slug and its previousSlugs never overlap (saveProj() already filters that).
+// current slug and its previousSlugs never overlap (saveProj() already filters that). Slugs
+// are normalized (see normalizeSlug above) so the generated path always matches what
+// getAlbum() will actually compare a request against.
 export async function generateStaticParams() {
   const projects = await getRealProjects();
   if (projects.length === 0) return [{ slug: PLACEHOLDER_SLUG }];
   const slugs = new Set<string>();
   for (const p of projects) {
-    if (p.slug) slugs.add(p.slug);
-    for (const old of p.previousSlugs || []) if (old) slugs.add(old);
+    const cur = normalizeSlug(p.slug);
+    if (cur) slugs.add(cur);
+    for (const old of p.previousSlugs || []) {
+      const norm = normalizeSlug(old);
+      if (norm) slugs.add(norm);
+    }
   }
   return Array.from(slugs).map((slug) => ({ slug }));
 }

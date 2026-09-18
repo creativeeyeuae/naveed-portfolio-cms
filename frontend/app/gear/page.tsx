@@ -249,33 +249,39 @@ export default async function GearPage() {
           banner since no other internal page has a stats row; the banner itself (nav,
           height, padding, typography) is now identical across every internal page. */}
       <div style={{ background: C.DARK, padding: "0 clamp(20px,6vw,40px) clamp(32px,6vw,44px)" }}>
-        <p style={{ fontSize: 15, lineHeight: 1.8, color: "rgba(255,255,255,0.62)", maxWidth: 640, margin: "0 0 28px" }}>
-          The equipment behind every shoot -- cameras, lenses, lighting, stabilization and post-production tools used for photography, videography and editing on location and in the studio.
-        </p>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {stats.map((s) => (
-            <div
-              key={s.l}
-              style={{
-                border: `1px solid ${C.BORDER}`,
-                borderRadius: 10,
-                padding: "10px 18px",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <div style={{ fontSize: "clamp(17px,2.2vw,20px)", fontWeight: 700, color: C.PL }}>{s.n}</div>
+        {/* Same maxWidth:1400 / margin:auto centering as the banner's own title wrapper
+            (InternalPageTemplate) so the description and stats line up under "Photography &
+            Videography Gear" at every viewport width, including wide desktop screens where
+            the centered banner content sits inset from the true edge. */}
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <p style={{ fontSize: 15, lineHeight: 1.8, color: "rgba(255,255,255,0.62)", maxWidth: 640, margin: "0 0 28px" }}>
+            The equipment behind every shoot -- cameras, lenses, lighting, stabilization and post-production tools used for photography, videography and editing on location and in the studio.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            {stats.map((s) => (
               <div
+                key={s.l}
                 style={{
-                  fontSize: "clamp(9.5px,1.1vw,10.5px)",
-                  letterSpacing: 1.5,
-                  textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.5)",
+                  border: `1px solid ${C.BORDER}`,
+                  borderRadius: 10,
+                  padding: "10px 18px",
+                  background: "rgba(255,255,255,0.03)",
                 }}
               >
-                {s.l}
+                <div style={{ fontSize: "clamp(17px,2.2vw,20px)", fontWeight: 700, color: C.PL }}>{s.n}</div>
+                <div
+                  style={{
+                    fontSize: "clamp(9.5px,1.1vw,10.5px)",
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: "rgba(255,255,255,0.5)",
+                  }}
+                >
+                  {s.l}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 

@@ -1,48 +1,23 @@
 "use client";
 // Editorial photo gallery + lightbox for /work/[slug]. Two parts:
-//  1) HERO -- the project's cover image, shown large and full-width on its own so it stays
-//     the single most prominent photo on the page (never squeezed into the grid below).
-//  2) COLLAGE -- every other photograph in the set, laid out in the site's existing
-//     .egallery/.egallery-item bento-masonry CSS (globals.css, also used on the homepage
-//     Featured Work / Work grids). Column spans follow a fixed editorial "rhythm" (mostly
-//     half-width cards punctuated by occasional small and large ones) capped by each
-//     image's own real aspect ratio, so the grid reads as a varied, art-directed collage
-//     instead of a uniform two-column repeat -- not just whatever ratio the raw photos
-//     happen to be. No horizontal scrollbar. Clicking any photo (hero or collage) opens the
-//     same full-screen lightbox with next/previous navigation, unchanged from before.
+//  1) HERO -- the project's cover image, shown large and full-width, scaled to fit within
+//     a capped-height box with NO cropping (the whole photo is always visible, letterboxed
+//     rather than cover-cropped if its own ratio doesn't fill the box).
+//  2) COLLAGE -- every other photograph, laid out in a fluid CSS multi-column masonry that
+//     expands to however many columns the screen naturally fits (no fixed column count --
+//     narrower screens simply get fewer, wider columns), with every photo shown at its own
+//     full natural size and aspect ratio -- again, no cropping.
+// No horizontal scrollbar. Clicking any photo (hero or collage) opens the same full-screen
+// lightbox with next/previous navigation, unchanged from before.
 import { useEffect, useState } from "react";
 import PermissionRequestModal from "./PermissionRequestModal";
 
 type GalleryImage = { id: string; url: string; caption?: string; orientation?: string };
 
-// Editorial span rhythm for the collage grid (4-column base) -- deterministic by position,
-// not derived purely from the source photos' own aspect ratios. Real conference/event
-// photography is overwhelmingly one flavor of "landscape", so sizing spans off ratio alone
-// collapses into a monotonous two-column grid; this fixed rhythm guarantees a mix of small
-// (1), standard (2) and feature (3/4) cards regardless of what ratios the photos happen to
-// be. No two large (3/4) cards ever land next to each other in the sequence.
-const SPAN_RHYTHM = [2, 1, 3, 1, 2, 1, 4, 2, 1];
-
-// The rhythm span is still capped by the image's own real aspect ratio so a tall portrait
-// photo never gets stretched across 3-4 columns (a bad, over-cropped result) and a true
-// panorama is never squeezed into a single narrow column.
-function capForRatio(r: number) {
-  if (r < 0.85) return 1;
-  if (r < 1.35) return 2;
-  if (r < 2.2) return 3;
-  return 4;
-}
-
-function spanForTile(rhythmIndex: number, ratio: number) {
-  const rhythm = SPAN_RHYTHM[rhythmIndex % SPAN_RHYTHM.length];
-  return Math.max(1, Math.min(rhythm, capForRatio(ratio)));
-}
-
-// HERO -- the project's cover photo, full width and on its own row so it stays visually
-// dominant no matter its own orientation (a tall portrait hero would look cropped/awkward
-// if forced into the column-span grid below, so it never is). Seeds an aspect-ratio guess
-// from the CMS `orientation` field to avoid layout jump, then locks to the real ratio once
-// the image loads (clamped to a sane range so an extreme photo can't blow out the layout).
+// HERO -- the project's cover photo. `max-width/max-height` + `width:auto/height:auto`
+// (no object-fit box) means the browser scales the image down only as much as needed to
+// fit the available width and the height cap, always preserving its real aspect ratio and
+// never cropping any part of it.
 function HeroTile({
   img,
   total,
@@ -58,15 +33,13 @@ function HeroTile({
   onOpen: () => void;
   onRequestPermission: () => void;
 }) {
-  const [ratio, setRatio] = useState(() => (img.orientation === "landscape" ? 1.6 : img.orientation === "square" ? 1 : 0.8));
   const [hovered, setHovered] = useState(false);
-  const clamped = Math.min(1.9, Math.max(0.66, ratio));
 
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ position: "relative", aspectRatio: String(clamped), maxHeight: "78vh", overflow: "hidden", borderRadius: 6, background: "var(--bg-surface-1, #140D21)", marginBottom: 20 }}
+      style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", borderRadius: 6, overflow: "hidden", background: "var(--bg-surface-1, #140D21)", marginBottom: 20 }}
     >
       <img
         src={img.url}
@@ -74,11 +47,7 @@ function HeroTile({
         loading="eager"
         decoding="async"
         onClick={onOpen}
-        onLoad={(e) => {
-          const el = e.currentTarget;
-          if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
-        }}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer", transition: "transform 0.6s ease", transform: hovered ? "scale(1.02)" : "scale(1)" }}
+        style={{ maxWidth: "100%", maxHeight: "80vh", width: "auto", height: "auto", display: "block", cursor: "pointer", transition: "transform 0.6s ease", transform: hovered ? "scale(1.01)" : "scale(1)" }}
       />
       {/* Hover affordance -- dark wash + expand icon signals the hero opens the lightbox,
           plus a "01 / NN" counter for context. Both fade in only on hover. */}
@@ -127,50 +96,72 @@ function HeroTile({
           Picture Permission Request
         </button>
       )}
-      {img.caption && <div className="egallery-caption" style={{ opacity: 1, position: "absolute" }}>{img.caption}</div>}
+      {img.caption && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "20px 16px 14px",
+            fontSize: 12,
+            letterSpacing: 0.5,
+            color: "#fff",
+            lineHeight: 1.4,
+            background: "linear-gradient(to top, rgba(0,0,0,0.75), transparent)",
+          }}
+        >
+          {img.caption}
+        </div>
+      )}
     </div>
   );
 }
 
-// COLLAGE TILE -- one photo in the editorial grid below the hero. `rhythmIndex` is this
-// tile's position within the collage (0-based, independent of its position in the full
-// `images` array) and drives the span rhythm; `absoluteIndex` is its real position in
-// `images` and is what gets passed back to open the lightbox at the right photo.
+// COLLAGE TILE -- one photo in the fluid masonry below the hero. No forced box or crop:
+// `width:100%, height:auto` inside a CSS multi-column container means every tile renders
+// at its own true aspect ratio, and `break-inside:avoid` keeps a tile from being split
+// across two columns.
 function GalleryTile({
   img,
-  rhythmIndex,
   permissionEnabled,
   onOpen,
   onRequestPermission,
 }: {
   img: GalleryImage;
-  rhythmIndex: number;
   permissionEnabled: boolean;
   onOpen: () => void;
   onRequestPermission: () => void;
 }) {
-  const seedRatio = img.orientation === "landscape" ? 1.6 : img.orientation === "square" ? 1 : 0.8;
-  const [ratio, setRatio] = useState(seedRatio);
   const [hovered, setHovered] = useState(false);
-  const span = spanForTile(rhythmIndex, ratio);
 
   return (
     <div
-      className={`egallery-item eg-span-${span}`}
       onClick={onOpen}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ background: "var(--bg-surface-1, #140D21)" }}
+      style={{
+        position: "relative",
+        breakInside: "avoid",
+        marginBottom: 16,
+        borderRadius: 6,
+        overflow: "hidden",
+        cursor: "pointer",
+        background: "var(--bg-surface-1, #140D21)",
+      }}
     >
       <img
         src={img.url}
         alt={img.caption || ""}
         loading="lazy"
         decoding="async"
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        onLoad={(e) => {
-          const el = e.currentTarget;
-          if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
+        style={{
+          width: "100%",
+          height: "auto",
+          display: "block",
+          filter: hovered ? "grayscale(0)" : "grayscale(1)",
+          transform: hovered ? "scale(1.02)" : "scale(1)",
+          transition: "transform 0.5s ease, filter 0.5s ease",
         }}
       />
       {permissionEnabled && (
@@ -200,7 +191,26 @@ function GalleryTile({
           Request Permission
         </button>
       )}
-      {img.caption && <div className="egallery-caption">{img.caption}</div>}
+      {img.caption && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "20px 16px 14px",
+            fontSize: 12,
+            letterSpacing: 0.5,
+            color: "#fff",
+            lineHeight: 1.4,
+            background: "linear-gradient(to top, rgba(0,0,0,0.75), transparent)",
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          {img.caption}
+        </div>
+      )}
     </div>
   );
 }
@@ -251,12 +261,16 @@ export default function ProjectGallery({
             onRequestPermission={() => setPermissionFor(images[0])}
           />
           {rest.length > 0 && (
-            <div className="egallery">
+            <div
+              style={{
+                columnWidth: 300,
+                columnGap: 16,
+              }}
+            >
               {rest.map((img, i) => (
                 <GalleryTile
                   key={img.id}
                   img={img}
-                  rhythmIndex={i}
                   permissionEnabled={permissionEnabled}
                   onOpen={() => setLightboxIndex(i + 1)}
                   onRequestPermission={() => setPermissionFor(img)}

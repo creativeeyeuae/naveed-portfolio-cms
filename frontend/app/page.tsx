@@ -1528,20 +1528,22 @@ export default function Home() {
   // directly in those initializers used to cause.
   useEffect(()=>{
     setSettings(s=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
-    setProjects(ls("nap_projects",DEF_PROJECTS));
-    setCats(ls("nap_cats",DEF_CATS));
-    setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
-    setBlog(ls("nap_blog",DEF_BLOG));
-    setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
-    // cmsPhotosReady is intentionally NOT set here anymore -- this browser's own localStorage
-    // cache can itself be stale (e.g. right after the About/Hero photo was changed in the CMS
-    // on a different device, or even on this same device in an earlier visit before that save
-    // had a chance to be re-cached). Flipping it true this early painted THAT stale cached
-    // photo for a moment before the live Supabase fetch below replaced it with the real
-    // current one -- exactly the "old photo flashes, then the new one shows" bug. It's now set
-    // once the cloud fetch actually resolves (see cloudLoaded/fetchCloudData below), so the
-    // very first photo ever painted is always the real current one -- never the bundled
-    // default AND never a stale local cache.
+    // Projects/Categories/Testimonials/Blog/BlogCats are intentionally NOT hydrated from
+    // localStorage here anymore (they used to be, via ls("nap_projects",...) etc.). This
+    // browser's own cached copy of those lists can be stale -- e.g. right after a project
+    // cover photo or blog cover photo was changed in the CMS, on this device or another one --
+    // and applying it on this early tick painted that stale photo (Featured Work, the Work
+    // grid, Journal cards, related-projects, etc.) for a moment before the live Supabase fetch
+    // below replaced it with the real current one. Leaving them on the plain code defaults
+    // (same as the static export's own pre-rendered HTML, so still no hydration mismatch)
+    // until that fetch resolves means every photo-bearing list only ever shows the real
+    // current content -- never a stale local guess. Settings text/contact/color fields above
+    // are unaffected and still hydrate instantly here; only its own photo fields (Hero, About,
+    // Services, Client logos) are separately gated behind cmsPhotosReady below.
+    // cmsPhotosReady itself is also intentionally NOT set here -- see the fetchCloudData
+    // effect further down, where it's set once the live fetch has actually resolved so the
+    // very first photo ever painted (Hero, About, CV, Services, Client logos) is always the
+    // real current one, never the bundled default and never a stale local cache.
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
@@ -4012,7 +4014,10 @@ export default function Home() {
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"220px 1fr",gap:40,alignItems:"center",marginBottom:72}}>
           <div style={{display:"flex",justifyContent:isMobile?"center":"flex-start"}}>
             <div style={{width:180,height:180,borderRadius:"50%",padding:3,background:`linear-gradient(135deg,${C.P},${C.PD})`,flexShrink:0}}>
-              {settings.aboutPhoto?(
+              {/* Gated on cmsPhotosReady (see Home()) for the same reason as the Hero/homepage
+                  About photo -- never paints a stale locally-cached headshot before the real
+                  current one loads. */}
+              {settings.aboutPhoto&&cmsPhotosReady?(
                 <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover",display:"block",border:`4px solid ${C.BG}`}} />
               ):(
                 <div style={{width:"100%",height:"100%",borderRadius:"50%",background:C.DARK,border:`4px solid ${C.BG}`}} />
@@ -4334,7 +4339,8 @@ export default function Home() {
           </div>
           <div>
             <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",borderRadius:4,border:`1px solid ${C.BORDER}`,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
-              <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",objectFit:"cover"}} />
+              {/* Gated on cmsPhotosReady -- same reason as the CV/Hero/homepage About photo. */}
+              {settings.aboutPhoto&&cmsPhotosReady&&<img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
             <div style={{marginTop:32,display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
               {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"],["UAE","Base"]].map(([n,l])=>(
@@ -4568,7 +4574,8 @@ export default function Home() {
                 Refresh pass: stronger drop shadow + a soft brand-purple glow ring so the photo
                 lifts off the page instead of sitting flush against it. */}
             <div style={{flex:"0 0 390px",minWidth:280,minHeight:280,alignSelf:"stretch",position:"relative",borderRadius:10,overflow:"hidden",boxShadow:"0 30px 70px rgba(20,13,33,0.18), 0 0 0 1px rgba(139,92,246,0.14), 0 0 60px rgba(139,92,246,0.12)"}}>
-              <img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
+              {/* Gated on cmsPhotosReady -- same reason as the Hero/About photo. */}
+              {cmsPhotosReady&&<img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
             <div style={{flex:"1 1 480px",minWidth:280}}>
               <div>
@@ -4670,7 +4677,7 @@ export default function Home() {
                 return (
                   <div key={cl.id} className="client-orbit-item" style={{position:"absolute",top:0,left:0,"--r":`${radius}px`,animation:`clientsOrbit ${dur}s linear infinite`,animationDelay:`${delay}s`,backfaceVisibility:"hidden",WebkitBackfaceVisibility:"hidden"} as React.CSSProperties}>
                     <div className="client-tile" style={{width:tileW,marginLeft:-tileW/2,height:64,marginTop:-32,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                      {cl.logo?(
+                      {cl.logo&&cmsPhotosReady?(
                         <img src={cl.logo} alt={cl.name} style={{maxHeight:"100%",maxWidth:tileW-10,objectFit:"contain"}} />
                       ):(
                         <span style={{fontSize:isMobile?14:18,letterSpacing:1,color:C.DARK,fontWeight:600,whiteSpace:"nowrap"}}>{cl.name}</span>

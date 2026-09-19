@@ -20,25 +20,44 @@ type GalleryImage = { id: string; url: string; caption?: string; orientation?: s
 // never cropping any part of it.
 function HeroTile({
   img,
+  index,
   total,
   projectName,
   permissionEnabled,
   onOpen,
   onRequestPermission,
+  onHoverChange,
 }: {
   img: GalleryImage;
+  index: number;
   total: number;
   projectName: string;
   permissionEnabled: boolean;
   onOpen: () => void;
   onRequestPermission: () => void;
+  onHoverChange?: (hovered: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  // Cross-fade -- when the auto-advance timer in the parent swaps `img` out from under
+  // this tile, briefly drop opacity to 0 and rAF it back to 1 so the change reads as a
+  // fade rather than an abrupt pop.
+  const [fadeIn, setFadeIn] = useState(true);
+  useEffect(() => {
+    setFadeIn(false);
+    const raf = requestAnimationFrame(() => setFadeIn(true));
+    return () => cancelAnimationFrame(raf);
+  }, [img.id]);
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={() => {
+        setHovered(true);
+        onHoverChange?.(true);
+      }}
+      onMouseLeave={() => {
+        setHovered(false);
+        onHoverChange?.(false);
+      }}
       style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", borderRadius: 6, overflow: "hidden", background: "var(--bg-surface-1, #140D21)", marginBottom: 20 }}
     >
       <img
@@ -47,7 +66,7 @@ function HeroTile({
         loading="eager"
         decoding="async"
         onClick={onOpen}
-        style={{ maxWidth: "100%", maxHeight: "80vh", width: "auto", height: "auto", display: "block", cursor: "pointer", transition: "transform 0.6s ease", transform: hovered ? "scale(1.01)" : "scale(1)" }}
+        style={{ maxWidth: "100%", maxHeight: "80vh", width: "auto", height: "auto", display: "block", cursor: "pointer", opacity: fadeIn ? 1 : 0, transition: "transform 0.6s ease, opacity 0.5s ease", transform: hovered ? "scale(1.01)" : "scale(1)" }}
       />
       {/* Hover affordance -- dark wash + expand icon signals the hero opens the lightbox,
           plus a "01 / NN" counter for context. Both fade in only on hover. */}
@@ -69,7 +88,7 @@ function HeroTile({
         <span style={{ width: 56, height: 56, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 22 }}>⤢</span>
       </div>
       <div style={{ position: "absolute", left: 14, bottom: 14, fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.9)", background: "rgba(9,6,14,0.6)", padding: "4px 10px", borderRadius: 20, opacity: hovered ? 1 : 0, transition: "opacity 0.3s ease" }}>
-        01 / {String(total).padStart(2, "0")}
+        {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
       </div>
       {permissionEnabled && (
         <button
@@ -230,6 +249,20 @@ export default function ProjectGallery({
 }) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [permissionFor, setPermissionFor] = useState<GalleryImage | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroHovered, setHeroHovered] = useState(false);
+
+  // Auto-advance the hero photo every 2 seconds, cycling through every image in the
+  // gallery (not just the collage tiles below it). Pauses while the hero is hovered so it
+  // doesn't fight with the hover-reveal overlay/counter/permission button, and stops
+  // entirely while the lightbox is open so it can't silently move the hero underneath it.
+  useEffect(() => {
+    if (images.length <= 1 || heroHovered || lightboxIndex !== null) return;
+    const timer = setInterval(() => {
+      setHeroIndex((i) => (i + 1) % images.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [images.length, heroHovered, lightboxIndex]);
 
   // Keyboard navigation while the lightbox is open -- Left/Right to step through images,
   // Escape to close. Only attaches the listener while a lightbox is actually showing.
@@ -253,12 +286,14 @@ export default function ProjectGallery({
       {images.length > 0 && (
         <div>
           <HeroTile
-            img={images[0]}
+            img={images[heroIndex]}
+            index={heroIndex}
             total={images.length}
             projectName={projectName}
             permissionEnabled={permissionEnabled}
-            onOpen={() => setLightboxIndex(0)}
-            onRequestPermission={() => setPermissionFor(images[0])}
+            onOpen={() => setLightboxIndex(heroIndex)}
+            onRequestPermission={() => setPermissionFor(images[heroIndex])}
+            onHoverChange={setHeroHovered}
           />
           {rest.length > 0 && (
             <div

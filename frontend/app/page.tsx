@@ -2455,6 +2455,13 @@ export default function Home() {
         <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
         <CmsNavItem icon="⚠️" label="Error Logs" active={cmsTab==="errorlog"} onClick={()=>setCmsTab("errorlog")} />
         <CmsNavItem icon="🔐" label="Admin & Access" active={cmsTab==="access"} onClick={()=>setCmsTab("access")} />
+        {/* Sign out, also reachable here in the sidebar (not just the top bar) -- stays
+            visible/reachable on every tab, including on mobile where the top bar's own
+            Sign Out can wrap off to a second line next to the admin's email. */}
+        <div style={{marginTop:16,borderTop:`1px solid ${C.BORDER}`,padding:"14px 6px 6px"}}>
+          <div style={{fontSize:10.5,color:C.MID,padding:"0 6px 8px",wordBreak:"break-all" as const}}>{adminSession?.user?.email}</div>
+          <button onClick={adminSignOut} style={{...S.btnO,width:"100%",padding:"9px 6px"}}>Sign Out</button>
+        </div>
       </div>
     );
 

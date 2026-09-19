@@ -714,6 +714,61 @@ async function uploadToStorage(file:File): Promise<string> {
   return await new Promise<string>((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result as string); r.onerror=rej; r.readAsDataURL(file); });
 }
 
+// ─── STORAGE CLEANUP (auto-delete replaced/removed pictures) ────────────────
+// Removing or replacing a CMS-uploaded photo used to only ever drop its URL from that one
+// record -- the actual file stayed behind in Supabase Storage forever. This deletes the old
+// file too, but only once it's (a) one of our own uploads (matches the cms-uploads/ storage
+// path -- an externally pasted URL is never touched) and (b) not still referenced anywhere
+// else in the CMS's current data (another project, blog post, or settings field could
+// legitimately be reusing the same photo). Best-effort and silent: cleanup can never block or
+// break an actual save, so failures are just logged.
+const STORAGE_KEY_RE = /\/storage\/v1\/object\/public\/portfolio\/(cms-uploads\/[^?]+)/;
+function storageKeyOf(url?: string | null): string | null {
+  if (!url) return null;
+  const m = STORAGE_KEY_RE.exec(url);
+  return m ? m[1] : null;
+}
+async function deleteStorageFiles(urls: Iterable<string>) {
+  if (!sbData) return;
+  const keys = Array.from(new Set(Array.from(urls).map(storageKeyOf).filter((k): k is string => !!k)));
+  if (!keys.length) return;
+  try {
+    const { error } = await sbData.storage.from("portfolio").remove(keys);
+    if (error) console.warn("[deleteStorageFiles] cleanup failed:", error.message);
+  } catch (e: any) {
+    console.warn("[deleteStorageFiles] cleanup threw:", e?.message || e);
+  }
+}
+// Every photo URL a single project can hold -- cover, banner, and the whole gallery.
+function projectImageUrls(p: { coverImage?: string; bannerImage?: string; images?: Img[] }): Set<string> {
+  const set = new Set<string>();
+  if (p.coverImage) set.add(p.coverImage);
+  if (p.bannerImage) set.add(p.bannerImage);
+  (p.images || []).forEach(im => set.add(im.url));
+  return set;
+}
+// Every photo URL Settings can hold, across every single-image / per-item photo field.
+function settingsImageUrls(s: SiteSettings): Set<string> {
+  const set = new Set<string>();
+  const add = (u?: string | null) => { if (u) set.add(u); };
+  add(s.aboutPhoto); add(s.servicesImage);
+  (s.heroSlides || []).forEach(h => add(h.img));
+  Object.values(s.sectionBg || {}).forEach(u => add(u as string));
+  (s.pricingPackages || []).forEach(pk => add(pk.image));
+  (s.clients || []).forEach(c => add(c.logo));
+  (s.gearImages || []).forEach(g => add(g.img));
+  return set;
+}
+// Every photo URL currently referenced ANYWHERE in the CMS -- the safety check that decides
+// whether a dropped URL is truly orphaned before it's ever deleted from storage.
+function collectAllImageUrls(data: { projects: Project[]; blog: BlogPost[]; settings: SiteSettings }): Set<string> {
+  const urls = new Set<string>();
+  data.projects.forEach(p => projectImageUrls(p).forEach(u => urls.add(u)));
+  data.blog.forEach(b => { if (b.coverImage) urls.add(b.coverImage); });
+  settingsImageUrls(data.settings).forEach(u => urls.add(u));
+  return urls;
+}
+
 // ─── COLORS ─────────────────────────────────────────────────────────────────
 // Royal Obsidian + Electric Violet master brand system: violet-black surfaces, white/lavender
 // text, and a restrained violet accent reserved for CTAs and focus moments (kept to ~5-10% of
@@ -2146,7 +2201,16 @@ export default function Home() {
     setContactForm({name:"",email:"",phone:"",subject:"",message:""});
   }
   function removeLead(id:string){ setLeads(ls=>ls.filter(l=>l.id!==id)); deleteContactLead(id); }
-  function saveSettings(){setSettings(settingsDraft);}
+  function saveSettings(){
+    const prior=settings,next=settingsDraft;
+    setSettings(next);
+    // Same auto-cleanup as project saves -- see STORAGE CLEANUP helpers above.
+    const dropped=Array.from(settingsImageUrls(prior)).filter(u=>!settingsImageUrls(next).has(u));
+    if(dropped.length){
+      const inUse=collectAllImageUrls({projects,blog,settings:next});
+      deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));
+    }
+  }
   function updateSD(patch:Partial<SiteSettings>){setSettingsDraft(d=>({...d,...patch}));}
 
   function startEdit(p:Project|null){setEditId(p?.id||"new");setForm(p?{...p,tags:p.tags||[],categories:p.categories||[]}:{title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:"",projectName:"",bannerTitle:"",bannerImage:""});}
@@ -2175,8 +2239,19 @@ export default function Home() {
       ? Array.from(new Set([...(prior.previousSlugs||[]),prior.slug])).filter(s=>s!==slug)
       : (prior?.previousSlugs||[]);
     const p:Project={id,title:form.title||"",slug,categories:form.categories||[],description:form.description||"",fullDescription:form.fullDescription||"",clientName:form.clientName||"",location:form.location||"",projectDate:form.projectDate||"",tags:Array.isArray(form.tags)?form.tags:[],featured:!!form.featured,coverImage:form.coverImage||"",images:form.images||[],videos:form.videos||[],reels:form.reels||[],youtubeUrl:form.youtubeUrl||"",projectName:form.projectName||"",bannerTitle:form.bannerTitle||"",bannerImage:form.bannerImage||"",previousSlugs};
+    const nextProjects=editId!=="new"?projects.map(x=>x.id===editId?p:x):[...projects,p];
     if(editId!=="new")setProjects(ps=>ps.map(x=>x.id===editId?p:x));else setProjects(ps=>[...ps,p]);
     setEditId(null);
+    // Auto-delete this project's own previously-uploaded photos that got replaced or removed
+    // in this save, once nothing else in the CMS still references them (see STORAGE CLEANUP
+    // helpers above).
+    if(prior){
+      const dropped=Array.from(projectImageUrls(prior)).filter(u=>!projectImageUrls(p).has(u));
+      if(dropped.length){
+        const inUse=collectAllImageUrls({projects:nextProjects,blog,settings});
+        deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));
+      }
+    }
   }
 
   function submitBooking(){
@@ -3560,10 +3635,10 @@ export default function Home() {
                   </div>
                   <div><label style={S.lbl}>Date</label><input type="date" style={S.inp} value={b.date} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,date:e.target.value}:x))} /></div>
                 </div>
-                <SingleImageUpload value={b.coverImage} onChange={url=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,coverImage:url}:x))} label="Cover Image" />
+                <SingleImageUpload value={b.coverImage} onChange={url=>{const old=b.coverImage;const nextBlog=blog.map((x,idx)=>idx===i?{...x,coverImage:url}:x);setBlog(()=>nextBlog);if(old&&old!==url){const inUse=collectAllImageUrls({projects,blog:nextBlog,settings});if(!inUse.has(old))deleteStorageFiles([old]);}}} label="Cover Image" />
                 <div style={{marginBottom:12}}><label style={S.lbl}>Excerpt</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={b.excerpt} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,excerpt:e.target.value}:x))} /></div>
                 <div style={{marginBottom:12}}><label style={S.lbl}>Full Content</label><textarea style={{...S.inp,height:160,resize:"vertical" as const}} value={b.content} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,content:e.target.value}:x))} placeholder="Full article content..." /></div>
-                <button onClick={()=>setBlog(bs=>bs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                <button onClick={()=>{const remaining=blog.filter((_,idx)=>idx!==i);setBlog(bs=>bs.filter((_,idx)=>idx!==i));if(b.coverImage){const inUse=collectAllImageUrls({projects,blog:remaining,settings});if(!inUse.has(b.coverImage))deleteStorageFiles([b.coverImage]);}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
               </div>
             ))}
           </div>
@@ -3577,7 +3652,7 @@ export default function Home() {
               {projects.map(p=>(
                 <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:editId===p.id?"#12121e":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <div><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:"#555"}}>{p.categories?.join(", ")} · {p.images?.length||0}📷</div></div>
-                  <button onClick={e=>{e.stopPropagation();if(confirm("Delete?"))setProjects(ps=>ps.filter(x=>x.id!==p.id));}} style={{background:"none",border:"none",color:"#444",cursor:"pointer"}}>✕</button>
+                  <button onClick={e=>{e.stopPropagation();if(confirm("Delete?")){const remaining=projects.filter(x=>x.id!==p.id);setProjects(ps=>ps.filter(x=>x.id!==p.id));const dropped=Array.from(projectImageUrls(p));if(dropped.length){const inUse=collectAllImageUrls({projects:remaining,blog,settings});deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer"}}>✕</button>
                 </div>
               ))}
             </div>

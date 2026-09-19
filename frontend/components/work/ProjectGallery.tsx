@@ -1,51 +1,158 @@
 "use client";
-// Bento-style masonry gallery + lightbox for /work/[slug] -- upgraded from the old
-// "one large hero photo + horizontal-scrolling thumbnail strip" layout to the same
-// .egallery/.egallery-item bento-masonry system used on the homepage Featured Work /
-// Work grids (globals.css), so every project photograph is shown together with no
-// horizontal scrollbar. Each tile measures its own image's real aspect ratio on load
-// and is given a grid column span accordingly (dense auto-flow packs the gaps); the
-// hero (first/cover) image always gets a boosted minimum span so it stays the most
-// prominent tile on the page. Clicking any tile opens the same full-screen lightbox
-// (prev/next navigation, keyboard, Picture Permission Request) as before -- unchanged.
+// Editorial photo gallery + lightbox for /work/[slug]. Two parts:
+//  1) HERO -- the project's cover image, shown large and full-width on its own so it stays
+//     the single most prominent photo on the page (never squeezed into the grid below).
+//  2) COLLAGE -- every other photograph in the set, laid out in the site's existing
+//     .egallery/.egallery-item bento-masonry CSS (globals.css, also used on the homepage
+//     Featured Work / Work grids). Column spans follow a fixed editorial "rhythm" (mostly
+//     half-width cards punctuated by occasional small and large ones) capped by each
+//     image's own real aspect ratio, so the grid reads as a varied, art-directed collage
+//     instead of a uniform two-column repeat -- not just whatever ratio the raw photos
+//     happen to be. No horizontal scrollbar. Clicking any photo (hero or collage) opens the
+//     same full-screen lightbox with next/previous navigation, unchanged from before.
 import { useEffect, useState } from "react";
 import PermissionRequestModal from "./PermissionRequestModal";
 
 type GalleryImage = { id: string; url: string; caption?: string; orientation?: string };
 
-// Column span for a given width/height ratio -- wide photos span more columns, tall/square
-// ones span fewer, so the grid reads as an art-directed collage rather than a uniform grid.
-// The hero tile (index 0) is always floored at span 2 so it stays visually dominant even
-// when its own measured ratio (e.g. a portrait shot) wouldn't otherwise earn that span.
-function spanForRatio(r: number, isHero: boolean) {
-  let span = r >= 2.1 ? 4 : r >= 1.2 ? 2 : 1;
-  if (isHero && span < 2) span = 2;
-  return span;
+// Editorial span rhythm for the collage grid (4-column base) -- deterministic by position,
+// not derived purely from the source photos' own aspect ratios. Real conference/event
+// photography is overwhelmingly one flavor of "landscape", so sizing spans off ratio alone
+// collapses into a monotonous two-column grid; this fixed rhythm guarantees a mix of small
+// (1), standard (2) and feature (3/4) cards regardless of what ratios the photos happen to
+// be. No two large (3/4) cards ever land next to each other in the sequence.
+const SPAN_RHYTHM = [2, 1, 3, 1, 2, 1, 4, 2, 1];
+
+// The rhythm span is still capped by the image's own real aspect ratio so a tall portrait
+// photo never gets stretched across 3-4 columns (a bad, over-cropped result) and a true
+// panorama is never squeezed into a single narrow column.
+function capForRatio(r: number) {
+  if (r < 0.85) return 1;
+  if (r < 1.35) return 2;
+  if (r < 2.2) return 3;
+  return 4;
 }
 
-// GALLERY TILE -- one photo in the bento-masonry grid. Seeds a placeholder span from the
-// CMS-provided `orientation` (if any) so there's no layout jump before the image loads,
-// then re-measures the image's *real* aspect ratio on `onLoad` and corrects the span.
-function GalleryTile({
+function spanForTile(rhythmIndex: number, ratio: number) {
+  const rhythm = SPAN_RHYTHM[rhythmIndex % SPAN_RHYTHM.length];
+  return Math.max(1, Math.min(rhythm, capForRatio(ratio)));
+}
+
+// HERO -- the project's cover photo, full width and on its own row so it stays visually
+// dominant no matter its own orientation (a tall portrait hero would look cropped/awkward
+// if forced into the column-span grid below, so it never is). Seeds an aspect-ratio guess
+// from the CMS `orientation` field to avoid layout jump, then locks to the real ratio once
+// the image loads (clamped to a sane range so an extreme photo can't blow out the layout).
+function HeroTile({
   img,
-  index,
   total,
-  isHero,
+  projectName,
   permissionEnabled,
   onOpen,
   onRequestPermission,
 }: {
   img: GalleryImage;
-  index: number;
   total: number;
-  isHero: boolean;
+  projectName: string;
   permissionEnabled: boolean;
   onOpen: () => void;
   onRequestPermission: () => void;
 }) {
-  const seedRatio = img.orientation === "landscape" ? 1.78 : img.orientation === "square" ? 1 : 0.8;
-  const [span, setSpan] = useState(() => spanForRatio(seedRatio, isHero));
+  const [ratio, setRatio] = useState(() => (img.orientation === "landscape" ? 1.6 : img.orientation === "square" ? 1 : 0.8));
   const [hovered, setHovered] = useState(false);
+  const clamped = Math.min(1.9, Math.max(0.66, ratio));
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ position: "relative", aspectRatio: String(clamped), maxHeight: "78vh", overflow: "hidden", borderRadius: 6, background: "var(--bg-surface-1, #140D21)", marginBottom: 20 }}
+    >
+      <img
+        src={img.url}
+        alt={img.caption || projectName}
+        loading="eager"
+        decoding="async"
+        onClick={onOpen}
+        onLoad={(e) => {
+          const el = e.currentTarget;
+          if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
+        }}
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer", transition: "transform 0.6s ease", transform: hovered ? "scale(1.02)" : "scale(1)" }}
+      />
+      {/* Hover affordance -- dark wash + expand icon signals the hero opens the lightbox,
+          plus a "01 / NN" counter for context. Both fade in only on hover. */}
+      <div
+        onClick={onOpen}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(9,6,14,0.24)",
+          opacity: hovered ? 1 : 0,
+          transition: "opacity 0.3s ease",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          pointerEvents: hovered ? "auto" : "none",
+        }}
+      >
+        <span style={{ width: 56, height: 56, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 22 }}>⤢</span>
+      </div>
+      <div style={{ position: "absolute", left: 14, bottom: 14, fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.9)", background: "rgba(9,6,14,0.6)", padding: "4px 10px", borderRadius: 20, opacity: hovered ? 1 : 0, transition: "opacity 0.3s ease" }}>
+        01 / {String(total).padStart(2, "0")}
+      </div>
+      {permissionEnabled && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRequestPermission();
+          }}
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            zIndex: 2,
+            background: "rgba(9,6,14,0.72)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 20,
+            fontSize: 11,
+            letterSpacing: 0.5,
+            padding: "7px 12px",
+            cursor: "pointer",
+            opacity: 0.9,
+          }}
+        >
+          Picture Permission Request
+        </button>
+      )}
+      {img.caption && <div className="egallery-caption" style={{ opacity: 1, position: "absolute" }}>{img.caption}</div>}
+    </div>
+  );
+}
+
+// COLLAGE TILE -- one photo in the editorial grid below the hero. `rhythmIndex` is this
+// tile's position within the collage (0-based, independent of its position in the full
+// `images` array) and drives the span rhythm; `absoluteIndex` is its real position in
+// `images` and is what gets passed back to open the lightbox at the right photo.
+function GalleryTile({
+  img,
+  rhythmIndex,
+  permissionEnabled,
+  onOpen,
+  onRequestPermission,
+}: {
+  img: GalleryImage;
+  rhythmIndex: number;
+  permissionEnabled: boolean;
+  onOpen: () => void;
+  onRequestPermission: () => void;
+}) {
+  const seedRatio = img.orientation === "landscape" ? 1.6 : img.orientation === "square" ? 1 : 0.8;
+  const [ratio, setRatio] = useState(seedRatio);
+  const [hovered, setHovered] = useState(false);
+  const span = spanForTile(rhythmIndex, ratio);
 
   return (
     <div
@@ -58,35 +165,14 @@ function GalleryTile({
       <img
         src={img.url}
         alt={img.caption || ""}
-        loading={isHero ? "eager" : "lazy"}
+        loading="lazy"
         decoding="async"
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
         onLoad={(e) => {
           const el = e.currentTarget;
-          if (el.naturalWidth && el.naturalHeight) {
-            setSpan(spanForRatio(el.naturalWidth / el.naturalHeight, isHero));
-          }
+          if (el.naturalWidth && el.naturalHeight) setRatio(el.naturalWidth / el.naturalHeight);
         }}
       />
-      {isHero && (
-        <div
-          style={{
-            position: "absolute",
-            left: 14,
-            top: 14,
-            fontSize: 11,
-            letterSpacing: 1,
-            color: "rgba(255,255,255,0.9)",
-            background: "rgba(9,6,14,0.6)",
-            padding: "4px 10px",
-            borderRadius: 20,
-            opacity: hovered ? 1 : 0,
-            transition: "opacity 0.3s ease",
-          }}
-        >
-          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-        </div>
-      )}
       {permissionEnabled && (
         <button
           onClick={(e) => {
@@ -150,27 +236,34 @@ export default function ProjectGallery({
 
   if (!images.length && !(reels && reels.length)) return null;
 
+  const rest = images.slice(1);
+
   return (
     <div style={{ marginBottom: 48 }}>
       {images.length > 0 && (
-        <div className="egallery">
-          {/* BENTO MASONRY GRID -- replaces the old single hero photo + horizontal-scrolling
-              thumbnail strip. Every photograph in the set is shown together, at its own real
-              aspect ratio, with the hero/cover image boosted to a larger span so it still
-              reads as the lead image. No horizontal scrollbar; fully responsive via the
-              existing .egallery breakpoints (4 cols desktop -> 2 cols tablet -> 1 col mobile). */}
-          {images.map((img, i) => (
-            <GalleryTile
-              key={img.id}
-              img={img}
-              index={i}
-              total={images.length}
-              isHero={i === 0}
-              permissionEnabled={permissionEnabled}
-              onOpen={() => setLightboxIndex(i)}
-              onRequestPermission={() => setPermissionFor(img)}
-            />
-          ))}
+        <div>
+          <HeroTile
+            img={images[0]}
+            total={images.length}
+            projectName={projectName}
+            permissionEnabled={permissionEnabled}
+            onOpen={() => setLightboxIndex(0)}
+            onRequestPermission={() => setPermissionFor(images[0])}
+          />
+          {rest.length > 0 && (
+            <div className="egallery">
+              {rest.map((img, i) => (
+                <GalleryTile
+                  key={img.id}
+                  img={img}
+                  rhythmIndex={i}
+                  permissionEnabled={permissionEnabled}
+                  onOpen={() => setLightboxIndex(i + 1)}
+                  onRequestPermission={() => setPermissionFor(img)}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

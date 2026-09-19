@@ -14,6 +14,11 @@
 //
 // SUPABASE_SERVICE_ROLE_KEY and ADMIN_EMAIL are Cloudflare Pages secrets (set via
 // `wrangler pages secret put ...` -- see the deploy notes) and are never sent to the browser.
+//
+// ADMIN_EMAIL holds one or more allow-listed addresses, comma-separated (e.g.
+// "owner@example.com,admin@example.com") -- originally a single address, extended here to
+// a list so a second/backup admin account can be granted access without displacing the
+// first. A value with no commas still works exactly as before (a one-item list).
 
 export type AdminEnv = {
   SUPABASE_SERVICE_ROLE_KEY: string;
@@ -57,8 +62,12 @@ export async function requireAdmin(
   if (!who.ok) return json({ error: "Your session has expired -- please sign in again." }, 401, origin);
   const user = (await who.json()) as { email?: string };
 
-  const adminEmail = (env.ADMIN_EMAIL || "").trim().toLowerCase();
-  if (!adminEmail || (user.email || "").trim().toLowerCase() !== adminEmail) {
+  const adminEmails = (env.ADMIN_EMAIL || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  const callerEmail = (user.email || "").trim().toLowerCase();
+  if (!adminEmails.length || !adminEmails.includes(callerEmail)) {
     return json({ error: "This account is not authorized for admin actions." }, 403, origin);
   }
   return { email: user.email! };

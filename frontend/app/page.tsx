@@ -1533,7 +1533,15 @@ export default function Home() {
     setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
     setBlog(ls("nap_blog",DEF_BLOG));
     setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
-    setCmsPhotosReady(true);
+    // cmsPhotosReady is intentionally NOT set here anymore -- this browser's own localStorage
+    // cache can itself be stale (e.g. right after the About/Hero photo was changed in the CMS
+    // on a different device, or even on this same device in an earlier visit before that save
+    // had a chance to be re-cached). Flipping it true this early painted THAT stale cached
+    // photo for a moment before the live Supabase fetch below replaced it with the real
+    // current one -- exactly the "old photo flashes, then the new one shows" bug. It's now set
+    // once the cloud fetch actually resolves (see cloudLoaded/fetchCloudData below), so the
+    // very first photo ever painted is always the real current one -- never the bundled
+    // default AND never a stale local cache.
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
@@ -2150,6 +2158,9 @@ export default function Home() {
         if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
       }
       setCloudLoaded(true);
+      // Only now is it safe to paint the Hero/About photos -- see the localStorage-hydration
+      // effect above for why cmsPhotosReady moved here instead of firing on that earlier tick.
+      setCmsPhotosReady(true);
     });
     return ()=>{cancelled=true;};
   },[]);

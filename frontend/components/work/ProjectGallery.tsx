@@ -1,130 +1,121 @@
 "use client";
-// Bento-style masonry gallery + lightbox for /work/[slug] -- same .egallery/.egallery-item
-// CSS classes (globals.css) and black&white-to-color hover treatment used across the rest of
-// the site, so this page looks consistent with the homepage Featured Work / Work grid rather
-// than introducing a new visual language. Each tile also gets a small "Request Permission"
-// trigger (only rendered when `permissionEnabled` is true) that opens PermissionRequestModal
-// pre-populated with that exact image.
+// Bento-style masonry gallery + lightbox for /work/[slug] -- upgraded from the old
+// "one large hero photo + horizontal-scrolling thumbnail strip" layout to the same
+// .egallery/.egallery-item bento-masonry system used on the homepage Featured Work /
+// Work grids (globals.css), so every project photograph is shown together with no
+// horizontal scrollbar. Each tile measures its own image's real aspect ratio on load
+// and is given a grid column span accordingly (dense auto-flow packs the gaps); the
+// hero (first/cover) image always gets a boosted minimum span so it stays the most
+// prominent tile on the page. Clicking any tile opens the same full-screen lightbox
+// (prev/next navigation, keyboard, Picture Permission Request) as before -- unchanged.
 import { useEffect, useState } from "react";
 import PermissionRequestModal from "./PermissionRequestModal";
 
 type GalleryImage = { id: string; url: string; caption?: string; orientation?: string };
 
-// MAIN / HERO TILE -- the single most prominent image in the set, shown large and full
-// width. Part of the "one large photo + small thumbnails" redesign: replaces the old
-// equal-size bento grid for this page specifically (the homepage/Work grid keep their own
-// bento layout via the shared .egallery classes -- untouched, not reused here). Click opens
-// the same lightbox every other image uses.
-function MainImageTile({
+// Column span for a given width/height ratio -- wide photos span more columns, tall/square
+// ones span fewer, so the grid reads as an art-directed collage rather than a uniform grid.
+// The hero tile (index 0) is always floored at span 2 so it stays visually dominant even
+// when its own measured ratio (e.g. a portrait shot) wouldn't otherwise earn that span.
+function spanForRatio(r: number, isHero: boolean) {
+  let span = r >= 2.1 ? 4 : r >= 1.2 ? 2 : 1;
+  if (isHero && span < 2) span = 2;
+  return span;
+}
+
+// GALLERY TILE -- one photo in the bento-masonry grid. Seeds a placeholder span from the
+// CMS-provided `orientation` (if any) so there's no layout jump before the image loads,
+// then re-measures the image's *real* aspect ratio on `onLoad` and corrects the span.
+function GalleryTile({
   img,
+  index,
   total,
-  projectName,
+  isHero,
   permissionEnabled,
   onOpen,
   onRequestPermission,
 }: {
   img: GalleryImage;
+  index: number;
   total: number;
-  projectName: string;
+  isHero: boolean;
   permissionEnabled: boolean;
   onOpen: () => void;
   onRequestPermission: () => void;
 }) {
+  const seedRatio = img.orientation === "landscape" ? 1.78 : img.orientation === "square" ? 1 : 0.8;
+  const [span, setSpan] = useState(() => spanForRatio(seedRatio, isHero));
   const [hovered, setHovered] = useState(false);
+
   return (
     <div
+      className={`egallery-item eg-span-${span}`}
+      onClick={onOpen}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ position: "relative", aspectRatio: img.orientation === "landscape" ? "16/9" : "4/5", maxHeight: "80vh", overflow: "hidden", borderRadius: 4, background: "var(--bg-surface-1, #140D21)" }}
+      style={{ background: "var(--bg-surface-1, #140D21)" }}
     >
       <img
         src={img.url}
-        alt={img.caption || projectName}
-        loading="eager"
+        alt={img.caption || ""}
+        loading={isHero ? "eager" : "lazy"}
         decoding="async"
-        onClick={onOpen}
-        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer", transition: "transform 0.6s ease", transform: hovered ? "scale(1.02)" : "scale(1)" }}
-      />
-      {/* Hover affordance -- dark wash + expand icon signals the tile opens the lightbox,
-          plus a "01 / 08" counter for context. Both fade in only on hover. */}
-      <div
-        onClick={onOpen}
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: "rgba(9,6,14,0.24)",
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.3s ease",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          pointerEvents: hovered ? "auto" : "none",
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        onLoad={(e) => {
+          const el = e.currentTarget;
+          if (el.naturalWidth && el.naturalHeight) {
+            setSpan(spanForRatio(el.naturalWidth / el.naturalHeight, isHero));
+          }
         }}
-      >
-        <span style={{ width: 56, height: 56, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 22 }}>⤢</span>
-      </div>
-      <div style={{ position: "absolute", left: 14, bottom: 14, fontSize: 11, letterSpacing: 1, color: "rgba(255,255,255,0.9)", background: "rgba(9,6,14,0.6)", padding: "4px 10px", borderRadius: 20, opacity: hovered ? 1 : 0, transition: "opacity 0.3s ease" }}>
-        {String(1).padStart(2, "0")} / {String(total).padStart(2, "0")}
-      </div>
+      />
+      {isHero && (
+        <div
+          style={{
+            position: "absolute",
+            left: 14,
+            top: 14,
+            fontSize: 11,
+            letterSpacing: 1,
+            color: "rgba(255,255,255,0.9)",
+            background: "rgba(9,6,14,0.6)",
+            padding: "4px 10px",
+            borderRadius: 20,
+            opacity: hovered ? 1 : 0,
+            transition: "opacity 0.3s ease",
+          }}
+        >
+          {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+        </div>
+      )}
       {permissionEnabled && (
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRequestPermission();
           }}
+          title="Picture Permission Request"
           style={{
             position: "absolute",
-            top: 14,
-            right: 14,
+            top: 10,
+            right: 10,
             zIndex: 2,
             background: "rgba(9,6,14,0.72)",
             color: "#fff",
             border: "none",
             borderRadius: 20,
-            fontSize: 11,
+            fontSize: 10,
             letterSpacing: 0.5,
-            padding: "7px 12px",
+            padding: "6px 10px",
             cursor: "pointer",
-            opacity: 0.9,
+            opacity: hovered ? 1 : 0.82,
+            transition: "opacity 0.2s ease",
           }}
         >
-          Picture Permission Request
+          Request Permission
         </button>
       )}
       {img.caption && <div className="egallery-caption">{img.caption}</div>}
     </div>
-  );
-}
-
-// THUMBNAIL TILE -- small preview of every other image in the set (including the hero, so
-// it stays reachable/highlighted-free from this row too). Click opens the lightbox at that
-// exact image; per-image "Request Permission" lives in the lightbox now instead of on each
-// small thumbnail, so it stays reachable without cluttering a 110px-wide tile.
-function ThumbTile({ img, index, active, onOpen }: { img: GalleryImage; index: number; active: boolean; onOpen: () => void }) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <button
-      onClick={onOpen}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      aria-label={`Open image ${index + 1}`}
-      style={{
-        flexShrink: 0,
-        width: 110,
-        height: 78,
-        padding: 0,
-        border: active ? "2px solid var(--accent-primary, #8B5CF6)" : "1px solid rgba(255,255,255,0.15)",
-        borderRadius: 3,
-        overflow: "hidden",
-        cursor: "pointer",
-        background: "var(--bg-surface-1, #140D21)",
-        opacity: hovered ? 1 : 0.82,
-        transition: "opacity 0.2s ease, border-color 0.2s ease",
-      }}
-    >
-      <img src={img.url} alt={img.caption || ""} loading="lazy" decoding="async" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-    </button>
   );
 }
 
@@ -162,25 +153,24 @@ export default function ProjectGallery({
   return (
     <div style={{ marginBottom: 48 }}>
       {images.length > 0 && (
-        <div>
-          {/* MAIN + THUMBNAILS -- one large hero photo (the first/cover image) with the rest
-              of the set as a small scrollable thumbnail row underneath. Clicking the hero or
-              any thumbnail opens the same full lightbox at that exact image. */}
-          <MainImageTile
-            img={images[0]}
-            total={images.length}
-            projectName={projectName}
-            permissionEnabled={permissionEnabled}
-            onOpen={() => setLightboxIndex(0)}
-            onRequestPermission={() => setPermissionFor(images[0])}
-          />
-          {images.length > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 12, overflowX: "auto", paddingBottom: 4 }}>
-              {images.map((img, i) => (
-                <ThumbTile key={img.id} img={img} index={i} active={false} onOpen={() => setLightboxIndex(i)} />
-              ))}
-            </div>
-          )}
+        <div className="egallery">
+          {/* BENTO MASONRY GRID -- replaces the old single hero photo + horizontal-scrolling
+              thumbnail strip. Every photograph in the set is shown together, at its own real
+              aspect ratio, with the hero/cover image boosted to a larger span so it still
+              reads as the lead image. No horizontal scrollbar; fully responsive via the
+              existing .egallery breakpoints (4 cols desktop -> 2 cols tablet -> 1 col mobile). */}
+          {images.map((img, i) => (
+            <GalleryTile
+              key={img.id}
+              img={img}
+              index={i}
+              total={images.length}
+              isHero={i === 0}
+              permissionEnabled={permissionEnabled}
+              onOpen={() => setLightboxIndex(i)}
+              onRequestPermission={() => setPermissionFor(img)}
+            />
+          ))}
         </div>
       )}
 
@@ -286,9 +276,9 @@ export default function ProjectGallery({
           >
             ✕
           </button>
-          {/* Request Permission for whichever image is currently open -- lives here now
-              (instead of on each small thumbnail below) so it stays reachable for every
-              image in the set without cluttering a 110px-wide tile. */}
+          {/* Request Permission for whichever image is currently open -- lives here too
+              (in addition to each grid tile) so it's always reachable for the exact image
+              currently on screen. */}
           {permissionEnabled && (
             <button
               onClick={(e) => {

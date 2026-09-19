@@ -1656,6 +1656,14 @@ export default function Home() {
   const [bookingsErr,setBookingsErr]=useState("");
   const [bookingActionBusy,setBookingActionBusy]=useState<string|null>(null);
   const [rejectReasonFor,setRejectReasonFor]=useState<string|null>(null);
+  // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
+  // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
+  const [msgList,setMsgList]=useState<any[]|null>(null);
+  const [msgLoading,setMsgLoading]=useState(false);
+  const [msgErr,setMsgErr]=useState("");
+  const [msgOpenCustomerId,setMsgOpenCustomerId]=useState<string|null>(null);
+  const [msgReplyText,setMsgReplyText]=useState("");
+  const [msgSending,setMsgSending]=useState(false);
   // Comments moderation (CMS > Comments) -- same requireAdmin/adminSession pattern as Bookings.
   const [commentsList,setCommentsList]=useState<any[]|null>(null);
   const [commentsLoading,setCommentsLoading]=useState(false);
@@ -1841,6 +1849,35 @@ export default function Home() {
     setBookingsLoading(false);
   }
   useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+
+  async function loadMessages(){
+    if(!adminSession) return;
+    setMsgLoading(true); setMsgErr("");
+    try{
+      const res=await fetch("/api/admin/messages",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load messages");
+      setMsgList(data.messages||[]);
+    }catch(e:any){ setMsgErr(e.message||"Failed to load messages"); }
+    setMsgLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="messages"&&adminSession) loadMessages(); },[cmsTab,adminSession]);
+  // Refresh the unread-count badge in the CMS nav regardless of which tab is open, same
+  // pattern as Image Requests' pending-count badge above.
+  useEffect(()=>{ if(adminSession) loadMessages(); },[adminSession]);
+
+  async function sendAdminReply(customerId:string){
+    if(!adminSession||!msgReplyText.trim()) return;
+    setMsgSending(true);
+    try{
+      const res=await fetch("/api/admin/messages",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({customer_id:customerId,body:msgReplyText.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to send reply");
+      setMsgReplyText("");
+      await loadMessages();
+    }catch(e:any){ setMsgErr(e.message||"Failed to send reply"); }
+    setMsgSending(false);
+  }
 
   async function loadComments(){
     if(!adminSession) return;
@@ -2386,6 +2423,7 @@ export default function Home() {
         </div>
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
+        <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
         <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
@@ -2761,6 +2799,70 @@ export default function Home() {
                   </div>
                 )}
               </>
+          </div>
+        )}
+
+        {/* CLIENT MESSAGES -- one thread per customer_id, grouped client-side from the flat
+            list functions/api/admin/messages.ts returns. Replying (sendAdminReply) also
+            marks that customer's earlier client messages as read server-side. */}
+        {cmsTab==="messages"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Client Messages</div>
+              <button onClick={loadMessages} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {msgErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{msgErr}</div>}
+            {msgLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!msgList||msgList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No messages yet.</div>
+            ):(()=>{
+              const byCustomer=new Map<string,any[]>();
+              for(const m of msgList){
+                if(!byCustomer.has(m.customer_id)) byCustomer.set(m.customer_id,[]);
+                byCustomer.get(m.customer_id)!.push(m);
+              }
+              const threads=Array.from(byCustomer.entries()).map(([cid,msgs])=>{
+                const sorted=[...msgs].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime());
+                const last=sorted[sorted.length-1];
+                const unread=msgs.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length;
+                return{customerId:cid,customer:last.customers,messages:sorted,last,unread};
+              }).sort((a,b)=>new Date(b.last.created_at).getTime()-new Date(a.last.created_at).getTime());
+              return(
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {threads.map(t=>{
+                    const open=msgOpenCustomerId===t.customerId;
+                    return(
+                      <div key={t.customerId} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8,cursor:"pointer"}} onClick={()=>setMsgOpenCustomerId(open?null:t.customerId)}>
+                          <div>
+                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{t.customer?.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.customer?.email}</span></div>
+                            <div style={{fontSize:12,color:"#888",marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
+                          </div>
+                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
+                        </div>
+                        {open&&(
+                          <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                            <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:320,overflowY:"auto",marginBottom:14}}>
+                              {t.messages.map((m:any)=>(
+                                <div key={m.id} style={{alignSelf:m.sender==="admin"?"flex-end":"flex-start",maxWidth:"80%"}}>
+                                  <div style={{background:m.sender==="admin"?C.P:"#1a1a2e",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                                  <div style={{fontSize:10,color:"#666",marginTop:3}}>{m.sender==="admin"?"You":t.customer?.full_name||"Client"} · {new Date(m.created_at).toLocaleString()}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input style={{...S.inp,flex:1}} placeholder="Reply…" value={msgReplyText} onChange={e=>setMsgReplyText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendAdminReply(t.customerId)} />
+                              <button onClick={()=>sendAdminReply(t.customerId)} disabled={msgSending||!msgReplyText.trim()} style={S.btnP}>{msgSending?"...":"Send"}</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -3526,15 +3628,30 @@ export default function Home() {
                     </div>
                     <div style={{fontSize:10,color:"#444",marginBottom:8}}>P = Portrait · L = Landscape · Click Cover to set cover photo</div>
                   </div>
+                  <div style={{fontSize:10,color:"#444",marginBottom:6,marginTop:-4}}>Click ◀ ▶ to nudge one spot, or the #N badge to jump an image straight to a position</div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6,marginBottom:16}}>
-                    {(form.images||[]).map((img,i)=>(
+                    {(form.images||[]).map((img,i)=>{
+                      const total=(form.images||[]).length;
+                      const moveImgTo=(to:number)=>{
+                        if(isNaN(to)||to<0||to>=total||to===i)return;
+                        setForm(f=>{ const arr=[...(f.images||[])]; const [item]=arr.splice(i,1); arr.splice(to,0,item); return {...f,images:arr}; });
+                      };
+                      return(
                       <div key={i} style={{position:"relative",aspectRatio:"1",overflow:"hidden",background:"#0d0d18"}}>
                         <img src={img.url} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} />
                         <div style={{position:"absolute",top:2,right:2,background:"rgba(0,0,0,0.8)",color:img.orientation==="portrait"?C.PL:"#7ec8e3",fontSize:8,padding:"1px 4px"}}>{img.orientation==="portrait"?"P":"L"}</div>
                         <button onClick={()=>setForm(f=>({...f,images:f.images.filter((_,idx)=>idx!==i)}))} style={{position:"absolute",top:2,left:2,background:"rgba(0,0,0,0.8)",border:"none",color:"#fff",cursor:"pointer",fontSize:10}}>✕</button>
                         <button onClick={()=>setForm(f=>({...f,coverImage:img.url}))} style={{position:"absolute",bottom:2,left:2,background:form.coverImage===img.url?C.P:"rgba(0,0,0,0.8)",border:"none",color:"#fff",cursor:"pointer",fontSize:8,padding:"1px 4px"}}>Cover</button>
+                        {/* Reorder controls: ◀ ▶ nudge this image one spot, and the #N badge
+                            opens a prompt to jump it straight to any position (e.g. #5 -> #4,
+                            or #3 -> #8) -- built for projects with dozens of images where
+                            clicking ◀/▶ repeatedly would be impractical. */}
+                        <button onClick={()=>moveImgTo(i-1)} disabled={i===0} title="Move left" style={{position:"absolute",bottom:2,right:46,width:16,textAlign:"center" as const,background:"rgba(0,0,0,0.8)",border:"none",color:i===0?"#555":"#fff",cursor:i===0?"default":"pointer",fontSize:10,padding:"1px 0"}}>◀</button>
+                        <button onClick={()=>moveImgTo(i+1)} disabled={i===total-1} title="Move right" style={{position:"absolute",bottom:2,right:26,width:16,textAlign:"center" as const,background:"rgba(0,0,0,0.8)",border:"none",color:i===total-1?"#555":"#fff",cursor:i===total-1?"default":"pointer",fontSize:10,padding:"1px 0"}}>▶</button>
+                        <button onClick={()=>{ const input=prompt(`Move image #${i+1} to position (1-${total}):`,String(i+1)); if(input===null)return; moveImgTo(parseInt(input,10)-1); }} title="Jump to position" style={{position:"absolute",bottom:2,right:2,minWidth:20,textAlign:"center" as const,background:"rgba(0,0,0,0.8)",border:"none",color:"#fff",cursor:"pointer",fontSize:8,padding:"1px 3px"}}>#{i+1}</button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div style={{marginBottom:16}}>
                     <label style={S.lbl}>Add Reel/Social URL</label>

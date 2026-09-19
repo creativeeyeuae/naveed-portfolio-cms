@@ -1528,22 +1528,24 @@ export default function Home() {
   // directly in those initializers used to cause.
   useEffect(()=>{
     setSettings(s=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
-    // Projects/Categories/Testimonials/Blog/BlogCats are intentionally NOT hydrated from
-    // localStorage here anymore (they used to be, via ls("nap_projects",...) etc.). This
-    // browser's own cached copy of those lists can be stale -- e.g. right after a project
-    // cover photo or blog cover photo was changed in the CMS, on this device or another one --
-    // and applying it on this early tick painted that stale photo (Featured Work, the Work
-    // grid, Journal cards, related-projects, etc.) for a moment before the live Supabase fetch
-    // below replaced it with the real current one. Leaving them on the plain code defaults
-    // (same as the static export's own pre-rendered HTML, so still no hydration mismatch)
-    // until that fetch resolves means every photo-bearing list only ever shows the real
-    // current content -- never a stale local guess. Settings text/contact/color fields above
-    // are unaffected and still hydrate instantly here; only its own photo fields (Hero, About,
-    // Services, Client logos) are separately gated behind cmsPhotosReady below.
-    // cmsPhotosReady itself is also intentionally NOT set here -- see the fetchCloudData
-    // effect further down, where it's set once the live fetch has actually resolved so the
-    // very first photo ever painted (Hero, About, CV, Services, Client logos) is always the
-    // real current one, never the bundled default and never a stale local cache.
+    // Projects/Categories/Testimonials/Blog/BlogCats ARE hydrated from localStorage here, same
+    // as before -- this is a required safety net, not just a display nicety. The push effects
+    // below save whatever is currently in these arrays to Supabase as soon as cloudLoaded goes
+    // true, including on a failed/offline cloud fetch (cloudLoaded still flips true then, so an
+    // offline first load can still save eventually). Without this local hydration, a failed
+    // fetch would leave these arrays on the plain code defaults (dummy placeholder projects/
+    // testimonials/posts), and that placeholder data would then get pushed over -- and
+    // overwrite -- the real live content. Local hydration guarantees the worst case on a
+    // failed fetch is "re-save this browser's last known real data", never "wipe real data
+    // with dummy placeholders". (An earlier version of this effect removed this hydration to
+    // avoid a stale-photo flash on first paint; that traded a cosmetic issue for a real
+    // data-loss risk and was reverted. The photo-flash fix now lives entirely in the
+    // cmsPhotosReady-gated <img> tags below instead.)
+    setProjects(ls("nap_projects",DEF_PROJECTS));
+    setCats(ls("nap_cats",DEF_CATS));
+    setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
+    setBlog(ls("nap_blog",DEF_BLOG));
+    setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.

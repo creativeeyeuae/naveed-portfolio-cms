@@ -2279,6 +2279,11 @@ export default function Home() {
     gearBannerEyebrow: settings.uiText.gearBannerEyebrow,
     gearBannerTitle: settings.uiText.gearBannerTitle,
     gearBannerImage: settings.sectionBg.gear,
+    // Homepage <title>/meta-description (Settings > SEO) -- now actually read by
+    // app/layout.tsx's generateMetadata(), also exposed here so this shared `site` object
+    // matches lib/cmsData.ts's PublicSiteInfo shape.
+    seoTitle: settings.seoTitle,
+    seoDesc: settings.seoDesc,
   };
   const bookBtnLabel = lang === "en" ? settings.uiText.navBookBtn : T.bookBtn;
 

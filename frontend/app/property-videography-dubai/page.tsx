@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import ServicePage from "@/components/ServicePage";
+import { buildMetadata } from "@/lib/seo";
 
+// Description trimmed to a search-result-friendly length per the SEO Agent audit;
+// metadata now goes through the shared buildMetadata() helper so this page also gets a
+// real og:image (previously missing).
 const TITLE = "Property Videography in Dubai | Naveed Anjum — Creative Fusion";
 const DESC =
-  "Property videography in Dubai — walkthrough films, drone-style building coverage and marketing videos for developers, agencies and property owners. By Naveed Anjum, Creative Fusion.";
-const URL = "https://bynaveedanjum.com/property-videography-dubai";
+  "Property videography in Dubai — walkthrough films and marketing videos for developers, agencies and property owners. Naveed Anjum, Creative Fusion.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
+  path: "/property-videography-dubai/",
   title: TITLE,
   description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: "website" },
-  twitter: { card: "summary", title: TITLE, description: DESC },
-};
+});
 
 export default function Page() {
   return (

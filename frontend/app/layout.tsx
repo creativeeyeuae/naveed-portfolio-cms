@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri, Noto_Sans_Devanagari, Noto_Nastaliq_Urdu } from "next/font/google";
+import { getPublicSiteInfo } from "@/lib/cmsData";
 import "../styles/globals.css";
 
 // "Sharjah" (the shamsfz.ae brand typeface) isn't a licensed font we can source --
@@ -55,13 +56,12 @@ const notoNastaliqUrdu = Noto_Nastaliq_Urdu({ weight: ["400", "700"], subsets: [
 const arabicFontVars = `${cairoArabic.variable} ${elMessiri.variable} ${notoDevanagari.variable} ${notoNastaliqUrdu.variable}`;
 
 const SITE_URL = "https://bynaveedanjum.com";
-// SEO Agent change (homepage metadata, approved by owner): lead with the exact
-// commercial search terms ("photographer" + "videographer" + "Dubai") instead of
-// the generic brand-only title, while keeping every claim already true of the
-// business (20+ years, real service list, Creative Fusion brand, Naveed Anjum name).
-const SITE_TITLE = "Photographer & Videographer in Dubai | Naveed Anjum — Creative Fusion";
-const SITE_DESC =
-  "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography & cinematography across the UAE.";
+// Fallback title/description, used only if the CMS row is unreachable or its SEO fields
+// are left blank -- trimmed to search-result-friendly lengths (title ~15-60 chars,
+// description ~50-160) per the SEO Agent audit.
+const FALLBACK_TITLE = "Photographer & Videographer in Dubai | Naveed Anjum";
+const FALLBACK_DESC =
+  "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography.";
 // Same photo already used as the About-page portrait, at a wider crop for social share cards.
 const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
 
@@ -71,33 +71,45 @@ const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w
 // also the prerequisite Apple imposes before Web Push notifications work on iPhone at all.
 export const viewport: Viewport = { themeColor: "#140D21" };
 
-export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
-  title: SITE_TITLE,
-  description: SITE_DESC,
-  alternates: { canonical: "/" },
-  icons: { icon: "/icon", apple: "/apple-touch-icon.png" },
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Creative Fusion" },
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-  // Google Search Console ownership verification for the bynaveedanjum.com URL-prefix
-  // property (separate from the creativefusion.llc agency-site property).
-  verification: { google: "vJ5J4thHJdnpQayu1nWXVdO4qnucLWqJHMtuF4IXUhI" },
-  openGraph: {
-    title: SITE_TITLE,
-    description: SITE_DESC,
-    url: SITE_URL,
-    siteName: "Naveed Anjum — Creative Fusion",
-    images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Naveed Anjum — Photographer & Cinematographer" }],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESC,
-    images: [OG_IMAGE],
-  },
-};
+// Was a static `export const metadata` with the title/description hardcoded here a second
+// time -- meanwhile CMS > Settings > SEO already had its own "SEO Title"/"Meta Description"
+// fields (app/page.tsx, settingsTab==="seo") that saved to nap_settings.seoTitle/seoDesc and
+// were never read by anything, so editing them in the CMS silently did nothing. Now an async
+// generateMetadata() so the CMS fields (via getPublicSiteInfo(), same source every other page
+// uses) are the real, single source of truth for the homepage's own <title>/description --
+// falling back to FALLBACK_TITLE/FALLBACK_DESC only if the CMS row is empty/unreachable.
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getPublicSiteInfo();
+  const title = site.seoTitle || FALLBACK_TITLE;
+  const description = site.seoDesc || FALLBACK_DESC;
+  return {
+    metadataBase: new URL(SITE_URL),
+    title,
+    description,
+    alternates: { canonical: "/" },
+    icons: { icon: "/icon", apple: "/apple-touch-icon.png" },
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Creative Fusion" },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+    // Google Search Console ownership verification for the bynaveedanjum.com URL-prefix
+    // property (separate from the creativefusion.llc agency-site property).
+    verification: { google: "vJ5J4thHJdnpQayu1nWXVdO4qnucLWqJHMtuF4IXUhI" },
+    openGraph: {
+      title,
+      description,
+      url: SITE_URL,
+      siteName: "Naveed Anjum — Creative Fusion",
+      images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Naveed Anjum — Photographer & Cinematographer" }],
+      locale: "en_US",
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [OG_IMAGE],
+    },
+  };
+}
 
 const structuredData = {
   "@context": "https://schema.org",

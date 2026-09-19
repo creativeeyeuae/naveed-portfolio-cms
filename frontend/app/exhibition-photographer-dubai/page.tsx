@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import ServicePage from "@/components/ServicePage";
 import { UPCOMING_EXHIBITIONS } from "@/lib/servicePagesData";
+import { buildMetadata } from "@/lib/seo";
 
-const TITLE = "Exhibition & Trade Show Photographer in Dubai | Naveed Anjum — Creative Fusion";
+// Title/description trimmed to search-result-friendly lengths (title ~15-60 chars,
+// description ~50-160) per the SEO Agent audit; metadata now goes through the shared
+// buildMetadata() helper (frontend/lib/seo.ts) instead of a hand-rolled object, so this
+// page also gets a real og:image (previously missing) without duplicating that logic here.
+const TITLE = "Exhibition & Trade Show Photographer Dubai | Naveed Anjum";
 const DESC =
-  "Exhibition and trade show stand photographer in Dubai for exhibiting companies, including teams visiting from overseas — booth, product and delegate coverage by Naveed Anjum, Creative Fusion.";
-const URL = "https://bynaveedanjum.com/exhibition-photographer-dubai";
+  "Exhibition and trade show stand photographer in Dubai for exhibiting companies — booth, product and delegate coverage by Naveed Anjum, Creative Fusion.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
+  path: "/exhibition-photographer-dubai/",
   title: TITLE,
   description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: "website" },
-  twitter: { card: "summary", title: TITLE, description: DESC },
-};
+});
 
 export default function Page() {
   return (

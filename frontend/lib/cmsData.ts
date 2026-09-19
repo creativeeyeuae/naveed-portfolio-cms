@@ -261,6 +261,14 @@ export type PublicSiteInfo = {
   gearBannerEyebrow: string;
   gearBannerTitle: string;
   gearBannerImage: string;
+  // Homepage <title>/meta-description -- CMS > Settings > SEO ("SEO Title" / "Meta
+  // Description"). Previously these two fields existed in the CMS form but were saved to
+  // nap_settings and then never read anywhere: the real homepage <title>/description were a
+  // second, separate hardcoded pair in app/layout.tsx, so editing them in the CMS silently
+  // did nothing. Exposed here so app/layout.tsx's generateMetadata() can use them as the
+  // CMS's own single source of truth, same as every other page's SEO fields.
+  seoTitle: string;
+  seoDesc: string;
 };
 
 export type CmsPricingPackage = {
@@ -352,6 +360,9 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   // so the banner shows a real photo by default -- same as Work/Packages/Journal -- even
   // before Naveed uploads a custom one via CMS > Settings > Pages > Gear.
   gearBannerImage: "/gear/sony-a7r-v.jpg",
+  seoTitle: "Photographer & Videographer in Dubai | Naveed Anjum",
+  seoDesc:
+    "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography.",
 };
 
 // Read-only subset of the CMS's "nap_settings" row needed to render a real site header/
@@ -363,7 +374,8 @@ type StringInfoKey =
   | "instagram" | "youtube" | "linkedin" | "footerCopyright"
   | "address" | "waNumber" | "waMsg" | "tiktok"
   | "aboutName" | "aboutTitle" | "aboutBio" | "aboutPhoto"
-  | "statsYears" | "statsProjects" | "statsClients";
+  | "statsYears" | "statsProjects" | "statsClients"
+  | "seoTitle" | "seoDesc";
 
 export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   const settings = await readSiteSettingsObject();
@@ -487,6 +499,8 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     gearBannerEyebrow: pickUi("gearBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.gearBannerEyebrow),
     gearBannerTitle: pickUi("gearBannerTitle", DEFAULT_PUBLIC_SITE_INFO.gearBannerTitle),
     gearBannerImage: pickBg("gear", DEFAULT_PUBLIC_SITE_INFO.gearBannerImage),
+    seoTitle: pick("seoTitle"),
+    seoDesc: pick("seoDesc"),
   };
 }
 

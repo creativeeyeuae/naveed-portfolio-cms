@@ -1,18 +1,23 @@
 import type { Metadata } from "next";
 import ServicePage from "@/components/ServicePage";
+import { buildMetadata } from "@/lib/seo";
 
+// Metadata now goes through the shared buildMetadata() helper so this page gets a real
+// og:image (previously missing) per the SEO Agent audit. Title/description were already
+// within range, so only the mechanism changed here, not the copy.
 const TITLE = "Commercial Photographer in Dubai | Naveed Anjum — Creative Fusion";
 const DESC =
   "Commercial photographer in Dubai for brands, businesses and corporate clients — product, editorial and corporate photography by Naveed Anjum, Creative Fusion.";
-const URL = "https://bynaveedanjum.com/commercial-photographer-dubai";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
+  path: "/commercial-photographer-dubai/",
   title: TITLE,
   description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: "website" },
-  twitter: { card: "summary", title: TITLE, description: DESC },
-};
+  // Real uploaded portfolio photo already used as this page's own hero image below --
+  // more relevant for a link preview than the site-wide fallback.
+  imageUrl:
+    "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789124446277-hn5lcb8qp26.jpg",
+});
 
 export default function Page() {
   return (

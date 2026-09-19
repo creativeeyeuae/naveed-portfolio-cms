@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import ServicePage from "@/components/ServicePage";
+import { buildMetadata } from "@/lib/seo";
 
-const TITLE = "Architectural Photographer in Dubai | Naveed Anjum — Creative Fusion";
+// Title/description trimmed to search-result-friendly lengths per the SEO Agent audit;
+// metadata now goes through the shared buildMetadata() helper so this page also gets a
+// real og:image (previously missing).
+const TITLE = "Architectural Photographer in Dubai | Naveed Anjum";
 const DESC =
-  "Architectural photographer in Dubai capturing buildings, façades and skylines with clean lines and controlled perspective, for architects, developers and design studios. By Naveed Anjum, Creative Fusion.";
-const URL = "https://bynaveedanjum.com/architectural-photographer-dubai";
+  "Architectural photographer in Dubai capturing buildings, façades and skylines with clean lines, for architects, developers and design studios.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
+  path: "/architectural-photographer-dubai/",
   title: TITLE,
   description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: "website" },
-  twitter: { card: "summary", title: TITLE, description: DESC },
-};
+});
 
 export default function Page() {
   return (

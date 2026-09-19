@@ -1,18 +1,19 @@
 import type { Metadata } from "next";
 import ServicePage from "@/components/ServicePage";
+import { buildMetadata } from "@/lib/seo";
 
+// Description trimmed to a search-result-friendly length per the SEO Agent audit;
+// metadata now goes through the shared buildMetadata() helper so this page also gets a
+// real og:image (previously missing).
 const TITLE = "Interior Photographer in Dubai | Naveed Anjum — Creative Fusion";
 const DESC =
-  "Interior photographer in Dubai for homes, hospitality, retail and commercial interiors — light, composition and styling captured accurately. By Naveed Anjum, Creative Fusion.";
-const URL = "https://bynaveedanjum.com/interior-photographer-dubai";
+  "Interior photographer in Dubai for homes, hospitality, retail and commercial interiors — light, composition and styling captured accurately.";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
+  path: "/interior-photographer-dubai/",
   title: TITLE,
   description: DESC,
-  alternates: { canonical: URL },
-  openGraph: { title: TITLE, description: DESC, url: URL, type: "website" },
-  twitter: { card: "summary", title: TITLE, description: DESC },
-};
+});
 
 export default function Page() {
   return (

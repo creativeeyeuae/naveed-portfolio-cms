@@ -18,11 +18,13 @@ import type { Metadata } from "next";
 
 export const SITE_URL = "https://bynaveedanjum.com";
 export const SITE_NAME = "Naveed Anjum";
-// No site-wide default OG image exists yet -- omit the tag entirely
-// rather than pointing at a file that doesn't exist (a broken og:image
-// is worse for link previews than none). Set this once a real 1200x630
-// default/brand image is added to the frontend and deployed.
-export const DEFAULT_OG_IMAGE: string | undefined = undefined;
+// Site-wide fallback OG/share image for any page that doesn't set its own imageUrl.
+// Same photo the root layout (app/layout.tsx) already uses for the homepage's own
+// og:image and structured data -- reusing it here keeps every page consistent instead
+// of some pages having a link-preview image and others (e.g. /gear, /packages, the
+// service-area pages) showing a blank/generic preview when shared.
+export const DEFAULT_OG_IMAGE: string | undefined =
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
 
 /**
  * URL-safe slug from arbitrary text. Used by the CMS to auto-generate a

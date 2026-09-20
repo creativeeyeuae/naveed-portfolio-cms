@@ -279,7 +279,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
-  videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"Every Frame Tells a Story", videoSectionSubtitle:"Behind The Lens",
+  videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"Luxury Villa Shoot", videoSectionSubtitle:"Featured Project",
   imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
@@ -3642,11 +3642,11 @@ export default function Home() {
                 </div>
                 <div style={{marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- Small Label (optional)</label>
-                  <input style={S.inp} value={settingsDraft.videoSectionSubtitle} onChange={e=>updateSD({videoSectionSubtitle:e.target.value})} placeholder="e.g. BEHIND THE LENS" />
+                  <input style={S.inp} value={settingsDraft.videoSectionSubtitle} onChange={e=>updateSD({videoSectionSubtitle:e.target.value})} placeholder="e.g. FEATURED PROJECT" />
                 </div>
                 <div style={{marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- Headline (optional)</label>
-                  <input style={S.inp} value={settingsDraft.videoSectionTitle} onChange={e=>updateSD({videoSectionTitle:e.target.value})} placeholder="e.g. Every Frame Tells a Story" />
+                  <input style={S.inp} value={settingsDraft.videoSectionTitle} onChange={e=>updateSD({videoSectionTitle:e.target.value})} placeholder="e.g. Luxury Villa Shoot" />
                   <div style={{fontSize:11,color:"#444",marginTop:4}}>Both are shown as a caption over the bottom-left of the video, over a slight dark scrim so they stay readable. Leave either blank to skip it.</div>
                 </div>
                 {settingsDraft.videoSectionEnabled && !settingsDraft.videoSectionUrl && (

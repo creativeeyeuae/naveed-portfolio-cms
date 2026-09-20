@@ -279,7 +279,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
-  videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"", videoSectionSubtitle:"",
+  videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"Every Frame Tells a Story", videoSectionSubtitle:"Behind The Lens",
   imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",

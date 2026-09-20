@@ -271,10 +271,11 @@ html[lang="hi"] * {
 /* Small brand-logo badge in one corner of the photo (bottom-left), not a repeating tile --
    sits in its own layer on top of the photo (pointer-events:none so it never blocks clicks,
    hovers, or the existing "Picture Permission Request" buttons/hover captions underneath it).
-   Only used on the actual full project-gallery photos (hero/collage/lightbox in
-   ProjectGallery.tsx) -- deliberately left off the small B&W preview/link cards elsewhere
-   (WorkGrid, homepage Featured Work, homepage in-memory Work view), which still keep the
-   right-click/drag-save block via .protected-img, just without the visible mark. */
+   Only used on the top hero/slide image of a project's gallery (HeroTile in
+   ProjectGallery.tsx) -- deliberately left off everything else (the collage tiles below it,
+   the lightbox, WorkGrid, homepage Featured Work, homepage in-memory Work view), which all
+   still keep the right-click/drag-save block via .protected-img, just without the visible
+   mark. */
 .wm-overlay {
   position: absolute;
   inset: 0;

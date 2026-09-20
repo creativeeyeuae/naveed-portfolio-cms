@@ -190,7 +190,6 @@ function GalleryTile({
           transition: "transform 0.5s ease, filter 0.5s ease",
         }}
       />
-      <WatermarkOverlay />
       {permissionEnabled && (
         <button
           onClick={(e) => {
@@ -394,7 +393,6 @@ export default function ProjectGallery({
                 {...protectedImgProps}
                 style={{ maxWidth: "92vw", maxHeight: "84vh", objectFit: "contain", display: "block" }}
               />
-              <WatermarkOverlay />
             </div>
             {images[lightboxIndex].caption && (
               <figcaption style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, letterSpacing: 0.5, textAlign: "center", maxWidth: "80vw" }}>{images[lightboxIndex].caption}</figcaption>

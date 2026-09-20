@@ -118,7 +118,7 @@ type SiteSettings = {
   instagram:string; youtube:string; linkedin:string; tiktok:string;
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
-  videoSectionEnabled:boolean; videoSectionUrl:string; // Full-width video section, between About and Services
+  videoSectionEnabled:boolean; videoSectionUrl:string; videoSectionTitle:string; videoSectionSubtitle:string; // Full-width video section, between About and Services
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   imagePermissionEnabled:boolean; // CMS on/off switch for the whole Image Permission Request
                                    // feature (spec point 22) -- when off, /work/[slug] hides
@@ -279,7 +279,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
-  videoSectionEnabled:false, videoSectionUrl:"",
+  videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"", videoSectionSubtitle:"",
   imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
@@ -1199,7 +1199,7 @@ function getYouTubeId(url: string): string {
   const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
   return m ? m[1] : "";
 }
-function FullVideoSection({ url }: { url: string }) {
+function FullVideoSection({ url, title, subtitle }: { url: string; title?: string; subtitle?: string }) {
   const id = getYouTubeId(url);
   const [muted, setMuted] = useState(true);
   const [volume, setVolume] = useState(80); // 0-100, only meaningful while unmuted
@@ -1237,7 +1237,19 @@ function FullVideoSection({ url }: { url: string }) {
           style={{width:"100%",height:"100%",border:0}}
         />
       </div>
-      <div aria-hidden style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 100%)",pointerEvents:"none"}} />
+      <div aria-hidden style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 100%)",pointerEvents:"none"}} />
+      {/* Optional caption -- both fields are blank by default (CMS > Settings > Pages, right
+          under the video link), so shipping this makes no visual change until Naveed types
+          something. pointer-events:none + sitting above the mute/volume pill's height keeps
+          it from ever blocking that control. */}
+      {(title || subtitle) && (
+        <div style={{position:"absolute",left:0,right:0,bottom:0,padding:"0 40px 96px",zIndex:1,pointerEvents:"none"}}>
+          <div style={{maxWidth:1160,margin:"0 auto"}}>
+            {subtitle && <div style={{fontSize:12,letterSpacing:4,textTransform:"uppercase",color:"rgba(255,255,255,0.8)",marginBottom:14,fontWeight:600,textShadow:"0 2px 12px rgba(0,0,0,0.6)"}}>{subtitle}</div>}
+            {title && <h2 style={{fontSize:"clamp(28px,4.5vw,52px)",fontWeight:700,color:"#fff",margin:0,lineHeight:1.15,maxWidth:720,textShadow:"0 4px 24px rgba(0,0,0,0.55)"}}>{title}</h2>}
+          </div>
+        </div>
+      )}
       <div style={{position:"absolute",bottom:24,right:24,display:"flex",alignItems:"center",gap:10,background:"rgba(9,6,14,0.55)",border:"1px solid rgba(255,255,255,0.35)",borderRadius:26,padding:"0 18px 0 6px",height:44,backdropFilter:"blur(6px)",zIndex:2}}>
         <button
           onClick={toggleMute}
@@ -3626,7 +3638,16 @@ export default function Home() {
                 <div style={{marginTop:20,marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- YouTube Link</label>
                   <input style={S.inp} value={settingsDraft.videoSectionUrl} onChange={e=>updateSD({videoSectionUrl:e.target.value})} placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." />
-                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Paste any normal YouTube video/share link -- it plays full-width between About and Services, autoplaying on mute with a mute/unmute button.</div>
+                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Paste any normal YouTube video/share link -- it plays full-width between About and Services, autoplaying on mute with a mute/unmute + volume control.</div>
+                </div>
+                <div style={{marginBottom:16}}>
+                  <label style={S.lbl}>Full-Width Video -- Small Label (optional)</label>
+                  <input style={S.inp} value={settingsDraft.videoSectionSubtitle} onChange={e=>updateSD({videoSectionSubtitle:e.target.value})} placeholder="e.g. BEHIND THE LENS" />
+                </div>
+                <div style={{marginBottom:16}}>
+                  <label style={S.lbl}>Full-Width Video -- Headline (optional)</label>
+                  <input style={S.inp} value={settingsDraft.videoSectionTitle} onChange={e=>updateSD({videoSectionTitle:e.target.value})} placeholder="e.g. Every Frame Tells a Story" />
+                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Both are shown as a caption over the bottom-left of the video, over a slight dark scrim so they stay readable. Leave either blank to skip it.</div>
                 </div>
                 {settingsDraft.videoSectionEnabled && !settingsDraft.videoSectionUrl && (
                   <div style={{fontSize:11,color:"#c9963f",marginTop:-8,marginBottom:14,lineHeight:1.6}}>
@@ -4727,7 +4748,7 @@ export default function Home() {
       {/* FULL-WIDTH VIDEO -- off by default; turned on + given a YouTube link in
           CMS > Settings > Pages. See FullVideoSection above. */}
       {settings.videoSectionEnabled && settings.videoSectionUrl && (
-        <FullVideoSection url={settings.videoSectionUrl} />
+        <FullVideoSection url={settings.videoSectionUrl} title={settings.videoSectionTitle} subtitle={settings.videoSectionSubtitle} />
       )}
 
       {/* SERVICES -- editorial index list, but each row is bookended by a solid-DARK chip

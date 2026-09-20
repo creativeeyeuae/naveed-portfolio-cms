@@ -1655,12 +1655,12 @@ export default function Home() {
     return ()=>clearInterval(id);
   },[featuredTesti.length]);
 
-  // Auto sign-out of the CMS after 10 minutes of inactivity, so an unlocked admin
+  // Auto sign-out of the CMS after 30 minutes of inactivity, so an unlocked admin
   // session doesn't stay open indefinitely on a shared or public computer.
   useEffect(()=>{
     if(!authed) return;
     let timer:ReturnType<typeof setTimeout>;
-    const TIMEOUT_MS=10*60*1000;
+    const TIMEOUT_MS=30*60*1000;
     function reset(){ if(timer) clearTimeout(timer); timer=setTimeout(()=>{ adminSignOut(); },TIMEOUT_MS); }
     reset();
     window.addEventListener("click",reset);

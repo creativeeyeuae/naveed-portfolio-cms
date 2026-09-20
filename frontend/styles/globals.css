@@ -271,11 +271,13 @@ html[lang="hi"] * {
 /* Small brand-logo badge in one corner of the photo (bottom-left), not a repeating tile --
    sits in its own layer on top of the photo (pointer-events:none so it never blocks clicks,
    hovers, or the existing "Picture Permission Request" buttons/hover captions underneath it).
-   Only used on the top hero/slide image of a project's gallery (HeroTile in
-   ProjectGallery.tsx) -- deliberately left off everything else (the collage tiles below it,
-   the lightbox, WorkGrid, homepage Featured Work, homepage in-memory Work view), which all
-   still keep the right-click/drag-save block via .protected-img, just without the visible
-   mark. */
+   Used on the top hero/slide image of a project's gallery AND on the full-size lightbox view
+   -- deliberately left off the small collage thumbnails below, WorkGrid, homepage Featured
+   Work, and the homepage in-memory Work view, which all still keep the right-click/drag-save
+   block via .protected-img, just without the visible mark.
+   Fades in slowly (rather than popping in instantly) each time this layer mounts -- i.e. on
+   first page load for the hero badge, and every time the lightbox is opened for the full-size
+   view, since that's a fresh mount each time. */
 .wm-overlay {
   position: absolute;
   inset: 0;
@@ -285,11 +287,21 @@ html[lang="hi"] * {
   background-repeat: no-repeat;
   background-position: 10px calc(100% - 10px);
   background-size: clamp(50px, 14%, 110px) auto;
-  opacity: 0.85;
+  animation: wmFadeIn 1.8s ease forwards;
+}
+
+@keyframes wmFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.85;
+  }
 }
 
 /* Second, fainter copy centered on the photo -- a crop that removes the corner badge
-   still carries this one, so the mark survives a simple crop. */
+   still carries this one, so the mark survives a simple crop. Fades in a touch slower
+   than the corner badge so the two don't both pop in at the exact same instant. */
 .wm-overlay::after {
   content: "";
   position: absolute;
@@ -298,5 +310,14 @@ html[lang="hi"] * {
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 20% auto;
-  opacity: 0.15;
+  animation: wmFadeInFaint 2.2s ease forwards;
+}
+
+@keyframes wmFadeInFaint {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.15;
+  }
 }

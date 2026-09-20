@@ -1768,8 +1768,6 @@ export default function Home() {
     });
     return ()=>{ sub?.subscription?.unsubscribe?.(); };
   },[]);
-  useEffect(()=>{ if(adminSession) setSettingsDraft(settings); },[adminSession]);
-
   async function adminSignIn(){
     if(!sb) return;
     setAdminSignInBusy(true); setAdminSignInErr("");
@@ -2192,6 +2190,30 @@ export default function Home() {
     });
     return ()=>{cancelled=true;};
   },[]);
+
+  // Seed the CMS's Settings-tab editing draft from the real `settings` state -- but only
+  // once real cloud data has actually been confirmed loaded (cloudDataConfirmed), and only
+  // once per sign-in (settingsDraftSyncedRef), never on every change of `adminSession`.
+  // The old version re-ran this on ANY change to `adminSession`'s object identity, which
+  // includes Supabase's silent background token refresh (same user, new token object) --
+  // not just a real sign-in. Two failure modes came from that: (1) on a fresh page load,
+  // the session often restores from localStorage faster than the cloud settings fetch
+  // resolves, so this fired with `settings` still on its pre-cloud placeholder value,
+  // freezing the CMS's Hero Slides / picture fields on stale/old images even after the
+  // real cloud data (with the actually-saved picture) arrived a moment later -- exactly
+  // "I update a picture, open it again, still shows the old picture" in the CMS itself,
+  // even though the live site and the real saved data were fine. (2) a background token
+  // refresh firing mid-edit would silently reset any in-progress unsaved changes in the
+  // Settings form back to the last-saved state. Gating on cloudDataConfirmed fixes (1);
+  // the once-per-sign-in ref guard fixes (2).
+  const settingsDraftSyncedRef=useRef(false);
+  useEffect(()=>{
+    if(!adminSession){ settingsDraftSyncedRef.current=false; return; }
+    if(!cloudDataConfirmed) return;
+    if(settingsDraftSyncedRef.current) return;
+    setSettingsDraft(settings);
+    settingsDraftSyncedRef.current=true;
+  },[adminSession,cloudDataConfirmed,settings]);
 
   const filtered=filterCat==="All"?projects:projects.filter(p=>p.categories?.includes(filterCat));
   const featured=projects.filter(p=>p.featured);

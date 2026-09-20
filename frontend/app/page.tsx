@@ -2344,6 +2344,11 @@ export default function Home() {
     // always shows a real bynaveedanjum.com/packages or /gear URL. Gear has no in-memory
     // page view at all; it only ever existed as this real static route.
     if(p==="packages"||p==="gear"){ router.push("/"+p); return; }
+    // Contact now has the same kind of real, indexable static route (/contact) as
+    // Work/Packages/Gear -- and it's the one with the redesigned advanced form + spam
+    // check, so every nav/footer/CTA "Contact" click needs to land there instead of this
+    // SPA's old in-page Contact view, or visitors just keep seeing the old design.
+    if(p==="contact"){ router.push("/contact"); return; }
     setPage(p);window.scrollTo(0,0);
   }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}

@@ -139,6 +139,12 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
               <Link key={l} href={PAGE_HREF[l] || "/"} style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>{l}</Link>
             )
           )}
+          {/* Client portal (/login -> /client) -- a real standalone route, not a SPA page,
+              so it's a plain <Link> in both spa and static mode (same reasoning as the
+              SERVICE_PAGES links above). Kept in this quiet bottom-bar spot rather than the
+              main nav (SiteHeader.tsx) or the link columns above, since it's a secondary
+              utility for existing/returning clients, not a page visitors need to discover. */}
+          <Link href="/login" style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>Client Login</Link>
         </div>
       </div>
     </footer>

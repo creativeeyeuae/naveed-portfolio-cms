@@ -15,7 +15,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { CmsProject } from "@/lib/cmsData";
-import WatermarkOverlay from "../WatermarkOverlay";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 
 const C = {
@@ -61,7 +60,6 @@ function ProjectCard({ p, span }: { p: CmsProject; span?: number }) {
         {...protectedImgProps}
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: "grayscale(1)", transition: "transform 0.6s, filter 0.6s" }}
       />
-      <WatermarkOverlay />
       {(p.images?.length || 0) > 0 && (
         <div style={{ position: "absolute", top: 14, left: 14, fontSize: 10, letterSpacing: 1, color: "rgba(255,255,255,0.9)", background: "rgba(9,6,14,0.6)", padding: "4px 9px", borderRadius: 20 }}>
           {p.images!.length} {p.images!.length === 1 ? "Photo" : "Photos"}

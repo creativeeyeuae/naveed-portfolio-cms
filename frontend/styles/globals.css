@@ -268,9 +268,13 @@ html[lang="hi"] * {
   user-select: none;
 }
 
-/* Small brand-logo badge in one corner of the photo (bottom-right), not a repeating tile --
+/* Small brand-logo badge in one corner of the photo (bottom-left), not a repeating tile --
    sits in its own layer on top of the photo (pointer-events:none so it never blocks clicks,
-   hovers, or the existing "Picture Permission Request" buttons/hover captions underneath it). */
+   hovers, or the existing "Picture Permission Request" buttons/hover captions underneath it).
+   Only used on the actual full project-gallery photos (hero/collage/lightbox in
+   ProjectGallery.tsx) -- deliberately left off the small B&W preview/link cards elsewhere
+   (WorkGrid, homepage Featured Work, homepage in-memory Work view), which still keep the
+   right-click/drag-save block via .protected-img, just without the visible mark. */
 .wm-overlay {
   position: absolute;
   inset: 0;
@@ -278,12 +282,12 @@ html[lang="hi"] * {
   pointer-events: none;
   background-image: url("/watermark-logo.png");
   background-repeat: no-repeat;
-  background-position: calc(100% - 10px) calc(100% - 10px);
+  background-position: 10px calc(100% - 10px);
   background-size: clamp(50px, 14%, 110px) auto;
   opacity: 0.85;
 }
 
-/* Second, much fainter copy centered on the photo -- a crop that removes the corner badge
+/* Second, fainter copy centered on the photo -- a crop that removes the corner badge
    still carries this one, so the mark survives a simple crop. */
 .wm-overlay::after {
   content: "";
@@ -293,5 +297,5 @@ html[lang="hi"] * {
   background-repeat: no-repeat;
   background-position: center center;
   background-size: 10% auto;
-  opacity: 0.05;
+  opacity: 0.1;
 }

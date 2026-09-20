@@ -9,11 +9,13 @@
 import { useState } from "react";
 import { PublicSiteInfo, submitContactLead } from "@/lib/cmsData";
 
-// "Booking" leads straight to the same subjects the Booking form's service picker offers, so
-// someone contacting directly can flag exactly what they need without starting the full
-// multi-step booking flow -- Naveed's request to reuse that services list here too.
-const SUBJECTS = [
-  "Booking", "General Inquiry", "Collaboration", "Media", "Partnership", "Press",
+// Split into two separate pickers per Naveed's request: a "Category" chip group (what kind
+// of message this is) and a "Project Type" dropdown (which service, if any, it's about) --
+// "Booking" still leads the category list, and the project types mirror the Booking form's
+// own service picker so someone contacting directly can flag exactly what they need without
+// starting the full multi-step booking flow.
+const CATEGORIES = ["Booking", "General Inquiry", "Collaboration", "Media", "Partnership", "Press"];
+const PROJECT_TYPES = [
   "Photography", "Videography", "Photography + Videography", "Cinematography",
   "Social Media Content", "Event Coverage", "Real Estate Photography", "Product Photography",
   "Fashion Photography", "Corporate Photography",
@@ -26,7 +28,7 @@ const SUBJECTS = [
 function randDigit() { return 1 + Math.floor(Math.random() * 8); }
 
 export default function ContactForm({ site }: { site: PublicSiteInfo }) {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", projectType: "", message: "" });
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [hp, setHp] = useState(""); // honeypot -- must stay empty
@@ -47,13 +49,13 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
     if (Number(captchaAnswer) !== captchaA + captchaB) { setCaptchaError("That's not quite right -- please try again."); refreshCaptcha(); return; }
     setCaptchaError("");
     const entry = { id: String(Date.now()), date: new Date().toISOString(), ...form };
-    const waMsg = `New website contact form message:\nName: ${entry.name}\nEmail: ${entry.email}\nPhone: ${entry.phone || "-"}\nSubject: ${entry.subject || "-"}\nMessage: ${entry.message}`;
+    const waMsg = `New website contact form message:\nName: ${entry.name}\nEmail: ${entry.email}\nPhone: ${entry.phone || "-"}\nCategory: ${entry.subject || "-"}\nProject Type: ${entry.projectType || "-"}\nMessage: ${entry.message}`;
     window.open(`https://wa.me/${site.waNumber}?text=${encodeURIComponent(waMsg)}`, "_blank");
     setSending(true);
     await submitContactLead(entry);
     setSending(false);
     setSent(true);
-    setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+    setForm({ name: "", email: "", phone: "", subject: "", projectType: "", message: "" });
     refreshCaptcha();
   }
 
@@ -73,13 +75,27 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
       <div className="adv-eyebrow">Send a Message</div>
       <h3 className="adv-heading">Tell Me About Your Project</h3>
 
-      <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 26 }}>
-        {SUBJECTS.map((s) => (
-          <button key={s} type="button" onClick={() => setForm((f) => ({ ...f, subject: s }))}
-            className={`adv-chip${form.subject === s ? " is-active" : ""}`}>
-            {s}
-          </button>
-        ))}
+      <div style={{ position: "relative", zIndex: 1, marginBottom: 22 }}>
+        <label className="adv-label">Category *</label>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {CATEGORIES.map((s) => (
+            <button key={s} type="button" onClick={() => setForm((f) => ({ ...f, subject: s }))}
+              className={`adv-chip${form.subject === s ? " is-active" : ""}`}>
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, marginBottom: 26 }}>
+        <label className="adv-label">Project Type</label>
+        <select className="adv-input" value={form.projectType}
+          onChange={(e) => setForm((f) => ({ ...f, projectType: e.target.value }))}>
+          <option value="">Select a project type (optional)</option>
+          {PROJECT_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
       </div>
 
       <div style={{ position: "relative", zIndex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>

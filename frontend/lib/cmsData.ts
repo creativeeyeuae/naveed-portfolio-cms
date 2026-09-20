@@ -593,6 +593,7 @@ export type ContactLeadInput = {
   email: string;
   phone: string;
   subject: string;
+  projectType?: string;
   message: string;
 };
 

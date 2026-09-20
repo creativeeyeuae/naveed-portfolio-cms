@@ -1,30 +1,36 @@
-import { api } from "@/lib/api";
+import { getRealProjects, getPublicSiteInfo } from "@/lib/cmsData";
+import { buildMetadata } from "@/lib/seo";
+import InternalPageTemplate from "@/components/InternalPageTemplate";
+import WorkGrid from "@/components/work/WorkGrid";
+
+// Real, indexable /cinematography page -- rebuilt from scratch, same reasoning as
+// /photography/page.tsx (see that file's comment for the full history of why the old
+// version was broken). Shows every real project tagged with a video-oriented category.
+const VIDEO_CATEGORIES = ["Cinematography", "Social Media Reels"];
+
+export async function generateMetadata() {
+  const site = await getPublicSiteInfo();
+  return buildMetadata({
+    path: "/cinematography/",
+    title: `Cinematography — ${site.siteName}`,
+    description: "Cinematography, brand films and social media video content across the UAE -- a curated look at the video side of the work.",
+  });
+}
 
 export default async function CinematographyPage() {
-  const albums = (await api.albums.list({ type: "cinematography" }).catch(() => [])) as any[];
+  const [allProjects, site] = await Promise.all([getRealProjects(), getPublicSiteInfo()]);
+  const projects = allProjects.filter((p) =>
+    p.categories?.some((c) => VIDEO_CATEGORIES.includes(c))
+  );
 
   return (
-    <section className="pt-28">
-      <div className="mx-auto max-w-7xl px-6">
-        <h1 className="mb-8 font-serif text-4xl">Cinematography</h1>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {albums.map((album) => (
-            <a key={album.id} href={`/cinematography/${album.slug}`} className="group block">
-              <div className="aspect-video overflow-hidden rounded-md bg-white/5">
-                {album.coverMedia && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={album.coverMedia.webUrl ?? "/placeholder.jpg"}
-                    alt={album.title}
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                )}
-              </div>
-              <h3 className="mt-3 font-serif text-lg">{album.title}</h3>
-            </a>
-          ))}
-        </div>
-      </div>
-    </section>
+    <InternalPageTemplate
+      site={site}
+      eyebrow="Cinematography"
+      title="Cinematography"
+      description="Cinematography, brand films and social media video content across the UAE."
+    >
+      <WorkGrid projects={projects} />
+    </InternalPageTemplate>
   );
 }

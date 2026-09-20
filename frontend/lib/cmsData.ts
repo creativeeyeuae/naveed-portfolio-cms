@@ -280,6 +280,10 @@ export type CmsPricingPackage = {
   desc?: string;
   image?: string;
   ctaLabel?: string;
+  // Optional custom destination for the package's CTA button (CMS > Packages > Button Link).
+  // Blank/undefined keeps the existing default (the /contact page). An absolute URL
+  // (http.../https...) is treated as external; anything else is treated as an internal path.
+  ctaLink?: string;
   features?: string[];
 };
 
@@ -441,7 +445,7 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
   // the homepage SPA's own in-memory Packages view renders as flip-cards.
   const pricingPackagesRaw = settings.pricingPackages;
   const pricingPackages = Array.isArray(pricingPackagesRaw)
-    ? (pricingPackagesRaw as { id?: string; icon?: string; label?: string; price?: string; priceNote?: string; desc?: string; image?: string; ctaLabel?: string; features?: string[] }[])
+    ? (pricingPackagesRaw as { id?: string; icon?: string; label?: string; price?: string; priceNote?: string; desc?: string; image?: string; ctaLabel?: string; ctaLink?: string; features?: string[] }[])
         .filter((p) => p && typeof p.label === "string")
         .map((p, i) => ({
           id: p.id || `p${i}`,
@@ -452,6 +456,7 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
           desc: typeof p.desc === "string" ? p.desc : undefined,
           image: typeof p.image === "string" ? p.image : undefined,
           ctaLabel: typeof p.ctaLabel === "string" ? p.ctaLabel : undefined,
+          ctaLink: typeof p.ctaLink === "string" ? p.ctaLink : undefined,
           features: Array.isArray(p.features) ? p.features.filter((f) => typeof f === "string") : undefined,
         }))
     : DEFAULT_PUBLIC_SITE_INFO.pricingPackages;

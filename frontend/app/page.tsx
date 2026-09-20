@@ -77,7 +77,7 @@ type HomeSections = { hero:boolean;intro:boolean;about:boolean;services:boolean;
 // `services` (the deliverables-list cards further down that page), which stay untouched.
 // `features` populates the card-back "Includes" checklist (hover-flip -- see .pflip in
 // globals.css); safe to be missing/empty on older saved data, the back face just shows nothing.
-type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; features:string[]; };
+type PricingPackage = { id:string; icon:string; label:string; price:string; priceNote:string; desc:string; image:string; ctaLabel:string; ctaLink?:string; features:string[]; };
 // Shared style controls for ALL pricing cards (CMS > Settings > Packages > Card Style) --
 // one set of padding/typography/overlay settings applied uniformly across every card, rather
 // than per-card, so the section stays visually consistent. Font keys look up HERO_FONTS (the
@@ -3604,6 +3604,11 @@ export default function Home() {
                       <div><label style={S.lbl}>Price Note</label><input style={S.inp} value={pk.priceNote} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,priceNote:e.target.value}:x)})} placeholder="Starting price · per session" /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Description</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={pk.desc} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,desc:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Button Label</label><input style={S.inp} value={pk.ctaLabel} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,ctaLabel:e.target.value}:x)})} /></div>
+                      <div>
+                        <label style={S.lbl}>Button Link (optional)</label>
+                        <input style={S.inp} value={pk.ctaLink||""} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,ctaLink:e.target.value}:x)})} placeholder="Leave blank for the default Contact page" />
+                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep sending this button to the Contact page.</div>
+                      </div>
                       <div style={{gridColumn:"1/3"}}>
                         <label style={S.lbl}>Includes (one per line -- shows on the card's flip-back side)</label>
                         <textarea style={{...S.inp,height:100,resize:"vertical" as const}} value={(pk.features||[]).join("\n")} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,features:e.target.value.split("\n").filter(l=>l.trim())}:x)})} placeholder={"High-resolution edited images\nCommercial usage license\nFast turnaround"} />

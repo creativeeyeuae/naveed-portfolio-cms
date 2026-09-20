@@ -99,6 +99,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
+    // Journal index and CV -- previously in-memory-only SPA pages (/?page=blog|cv) with no
+    // real crawlable URL of their own. Both now real routes (app/journal/page.tsx,
+    // app/cv/page.tsx), so they belong here alongside every other real static route.
+    {
+      url: "https://bynaveedanjum.com/journal/",
+      lastModified: new Date("2026-09-20"),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: "https://bynaveedanjum.com/cv/",
+      lastModified: new Date("2026-09-20"),
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
     ...getServicePageEntries(),
     ...work,
     ...journal,

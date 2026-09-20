@@ -2461,6 +2461,19 @@ export default function Home() {
     gearBannerEyebrow: settings.uiText.gearBannerEyebrow,
     gearBannerTitle: settings.uiText.gearBannerTitle,
     gearBannerImage: settings.sectionBg.gear,
+    // Additive fields for the standalone /journal and /cv routes (lib/cmsData.ts's
+    // PublicSiteInfo) -- same underlying CMS fields this SPA's own Journal/CV page-views
+    // already read below (settings.uiText.blogBannerEyebrow/Title, settings.uiText.
+    // cvBannerEyebrow/Title, settings.sectionBg.blog/cv, settings.cvSections, settings.skills),
+    // just also exposed here so those static routes render the same real data.
+    blogBannerEyebrow: settings.uiText.blogBannerEyebrow,
+    blogBannerTitle: settings.uiText.blogBannerTitle,
+    blogBannerImage: settings.sectionBg.blog,
+    cvBannerEyebrow: settings.uiText.cvBannerEyebrow,
+    cvBannerTitle: settings.uiText.cvBannerTitle,
+    cvBannerImage: settings.sectionBg.cv,
+    cvSections: settings.cvSections,
+    skills: settings.skills,
     // Homepage <title>/meta-description (Settings > SEO) -- now actually read by
     // app/layout.tsx's generateMetadata(), also exposed here so this shared `site` object
     // matches lib/cmsData.ts's PublicSiteInfo shape.

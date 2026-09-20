@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRealBlogPosts } from "@/lib/cmsData";
+import { getRealBlogPosts, getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata, articleJsonLd, jsonLdScriptProps } from "@/lib/seo";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 // Real, indexable per-post URL: /journal/[slug]/. Not one of the 4
 // protected routes. Same build-safety pattern as /work/[slug]: under
@@ -82,7 +84,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function JournalPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = await getPost(slug);
+  const [post, site] = await Promise.all([getPost(slug), getPublicSiteInfo()]);
 
   if (!post) notFound();
 
@@ -95,22 +97,27 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
     category: post.category,
   });
 
+  // SiteHeader/SiteFooter added -- this page previously had neither, so it was a dead end:
+  // no way back to the rest of the site except the single "Back to Journal" text link, and
+  // no nav/footer at all (every other real page has both). Same pattern as /work/[slug].
   return (
-    <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
+    <main style={{ background: "var(--c-bg,#09060E)", color: "var(--c-fg,#FFFFFF)", minHeight: "100vh" }}>
       <script {...jsonLdScriptProps(jsonLd)} />
-      <article style={{ maxWidth: 720, margin: "0 auto", padding: "64px 24px 80px" }}>
-        <Link href="/" style={{ color: "var(--text-muted)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</Link>
+      <SiteHeader site={site} />
+      <article style={{ maxWidth: 720, margin: "0 auto", padding: "140px 24px 80px", fontFamily: "Georgia, serif" }}>
+        <Link href="/journal" style={{ color: "var(--c-mid,#A892C6)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</Link>
         {post.category && (
-          <div style={{ marginTop: 24, color: "var(--accent-primary)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>{post.category}</div>
+          <div style={{ marginTop: 24, color: "var(--c-p,#8B5CF6)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>{post.category}</div>
         )}
         <h1 style={{ fontSize: 32, fontWeight: 300, letterSpacing: 0.5, marginTop: 8 }}>{post.title}</h1>
         {post.publishedAt && (
-          <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 8 }}>
+          <div style={{ color: "var(--c-mid,#A892C6)", fontSize: 13, marginTop: 8 }}>
             {new Date(post.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
           </div>
         )}
         <div style={{ marginTop: 32, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{post.content}</div>
       </article>
+      <SiteFooter site={site} />
     </main>
   );
 }

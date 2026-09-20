@@ -51,6 +51,9 @@ export type CmsBlogPost = {
   content?: string;
 };
 
+export type CmsCvSection = { title: string; content: string };
+export type CmsSkillGroup = { dept: string; items: string[] };
+
 // Plain REST fetch (same anon-key PostgREST call the CMS itself uses). Deliberately does
 // NOT pass `cache: "no-store"`: this route tree is statically exported (output: "export"),
 // and a fetch with cache:"no-store" (or any explicit revalidate) makes Next.js treat the
@@ -261,6 +264,21 @@ export type PublicSiteInfo = {
   gearBannerEyebrow: string;
   gearBannerTitle: string;
   gearBannerImage: string;
+  // Additive fields for the standalone /journal (Journal index) and /cv pages -- same
+  // rationale as Work/About/Packages/Gear above. Both previously had no real route of their
+  // own (in-memory-only SPA sections, reached via /?page=blog|cv), so neither was
+  // server-rendered, indexable, or linkable without first loading the homepage. Sourced from
+  // the same real CMS fields the homepage SPA's own Journal/CV views already read
+  // (uiText.blogBannerEyebrow/Title, uiText.cvBannerEyebrow/Title, settings.sectionBg.blog/cv,
+  // settings.cvSections, settings.skills).
+  blogBannerEyebrow: string;
+  blogBannerTitle: string;
+  blogBannerImage: string;
+  cvBannerEyebrow: string;
+  cvBannerTitle: string;
+  cvBannerImage: string;
+  cvSections: CmsCvSection[];
+  skills: CmsSkillGroup[];
   // Homepage <title>/meta-description -- CMS > Settings > SEO ("SEO Title" / "Meta
   // Description"). Previously these two fields existed in the CMS form but were saved to
   // nap_settings and then never read anywhere: the real homepage <title>/description were a
@@ -364,6 +382,33 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   // so the banner shows a real photo by default -- same as Work/Packages/Journal -- even
   // before Naveed uploads a custom one via CMS > Settings > Pages > Gear.
   gearBannerImage: "/gear/sony-a7r-v.jpg",
+  // Same defaults as DEF_SETTINGS.uiText/sectionBg/cvSections/skills in app/page.tsx.
+  blogBannerEyebrow: "Journal",
+  blogBannerTitle: "Photography Journal",
+  blogBannerImage: "https://images.unsplash.com/photo-1495707902641-75cac588d2e9?w=1600&q=80",
+  cvBannerEyebrow: "Curriculum Vitae",
+  cvBannerTitle: "CV",
+  cvBannerImage: "https://images.unsplash.com/photo-1516387938699-a93567ec168e?w=1600&q=80",
+  cvSections: [
+    { title: "Profile", content: "Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Founder of Creative Fusion, a premium photography and cinematography brand. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces." },
+    { title: "Creative Expertise", content: "Trained graphic artist with a strong grounding in brand development, typography, imaging and grid-based design systems, built through years of designing across print, digital and social platforms. Applies this design foundation to content that drives measurable results using consistent visual identity, strategic composition and platform-native storytelling to increase engagement, build audience trust and generate qualified leads through organic and campaign content." },
+    { title: "Media Manager (Contract) — Earthlink Real Estate, Dubai · Jun 2026 – Present", content: "Overseeing media production management and photography, supporting the sales team and real estate agents with marketing content. Creates tailored content for individual agents, conducts on-site photo and video shoots at properties and development offices, and produces visuals for listings, campaigns and client presentations." },
+    { title: "Photographer, Videographer & Brand/Social Media Specialist — Creative Fusion LLC, Dubai · Jan 2024 – Present", content: "Founder and creative lead delivering end-to-end visual and brand solutions: interior, architectural, real estate, event, lifestyle, portrait, product and corporate photography/videography with cinematic storytelling, including luxury residential interiors and hospitality spaces. Directs full production workflows from concept through delivery, designs logos and branding kits, and manages social media strategy and campaigns across Instagram, LinkedIn and Facebook." },
+    { title: "Creative Director (Freelance, Part-Time) — Robus Shelters, Canada (Hybrid) · May 2020 – Present", content: "Providing creative direction on a freelance, part-time basis alongside his primary role, working hybrid with a Canada-based team." },
+    { title: "Head of Design Department — Bait Al Nokhada Tents & Fabric Shade LLC, Dubai · May 2016 – May 2024", content: "Led photography, videography, graphic design and visual branding for the company. Supported the sales team by designing proposals, marketing materials and presentations; managed teams and coordinated projects." },
+    { title: "Web & Graphic Designer — DigitalSofts, Faisalabad, Pakistan · Jan 2007 – Jun 2016", content: "Delivered web and graphic design work using Adobe Photoshop, Adobe Illustrator and related tools." },
+    { title: "Education", content: "2-Year Diploma in Video Production — IMedia University, Pakistan  ·  Bachelor of Fine Arts — Government College University, Faisalabad, Pakistan  ·  Diploma in Graphic Design — Mac Computer College, Pakistan" },
+    { title: "Recognition", content: "Sony Alpha Approved Content Creator" },
+    { title: "Beyond the Work", content: "Music · Traveling · Fine Arts · Fashion · Cinema" },
+  ],
+  skills: [
+    { dept: "Creative Skills", items: ["Cinematic Storytelling", "Brand & Visual Identity Design", "Typography & Grid-Based Design Systems", "Creative Direction", "Social Media Strategy"] },
+    { dept: "Technical Skills", items: ["Drone Piloting", "Interior & Architectural Photography", "Product Photography", "Short-Form Video (Reels/TikTok/Instagram/YouTube)"] },
+    { dept: "Equipment", items: ["Sony Alpha Series", "Canon EOS R", "DJI Drone Systems", "Profoto Studio Lighting", "Godox Location Lighting", "Gimbals", "Aputure LED"] },
+    { dept: "Software", items: ["Adobe Photoshop", "Adobe Lightroom", "Adobe Premiere Pro", "Final Cut Pro", "Sony Vegas", "DaVinci Resolve", "CorelDRAW"] },
+    { dept: "AI & Creative Tools", items: ["ChatGPT", "Google AI Studio", "Versal AI Tools", "CapCut", "CapCut Template Creator", "Adobe Template Designer"] },
+    { dept: "Languages", items: ["English", "Urdu", "Punjabi", "Hindi", "Arabic (Basic)"] },
+  ],
   seoTitle: "Photographer & Videographer in Dubai | Naveed Anjum",
   seoDesc:
     "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography.",
@@ -461,6 +506,22 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
         }))
     : DEFAULT_PUBLIC_SITE_INFO.pricingPackages;
 
+  // CV timeline entries and skill groups (Settings > CV) -- real CMS data, same shape as
+  // app/page.tsx's own settings.cvSections/settings.skills, used by the standalone /cv page.
+  const cvSectionsRaw = settings.cvSections;
+  const cvSections = Array.isArray(cvSectionsRaw)
+    ? (cvSectionsRaw as { title?: string; content?: string }[])
+        .filter((s) => s && typeof s.title === "string")
+        .map((s) => ({ title: s.title as string, content: typeof s.content === "string" ? s.content : "" }))
+    : DEFAULT_PUBLIC_SITE_INFO.cvSections;
+
+  const skillsRaw = settings.skills;
+  const skills = Array.isArray(skillsRaw)
+    ? (skillsRaw as { dept?: string; items?: string[] }[])
+        .filter((s) => s && typeof s.dept === "string")
+        .map((s) => ({ dept: s.dept as string, items: Array.isArray(s.items) ? s.items.filter((i) => typeof i === "string") : [] }))
+    : DEFAULT_PUBLIC_SITE_INFO.skills;
+
   return {
     siteName: pick("siteName"),
     siteTagline: pick("siteTagline"),
@@ -504,6 +565,14 @@ export async function getPublicSiteInfo(): Promise<PublicSiteInfo> {
     gearBannerEyebrow: pickUi("gearBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.gearBannerEyebrow),
     gearBannerTitle: pickUi("gearBannerTitle", DEFAULT_PUBLIC_SITE_INFO.gearBannerTitle),
     gearBannerImage: pickBg("gear", DEFAULT_PUBLIC_SITE_INFO.gearBannerImage),
+    blogBannerEyebrow: pickUi("blogBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.blogBannerEyebrow),
+    blogBannerTitle: pickUi("blogBannerTitle", DEFAULT_PUBLIC_SITE_INFO.blogBannerTitle),
+    blogBannerImage: pickBg("blog", DEFAULT_PUBLIC_SITE_INFO.blogBannerImage),
+    cvBannerEyebrow: pickUi("cvBannerEyebrow", DEFAULT_PUBLIC_SITE_INFO.cvBannerEyebrow),
+    cvBannerTitle: pickUi("cvBannerTitle", DEFAULT_PUBLIC_SITE_INFO.cvBannerTitle),
+    cvBannerImage: pickBg("cv", DEFAULT_PUBLIC_SITE_INFO.cvBannerImage),
+    cvSections,
+    skills,
     seoTitle: pick("seoTitle"),
     seoDesc: pick("seoDesc"),
   };

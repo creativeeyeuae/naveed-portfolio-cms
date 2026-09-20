@@ -59,15 +59,14 @@ const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packag
   tl: { home: "Home", work: "Mga Trabaho", about: "Tungkol Sa Amin", packages: "Mga Package", gear: "Kagamitan", journal: "Journal", cv: "CV", contact: "Makipag-ugnayan", bookBtn: "I-book ang Proyekto" },
 };
 
-// Static-route-only: real destinations for the nav keys. Work/About/Packages/Gear/Contact
-// all have their own real pages now. CV/Journal still have no standalone index URL of their
-// own (same as on the homepage -- they're in-memory-only sections there too; Journal's
-// individual posts ARE real pages at /journal/[slug], but there is no /journal index) --
-// those two route to /?page=cv|blog instead of a bare "/", which the homepage reads on mount
-// (see app/page.tsx) to land directly on that section rather than always showing the Home
-// hero. Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory
+// Static-route-only: real destinations for the nav keys. Every nav key now has its own real
+// page -- Journal and CV used to route to /?page=blog|cv (an in-memory-only SPA state inside
+// the homepage, not a real crawlable/linkable URL), same as Work/About/Packages/Gear/Contact
+// used to before they got real routes. /journal and /cv now exist as real static routes too
+// (see app/journal/page.tsx, app/cv/page.tsx), so both are real <Link>s like everything else
+// here. Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory
 // navigation, unchanged). Kept in sync with the matching PAGE_HREF map in SiteFooter.tsx.
-const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/packages", gear: "/gear", blog: "/?page=blog", cv: "/?page=cv", contact: "/contact", booking: "/contact" };
+const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/packages", gear: "/gear", blog: "/journal", cv: "/cv", contact: "/contact", booking: "/contact" };
 // Nav order everywhere: Home | Work | About | Packages | Gear | Journal | CV | Contact | Book
 const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: keyof (typeof NAV_TEXT)["en"] }[] = [
   { key: "home", textKey: "home" },

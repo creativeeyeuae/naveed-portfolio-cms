@@ -250,3 +250,32 @@ html[lang="hi"] * {
   box-shadow: 0 30px 60px rgba(139,92,246,0.26), 0 8px 20px rgba(236,72,153,0.12);
   border-color: rgba(139,92,246,0.4) !important;
 }
+
+/* IMAGE PROTECTION -- portfolio photos only (Homepage Featured Work + /work grid +
+   /work/[slug] project galleries, including the lightbox). Deliberately not applied
+   site-wide (About portrait, Gear photos, hero slides, logos, icons) -- just the actual
+   client deliverable photos people might try to lift.
+   Honest limits, by design: this blocks the casual routes -- right-click "Save Image",
+   drag-and-drop, and the iOS/Android long-press "Save Photo" menu -- plus every protected
+   photo carries a visible watermark so anything that DOES get copied is marked. It cannot
+   and does not try to block a screenshot, browser dev tools, or "view source" -- no
+   client-side technique can do that, and code that claims to is misleading. */
+.protected-img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Repeating diagonal text watermark, drawn as a tiled inline SVG background -- sits in its
+   own layer on top of the photo (pointer-events:none so it never blocks clicks, hovers, or
+   the existing "Picture Permission Request" buttons/hover captions underneath it). */
+.wm-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='820' height='500'%3E%3Ctext x='40' y='300' font-family='Arial, Helvetica, sans-serif' font-size='18' letter-spacing='2' fill='rgba(255,255,255,0.07)' transform='rotate(-28 410 250)'%3ENAVEED ANJUM%3C/text%3E%3C/svg%3E");
+  background-repeat: repeat;
+}

@@ -11,6 +11,8 @@
 // lightbox with next/previous navigation, unchanged from before.
 import { useEffect, useState } from "react";
 import PermissionRequestModal from "./PermissionRequestModal";
+import WatermarkOverlay from "../WatermarkOverlay";
+import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 
 type GalleryImage = { id: string; url: string; caption?: string; orientation?: string };
 
@@ -66,8 +68,11 @@ function HeroTile({
         loading="eager"
         decoding="async"
         onClick={onOpen}
+        className={PROTECTED_IMG_CLASS}
+        {...protectedImgProps}
         style={{ maxWidth: "100%", maxHeight: "80vh", width: "auto", height: "auto", display: "block", cursor: "pointer", opacity: fadeIn ? 1 : 0, transition: "transform 0.6s ease, opacity 0.5s ease", transform: hovered ? "scale(1.01)" : "scale(1)" }}
       />
+      <WatermarkOverlay />
       {/* Hover affordance -- dark wash + expand icon signals the hero opens the lightbox,
           plus a "01 / NN" counter for context. Both fade in only on hover. */}
       <div
@@ -174,6 +179,8 @@ function GalleryTile({
         alt={img.caption || ""}
         loading="lazy"
         decoding="async"
+        className={PROTECTED_IMG_CLASS}
+        {...protectedImgProps}
         style={{
           width: "100%",
           height: "auto",
@@ -183,6 +190,7 @@ function GalleryTile({
           transition: "transform 0.5s ease, filter 0.5s ease",
         }}
       />
+      <WatermarkOverlay />
       {permissionEnabled && (
         <button
           onClick={(e) => {
@@ -378,7 +386,16 @@ export default function ProjectGallery({
             ‹
           </button>
           <figure onClick={(e) => e.stopPropagation()} style={{ margin: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <img src={images[lightboxIndex].url} alt={images[lightboxIndex].caption || ""} style={{ maxWidth: "92vw", maxHeight: "84vh", objectFit: "contain" }} />
+            <div style={{ position: "relative" }}>
+              <img
+                src={images[lightboxIndex].url}
+                alt={images[lightboxIndex].caption || ""}
+                className={PROTECTED_IMG_CLASS}
+                {...protectedImgProps}
+                style={{ maxWidth: "92vw", maxHeight: "84vh", objectFit: "contain", display: "block" }}
+              />
+              <WatermarkOverlay />
+            </div>
             {images[lightboxIndex].caption && (
               <figcaption style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, letterSpacing: 0.5, textAlign: "center", maxWidth: "80vw" }}>{images[lightboxIndex].caption}</figcaption>
             )}

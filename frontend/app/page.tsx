@@ -7,6 +7,8 @@ import { SERVICE_PAGES } from "@/lib/servicePagesData";
 import type { PublicSiteInfo } from "@/lib/cmsData";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import WatermarkOverlay from "@/components/WatermarkOverlay";
+import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -4534,7 +4536,8 @@ export default function Home() {
               onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
               onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
               {/* B&W-by-default, full color on hover -- same reveal treatment requested from kima.framer.media */}
-              <img src={p.coverImage||p.images?.[0]?.url||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"grayscale(1)",transition:"transform 0.6s, filter 0.6s"}} />
+              <img src={p.coverImage||p.images?.[0]?.url||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"grayscale(1)",transition:"transform 0.6s, filter 0.6s"}} />
+              <WatermarkOverlay />
               <PhotoCountBadge count={p.images?.length||0} />
               <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.92) 0%,transparent 55%)",opacity:0,transition:"opacity 0.3s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:6}}>{p.categories?.join(" · ")}</div>
@@ -4703,7 +4706,8 @@ export default function Home() {
               <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
-                <img src={p.coverImage||""} alt={p.title} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
+                <img src={p.coverImage||""} alt={p.title} className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
+                <WatermarkOverlay />
                 <PhotoCountBadge count={p.images?.length||0} />
                 <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.35s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:32}}>
                   <div className="ov-cap" style={{transform:"translateY(14px)",transition:"transform 0.45s cubic-bezier(.16,.84,.44,1)"}}>
@@ -4719,7 +4723,8 @@ export default function Home() {
               <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
-                <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
+                <img src={p.coverImage||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
+                <WatermarkOverlay />
                 <PhotoCountBadge count={p.images?.length||0} />
                 <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.35s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
                   <div className="ov-cap" style={{transform:"translateY(14px)",transition:"transform 0.45s cubic-bezier(.16,.84,.44,1)"}}>

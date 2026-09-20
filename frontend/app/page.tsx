@@ -2135,16 +2135,39 @@ export default function Home() {
   // local data. Nothing pushes until the initial cloud fetch has resolved at least once, so
   // every push effect always starts from the real current state, never a stale local guess.
   const [cloudLoaded,setCloudLoaded]=useState(false);
+  // cloudDataConfirmed is the REAL save gate (see push effects just below) -- true only when
+  // the cloud fetch actually reached Supabase and returned something, never just "we tried".
+  // cloudLoaded (above) flips true even when that fetch fails, so it stayed the gate for
+  // things where showing something is fine either way (cmsPhotosReady). But it's not safe as
+  // the SAVE gate: on a failed/offline fetch, cloudLoaded still went true while every array
+  // above was sitting on either this browser's local cache (fine) or, for a brand-new browser
+  // with no local cache yet, the plain code defaults -- dummy placeholder projects/
+  // testimonials/blog posts. Gating saves on cloudLoaded meant a failed fetch on a fresh
+  // browser could push that dummy placeholder data over the real live content, with no error
+  // shown (the push itself "succeeds" -- it's just pushing the wrong thing). cloudDataConfirmed
+  // never goes true unless we've actually confirmed the real state with Supabase, so the worst
+  // case on a failed fetch is now "this save doesn't go out yet" (visible via cloudSyncError
+  // below), never "silently overwrite real data with placeholders".
+  const [cloudDataConfirmed,setCloudDataConfirmed]=useState(false);
   // Only push to the shared cloud copy while an authenticated CMS session made the change AND
-  // the initial cloud sync has completed (see cloudLoaded above) -- never on a plain public
-  // page load, otherwise an ordinary visitor's own (possibly stale) locally-cached copy could
-  // momentarily clobber the real live content for everyone.
-  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_settings",settings,"Settings");},[settings,authed,cloudLoaded]);
-  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_projects",projects,"Projects");},[projects,authed,cloudLoaded]);
-  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_cats",cats,"Categories");},[cats,authed,cloudLoaded]);
-  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed,cloudLoaded]);
-  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed,cloudLoaded]);
-  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed&&cloudLoaded) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed,cloudLoaded]);
+  // the cloud fetch has actually confirmed real data at least once (see cloudDataConfirmed
+  // above) -- never on a plain public page load, otherwise an ordinary visitor's own (possibly
+  // stale) locally-cached copy could momentarily clobber the real live content for everyone.
+  useEffect(()=>{try{localStorage.setItem("nap_settings",JSON.stringify(settings));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_settings",settings,"Settings");},[settings,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_projects",JSON.stringify(projects));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_projects",projects,"Projects");},[projects,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_cats",JSON.stringify(cats));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_cats",cats,"Categories");},[cats,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed,cloudDataConfirmed]);
+  // Lets the admin actually see it when saves are blocked, instead of edits silently not going
+  // out: authenticated, the initial fetch has finished, but it never confirmed real cloud data
+  // (offline, Supabase unreachable, etc). Clears itself the moment a real save succeeds
+  // (pushCloudDataChecked already clears cloudSyncError on success) or the connection recovers.
+  useEffect(()=>{
+    if(authed&&cloudLoaded&&!cloudDataConfirmed){
+      setCloudSyncError("Can't confirm a connection to the server -- your edits are being kept in this browser but are NOT being saved yet. Check your internet connection and reload this page.");
+    }
+  },[authed,cloudLoaded,cloudDataConfirmed]);
   // On first mount, pull the shared cloud copy (if reachable) so every visitor/device sees the
   // same latest content instead of whatever this particular browser cached locally. cloudLoaded
   // flips to true whether or not the fetch actually found cloud data (an offline first load
@@ -2162,6 +2185,7 @@ export default function Home() {
         if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
       }
       setCloudLoaded(true);
+      setCloudDataConfirmed(!!cloud);
       // Only now is it safe to paint the Hero/About photos -- see the localStorage-hydration
       // effect above for why cmsPhotosReady moved here instead of firing on that earlier tick.
       setCmsPhotosReady(true);

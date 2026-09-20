@@ -118,6 +118,7 @@ type SiteSettings = {
   instagram:string; youtube:string; linkedin:string; tiktok:string;
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
+  videoSectionEnabled:boolean; videoSectionUrl:string; // Full-width video section, between About and Services
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   imagePermissionEnabled:boolean; // CMS on/off switch for the whole Image Permission Request
                                    // feature (spec point 22) -- when off, /work/[slug] hides
@@ -278,6 +279,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
+  videoSectionEnabled:false, videoSectionUrl:"",
   imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
@@ -1179,6 +1181,55 @@ function Reveal({children,delay=0,className,style}:{children:React.ReactNode;del
   return (
     <div ref={ref} className={className} style={{...style,opacity:shown?1:0,transform:shown?"translateY(0)":"translateY(26px)",transition:`opacity 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s, transform 0.7s cubic-bezier(.16,.84,.44,1) ${delay}s`}}>
       {children}
+    </div>
+  );
+}
+
+// ─── FULL-WIDTH VIDEO (between About and Services) ───────────────────────────
+// A full-bleed, autoplaying, looping YouTube background section. Shown only when both
+// settings.videoSectionEnabled and a valid settings.videoSectionUrl are set (CMS > Settings
+// > Pages) -- off by default so shipping this makes zero visual change until Naveed turns
+// it on and pastes a link. Browsers only allow autoplay when a video starts muted, so it
+// always starts muted and offers a small mute/unmute button; toggling it uses the YouTube
+// IFrame postMessage API (enablejsapi=1) since the query-string mute param only sets the
+// *initial* state, not a live toggle. The iframe itself is pointer-events:none (no native
+// YouTube controls are shown anyway -- controls=0) so it reads as ambient background video,
+// not something visitors can accidentally pause/click into.
+function getYouTubeId(url: string): string {
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : "";
+}
+function FullVideoSection({ url }: { url: string }) {
+  const id = getYouTubeId(url);
+  const [muted, setMuted] = useState(true);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  if (!id) return null;
+  const toggleMute = () => {
+    const win = iframeRef.current?.contentWindow;
+    const next = !muted;
+    win?.postMessage(JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: [] }), "*");
+    setMuted(next);
+  };
+  const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
+  return (
+    <div style={{position:"relative",width:"100%",height:"78vh",minHeight:420,overflow:"hidden",background:"#000"}}>
+      <div style={{position:"absolute",top:"50%",left:"50%",width:"177.78vh",height:"100%",minWidth:"100%",minHeight:"56.25vw",transform:"translate(-50%,-50%)",pointerEvents:"none"}}>
+        <iframe
+          ref={iframeRef}
+          src={src}
+          title="Featured video"
+          allow="autoplay; encrypted-media; picture-in-picture"
+          style={{width:"100%",height:"100%",border:0}}
+        />
+      </div>
+      <div aria-hidden style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 100%)",pointerEvents:"none"}} />
+      <button
+        onClick={toggleMute}
+        aria-label={muted ? "Unmute video" : "Mute video"}
+        style={{position:"absolute",bottom:24,right:24,width:48,height:48,borderRadius:"50%",background:"rgba(9,6,14,0.55)",border:"1px solid rgba(255,255,255,0.35)",color:"#fff",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",backdropFilter:"blur(6px)",zIndex:2}}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
     </div>
   );
 }
@@ -3518,15 +3569,16 @@ export default function Home() {
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"28px 0 20px",textTransform:"uppercase"}}>Show / Hide Homepage Sections</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn any section of the home page off without deleting its content -- switch it back on any time.</div>
                 {([
-                  ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
+                  ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["video","Full-Width Video"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
                 ] as [string,string][]).map(([key,label])=>{
-                  const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
+                  const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : key==="video" ? !!settingsDraft.videoSectionEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
                   return (
                     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
                       <span style={{fontSize:13,fontWeight:600}}>{label}</span>
                       <button onClick={()=>{
                         if(key==="clients") updateSD({clientsEnabled:!on});
                         else if(key==="googleReviews") updateSD({googleReviewsEnabled:!on});
+                        else if(key==="video") updateSD({videoSectionEnabled:!on});
                         else updateSD({homeSections:{...settingsDraft.homeSections,[key]:!on}});
                       }} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} ${on?"off":"on"}`}>
                         <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
@@ -3537,6 +3589,22 @@ export default function Home() {
                 {settingsDraft.googleReviewsEnabled && !settingsDraft.googlePlaceId && (
                   <div style={{fontSize:11,color:"#c9963f",marginTop:-2,marginBottom:14,lineHeight:1.6}}>
                     Google Reviews is on but no Google Place ID is set yet -- add one in the SEO tab, or this section stays hidden.
+                  </div>
+                )}
+
+                {/* Full-Width Video URL -- sits right here (not in SEO) since it's this
+                    section's own content, not search-engine metadata. Shows between About
+                    and Services on the home page once both this URL and the toggle above
+                    are set. Autoplays muted (browser requirement); visitors get a mute/unmute
+                    button on the video itself. */}
+                <div style={{marginTop:20,marginBottom:16}}>
+                  <label style={S.lbl}>Full-Width Video -- YouTube Link</label>
+                  <input style={S.inp} value={settingsDraft.videoSectionUrl} onChange={e=>updateSD({videoSectionUrl:e.target.value})} placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." />
+                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Paste any normal YouTube video/share link -- it plays full-width between About and Services, autoplaying on mute with a mute/unmute button.</div>
+                </div>
+                {settingsDraft.videoSectionEnabled && !settingsDraft.videoSectionUrl && (
+                  <div style={{fontSize:11,color:"#c9963f",marginTop:-8,marginBottom:14,lineHeight:1.6}}>
+                    Full-Width Video is on but no YouTube link is set yet -- add one above, or this section stays hidden.
                   </div>
                 )}
               </div>
@@ -4628,6 +4696,12 @@ export default function Home() {
           </div>
         </Reveal>
       </div>
+      )}
+
+      {/* FULL-WIDTH VIDEO -- off by default; turned on + given a YouTube link in
+          CMS > Settings > Pages. See FullVideoSection above. */}
+      {settings.videoSectionEnabled && settings.videoSectionUrl && (
+        <FullVideoSection url={settings.videoSectionUrl} />
       )}
 
       {/* SERVICES -- editorial index list, but each row is bookended by a solid-DARK chip

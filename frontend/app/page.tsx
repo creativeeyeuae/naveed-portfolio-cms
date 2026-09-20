@@ -1202,13 +1202,28 @@ function getYouTubeId(url: string): string {
 function FullVideoSection({ url }: { url: string }) {
   const id = getYouTubeId(url);
   const [muted, setMuted] = useState(true);
+  const [volume, setVolume] = useState(80); // 0-100, only meaningful while unmuted
   const iframeRef = useRef<HTMLIFrameElement>(null);
   if (!id) return null;
+  const sendCmd = (func: string, args: any[] = []) => {
+    iframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: "command", func, args }), "*");
+  };
   const toggleMute = () => {
-    const win = iframeRef.current?.contentWindow;
     const next = !muted;
-    win?.postMessage(JSON.stringify({ event: "command", func: next ? "mute" : "unMute", args: [] }), "*");
+    sendCmd(next ? "mute" : "unMute");
+    // Unmuting from a volume that was dragged down to 0 would otherwise unmute into silence --
+    // jump back to a sensible audible level instead.
+    if (!next && volume === 0) { setVolume(50); sendCmd("setVolume", [50]); }
     setMuted(next);
+  };
+  // Single slider drives both mute state and level -- dragging to 0 mutes, dragging up from 0
+  // (while muted) unmutes, matching how a normal media player's volume control behaves.
+  const onVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = Number(e.target.value);
+    setVolume(v);
+    sendCmd("setVolume", [v]);
+    if (v === 0 && !muted) { sendCmd("mute"); setMuted(true); }
+    else if (v > 0 && muted) { sendCmd("unMute"); setMuted(false); }
   };
   const src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&playsinline=1&rel=0&iv_load_policy=3&enablejsapi=1`;
   return (
@@ -1223,13 +1238,24 @@ function FullVideoSection({ url }: { url: string }) {
         />
       </div>
       <div aria-hidden style={{position:"absolute",inset:0,background:"linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0.4) 100%)",pointerEvents:"none"}} />
-      <button
-        onClick={toggleMute}
-        aria-label={muted ? "Unmute video" : "Mute video"}
-        style={{position:"absolute",bottom:24,right:24,width:48,height:48,borderRadius:"50%",background:"rgba(9,6,14,0.55)",border:"1px solid rgba(255,255,255,0.35)",color:"#fff",fontSize:19,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",backdropFilter:"blur(6px)",zIndex:2}}
-      >
-        {muted ? "🔇" : "🔊"}
-      </button>
+      <div style={{position:"absolute",bottom:24,right:24,display:"flex",alignItems:"center",gap:10,background:"rgba(9,6,14,0.55)",border:"1px solid rgba(255,255,255,0.35)",borderRadius:26,padding:"0 18px 0 6px",height:44,backdropFilter:"blur(6px)",zIndex:2}}>
+        <button
+          onClick={toggleMute}
+          aria-label={muted ? "Unmute video" : "Mute video"}
+          style={{width:36,height:36,borderRadius:"50%",background:"transparent",border:"none",color:"#fff",fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}
+        >
+          {muted || volume===0 ? "🔇" : "🔊"}
+        </button>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={muted ? 0 : volume}
+          onChange={onVolumeChange}
+          aria-label="Video volume"
+          style={{width:84,accentColor:"#8B5CF6",cursor:"pointer"}}
+        />
+      </div>
     </div>
   );
 }

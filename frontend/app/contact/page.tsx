@@ -42,21 +42,25 @@ export default async function ContactPage() {
 
   return (
     <InternalPageTemplate site={site} eyebrow={site.contactBannerEyebrow} title={site.contactBannerTitle} image={site.contactBannerImage}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px" }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "56px 24px 80px" }}>
         {/* CONTACT METHOD CARDS -- real CMS data only, empty fields hidden entirely */}
         {cards.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16, marginBottom: 56 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 40 }}>
             {cards.map((c) => {
               const inner = (
-                <div style={{ border: `1px solid ${C.BORDER}`, background: C.DARK, padding: "26px 22px", height: "100%" }}>
+                <div style={{
+                  position: "relative", border: "1px solid rgba(139,92,246,0.16)", background: "rgba(255,255,255,0.02)",
+                  borderRadius: 14, padding: "22px 20px", height: "100%", boxSizing: "border-box" as const,
+                  transition: "border-color 0.2s, box-shadow 0.2s, transform 0.2s",
+                }}>
                   <div style={{ fontSize: 11, letterSpacing: 3, color: C.PL, textTransform: "uppercase", marginBottom: 10 }}>{c.label}</div>
-                  <div style={{ fontSize: 15, color: C.FG }}>{c.value}</div>
+                  <div style={{ fontSize: 14.5, color: C.FG }}>{c.value}</div>
                 </div>
               );
               return c.href ? (
-                <a key={c.label} href={c.href} target={c.external ? "_blank" : undefined} rel={c.external ? "noopener noreferrer" : undefined} style={{ textDecoration: "none", display: "block" }}>{inner}</a>
+                <a key={c.label} href={c.href} target={c.external ? "_blank" : undefined} rel={c.external ? "noopener noreferrer" : undefined} className="adv-contact-card" style={{ textDecoration: "none", display: "block" }}>{inner}</a>
               ) : (
-                <div key={c.label}>{inner}</div>
+                <div key={c.label} className="adv-contact-card">{inner}</div>
               );
             })}
           </div>

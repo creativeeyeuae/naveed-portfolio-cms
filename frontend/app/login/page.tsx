@@ -81,38 +81,37 @@ export default function LoginPage() {
   );
 
   return (
-    <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
-      <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 24px" }}>
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Sign in</h1>
-        <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14, marginBottom: 28 }}>
-          {tab === "admin" ? "Sign in to manage the site." : "One account for your bookings, inquiries and messages."}
-        </p>
-        <div style={{ display: "flex", marginBottom: 28, borderBottom: "1px solid var(--border-subtle, #2D1F45)" }}>
-          {tabBtn("client", "Client")}
-          {tabBtn("admin", "Admin")}
+    <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif", display: "flex", alignItems: "center", justifyContent: "center", padding: "60px 20px" }}>
+      <div style={{ width: "100%", maxWidth: 440 }}>
+        <div className="adv-form-card">
+          <h1 className="adv-heading">Sign in</h1>
+          <p className="adv-subtext">
+            {tab === "admin" ? "Sign in to manage the site." : "One account for your bookings, inquiries and messages."}
+          </p>
+          <div style={{ position: "relative", zIndex: 1, display: "flex", marginBottom: 28, borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+            {tabBtn("client", "Client")}
+            {tabBtn("admin", "Admin")}
+          </div>
+          <form onSubmit={onSubmit} style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+            <input className="adv-input" type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input className="adv-input" type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
+            <button className="adv-btn-primary" type="submit" disabled={loading} style={{ width: "100%", marginTop: 4 }}>
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+          </form>
+          {tab === "client" && (
+            <div style={{ position: "relative", zIndex: 1, marginTop: 22, fontSize: 13, color: "var(--text-muted, #A892C6)", display: "flex", justifyContent: "space-between" }}>
+              <a href="/reset-password" style={{ color: "inherit", textDecoration: "underline" }}>Forgot password?</a>
+              <a href="/register" style={{ color: "inherit", textDecoration: "underline" }}>Create an account</a>
+            </div>
+          )}
+          {tab === "admin" && (
+            <div style={{ position: "relative", zIndex: 1, marginTop: 22, fontSize: 13, color: "var(--text-muted, #A892C6)" }}>
+              <a href="/reset-password" style={{ color: "inherit", textDecoration: "underline" }}>Forgot password?</a>
+            </div>
+          )}
         </div>
-        <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <input type="email" required placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)}
-            style={{ padding: "12px 14px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle, #2D1F45)", color: "inherit" }} />
-          <input type="password" required placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)}
-            style={{ padding: "12px 14px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle, #2D1F45)", color: "inherit" }} />
-          {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
-          <button type="submit" disabled={loading}
-            style={{ padding: "12px 14px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
-        </form>
-        {tab === "client" && (
-          <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-muted, #A892C6)", display: "flex", justifyContent: "space-between" }}>
-            <a href="/reset-password" style={{ color: "inherit", textDecoration: "underline" }}>Forgot password?</a>
-            <a href="/register" style={{ color: "inherit", textDecoration: "underline" }}>Create an account</a>
-          </div>
-        )}
-        {tab === "admin" && (
-          <div style={{ marginTop: 20, fontSize: 13, color: "var(--text-muted, #A892C6)" }}>
-            <a href="/reset-password" style={{ color: "inherit", textDecoration: "underline" }}>Forgot password?</a>
-          </div>
-        )}
       </div>
     </main>
   );

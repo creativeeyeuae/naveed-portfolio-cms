@@ -2192,6 +2192,13 @@ export default function Home() {
   const [bkCheckingSlot,setBkCheckingSlot]=useState(false);
   const [bkSubmitting,setBkSubmitting]=useState(false);
   const [bkError,setBkError]=useState("");
+  // Lightweight, no-signup human check before the final "Confirm Booking" -- same approach
+  // as the standalone /contact form's ContactForm.tsx: a honeypot field bots auto-fill, plus
+  // a tiny arithmetic question, both checked in submitAppointment() below.
+  const [bkHp,setBkHp]=useState("");
+  const [bkCaptchaA]=useState(()=>1+Math.floor(Math.random()*8));
+  const [bkCaptchaB]=useState(()=>1+Math.floor(Math.random()*8));
+  const [bkCaptchaAnswer,setBkCaptchaAnswer]=useState("");
   const [bkConfirmed,setBkConfirmed]=useState<{ref:string;id:string}|null>(null);
   const [bkReceiptFile,setBkReceiptFile]=useState<File|null>(null);
   const [bkReceiptUploading,setBkReceiptUploading]=useState(false);
@@ -2436,6 +2443,8 @@ export default function Home() {
   async function submitAppointment(){
     setBkError("");
     if(!booking.name||!booking.email||!booking.date||!booking.time||!bkSelectedPkg||!booking.service){ setBkError("Please complete every required field."); return; }
+    if(bkHp.trim()) return; // honeypot tripped -- silently drop, no feedback for bots
+    if(Number(bkCaptchaAnswer)!==bkCaptchaA+bkCaptchaB){ setBkError("Please solve the human-check question correctly before continuing."); return; }
     setBkSubmitting(true);
     const stillTaken = await isSlotTaken(booking.date,booking.time);
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
@@ -4307,17 +4316,19 @@ export default function Home() {
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
       <Nav />
       <PageBanner eyebrow={settings.uiText.bookingBannerEyebrow} title={settings.uiText.bookingBannerTitle} description="Choose your service and package, pick a date, and book securely -- online payment or bank transfer." image={settings.sectionBg.booking} />
-      <div style={{maxWidth:760,margin:"0 auto",padding:"40px 40px 80px"}}>
+      <div style={{maxWidth:680,margin:"0 auto",padding:"40px 24px 80px"}}>
         {bkStep>0&&bkStep<7&&(
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:48}}>
+          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:32}}>
             {["Service","Package","Date","Details","Review","Payment"].map((lbl,i)=>(
               <div key={lbl} style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:26,height:26,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,background:bkStep>i+1?C.P:bkStep===i+1?"transparent":"rgba(255,255,255,0.06)",border:bkStep===i+1?`1px solid ${C.P}`:"none",color:bkStep>=i+1?(bkStep>i+1?C.BG:C.PL):C.MID}}>{bkStep>i+1?"✓":i+1}</div>
-                {i<5&&<div style={{width:16,height:1,background:bkStep>i+1?C.P:"rgba(255,255,255,0.1)"}} />}
+                <div className={`adv-step-dot ${bkStep>i+1?"is-done":bkStep===i+1?"is-active":"is-upcoming"}`}>{bkStep>i+1?"✓":i+1}</div>
+                {i<5&&<div className={`adv-step-line ${bkStep>i+1?"is-done":"is-upcoming"}`} />}
               </div>
             ))}
           </div>
         )}
+
+        <div className="adv-form-card">
 
         {bkStep===0&&(
           <div>
@@ -4325,9 +4336,9 @@ export default function Home() {
             <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>We'll use this to send your booking confirmation and bank transfer details.</p>
             <div style={{maxWidth:420,margin:"0 auto 24px"}}>
               <div style={{marginBottom:16}}>
-                <label style={S.lbl}>WhatsApp Number *</label>
+                <label className="adv-label">WhatsApp Number *</label>
                 <div style={{display:"flex",gap:8}}>
-                  <select style={{...S.inp,width:118,flexShrink:0}} value={bkCountry} onChange={e=>{const nc=e.target.value; setBkCountry(nc); setBooking(b=>({...b,phone:nc+" "+b.phone.replace(/^\+\d{1,4}\s?/,"")}));}}>
+                  <select className="adv-input" style={{width:118,flexShrink:0}} value={bkCountry} onChange={e=>{const nc=e.target.value; setBkCountry(nc); setBooking(b=>({...b,phone:nc+" "+b.phone.replace(/^\+\d{1,4}\s?/,"")}));}}>
                     <option value="+971">🇦🇪 +971</option>
                     <option value="+966">🇸🇦 +966</option>
                     <option value="+974">🇶🇦 +974</option>
@@ -4340,12 +4351,12 @@ export default function Home() {
                     <option value="+44">🇬🇧 +44</option>
                     <option value="+1">🇺🇸 +1</option>
                   </select>
-                  <input style={S.inp} value={booking.phone.replace(/^\+\d{1,4}\s?/,"")} onChange={e=>setBooking(b=>({...b,phone:bkCountry+" "+e.target.value.replace(/[^\d\s]/g,"")}))} placeholder="5XX XXX XXX" />
+                  <input className="adv-input" value={booking.phone.replace(/^\+\d{1,4}\s?/,"")} onChange={e=>setBooking(b=>({...b,phone:bkCountry+" "+e.target.value.replace(/[^\d\s]/g,"")}))} placeholder="5XX XXX XXX" />
                 </div>
               </div>
-              <div><label style={S.lbl}>Email *</label><input type="email" style={S.inp} value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
+              <div><label className="adv-label">Email *</label><input type="email" className="adv-input" value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
             </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(1)} disabled={!booking.phone.trim()||!booking.email.trim()} style={{...S.btnP,opacity:(!booking.phone.trim()||!booking.email.trim())?0.4:1}}>Continue</button></div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(1)} disabled={!booking.phone.trim()||!booking.email.trim()} className="adv-btn-primary">Continue</button></div>
           </div>
         )}
 
@@ -4355,10 +4366,10 @@ export default function Home() {
             <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>Select a service to see matching packages</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:32}}>
               {BOOKING_SERVICES.map(sv=>(
-                <button key={sv} onClick={()=>setBooking(b=>({...b,service:sv}))} style={{padding:"18px 16px",textAlign:"left",cursor:"pointer",borderRadius:4,background:booking.service===sv?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${booking.service===sv?C.P:C.BORDER}`,color:C.FG,fontSize:13,fontWeight:600}}>{sv}</button>
+                <button key={sv} onClick={()=>setBooking(b=>({...b,service:sv}))} className={`adv-tile${booking.service===sv?" is-active":""}`} style={{fontSize:13,fontWeight:600}}>{sv}</button>
               ))}
             </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(2)} disabled={!booking.service} style={{...S.btnP,opacity:!booking.service?0.4:1}}>Continue</button></div>
+            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(2)} disabled={!booking.service} className="adv-btn-primary">Continue</button></div>
           </div>
         )}
 
@@ -4368,7 +4379,7 @@ export default function Home() {
             <p style={{color:C.MID,fontSize:13,textAlign:"center",marginBottom:32}}>Prices are set live from our current packages -- always accurate</p>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,marginBottom:32}}>
               {settings.pricingPackages.map(pkg=>(
-                <button key={pkg.id} onClick={()=>setBkPkgId(pkg.id)} style={{padding:24,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPkgId===pkg.id?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPkgId===pkg.id?C.P:C.BORDER}`,color:C.FG}}>
+                <button key={pkg.id} onClick={()=>setBkPkgId(pkg.id)} className={`adv-tile${bkPkgId===pkg.id?" is-active":""}`} style={{padding:24}}>
                   <div style={{fontSize:22,marginBottom:8}}>{pkg.icon}</div>
                   <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>{pkg.label}</div>
                   <div style={{fontSize:24,fontWeight:700,color:C.PL,marginBottom:4}}>AED {pkg.price}</div>
@@ -4377,7 +4388,7 @@ export default function Home() {
                 </button>
               ))}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(1)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(3)} disabled={!bkPkgId} style={{...S.btnP,opacity:!bkPkgId?0.4:1}}>Continue</button></div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(1)} className="adv-btn-outline">Back</button><button onClick={()=>setBkStep(3)} disabled={!bkPkgId} className="adv-btn-primary">Continue</button></div>
           </div>
         )}
 
@@ -4385,12 +4396,12 @@ export default function Home() {
           <div>
             <h2 style={{fontSize:24,fontWeight:700,marginBottom:8,textAlign:"center"}}>Pick a Date & Time</h2>
             <div style={{maxWidth:420,margin:"32px auto"}}>
-              <div style={{marginBottom:16}}><label style={S.lbl}>Date *</label><input type="date" min={new Date().toISOString().slice(0,10)} style={S.inp} value={booking.date} onChange={e=>setBooking(b=>({...b,date:e.target.value}))} /></div>
-              <div style={{marginBottom:16}}><label style={S.lbl}>Time *</label><select style={S.inp} value={booking.time} onChange={e=>setBooking(b=>({...b,time:e.target.value}))}><option value="">Select...</option>{TIMES.map(t=><option key={t}>{t}</option>)}</select></div>
+              <div style={{marginBottom:16}}><label className="adv-label">Date *</label><input type="date" min={new Date().toISOString().slice(0,10)} className="adv-input" value={booking.date} onChange={e=>setBooking(b=>({...b,date:e.target.value}))} /></div>
+              <div style={{marginBottom:16}}><label className="adv-label">Time *</label><select className="adv-input" value={booking.time} onChange={e=>setBooking(b=>({...b,time:e.target.value}))}><option value="">Select...</option>{TIMES.map(t=><option key={t}>{t}</option>)}</select></div>
               {bkCheckingSlot&&<div style={{fontSize:12,color:C.MID}}>Checking availability...</div>}
               {!bkCheckingSlot&&bkSlotTaken&&<div style={{fontSize:12,color:"#ff6b6b"}}>This time slot is no longer available. Please select another time.</div>}
             </div>
-            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(2)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(4)} disabled={!booking.date||!booking.time||bkSlotTaken||bkCheckingSlot} style={{...S.btnP,opacity:(!booking.date||!booking.time||bkSlotTaken||bkCheckingSlot)?0.4:1}}>Continue</button></div>
+            <div style={{display:"flex",justifyContent:"space-between"}}><button onClick={()=>setBkStep(2)} className="adv-btn-outline">Back</button><button onClick={()=>setBkStep(4)} disabled={!booking.date||!booking.time||bkSlotTaken||bkCheckingSlot} className="adv-btn-primary">Continue</button></div>
           </div>
         )}
 
@@ -4398,30 +4409,30 @@ export default function Home() {
           <div>
             <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Your Details</h2>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16,maxWidth:560,margin:"0 auto 16px"}}>
-              <div><label style={S.lbl}>Full Name *</label><input style={S.inp} value={booking.name} onChange={e=>setBooking(b=>({...b,name:e.target.value}))} /></div>
-              <div><label style={S.lbl}>Location / Venue</label><input style={S.inp} value={booking.location} onChange={e=>setBooking(b=>({...b,location:e.target.value}))} placeholder="Dubai Marina, Studio, etc." /></div>
+              <div><label className="adv-label">Full Name *</label><input className="adv-input" value={booking.name} onChange={e=>setBooking(b=>({...b,name:e.target.value}))} /></div>
+              <div><label className="adv-label">Location / Venue</label><input className="adv-input" value={booking.location} onChange={e=>setBooking(b=>({...b,location:e.target.value}))} placeholder="Dubai Marina, Studio, etc." /></div>
             </div>
             <p style={{maxWidth:560,margin:"0 auto 16px",fontSize:12,color:C.MID,textAlign:"center"}}>We'll send your confirmation to <strong style={{color:C.FG}}>{booking.email}</strong> / <strong style={{color:C.FG}}>{booking.phone}</strong></p>
-            <div style={{maxWidth:560,margin:"0 auto 24px"}}><label style={S.lbl}>Anything we should know?</label><textarea style={{...S.inp,height:90,resize:"vertical" as const}} value={booking.details} onChange={e=>setBooking(b=>({...b,details:e.target.value}))} placeholder="Optional notes about your project..." /></div>
-            <div style={{display:"flex",justifyContent:"space-between",maxWidth:560,margin:"0 auto"}}><button onClick={()=>setBkStep(3)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(5)} disabled={!booking.name||!booking.email||!booking.phone} style={{...S.btnP,opacity:(!booking.name||!booking.email||!booking.phone)?0.4:1}}>Continue</button></div>
+            <div style={{maxWidth:560,margin:"0 auto 24px"}}><label className="adv-label">Anything we should know?</label><textarea className="adv-input" style={{height:90,resize:"vertical" as const}} value={booking.details} onChange={e=>setBooking(b=>({...b,details:e.target.value}))} placeholder="Optional notes about your project..." /></div>
+            <div style={{display:"flex",justifyContent:"space-between",maxWidth:560,margin:"0 auto"}}><button onClick={()=>setBkStep(3)} className="adv-btn-outline">Back</button><button onClick={()=>setBkStep(5)} disabled={!booking.name||!booking.email||!booking.phone} className="adv-btn-primary">Continue</button></div>
           </div>
         )}
 
         {bkStep===5&&bkSelectedPkg&&(
           <div>
             <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Review Your Booking</h2>
-            <div style={{maxWidth:480,margin:"0 auto 32px",border:`1px solid ${C.BORDER}`,borderRadius:6,padding:28}}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Service</span><span>{booking.service}</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Package</span><span>{bkSelectedPkg.label}</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:10}}><span style={{color:C.MID}}>Date & Time</span><span>{booking.date} · {booking.time}</span></div>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:20}}><span style={{color:C.MID}}>Contact</span><span>{booking.name}</span></div>
-              <div style={{borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:C.MID}}>Package price</span><span>AED {bkBase.toLocaleString()}</span></div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:8}}><span style={{color:C.MID}}>Transaction fee (4%)</span><span>AED {bkFee.toLocaleString()}</span></div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:16,fontWeight:700,marginTop:8}}><span>Total</span><span style={{color:C.PL}}>AED {bkTotal.toLocaleString()}</span></div>
+            <div className="adv-review-card" style={{maxWidth:480,margin:"0 auto 32px"}}>
+              <div className="adv-review-row"><span style={{color:C.MID}}>Service</span><span>{booking.service}</span></div>
+              <div className="adv-review-row"><span style={{color:C.MID}}>Package</span><span>{bkSelectedPkg.label}</span></div>
+              <div className="adv-review-row"><span style={{color:C.MID}}>Date & Time</span><span>{booking.date} · {booking.time}</span></div>
+              <div className="adv-review-row" style={{marginBottom:20}}><span style={{color:C.MID}}>Contact</span><span>{booking.name}</span></div>
+              <div className="adv-review-divider">
+                <div className="adv-review-row"><span style={{color:C.MID}}>Package price</span><span>AED {bkBase.toLocaleString()}</span></div>
+                <div className="adv-review-row"><span style={{color:C.MID}}>Transaction fee (4%)</span><span>AED {bkFee.toLocaleString()}</span></div>
+                <div className="adv-review-row" style={{fontSize:16,fontWeight:700,marginTop:8}}><span>Total</span><span style={{color:C.PL}}>AED {bkTotal.toLocaleString()}</span></div>
               </div>
             </div>
-            <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}><button onClick={()=>setBkStep(4)} style={S.btnO}>Back</button><button onClick={()=>setBkStep(6)} style={S.btnP}>Continue to Payment</button></div>
+            <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}><button onClick={()=>setBkStep(4)} className="adv-btn-outline">Back</button><button onClick={()=>setBkStep(6)} className="adv-btn-primary">Continue to Payment</button></div>
           </div>
         )}
 
@@ -4430,7 +4441,7 @@ export default function Home() {
             <h2 style={{fontSize:24,fontWeight:700,marginBottom:24,textAlign:"center"}}>Choose Payment Method</h2>
             {bkError&&<div style={{maxWidth:480,margin:"0 auto 16px",fontSize:12,color:"#ff6b6b",textAlign:"center"}}>{bkError}</div>}
             <div style={{maxWidth:480,margin:"0 auto 24px",display:"grid",gap:12}}>
-              <button onClick={()=>setBkPayMethod("bank_transfer")} style={{padding:20,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPayMethod==="bank_transfer"?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPayMethod==="bank_transfer"?C.P:C.BORDER}`,color:C.FG}}>
+              <button onClick={()=>setBkPayMethod("bank_transfer")} className={`adv-tile${bkPayMethod==="bank_transfer"?" is-active":""}`}>
                 <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🏦 Bank Transfer</div>
                 <div style={{fontSize:12,color:C.MID}}>Pay by bank transfer, then upload your receipt. Confirmed once verified.</div>
               </button>
@@ -4440,32 +4451,47 @@ export default function Home() {
                   until then it stays disabled exactly as the old "PayPal -- Available soon"
                   placeholder did, so nothing changes for anyone until it's configured. */}
               {settings.paymentLinkUrl?.trim() ? (
-                <button onClick={()=>setBkPayMethod("paypal")} style={{padding:20,textAlign:"left",cursor:"pointer",borderRadius:6,background:bkPayMethod==="paypal"?"rgba(139,92,246,0.12)":"transparent",border:`1px solid ${bkPayMethod==="paypal"?C.P:C.BORDER}`,color:C.FG}}>
+                <button onClick={()=>setBkPayMethod("paypal")} className={`adv-tile${bkPayMethod==="paypal"?" is-active":""}`}>
                   <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 Pay Online</div>
                   <div style={{fontSize:12,color:C.MID}}>Pay securely online by card. Confirmed as soon as we see your payment.</div>
                 </button>
               ) : (
-                <button disabled title="Available soon" style={{padding:20,textAlign:"left",cursor:"not-allowed",borderRadius:6,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.MID,opacity:0.5}}>
+                <button disabled title="Available soon" className="adv-tile is-disabled">
                   <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 Pay Online — Available soon</div>
                   <div style={{fontSize:12}}>Instant online payment is being finalized.</div>
                 </button>
               )}
             </div>
             {bkPayMethod==="bank_transfer"&&(
-              <div style={{maxWidth:480,margin:"0 auto 24px",fontSize:12,color:C.MID,lineHeight:1.7,background:"rgba(255,255,255,0.03)",padding:16,borderRadius:6}}>
+              <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
                 {settings.bankTransferInstructions?.trim()
                   ? settings.bankTransferInstructions
                   : "Bank transfer details will be sent to your email and WhatsApp right after you submit. Once you've paid, come back and upload your receipt to confirm your booking."}
               </div>
             )}
             {bkPayMethod==="paypal"&&(
-              <div style={{maxWidth:480,margin:"0 auto 24px",fontSize:12,color:C.MID,lineHeight:1.7,background:"rgba(255,255,255,0.03)",padding:16,borderRadius:6}}>
+              <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
                 After you confirm below, a secure payment page will open in a new tab for <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong>. Please complete the payment there and include your booking reference (shown next) so we can match it to your booking.
               </div>
             )}
+
+            {/* Honeypot -- invisible to real visitors, but a form-filling bot will find and
+                fill it like any other field. A filled value silently drops the submission. */}
+            <div aria-hidden="true" style={{position:"absolute",left:"-9999px",top:"-9999px",opacity:0,height:0,overflow:"hidden"}}>
+              <label htmlFor="bk-website">Website</label>
+              <input id="bk-website" name="website" type="text" tabIndex={-1} autoComplete="off" value={bkHp} onChange={e=>setBkHp(e.target.value)} />
+            </div>
+            <div style={{maxWidth:480,margin:"0 auto 24px"}}>
+              <label className="adv-label">Quick human check *</label>
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <span style={{color:"#fff",fontSize:14,whiteSpace:"nowrap"}}>{bkCaptchaA} + {bkCaptchaB} =</span>
+                <input className="adv-input" inputMode="numeric" style={{maxWidth:90}} value={bkCaptchaAnswer} onChange={e=>setBkCaptchaAnswer(e.target.value.replace(/[^\d]/g,""))} placeholder="?" />
+              </div>
+            </div>
+
             <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}>
-              <button onClick={()=>setBkStep(5)} style={S.btnO}>Back</button>
-              <button onClick={submitAppointment} disabled={bkSubmitting} style={{...S.btnP,opacity:bkSubmitting?0.6:1}}>{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
+              <button onClick={()=>setBkStep(5)} className="adv-btn-outline">Back</button>
+              <button onClick={submitAppointment} disabled={bkSubmitting||!bkCaptchaAnswer.trim()} className="adv-btn-primary">{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
             </div>
           </div>
         )}
@@ -4479,14 +4505,14 @@ export default function Home() {
               bkReceiptDone?(
                 <div style={{marginTop:24}}>
                   <p style={{color:C.MID,fontSize:13}}>Your payment receipt has been submitted and is awaiting verification. You'll get a confirmation message on WhatsApp and email as soon as it's verified.</p>
-                  <button onClick={resetAppointmentFlow} style={{...S.btnO,marginTop:24}}>Book Another Session</button>
+                  <button onClick={resetAppointmentFlow} className="adv-btn-outline" style={{marginTop:24}}>Book Another Session</button>
                 </div>
               ):(
                 <div style={{maxWidth:420,margin:"24px auto 0"}}>
                   <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Once you've made the bank transfer, upload your receipt below to confirm your booking.</p>
                   <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e=>setBkReceiptFile(e.target.files?.[0]||null)} style={{marginBottom:12,fontSize:12,color:C.MID}} />
                   {bkReceiptErr&&<div style={{fontSize:12,color:"#ff6b6b",marginBottom:12}}>{bkReceiptErr}</div>}
-                  <div><button onClick={submitReceipt} disabled={!bkReceiptFile||bkReceiptUploading} style={{...S.btnP,opacity:(!bkReceiptFile||bkReceiptUploading)?0.5:1}}>{bkReceiptUploading?"Uploading...":"Upload Receipt"}</button></div>
+                  <div><button onClick={submitReceipt} disabled={!bkReceiptFile||bkReceiptUploading} className="adv-btn-primary">{bkReceiptUploading?"Uploading...":"Upload Receipt"}</button></div>
                 </div>
               )
             ):(
@@ -4497,17 +4523,19 @@ export default function Home() {
               // bank transfer -- he marks it paid from the CMS Bookings tab once he sees it.
               <div style={{maxWidth:420,margin:"24px auto 0"}}>
                 <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> using the secure payment link below. Please include your reference <strong style={{color:C.FG}}>{bkConfirmed.ref}</strong> if there's a note field -- we'll confirm your booking as soon as we see the payment.</p>
-                <a href={settings.paymentLinkUrl} target="_blank" rel="noopener noreferrer" style={{...S.btnP,textDecoration:"none",display:"inline-block"}}>Pay Now</a>
+                <a href={settings.paymentLinkUrl} target="_blank" rel="noopener noreferrer" className="adv-btn-primary" style={{textDecoration:"none",display:"inline-block"}}>Pay Now</a>
                 <p style={{color:C.MID,fontSize:12,marginTop:20}}>Already paid? We'll be in touch on WhatsApp/email to confirm.</p>
-                <button onClick={resetAppointmentFlow} style={{...S.btnO,marginTop:16}}>Book Another Session</button>
+                <button onClick={resetAppointmentFlow} className="adv-btn-outline" style={{marginTop:16}}>Book Another Session</button>
               </div>
             )}
           </div>
         )}
 
-        <div style={{textAlign:"center",marginTop:56,paddingTop:32,borderTop:`1px solid ${C.BORDER}`}}>
+        </div>
+
+        <div style={{textAlign:"center",marginTop:32}}>
           <p style={{fontSize:12,color:C.MID,marginBottom:12}}>Prefer to just chat first?</p>
-          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" style={{...S.btnO,textDecoration:"none",fontSize:11,padding:"10px 24px"}}>Message on WhatsApp</a>
+          <a href={`https://wa.me/${WA}?text=${encodeURIComponent(WA_MSG)}`} target="_blank" className="adv-btn-outline" style={{textDecoration:"none",fontSize:11,padding:"10px 24px",display:"inline-block"}}>Message on WhatsApp</a>
         </div>
       </div>
       <Footer /><FloatingWA num={WA} msg={WA_MSG} />

@@ -142,7 +142,12 @@ type SiteSettings = {
   // no schema/DB change, just makes that long-planned slot real instead of a placeholder.
   paymentLinkUrl:string;
 };
-type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:string;img:string;page:string; };
+// btn1Link/btn2Link (both optional): a custom destination for each Hero CTA button, pasted by
+// the admin -- a full URL (https://...) opens in a new tab, anything else (e.g. /contact or
+// /packages) is treated as an internal page path and navigated to directly. Blank/undefined
+// keeps the existing behavior exactly as before (btn1 -> the slide's own `page`, btn2 -> the
+// booking flow), so shipping this makes zero visual/behavioral change until an admin sets one.
+type HeroSlide = { label:string;headline:string;sub:string;btn1:string;btn2:string;img:string;page:string;btn1Link?:string;btn2Link?:string; };
 
 // ─── LANGUAGE SWITCHER ────────────────────────────────────────────────────────
 // Translates the fixed site chrome only -- nav labels, the book/WhatsApp buttons, and the
@@ -1418,8 +1423,12 @@ function Hero({slides,onNav,waNumber,typography,ready}:{slides:HeroSlide[];onNav
           <h1 style={{fontSize:`clamp(30px,min(5.4vw,7.5vh),${ht.headlineSize}px)`,fontFamily:HERO_FONTS[ht.headlineFont],fontWeight:ht.headlineWeight,fontStyle:ht.headlineItalic?"italic":"normal",letterSpacing:ht.headlineSpacing,color:ht.headlineColor||"#fff",margin:"0 0 clamp(12px,2.5vh,20px)",lineHeight:1.1,whiteSpace:"pre-line"}}>{sl.headline.replace(/\\n/g,"\n")}</h1>
           <p style={{fontSize:`clamp(14px,min(1.5vw,2.1vh),${ht.subSize}px)`,fontFamily:HERO_FONTS[ht.subFont],fontWeight:ht.subWeight,color:ht.subColor||"rgba(255,255,255,0.6)",lineHeight:1.7,maxWidth:460,marginBottom:"clamp(18px,3.5vh,40px)"}}>{sl.sub}</p>
           <div style={{display:"flex",gap:14,flexWrap:"wrap",marginBottom:"clamp(16px,3vh,36px)"}}>
-            <button onClick={()=>onNav(sl.page)} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
-            {sl.btn2&&<button onClick={()=>onNav("booking")} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
+            {/* A custom Button Link (CMS > Hero Slides > Button 1/2 Link) wins when set --
+                an absolute URL opens in a new tab, anything else is treated as an internal
+                page path -- and falls back to the original page-key navigation (onNav) when
+                left blank, exactly as before. */}
+            <button onClick={()=>{const l=sl.btn1Link&&sl.btn1Link.trim();if(l){if(/^https?:\/\//i.test(l))window.open(l,"_blank","noopener,noreferrer");else window.location.href=l;}else onNav(sl.page);}} style={{...S.btnP}} onMouseEnter={e=>(e.currentTarget.style.background=C.PD)} onMouseLeave={e=>(e.currentTarget.style.background=C.P)}>{sl.btn1}</button>
+            {sl.btn2&&<button onClick={()=>{const l=sl.btn2Link&&sl.btn2Link.trim();if(l){if(/^https?:\/\//i.test(l))window.open(l,"_blank","noopener,noreferrer");else window.location.href=l;}else onNav("booking");}} style={{background:"none",border:"1px solid rgba(255,255,255,0.25)",color:"rgba(255,255,255,0.75)",padding:"13px 36px",fontSize:11,letterSpacing:3,textTransform:"uppercase",cursor:"pointer"}}>{sl.btn2}</button>}
           </div>
           <div style={{maxWidth:420}}>
             {cbStep==="done"?(
@@ -3240,7 +3249,17 @@ export default function Home() {
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Label</label><input style={S.inp} value={sl.label} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Button 1</label><input style={S.inp} value={sl.btn1} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn1:e.target.value}:x)})} /></div>
+                      <div style={{gridColumn:"1/3"}}>
+                        <label style={S.lbl}>Button 1 Link (optional)</label>
+                        <input style={S.inp} value={sl.btn1Link||""} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn1Link:e.target.value}:x)})} placeholder="Leave blank to keep the default page link" />
+                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /packages). Leave blank to keep this button going to its default page.</div>
+                      </div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Button 2 (optional — leave blank to hide this button)</label><input style={S.inp} value={sl.btn2} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn2:e.target.value}:x)})} /></div>
+                      <div style={{gridColumn:"1/3"}}>
+                        <label style={S.lbl}>Button 2 Link (optional)</label>
+                        <input style={S.inp} value={sl.btn2Link||""} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn2Link:e.target.value}:x)})} placeholder="Leave blank to keep sending this button to Booking" />
+                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep this button going to Booking.</div>
+                      </div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Headline (use \n for line break)</label><input style={S.inp} value={sl.headline} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,headline:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Sub Text</label><input style={S.inp} value={sl.sub} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,sub:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><SingleImageUpload label="Background Image" value={sl.img} onChange={v=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,img:v}:x)})} /></div>

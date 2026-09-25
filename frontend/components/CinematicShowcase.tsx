@@ -71,6 +71,21 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+// Triggers a real browser download/open of an actual CMS asset (never the YouTube source,
+// which has no legitimate downloadable file). Same-origin URLs download directly; cross-origin
+// ones (e.g. Supabase storage) open in a new tab, where the browser's own save option applies --
+// still a genuine download path, never a faked one.
+function downloadAsset(url: string, filename: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  a.target = "_blank";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 const ctrlBtnStyle: CSSProperties = {
   background: "none",
   border: "none",
@@ -136,6 +151,14 @@ function FullscreenIcon({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function DownloadIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 19h14" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   );
 }
@@ -324,10 +347,70 @@ export default function CinematicShowcase({
     }
   }
 
+  // Download: YouTube's platform has no legitimate way to hand back the original video
+  // file, so the button never pretends to download "the video". When the project has a real
+  // CMS asset (its cover image), the button genuinely downloads that and says so in its
+  // tooltip; with no asset at all it's visually present but disabled, with a tooltip
+  // explaining why -- never a fake, silently-do-nothing click.
+  const canDownload = !!active?.coverImage;
+  function handleDownload() {
+    if (!active?.coverImage) return;
+    downloadAsset(active.coverImage, `${active.slug || active.id}-cover.jpg`);
+  }
+
   // Camera/dynamic-island detail + the video/poster screen -- identical regardless of how the
   // outer frame itself animates (desktop morph vs. mobile 3D flip, below), so it's built once.
   const frameChrome = (
     <>
+      {/* Metallic body sheen -- a soft diagonal highlight across the physical frame, as if
+          light were catching a brushed/anodized edge. Purely a hardware-realism cue, not any
+          brand's specific design. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "inherit",
+          background: "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 24%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
+      {/* Physical side buttons (volume rocker + power key) -- generic smartphone hardware,
+          not tied to any single brand's design -- rotate position with the device itself so
+          a "landscape" phone reads as the same object physically turned on its side. */}
+      <div
+        style={{
+          position: "absolute",
+          ...(orientation === "portrait"
+            ? { top: "16%", left: -3, width: 3, height: 30 }
+            : { top: -3, left: "20%", width: 30, height: 3 }),
+          borderRadius: 2,
+          background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(0,0,0,0.55))",
+          zIndex: 2,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          ...(orientation === "portrait"
+            ? { top: "28%", left: -3, width: 3, height: 22 }
+            : { top: -3, left: "34%", width: 22, height: 3 }),
+          borderRadius: 2,
+          background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(0,0,0,0.55))",
+          zIndex: 2,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          ...(orientation === "portrait"
+            ? { top: "18%", right: -3, width: 3, height: 36 }
+            : { bottom: -3, left: "56%", width: 36, height: 3 }),
+          borderRadius: 2,
+          background: "linear-gradient(90deg, rgba(255,255,255,0.14), rgba(0,0,0,0.5))",
+          zIndex: 2,
+        }}
+      />
       <div
         style={{
           position: "absolute",
@@ -337,11 +420,26 @@ export default function CinematicShowcase({
           width: orientation === "portrait" ? 56 : 6,
           height: orientation === "portrait" ? 14 : 56,
           borderRadius: 20,
-          background: "rgba(0,0,0,0.55)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+          background: "radial-gradient(circle at 35% 35%, #232326, #050506 75%)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 5px rgba(0,0,0,0.85)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
           zIndex: 3,
         }}
-      />
+      >
+        {/* Front camera lens -- a small cool-tinted highlight inside the cutout, the one
+            detail that reads as "real hardware" rather than a plain dark pill. */}
+        <span
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 35% 35%, #4c4f60, #05050a)",
+            boxShadow: "0 0 3px rgba(130,150,255,0.55)",
+          }}
+        />
+      </div>
       <div
         ref={screenRef}
         style={{
@@ -352,6 +450,7 @@ export default function CinematicShowcase({
           overflow: "hidden",
           background: "#000",
           boxShadow: "inset 0 0 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
+          zIndex: 2,
         }}
       >
         <AnimatePresence>
@@ -451,6 +550,19 @@ export default function CinematicShowcase({
                       <button onClick={toggleFullscreen} aria-label="Fullscreen" style={ctrlBtnStyle}>
                         <FullscreenIcon size={isMobile ? 13 : 16} />
                       </button>
+                      <button
+                        onClick={handleDownload}
+                        disabled={!canDownload}
+                        aria-label={canDownload ? "Download cover photo" : "Download unavailable"}
+                        title={
+                          canDownload
+                            ? "Download cover photo (the original video file isn't available for direct download from this source)"
+                            : "No downloadable file available for this project"
+                        }
+                        style={{ ...ctrlBtnStyle, opacity: canDownload ? 0.9 : 0.35, cursor: canDownload ? "pointer" : "not-allowed" }}
+                      >
+                        <DownloadIcon size={isMobile ? 13 : 16} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -540,7 +652,7 @@ export default function CinematicShowcase({
                   borderRadius: orientation === "portrait" ? 42 : 28,
                   background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
                   padding: 8,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}
@@ -562,7 +674,7 @@ export default function CinematicShowcase({
                   borderRadius: orientation === "portrait" ? 42 : 28,
                   background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
                   padding: orientation === "portrait" ? 12 : 14,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}

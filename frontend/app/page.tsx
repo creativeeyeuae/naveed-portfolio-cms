@@ -7,6 +7,7 @@ import { SERVICE_PAGES } from "@/lib/servicePagesData";
 import type { PublicSiteInfo } from "@/lib/cmsData";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import CinematicShowcase from "@/components/CinematicShowcase";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -27,6 +28,12 @@ type Project = { id:string;title:string;slug:string;categories:string[];descript
                           // automatically when the title/slug changes so old shared links keep
                           // working -- /work/[slug] renders a soft redirect to the current slug
                           // for any of these instead of a hard 404.
+  videoOrientation?:"landscape"|"portrait"; // For the Home page Cinematic Showcase only
+                          // (components/CinematicShowcase.tsx) -- which way its device frame
+                          // presents this project's `youtubeUrl`. Optional and defaults to
+                          // "landscape" everywhere it's read, so every existing project (which
+                          // has never set this) renders exactly as before until an admin picks
+                          // "Portrait" for a vertical video.
 };
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
@@ -119,6 +126,11 @@ type SiteSettings = {
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
   videoSectionEnabled:boolean; videoSectionUrl:string; videoSectionTitle:string; videoSectionSubtitle:string; // Full-width video section, between About and Services
+  cinematicShowcaseEnabled:boolean; // Independent on/off for the NEW device-framed project-video
+                                     // showcase (components/CinematicShowcase.tsx, between Featured
+                                     // Work and Our Clients). Deliberately separate from
+                                     // videoSectionEnabled above -- the two sections are unrelated
+                                     // and both must be toggleable on their own, per spec.
   popupEnabled:boolean; popupDelaySec:number; popupTitle:string; popupText:string; popupCtaLabel:string;
   imagePermissionEnabled:boolean; // CMS on/off switch for the whole Image Permission Request
                                    // feature (spec point 22) -- when off, /work/[slug] hides
@@ -280,6 +292,7 @@ const DEF_SETTINGS: SiteSettings = {
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
   googlePlaceId:"", googleReviewsEnabled:false,
   videoSectionEnabled:false, videoSectionUrl:"", videoSectionTitle:"Luxury Villa Shoot", videoSectionSubtitle:"Featured Project",
+  cinematicShowcaseEnabled:false,
   imagePermissionEnabled:true,
   popupEnabled:true, popupDelaySec:20,
   popupTitle:"Let's Talk About Your Project",
@@ -2416,7 +2429,7 @@ export default function Home() {
     const previousSlugs=prior&&prior.slug&&prior.slug!==slug
       ? Array.from(new Set([...(prior.previousSlugs||[]),prior.slug])).filter(s=>s!==slug)
       : (prior?.previousSlugs||[]);
-    const p:Project={id,title:form.title||"",slug,categories:form.categories||[],description:form.description||"",fullDescription:form.fullDescription||"",clientName:form.clientName||"",location:form.location||"",projectDate:form.projectDate||"",tags:Array.isArray(form.tags)?form.tags:[],featured:!!form.featured,coverImage:form.coverImage||"",images:form.images||[],videos:form.videos||[],reels:form.reels||[],youtubeUrl:form.youtubeUrl||"",projectName:form.projectName||"",bannerTitle:form.bannerTitle||"",bannerImage:form.bannerImage||"",previousSlugs};
+    const p:Project={id,title:form.title||"",slug,categories:form.categories||[],description:form.description||"",fullDescription:form.fullDescription||"",clientName:form.clientName||"",location:form.location||"",projectDate:form.projectDate||"",tags:Array.isArray(form.tags)?form.tags:[],featured:!!form.featured,coverImage:form.coverImage||"",images:form.images||[],videos:form.videos||[],reels:form.reels||[],youtubeUrl:form.youtubeUrl||"",videoOrientation:(form.videoOrientation as any)||"landscape",projectName:form.projectName||"",bannerTitle:form.bannerTitle||"",bannerImage:form.bannerImage||"",previousSlugs};
     const nextProjects=editId!=="new"?projects.map(x=>x.id===editId?p:x):[...projects,p];
     if(editId!=="new")setProjects(ps=>ps.map(x=>x.id===editId?p:x));else setProjects(ps=>[...ps,p]);
     setEditId(null);
@@ -3627,9 +3640,9 @@ export default function Home() {
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"28px 0 20px",textTransform:"uppercase"}}>Show / Hide Homepage Sections</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn any section of the home page off without deleting its content -- switch it back on any time.</div>
                 {([
-                  ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["video","Full-Width Video"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
+                  ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["video","Full-Width Video"],["cinematicShowcase","Cinematic Showcase"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
                 ] as [string,string][]).map(([key,label])=>{
-                  const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : key==="video" ? !!settingsDraft.videoSectionEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
+                  const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : key==="video" ? !!settingsDraft.videoSectionEnabled : key==="cinematicShowcase" ? !!settingsDraft.cinematicShowcaseEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
                   return (
                     <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
                       <span style={{fontSize:13,fontWeight:600}}>{label}</span>
@@ -3637,6 +3650,7 @@ export default function Home() {
                         if(key==="clients") updateSD({clientsEnabled:!on});
                         else if(key==="googleReviews") updateSD({googleReviewsEnabled:!on});
                         else if(key==="video") updateSD({videoSectionEnabled:!on});
+                        else if(key==="cinematicShowcase") updateSD({cinematicShowcaseEnabled:!on});
                         else updateSD({homeSections:{...settingsDraft.homeSections,[key]:!on}});
                       }} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} ${on?"off":"on"}`}>
                         <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
@@ -3644,6 +3658,11 @@ export default function Home() {
                     </div>
                   );
                 })}
+                {settingsDraft.cinematicShowcaseEnabled && !projects.some(p=>p.featured&&p.youtubeUrl) && (
+                  <div style={{fontSize:11,color:"#c9963f",marginTop:-2,marginBottom:14,lineHeight:1.6}}>
+                    Cinematic Showcase is on, but no Featured project has a YouTube URL yet -- add one in the Portfolio tab (and mark it Featured), or this section stays hidden.
+                  </div>
+                )}
                 {settingsDraft.googleReviewsEnabled && !settingsDraft.googlePlaceId && (
                   <div style={{fontSize:11,color:"#c9963f",marginTop:-2,marginBottom:14,lineHeight:1.6}}>
                     Google Reviews is on but no Google Place ID is set yet -- add one in the SEO tab, or this section stays hidden.
@@ -3911,6 +3930,7 @@ export default function Home() {
                     <div><label style={S.lbl}>Location</label><input style={S.inp} value={form.location||""} onChange={e=>setForm(f=>({...f,location:e.target.value}))} /></div>
                     <div><label style={S.lbl}>Date</label><input type="date" style={S.inp} value={form.projectDate||""} onChange={e=>setForm(f=>({...f,projectDate:e.target.value}))} /></div>
                     <div><label style={S.lbl}>YouTube URL</label><input style={S.inp} value={form.youtubeUrl||""} onChange={e=>setForm(f=>({...f,youtubeUrl:e.target.value}))} /></div>
+                    <div><label style={S.lbl}>Video Orientation (Cinematic Showcase)</label><select style={S.inp} value={form.videoOrientation||"landscape"} onChange={e=>setForm(f=>({...f,videoOrientation:e.target.value as "landscape"|"portrait"}))}><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></div>
                   </div>
                   <div style={{marginBottom:16}}>
                     <label style={S.lbl}>Banner Title (optional -- press Enter for a line break; defaults to Title if left blank)</label>
@@ -4903,6 +4923,16 @@ export default function Home() {
             ))}
           </div>
         </div>
+      )}
+
+      {/* CINEMATIC SHOWCASE -- new, independent device-framed project-video section (spec:
+          Apple "Make it cinematic" interaction reference, original visual design). Fully
+          separate from the existing Full-Width Video section above: its own CMS toggle
+          (cinematicShowcaseEnabled), its own data slice (featured projects with a YouTube
+          URL), and it self-hides via its own `items.length===0` check inside the component,
+          so this call only needs to gate on the admin's on/off switch. */}
+      {settings.cinematicShowcaseEnabled && (
+        <CinematicShowcase projects={projects} isMobile={isMobile} />
       )}
 
       {/* OUR CLIENTS -- rebuilt to match spector.framer.website's actual "Our Clients" component

@@ -12,6 +12,7 @@
 // simple, honest way back into the main site and to get in touch -- no invented content.
 import Link from "next/link";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
+import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps } from "@/lib/seo";
 
 const P = "#8B5CF6", PL = "#E2D9F3", DARK = "#140D21", BG = "#09060E", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#2D1F45";
 const WA_NUMBER = "971581174911";
@@ -49,10 +50,22 @@ export default function ServicePage({ data }: { data: ServicePageData }) {
       acceptedAnswer: { "@type": "Answer", text: f.a },
     })),
   };
+  // Service + BreadcrumbList (+ ImageObject when a hero photo is set) -- added once here so
+  // every page using ServicePage picks them up automatically, no per-page edits needed.
+  // LocalBusiness/ProfessionalService is NOT repeated (already site-wide in app/layout.tsx).
+  const serviceSchema = serviceJsonLd({ path: `/${data.slug}/`, name: data.h1, description: data.intro });
+  const breadcrumbSchema = breadcrumbJsonLd([
+    { name: "Home", path: "/" },
+    { name: data.h1, path: `/${data.slug}/` },
+  ]);
+  const imageSchema = data.heroImage ? imageObjectJsonLd({ url: data.heroImage.src, alt: data.heroImage.alt }) : null;
 
   return (
     <div style={{ background: BG, color: FG, minHeight: "100vh", fontFamily: "inherit" }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      <script {...jsonLdScriptProps(faqSchema)} />
+      <script {...jsonLdScriptProps(serviceSchema)} />
+      <script {...jsonLdScriptProps(breadcrumbSchema)} />
+      {imageSchema && <script {...jsonLdScriptProps(imageSchema)} />}
 
       {/* Minimal header: logo back to the real homepage + a direct WhatsApp enquiry button. */}
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "22px 24px", borderBottom: `1px solid ${BORDER}`, flexWrap: "wrap", gap: 14 }}>

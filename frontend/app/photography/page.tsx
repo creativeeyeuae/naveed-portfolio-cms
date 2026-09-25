@@ -22,6 +22,15 @@ export async function generateMetadata() {
     path: "/photography/",
     title: `Photography — ${site.siteName}`,
     description: "Portrait, landscape, real estate, fashion, product and event photography across the UAE -- a curated look at the still-photography side of the work.",
+    keywords: [
+      "photographer Dubai",
+      "photography Dubai",
+      "commercial photography Dubai",
+      "real estate photography Dubai",
+      "product photography Dubai",
+      "event photography Dubai",
+      "lifestyle photography Dubai",
+    ],
   });
 }
 
@@ -38,6 +47,32 @@ export default async function PhotographyPage() {
       title="Photography"
       description="Portrait, landscape, real estate, fashion, product and event photography across the UAE."
     >
+      {/* Links into the dedicated SEO service pages (app/<slug>/page.tsx, see
+          lib/servicePagesData.ts) -- this hub is the internal-linking bridge between the
+          homepage's "Photography" row and each specific service's own landing page. */}
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 40px 56px" }}>
+        <h2 style={{ fontSize: 13, letterSpacing: 3, textTransform: "uppercase", color: "var(--c-mid,#A892C6)", margin: "0 0 18px" }}>
+          Photography Services in Dubai
+        </h2>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+          {[
+            { slug: "commercial-photographer-dubai", label: "Commercial Photography" },
+            { slug: "corporate-headshot-photographer-dubai", label: "Corporate Headshots" },
+            { slug: "real-estate-photographer-dubai", label: "Real Estate Photography" },
+            { slug: "product-photographer-dubai", label: "Product Photography" },
+            { slug: "event-photographer-dubai", label: "Event Photography" },
+            { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photography" },
+          ].map((s) => (
+            <a
+              key={s.slug}
+              href={`/${s.slug}`}
+              style={{ fontSize: 13, color: "var(--c-pl,#E2D9F3)", textDecoration: "none", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 30, padding: "9px 18px" }}
+            >
+              {s.label} →
+            </a>
+          ))}
+        </div>
+      </div>
       <WorkGrid projects={projects} />
     </InternalPageTemplate>
   );

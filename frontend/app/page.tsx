@@ -4827,7 +4827,17 @@ export default function Home() {
               <div>
                 {settings.services.map((sv,i)=>(
                   <Reveal key={sv.id} delay={i*0.07}>
-                  <div className="svc-row" onClick={()=>goTo("packages")} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"34px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
+                  <div className="svc-row" onClick={()=>{
+                    // Each service now links to its OWN real page instead of every row going
+                    // to the same generic Packages page (the exact bug flagged: "all services
+                    // link to the same page"). Photography/Videography have real, dedicated
+                    // pages already (/photography, /cinematography); Content Creation and
+                    // Creative Production don't have a page of their own yet, so those two
+                    // fall back to Packages, same as before.
+                    if(sv.id==="s1"){ router.push("/photography"); return; }
+                    if(sv.id==="s2"){ router.push("/cinematography"); return; }
+                    goTo("packages");
+                  }} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"34px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
                       <span className="svc-num" style={{width:44,height:44,borderRadius:6,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0,boxShadow:"0 6px 16px rgba(20,13,33,0.20)"}}>{String(i+1).padStart(2,"0")}</span>
                       <div style={{minWidth:0}}>

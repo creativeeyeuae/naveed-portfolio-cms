@@ -13,6 +13,13 @@ export const metadata: Metadata = buildMetadata({
   path: "/real-estate-photographer-dubai/",
   title: TITLE,
   description: DESC,
+  keywords: [
+    "real estate photographer Dubai",
+    "real estate photography Dubai",
+    "property photographer Dubai",
+    "off-plan photography Dubai",
+    "villa and apartment photography UAE",
+  ],
 });
 
 export default function Page() {

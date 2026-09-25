@@ -66,6 +66,12 @@ export type PageSeoInput = {
   publishedTime?: string | null;
   /** true = not found / placeholder / unpublished -- emit noindex only */
   noindex?: boolean;
+  /**
+   * Optional meta keywords -- Google/Bing have ignored this tag for ranking since ~2009,
+   * so it has no real SEO effect, but it's harmless to include when explicitly requested.
+   * Pass a short, natural list (no stuffing); omit entirely rather than padding it out.
+   */
+  keywords?: string[];
 };
 
 export function buildMetadata(input: PageSeoInput): Metadata {
@@ -80,6 +86,7 @@ export function buildMetadata(input: PageSeoInput): Metadata {
   return {
     title: input.title,
     description,
+    ...(input.keywords && input.keywords.length ? { keywords: input.keywords.join(", ") } : {}),
     alternates: { canonical },
     openGraph: {
       title: input.title,
@@ -158,6 +165,60 @@ export function articleJsonLd(input: {
     ...(input.category ? { articleSection: input.category } : {}),
     author: { "@type": "Person", name: SITE_NAME },
     publisher: organizationJsonLd(),
+  };
+}
+
+// LocalBusiness/ProfessionalService is already emitted site-wide, once, in app/layout.tsx's
+// @graph (the "#service"/"#person" nodes) -- every page inherits it via the root layout, so
+// it is NOT repeated here. Repeating it per-page would be exactly the "duplicate schema"
+// the SEO brief says to avoid. These three builders cover the schema types that DON'T
+// already exist anywhere: a specific Service offered, the page's place in the site
+// hierarchy, and the hero photo as its own described entity.
+
+export function serviceJsonLd(input: {
+  path: string;
+  name: string;
+  description?: string | null;
+  areaServed?: string[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    serviceType: input.name,
+    name: input.name,
+    ...(input.description ? { description: input.description } : {}),
+    url: absoluteUrl(input.path),
+    provider: { "@id": `${SITE_URL}/#service` }, // same ProfessionalService node from layout.tsx
+    areaServed: (input.areaServed && input.areaServed.length ? input.areaServed : ["Dubai", "United Arab Emirates"]).map((a) => ({
+      "@type": "Place",
+      name: a,
+    })),
+  };
+}
+
+/** crumbs: ordered from Home -> ... -> current page, e.g. [{name:"Home",path:"/"},{name:"Commercial Photographer",path:"/commercial-photographer-dubai/"}] */
+export function breadcrumbJsonLd(crumbs: { name: string; path: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: c.name,
+      item: absoluteUrl(c.path),
+    })),
+  };
+}
+
+export function imageObjectJsonLd(input: { url: string; alt?: string | null; caption?: string | null }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ImageObject",
+    contentUrl: input.url,
+    url: input.url,
+    ...(input.alt ? { name: input.alt } : {}),
+    ...(input.caption ? { caption: input.caption } : {}),
+    creator: { "@type": "Person", name: SITE_NAME },
   };
 }
 

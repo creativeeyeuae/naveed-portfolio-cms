@@ -15,6 +15,7 @@ export const SERVICE_PAGES: { slug: string; label: string }[] = [
   { slug: "product-photographer-dubai", label: "Product Photographer" },
   { slug: "brand-photographer-dubai", label: "Brand Photographer" },
   { slug: "event-photographer-dubai", label: "Event Photographer" },
+  { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photographer" },
 ];
 
 // Real, sourced upcoming Dubai exhibitions/trade shows -- shown on the exhibition-

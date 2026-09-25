@@ -17,6 +17,13 @@ export const metadata: Metadata = buildMetadata({
   // more relevant for a link preview than the site-wide fallback.
   imageUrl:
     "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789124446277-hn5lcb8qp26.jpg",
+  keywords: [
+    "commercial photographer Dubai",
+    "commercial photography Dubai",
+    "corporate photography Dubai",
+    "editorial photographer Dubai",
+    "brand photography UAE",
+  ],
 });
 
 export default function Page() {

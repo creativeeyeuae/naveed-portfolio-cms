@@ -13,6 +13,13 @@ export const metadata: Metadata = buildMetadata({
   path: "/event-photographer-dubai/",
   title: TITLE,
   description: DESC,
+  keywords: [
+    "event photographer Dubai",
+    "corporate event photography Dubai",
+    "conference photographer Dubai",
+    "product launch photographer Dubai",
+    "event photography UAE",
+  ],
 });
 
 export default function Page() {

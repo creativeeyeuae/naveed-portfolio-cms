@@ -18,7 +18,7 @@
 //     always the intended look -- it just wasn't wired up yet.
 //
 // There is exactly one nav implementation. Nothing else should define its own Header/Nav.
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { PublicSiteInfo } from "@/lib/cmsData";
@@ -67,7 +67,7 @@ const NAV_TEXT: Record<Lang, { home: string; work: string; about: string; packag
 // here. Not used at all in `spa` mode (the homepage keeps its own goTo() in-memory
 // navigation, unchanged). Kept in sync with the matching PAGE_HREF map in SiteFooter.tsx.
 const STATIC_HREF: Record<string, string> = { home: "/", work: "/work", about: "/about", packages: "/packages", gear: "/gear", blog: "/journal", cv: "/cv", contact: "/contact", booking: "/contact" };
-// Nav order everywhere: Home | Work | About | Packages | Gear | Journal | CV | Contact | Book
+// Nav order everywhere: Home | Work | Photography (dropdown) | About | Packages | Gear | Journal | CV | Contact | Book
 const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: keyof (typeof NAV_TEXT)["en"] }[] = [
   { key: "home", textKey: "home" },
   { key: "work", textKey: "work" },
@@ -77,6 +77,23 @@ const STATIC_NAV_ORDER: { key: keyof (typeof NAV_TEXT)["en"] | "blog"; textKey: 
   { key: "blog", textKey: "journal" },
   { key: "cv", textKey: "cv" },
   { key: "contact", textKey: "contact" },
+];
+
+// The dedicated SEO service pages (app/<slug>/page.tsx) aren't part of STATIC_NAV_ORDER/
+// pageEnabled -- they're a fixed, always-on set of real pages (not a CMS-toggleable
+// section like Work/About/etc.), so they get their own small "Photography" dropdown
+// instead of being squeezed into that flat, per-language-translated list. Labels are
+// plain English; the site's existing Google Translate widget (app/layout.tsx) already
+// translates ordinary page copy the same way, so these don't need a 12-language entry
+// in NAV_TEXT to match everything else on the page.
+const PHOTOGRAPHY_SUBNAV: { slug: string; label: string }[] = [
+  { slug: "photography", label: "All Photography" },
+  { slug: "commercial-photographer-dubai", label: "Commercial Photography" },
+  { slug: "corporate-headshot-photographer-dubai", label: "Corporate Headshots" },
+  { slug: "real-estate-photographer-dubai", label: "Real Estate Photography" },
+  { slug: "product-photographer-dubai", label: "Product Photography" },
+  { slug: "event-photographer-dubai", label: "Event Photography" },
+  { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photography" },
 ];
 
 // SPA-mode props -- supplied only by the homepage (app/page.tsx), which owns all of this
@@ -108,7 +125,12 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
   const [staticScrolled, setStaticScrolled] = useState(false);
   const [staticIsMobile, setStaticIsMobile] = useState(false);
   const [staticMobileNavOpen, setStaticMobileNavOpen] = useState(false);
+  // Desktop hover/click state for the new "Photography" dropdown (static mode only --
+  // see PHOTOGRAPHY_SUBNAV above). Click-toggle as well as hover so it also works on
+  // touch/keyboard, not just mouse hover.
+  const [photoDropdownOpen, setPhotoDropdownOpen] = useState(false);
   const pathname = usePathname();
+  const onPhotographyPage = pathname === "/photography" || PHOTOGRAPHY_SUBNAV.some((s) => pathname === `/${s.slug}`);
 
   useEffect(() => {
     if (spa) return;
@@ -187,7 +209,35 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         ) : (
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             {staticVisibleLinks.map((l) => (
-              <Link key={l.key} href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
+              <Fragment key={l.key}>
+                <Link href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
+                {/* "Photography" dropdown -- inserted right after Work, before About. Links
+                    into the standalone SEO service pages (app/<slug>/page.tsx), which have
+                    no CMS pageEnabled toggle and so sit outside staticVisibleLinks entirely. */}
+                {l.key === "work" && (
+                  <div
+                    onMouseEnter={() => setPhotoDropdownOpen(true)}
+                    onMouseLeave={() => setPhotoDropdownOpen(false)}
+                    style={{ position: "relative" }}
+                  >
+                    <span
+                      onClick={() => setPhotoDropdownOpen((v) => !v)}
+                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      Photography <span style={{ fontSize: 9 }}>▾</span>
+                    </span>
+                    {photoDropdownOpen && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(20,13,33,0.98)", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+                        {PHOTOGRAPHY_SUBNAV.map((s) => (
+                          <Link key={s.slug} href={`/${s.slug}`} onClick={() => setPhotoDropdownOpen(false)} style={{ fontSize: 12, letterSpacing: 0.5, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.82)", textTransform: "none", textDecoration: "none", padding: "9px 12px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                            {s.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Fragment>
             ))}
             <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
           </div>
@@ -205,7 +255,19 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             ) : (
               <>
                 {staticVisibleLinks.map((l) => (
-                  <Link key={l.key} href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
+                  <Fragment key={l.key}>
+                    <Link href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
+                    {/* Mobile has no hover dropdown -- the Photography sub-links are just
+                        flattened inline right after Work, same content as the desktop menu. */}
+                    {l.key === "work" && (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "4px 0 6px" }}>
+                        <span style={{ fontSize: 10, letterSpacing: 3, color: "var(--c-mid,#A892C6)", textTransform: "uppercase" }}>Photography</span>
+                        {PHOTOGRAPHY_SUBNAV.map((s) => (
+                          <Link key={s.slug} href={`/${s.slug}`} onClick={onCloseMobileNav} style={{ fontSize: 13, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.75)", textDecoration: "none", cursor: "pointer" }}>{s.label}</Link>
+                        ))}
+                      </div>
+                    )}
+                  </Fragment>
                 ))}
                 <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
               </>

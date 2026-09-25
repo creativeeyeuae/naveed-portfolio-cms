@@ -13,6 +13,13 @@ export const metadata: Metadata = buildMetadata({
   path: "/product-photographer-dubai/",
   title: TITLE,
   description: DESC,
+  keywords: [
+    "product photographer Dubai",
+    "product photography Dubai",
+    "e-commerce photography Dubai",
+    "packaging photography UAE",
+    "catalogue photographer Dubai",
+  ],
 });
 
 export default function Page() {

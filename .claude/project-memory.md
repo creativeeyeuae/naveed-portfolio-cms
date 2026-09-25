@@ -77,11 +77,27 @@ both desktop and mobile (live, in a real browser) -- not just `tsc`/`build` pass
   landscape shows in a landscape phone, portrait flips the phone upright. Switching between
   two videos of the *same* orientation just cross-fades inside the frame, no flip.
 - `prefers-reduced-motion`: both fall back to a plain opacity fade, no rotation/scale.
-- Still open / worth revisiting against this spec: desktop currently has no perspective/3D
-  depth cue on entrance or on orientation change (only scale+opacity+morph) -- the
-  "smooth perspective/depth" principle above is fully satisfied on mobile but only partly
-  on desktop. Consider a subtle rotateX/perspective tilt on desktop's scroll entrance if the
-  client asks for the depth cue there too.
+- Desktop and mobile both now also get a scroll-driven `rotateX` depth tilt (8°→0°) on
+  entrance, plus an always-on CSS `perspective` on the wrapper -- the "smooth
+  perspective/depth" principle is satisfied on both, not just mobile.
+- **Video controls (added 2026-09-25, "FINAL IMPLEMENTATION" request):** the bare YouTube
+  iframe was replaced with the YouTube IFrame Player API (`enablejsapi=1`, `controls=0` on
+  the embed) driving a custom control bar: Play, Pause, Previous, Next, Volume/mute,
+  Progress bar, Current time/duration, Fullscreen. Previous/Next reuse the existing
+  `selectProject` gallery logic. Fullscreen uses the standard Fullscreen API on the device
+  screen element. **No Download button** -- the client was told plainly that YouTube's
+  platform gives no legitimate way to download the actual embedded video file (no API for
+  it, and a workaround would violate YouTube's ToS), and since the brief explicitly said
+  "do not fake the download button," the client chose to omit it entirely rather than show
+  a disabled one or wire up a separate downloadable-file field. If a real download is ever
+  wanted, it needs an actual video-file URL from somewhere other than YouTube (e.g. a new
+  CMS field pointing at a hosted MP4) -- do not attempt to make YouTube itself the source.
+- Added a soft ambient purple glow (`0 0 140px -30px rgba(139,92,246,0.35)` on the frame's
+  boxShadow) and an inset depth shadow on the screen itself, for a more premium/realistic
+  look, per the same request's "realistic screen depth" / glow requirement.
+- Live-verified 2026-09-25 on `bynaveedanjum.com`: clicking the poster mounts the custom bar,
+  Pause/Play toggles correctly, the progress bar + time advance in real time during
+  playback, and Mute toggles both the icon and the volume slider. Deployed commit `b8abf863`.
 
 ## Current system state (as of 2026-09-13)
 

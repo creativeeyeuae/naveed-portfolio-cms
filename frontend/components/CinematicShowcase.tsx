@@ -88,6 +88,89 @@ export default function CinematicShowcase({
     setPlaying(false); // new project always starts on its poster, never auto-plays
   }
 
+  // Camera/dynamic-island detail + the video/poster screen -- identical regardless of how the
+  // outer frame itself animates (desktop morph vs. mobile 3D flip, below), so it's built once.
+  const frameChrome = (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          top: orientation === "portrait" ? 6 : "50%",
+          left: orientation === "portrait" ? "50%" : 6,
+          transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
+          width: orientation === "portrait" ? 56 : 6,
+          height: orientation === "portrait" ? 14 : 56,
+          borderRadius: 20,
+          background: "rgba(0,0,0,0.55)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
+          zIndex: 3,
+        }}
+      />
+      <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: orientation === "portrait" ? 32 : 18, overflow: "hidden", background: "#000" }}>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active.id + (playing ? "-playing" : "-poster")}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: reduceMotion ? 0.12 : 0.35 }}
+            style={{ position: "absolute", inset: 0 }}
+          >
+            {playing && vid ? (
+              <iframe
+                src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
+                title={active.title}
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowFullScreen
+                style={{ width: "100%", height: "100%", border: "none" }}
+              />
+            ) : (
+              <button
+                onClick={() => setPlaying(true)}
+                aria-label={`Play ${active.title}`}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: 0, border: "none", background: "none", cursor: "pointer" }}
+              >
+                {active.coverImage ? (
+                  <img
+                    src={active.coverImage}
+                    alt={active.title}
+                    loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <div style={{ width: "100%", height: "100%", background: CV.DARK }} />
+                )}
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0.05) 45%)" }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%,-50%)",
+                    width: isMobile ? 52 : 68,
+                    height: isMobile ? 52 : 68,
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,0.14)",
+                    backdropFilter: "blur(6px)",
+                    border: "1px solid rgba(255,255,255,0.35)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <svg width={isMobile ? 16 : 20} height={isMobile ? 16 : 20} viewBox="0 0 20 20" fill="#fff">
+                    <path d="M5 3l13 7-13 7V3z" />
+                  </svg>
+                </div>
+              </button>
+            )}
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 30%)", pointerEvents: "none" }} />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </>
+  );
+
   return (
     <div ref={sectionRef} style={{ background: CV.BG, padding: isMobile ? "64px 0 72px" : "100px 0 110px", overflow: "hidden" }}>
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: isMobile ? "0 20px" : "0 32px" }}>
@@ -102,104 +185,58 @@ export default function CinematicShowcase({
           </h2>
         </div>
 
-        {/* Device frame -- `layout` lets framer-motion animate the width/height/border-radius
-            change between orientations as one continuous motion instead of an instant snap. */}
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <motion.div
-            layout
-            transition={reduceMotion ? { duration: 0.18 } : { type: "spring", stiffness: 120, damping: 22, mass: 0.9 }}
-            style={{
-              scale: frameScale,
-              opacity: frameOpacity,
-              width: frameW,
-              maxWidth: "100%",
-              aspectRatio: frameAspect,
-              borderRadius: orientation === "portrait" ? 42 : 28,
-              background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
-              padding: isMobile ? 8 : orientation === "portrait" ? 12 : 14,
-              boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
-              position: "relative",
-            }}
-          >
-            {/* camera / dynamic-island detail -- deliberately generic, no logo */}
-            <div
-              style={{
-                position: "absolute",
-                top: orientation === "portrait" ? 6 : "50%",
-                left: orientation === "portrait" ? "50%" : 6,
-                transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-                width: orientation === "portrait" ? 56 : 6,
-                height: orientation === "portrait" ? 14 : 56,
-                borderRadius: 20,
-                background: "rgba(0,0,0,0.55)",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05)",
-                zIndex: 3,
-              }}
-            />
-            <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: orientation === "portrait" ? 32 : 18, overflow: "hidden", background: "#000" }}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={active.id + (playing ? "-playing" : "-poster")}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: reduceMotion ? 0.12 : 0.35 }}
-                  style={{ position: "absolute", inset: 0 }}
-                >
-                  {playing && vid ? (
-                    <iframe
-                      src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                      title={active.title}
-                      allow="autoplay; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      style={{ width: "100%", height: "100%", border: "none" }}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setPlaying(true)}
-                      aria-label={`Play ${active.title}`}
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", padding: 0, border: "none", background: "none", cursor: "pointer" }}
-                    >
-                      {active.coverImage ? (
-                        <img
-                          src={active.coverImage}
-                          alt={active.title}
-                          loading="lazy"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div style={{ width: "100%", height: "100%", background: CV.DARK }} />
-                      )}
-                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.45), rgba(0,0,0,0.05) 45%)" }} />
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "50%",
-                          left: "50%",
-                          transform: "translate(-50%,-50%)",
-                          width: isMobile ? 52 : 68,
-                          height: isMobile ? 52 : 68,
-                          borderRadius: "50%",
-                          background: "rgba(255,255,255,0.14)",
-                          backdropFilter: "blur(6px)",
-                          border: "1px solid rgba(255,255,255,0.35)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <svg width={isMobile ? 16 : 20} height={isMobile ? 16 : 20} viewBox="0 0 20 20" fill="#fff">
-                          <path d="M5 3l13 7-13 7V3z" />
-                        </svg>
-                      </div>
-                    </button>
-                  )}
-                  {/* restrained glass reflection */}
-                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 30%)", pointerEvents: "none" }} />
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </motion.div>
+        {/* Device frame. Desktop keeps the original smooth width/height/border-radius morph
+            (framer's `layout` prop). Mobile gets a literal 3D card-flip (CSS perspective +
+            rotateY) whenever the orientation itself changes -- a landscape video shows in a
+            landscape phone, a portrait video flips the phone upright -- while switching between
+            two videos of the SAME orientation still just cross-fades inside, no flip needed. */}
+        <div style={{ display: "flex", justifyContent: "center", perspective: isMobile ? 1400 : undefined }}>
+          <AnimatePresence mode="wait" initial={false}>
+            {isMobile ? (
+              <motion.div
+                key={orientation}
+                initial={reduceMotion ? { opacity: 0 } : { rotateY: orientation === "portrait" ? -110 : 110, opacity: 0.15, scale: 0.88 }}
+                animate={{ rotateY: 0, opacity: 1, scale: 1 }}
+                exit={reduceMotion ? { opacity: 0 } : { rotateY: orientation === "portrait" ? 110 : -110, opacity: 0.15, scale: 0.88 }}
+                transition={{ duration: reduceMotion ? 0.15 : 0.75, ease: [0.16, 0.84, 0.44, 1] }}
+                style={{
+                  scale: frameScale,
+                  opacity: frameOpacity,
+                  width: frameW,
+                  maxWidth: "100%",
+                  aspectRatio: frameAspect,
+                  borderRadius: orientation === "portrait" ? 42 : 28,
+                  background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
+                  padding: 8,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
+                  position: "relative",
+                  transformStyle: "preserve-3d",
+                }}
+              >
+                {frameChrome}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="frame-desktop"
+                layout
+                transition={reduceMotion ? { duration: 0.18 } : { type: "spring", stiffness: 120, damping: 22, mass: 0.9 }}
+                style={{
+                  scale: frameScale,
+                  opacity: frameOpacity,
+                  width: frameW,
+                  maxWidth: "100%",
+                  aspectRatio: frameAspect,
+                  borderRadius: orientation === "portrait" ? 42 : 28,
+                  background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
+                  padding: orientation === "portrait" ? 12 : 14,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
+                  position: "relative",
+                }}
+              >
+                {frameChrome}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Info: title / categories / description, appears progressively as the section scrolls in */}

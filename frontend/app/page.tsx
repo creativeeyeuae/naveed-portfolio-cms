@@ -2349,6 +2349,12 @@ export default function Home() {
     // check, so every nav/footer/CTA "Contact" click needs to land there instead of this
     // SPA's old in-page Contact view, or visitors just keep seeing the old design.
     if(p==="contact"){ router.push("/contact"); return; }
+    // Same bug class as Contact above: About also has a real, indexable static route
+    // (/about) with the current CMS bio, but nothing sent nav/footer/CTA clicks there, so
+    // every "About" click kept showing this SPA's old, disconnected in-page About view
+    // instead -- which is why an updated bio never appeared to visitors no matter what was
+    // saved in the CMS. Route it the same way Work/Packages/Gear/Contact already are.
+    if(p==="about"){ router.push("/about"); return; }
     setPage(p);window.scrollTo(0,0);
   }
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}

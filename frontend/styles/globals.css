@@ -339,7 +339,9 @@ html[lang="hi"] * {
     0 1px 0 rgba(255,255,255,0.04) inset,
     0 40px 80px -30px rgba(139,92,246,0.30),
     0 8px 30px rgba(0,0,0,0.45);
-  backdrop-filter: blur(8px);
+  /* backdrop-filter removed: blurring a card this size triggers a GPU tiling seam on some
+     Windows/Chrome setups (a visible vertical line through the page). Background is already
+     94-98% opaque, so the glass look is unaffected without it. */
   overflow: hidden;
 }
 .adv-form-card::before {
@@ -396,6 +398,18 @@ html[lang="hi"] * {
 }
 .adv-input:disabled { opacity: 0.5; cursor: not-allowed; }
 select.adv-input { cursor: pointer; }
+/* Every <select> on the site (this one, the CMS admin panel's inline-styled selects, the
+   Booking wizard's country/time pickers) has a dark box with light text, but a select's OPEN
+   option list is a separate native OS/browser popup: on Windows/Chrome it defaults to a
+   light/white popup background while still inheriting the page's white text color, so the
+   text became invisible white-on-white. Browsers DO honor background/color set directly on
+   <option> for that popup (unlike most other select styling), so one site-wide rule fixes it
+   everywhere at once -- the whole site is dark-themed, so there's no light-background select
+   this would need to skip. */
+select option {
+  background-color: #1c1330;
+  color: #fff;
+}
 textarea.adv-input { font-family: inherit; }
 
 .adv-btn-primary {

@@ -67,6 +67,9 @@ export default function CinematicShowcase({
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ["start 85%", "start 30%"] });
   const frameScale = useTransform(scrollYProgress, [0, 1], reduceMotion ? [1, 1] : [0.86, 1]);
   const frameOpacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  // Subtle perspective/depth cue as the device enters -- a slight tilt that settles flat by
+  // the time it reaches full size, so the entrance itself reads as 3D, not just scale+fade.
+  const frameRotateX = useTransform(scrollYProgress, [0, 1], reduceMotion ? [0, 0] : [8, 0]);
   const infoOpacity = useTransform(scrollYProgress, [0.35, 1], [0, 1]);
   const infoY = useTransform(scrollYProgress, [0.35, 1], reduceMotion ? [0, 0] : [18, 0]);
   const railOpacity = useTransform(scrollYProgress, [0.55, 1], [0, 1]);
@@ -190,7 +193,7 @@ export default function CinematicShowcase({
             rotateY) whenever the orientation itself changes -- a landscape video shows in a
             landscape phone, a portrait video flips the phone upright -- while switching between
             two videos of the SAME orientation still just cross-fades inside, no flip needed. */}
-        <div style={{ display: "flex", justifyContent: "center", perspective: isMobile ? 1400 : undefined }}>
+        <div style={{ display: "flex", justifyContent: "center", perspective: isMobile ? 1400 : 1800 }}>
           <AnimatePresence mode="wait" initial={false}>
             {isMobile ? (
               <motion.div
@@ -202,6 +205,7 @@ export default function CinematicShowcase({
                 style={{
                   scale: frameScale,
                   opacity: frameOpacity,
+                  rotateX: frameRotateX,
                   width: frameW,
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
@@ -223,6 +227,7 @@ export default function CinematicShowcase({
                 style={{
                   scale: frameScale,
                   opacity: frameOpacity,
+                  rotateX: frameRotateX,
                   width: frameW,
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
@@ -231,6 +236,7 @@ export default function CinematicShowcase({
                   padding: orientation === "portrait" ? 12 : 14,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
                   position: "relative",
+                  transformStyle: "preserve-3d",
                 }}
               >
                 {frameChrome}

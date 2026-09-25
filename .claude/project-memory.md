@@ -2,6 +2,87 @@
 
 Maintained per the local+live-production-engineer workflow. Read this first each session.
 
+## PERSISTENT DESIGN INSTRUCTION — Cinematic Showcase device interaction (Apple-inspired reference)
+
+Added 2026-09-25, by explicit client request ("that should be explicitly included in the
+Claude instruction"). Governs `frontend/components/CinematicShowcase.tsx` (the homepage's
+device-framed project-video section, between Featured Work and Our Clients) for this and
+every future session. Do not let this be lost or paraphrased away in a later summary --
+re-read this section in full before touching that component again.
+
+### APPLE-INSPIRED DEVICE INTERACTION
+
+The client specifically wants the *quality and interaction principles* of the iPhone
+product presentation on Apple's iPhone 18 Pro page ("Make it cinematic. After the fact."),
+which they provided as a reference screenshot. Use that reference for:
+
+- Scroll-driven device movement
+- Cinematic scale-up
+- Device entering the viewport
+- Smooth perspective/depth
+- Progressive content reveal
+- Smooth device transformation
+- Premium whitespace
+- Video contained inside the physical device
+- Coordinated transitions between visual states
+
+**DO NOT copy Apple's website.** Do not copy: Apple device artwork, the Apple logo, Apple's
+exact phone design, Apple's exact animation, Apple's exact layout, Apple's assets, Apple's
+typography, or Apple's CSS/code. The result must be an ORIGINAL Naveed Anjum device
+presentation -- it must read as "NAVEED ANJUM — PHOTOGRAPHER · CINEMATOGRAPHER · VISUAL
+ARTIST," never as an Apple clone.
+
+### Device animation
+
+The device behaves like a real premium physical smartphone. When the section enters the
+viewport: (1) device starts slightly smaller; (2) subtle opacity/scale entrance; (3) as the
+user scrolls, the device smoothly scales toward its main presentation size; (4) the device
+can subtly move in 3D space using perspective; (5) video remains perfectly clipped inside
+the screen at all times, never appearing outside the device; (6) project information
+progressively appears; (7) project thumbnails appear below/around the device.
+
+Feel: **cinematic + premium + controlled.** Never: gimmicky, excessive, or gaming-style.
+
+### Orientation transformation (landscape ⇄ portrait)
+
+When selecting a different project that changes orientation, the physical device itself
+must visually transform -- not just swap container dimensions:
+
+`LANDSCAPE DEVICE → 3D perspective/rotation → PORTRAIT DEVICE → new portrait video plays`
+`PORTRAIT DEVICE → 3D perspective/rotation → LANDSCAPE DEVICE → new landscape video plays`
+
+**Mobile:** make this especially convincing -- perspective, rotateX/rotateY where
+appropriate, scale, translate, controlled easing, depth/shadow changes during rotation. The
+phone should feel like it physically turns in space. Short, smooth, premium -- never
+over-rotate or spin.
+
+**Desktop:** same cinematic philosophy, but can use a more subtle device morph; the device
+should respond naturally to scroll position.
+
+**Video, throughout every transition:** it must always remain inside the device screen.
+During orientation changes, the video fades/changes at the appropriate point, the device
+reads as the same continuous visual object, and the new video enters after the
+transformation -- never outside the device.
+
+Before considering any change to this component finished, visually test the animation on
+both desktop and mobile (live, in a real browser) -- not just `tsc`/`build` passing.
+
+### Implementation status as of 2026-09-25
+
+- Desktop: scroll-driven scale/opacity entrance (`useScroll`/`useTransform` scoped to the
+  section) + a smooth `layout`-prop width/height/border-radius morph between orientations.
+  Matches the "more subtle device morph" allowance above.
+- Mobile: same scroll entrance, plus a literal 3D card-flip (CSS `perspective` + `rotateY`,
+  via `AnimatePresence` keyed on `orientation`) when the orientation itself changes --
+  landscape shows in a landscape phone, portrait flips the phone upright. Switching between
+  two videos of the *same* orientation just cross-fades inside the frame, no flip.
+- `prefers-reduced-motion`: both fall back to a plain opacity fade, no rotation/scale.
+- Still open / worth revisiting against this spec: desktop currently has no perspective/3D
+  depth cue on entrance or on orientation change (only scale+opacity+morph) -- the
+  "smooth perspective/depth" principle above is fully satisfied on mobile but only partly
+  on desktop. Consider a subtle rotateX/perspective tilt on desktop's scroll entrance if the
+  client asks for the depth cue there too.
+
 ## Current system state (as of 2026-09-13)
 
 - Repo root: `naveed-portfolio-cms/naveed-portfolio-cms/` (note the doubled folder name on disk).

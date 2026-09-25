@@ -71,21 +71,6 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-// Triggers a real browser download/open of an actual CMS asset (never the YouTube source,
-// which has no legitimate downloadable file). Same-origin URLs download directly; cross-origin
-// ones (e.g. Supabase storage) open in a new tab, where the browser's own save option applies --
-// still a genuine download path, never a faked one.
-function downloadAsset(url: string, filename: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.rel = "noopener";
-  a.target = "_blank";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
 const ctrlBtnStyle: CSSProperties = {
   background: "none",
   border: "none",
@@ -154,14 +139,6 @@ function FullscreenIcon({ size }: { size: number }) {
     </svg>
   );
 }
-function DownloadIcon({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M5 19h14" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function CinematicShowcase({
   projects,
@@ -205,10 +182,7 @@ export default function CinematicShowcase({
 
   // --- Custom video-control state, driven by the YouTube IFrame Player API ------------------
   // This replaces YouTube's own on-video UI (the embed is loaded with controls=0 below) with
-  // a bespoke play/pause/prev/next/volume/progress/time/fullscreen bar. No Download control:
-  // YouTube's platform gives no legitimate way to download the actual video file from an
-  // embed, and the brief was explicit the button must never be faked -- so it's left out
-  // rather than shown non-functional.
+  // a bespoke play/pause/prev/next/volume/progress/time/fullscreen bar.
   const playerRef = useRef<any>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -347,17 +321,6 @@ export default function CinematicShowcase({
     }
   }
 
-  // Download: YouTube's platform has no legitimate way to hand back the original video
-  // file, so the button never pretends to download "the video". When the project has a real
-  // CMS asset (its cover image), the button genuinely downloads that and says so in its
-  // tooltip; with no asset at all it's visually present but disabled, with a tooltip
-  // explaining why -- never a fake, silently-do-nothing click.
-  const canDownload = !!active?.coverImage;
-  function handleDownload() {
-    if (!active?.coverImage) return;
-    downloadAsset(active.coverImage, `${active.slug || active.id}-cover.jpg`);
-  }
-
   // Camera/dynamic-island detail + the video/poster screen -- identical regardless of how the
   // outer frame itself animates (desktop morph vs. mobile 3D flip, below), so it's built once.
   const frameChrome = (
@@ -414,12 +377,12 @@ export default function CinematicShowcase({
       <div
         style={{
           position: "absolute",
-          top: orientation === "portrait" ? 6 : "50%",
-          left: orientation === "portrait" ? "50%" : 6,
+          top: orientation === "portrait" ? 7 : "50%",
+          left: orientation === "portrait" ? "50%" : 7,
           transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-          width: orientation === "portrait" ? 56 : 6,
-          height: orientation === "portrait" ? 14 : 56,
-          borderRadius: 20,
+          width: orientation === "portrait" ? 62 : 7,
+          height: orientation === "portrait" ? 16 : 62,
+          borderRadius: 22,
           background: "radial-gradient(circle at 35% 35%, #232326, #050506 75%)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 5px rgba(0,0,0,0.85)",
           display: "flex",
@@ -446,7 +409,7 @@ export default function CinematicShowcase({
           position: "relative",
           width: "100%",
           height: "100%",
-          borderRadius: orientation === "portrait" ? 32 : 18,
+          borderRadius: orientation === "portrait" ? 36 : 20,
           overflow: "hidden",
           background: "#000",
           boxShadow: "inset 0 0 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
@@ -550,19 +513,6 @@ export default function CinematicShowcase({
                       <button onClick={toggleFullscreen} aria-label="Fullscreen" style={ctrlBtnStyle}>
                         <FullscreenIcon size={isMobile ? 13 : 16} />
                       </button>
-                      <button
-                        onClick={handleDownload}
-                        disabled={!canDownload}
-                        aria-label={canDownload ? "Download cover photo" : "Download unavailable"}
-                        title={
-                          canDownload
-                            ? "Download cover photo (the original video file isn't available for direct download from this source)"
-                            : "No downloadable file available for this project"
-                        }
-                        style={{ ...ctrlBtnStyle, opacity: canDownload ? 0.9 : 0.35, cursor: canDownload ? "pointer" : "not-allowed" }}
-                      >
-                        <DownloadIcon size={isMobile ? 13 : 16} />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -649,9 +599,9 @@ export default function CinematicShowcase({
                   width: frameW,
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
-                  borderRadius: orientation === "portrait" ? 42 : 28,
-                  background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
-                  padding: 8,
+                  borderRadius: orientation === "portrait" ? 44 : 30,
+                  background: `linear-gradient(155deg, #2b2432 0%, #1c1526 32%, ${CV.DARK} 60%, #0a0710 100%)`,
+                  padding: 7,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
@@ -671,9 +621,9 @@ export default function CinematicShowcase({
                   width: frameW,
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
-                  borderRadius: orientation === "portrait" ? 42 : 28,
-                  background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
-                  padding: orientation === "portrait" ? 12 : 14,
+                  borderRadius: orientation === "portrait" ? 44 : 30,
+                  background: `linear-gradient(155deg, #2b2432 0%, #1c1526 32%, ${CV.DARK} 60%, #0a0710 100%)`,
+                  padding: orientation === "portrait" ? 10 : 11,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",

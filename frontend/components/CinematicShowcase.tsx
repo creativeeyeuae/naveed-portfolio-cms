@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
+import type { CSSProperties } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
 
 // Local, minimal shape -- Project isn't exported from app/page.tsx, so this mirrors just the
@@ -41,6 +42,104 @@ function ytId(url?: string): string {
   return m?.[1] || "";
 }
 
+// --- YouTube IFrame Player API loader -----------------------------------------------------
+// Module-level singleton: the API script and its ready-callback are only ever registered
+// once, no matter how many times this component mounts/unmounts across the page.
+let ytApiPromise: Promise<any> | null = null;
+function loadYouTubeApi(): Promise<any> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  const w = window as any;
+  if (w.YT && w.YT.Player) return Promise.resolve(w.YT);
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const prevReady = w.onYouTubeIframeAPIReady;
+    w.onYouTubeIframeAPIReady = () => {
+      if (typeof prevReady === "function") prevReady();
+      resolve(w.YT);
+    };
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  });
+  return ytApiPromise;
+}
+
+function formatTime(sec: number): string {
+  if (!isFinite(sec) || sec < 0) return "0:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+const ctrlBtnStyle: CSSProperties = {
+  background: "none",
+  border: "none",
+  padding: 4,
+  margin: 0,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#fff",
+  opacity: 0.9,
+};
+
+// --- Minimal inline control-bar icons (no external icon library) -------------------------
+function PlayIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z" fill="#fff" />
+    </svg>
+  );
+}
+function PauseIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <rect x="6" y="5" width="4" height="14" fill="#fff" />
+      <rect x="14" y="5" width="4" height="14" fill="#fff" />
+    </svg>
+  );
+}
+function PrevIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <path d="M6 5h2v14H6z" fill="#fff" />
+      <path d="M18 5v14l-10-7z" fill="#fff" />
+    </svg>
+  );
+}
+function NextIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <path d="M16 5h2v14h-2z" fill="#fff" />
+      <path d="M6 5v14l10-7z" fill="#fff" />
+    </svg>
+  );
+}
+function VolumeIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M4 9v6h4l5 5V4L8 9H4z" fill="#fff" />
+      <path d="M16.2 8.8a5 5 0 010 6.4" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function MuteIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M4 9v6h4l5 5V4L8 9H4z" fill="#fff" />
+      <path d="M16 9l5 6M21 9l-5 6" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+function FullscreenIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export default function CinematicShowcase({
   projects,
   isMobile,
@@ -56,8 +155,8 @@ export default function CinematicShowcase({
   );
 
   const [activeId, setActiveId] = useState<string>(items[0]?.id || "");
-  // Poster-first: the iframe is mounted only after a click, and only for the active project --
-  // never more than one iframe at a time, never autoplay-on-load, never preload-all.
+  // Poster-first: the player is mounted only after a click, and only for the active project --
+  // never more than one player at a time, never autoplay-on-load, never preload-all.
   const [playing, setPlaying] = useState(false);
 
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -74,21 +173,155 @@ export default function CinematicShowcase({
   const infoY = useTransform(scrollYProgress, [0.35, 1], reduceMotion ? [0, 0] : [18, 0]);
   const railOpacity = useTransform(scrollYProgress, [0.55, 1], [0, 1]);
 
-  if (items.length === 0) return null;
-
+  // Computed defensively (optional chaining) because these feed hooks below that must run
+  // unconditionally, before we know yet whether `items` is even non-empty.
   const active = items.find((p) => p.id === activeId) || items[0];
-  const orientation: "landscape" | "portrait" = active.videoOrientation || "landscape";
-  const vid = ytId(active.youtubeUrl);
+  const orientation: "landscape" | "portrait" = active?.videoOrientation || "landscape";
+  const vid = ytId(active?.youtubeUrl);
+  const iframeElId = `cinematic-yt-${(active?.id || "none").replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
+  // --- Custom video-control state, driven by the YouTube IFrame Player API ------------------
+  // This replaces YouTube's own on-video UI (the embed is loaded with controls=0 below) with
+  // a bespoke play/pause/prev/next/volume/progress/time/fullscreen bar. No Download control:
+  // YouTube's platform gives no legitimate way to download the actual video file from an
+  // embed, and the brief was explicit the button must never be faked -- so it's left out
+  // rather than shown non-functional.
+  const playerRef = useRef<any>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
+  const [playerState, setPlayerState] = useState({
+    isPlaying: false,
+    currentTime: 0,
+    duration: 0,
+    muted: false,
+    volume: 100,
+  });
+
+  useEffect(() => {
+    if (!playing || !vid) return;
+    let cancelled = false;
+    loadYouTubeApi().then((YT) => {
+      if (cancelled || !YT) return;
+      const el = document.getElementById(iframeElId);
+      if (!el) return;
+      playerRef.current = new YT.Player(iframeElId, {
+        events: {
+          onReady: (e: any) => {
+            try {
+              e.target.playVideo();
+              setPlayerState((s) => ({
+                ...s,
+                duration: e.target.getDuration?.() || 0,
+                volume: e.target.getVolume?.() ?? 100,
+                muted: !!e.target.isMuted?.(),
+              }));
+            } catch {}
+          },
+          onStateChange: (e: any) => {
+            const YTState = (window as any).YT?.PlayerState;
+            setPlayerState((s) => ({
+              ...s,
+              isPlaying: YTState ? e.data === YTState.PLAYING : s.isPlaying,
+            }));
+          },
+        },
+      });
+    });
+    pollRef.current = setInterval(() => {
+      const p = playerRef.current;
+      if (p && typeof p.getCurrentTime === "function") {
+        setPlayerState((s) => ({
+          ...s,
+          currentTime: p.getCurrentTime() || 0,
+          duration: p.getDuration ? p.getDuration() || s.duration : s.duration,
+        }));
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (playerRef.current && typeof playerRef.current.destroy === "function") {
+        try {
+          playerRef.current.destroy();
+        } catch {}
+      }
+      playerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, vid, iframeElId]);
+
+  if (items.length === 0) return null;
 
   const frameW = isMobile
     ? orientation === "portrait" ? 240 : 320
     : orientation === "portrait" ? 340 : 880;
   const frameAspect = orientation === "portrait" ? "9/16" : "16/9";
+  const originParam = typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : "";
 
   function selectProject(id: string) {
     if (id === activeId) return;
     setActiveId(id);
     setPlaying(false); // new project always starts on its poster, never auto-plays
+    setPlayerState({ isPlaying: false, currentTime: 0, duration: 0, muted: false, volume: 100 });
+  }
+
+  function togglePlay() {
+    if (!playing) {
+      setPlaying(true);
+      return;
+    }
+    const p = playerRef.current;
+    if (!p) return;
+    if (playerState.isPlaying) p.pauseVideo?.();
+    else p.playVideo?.();
+  }
+
+  function goPrev() {
+    const idx = items.findIndex((p) => p.id === active.id);
+    if (idx < 0) return;
+    selectProject(items[(idx - 1 + items.length) % items.length].id);
+  }
+
+  function goNext() {
+    const idx = items.findIndex((p) => p.id === active.id);
+    if (idx < 0) return;
+    selectProject(items[(idx + 1) % items.length].id);
+  }
+
+  function toggleMute() {
+    const p = playerRef.current;
+    const nextMuted = !playerState.muted;
+    if (p) {
+      if (nextMuted) p.mute?.();
+      else p.unMute?.();
+    }
+    setPlayerState((s) => ({ ...s, muted: nextMuted }));
+  }
+
+  function onVolumeChange(v: number) {
+    const p = playerRef.current;
+    if (p) {
+      p.setVolume?.(v);
+      if (v === 0) p.mute?.();
+      else p.unMute?.();
+    }
+    setPlayerState((s) => ({ ...s, volume: v, muted: v === 0 }));
+  }
+
+  function onSeek(t: number) {
+    const p = playerRef.current;
+    if (p && typeof p.seekTo === "function") p.seekTo(t, true);
+    setPlayerState((s) => ({ ...s, currentTime: t }));
+  }
+
+  function toggleFullscreen() {
+    const el = screenRef.current;
+    if (!el) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.();
+    } else {
+      el.requestFullscreen?.();
+    }
   }
 
   // Camera/dynamic-island detail + the video/poster screen -- identical regardless of how the
@@ -109,8 +342,19 @@ export default function CinematicShowcase({
           zIndex: 3,
         }}
       />
-      <div style={{ position: "relative", width: "100%", height: "100%", borderRadius: orientation === "portrait" ? 32 : 18, overflow: "hidden", background: "#000" }}>
-        <AnimatePresence mode="wait">
+      <div
+        ref={screenRef}
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          borderRadius: orientation === "portrait" ? 32 : 18,
+          overflow: "hidden",
+          background: "#000",
+          boxShadow: "inset 0 0 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
+        }}
+      >
+        <AnimatePresence>
           <motion.div
             key={active.id + (playing ? "-playing" : "-poster")}
             initial={{ opacity: 0 }}
@@ -120,13 +364,97 @@ export default function CinematicShowcase({
             style={{ position: "absolute", inset: 0 }}
           >
             {playing && vid ? (
-              <iframe
-                src={`https://www.youtube.com/embed/${vid}?autoplay=1&rel=0&modestbranding=1&playsinline=1`}
-                title={active.title}
-                allow="autoplay; encrypted-media; picture-in-picture"
-                allowFullScreen
-                style={{ width: "100%", height: "100%", border: "none" }}
-              />
+              <>
+                <iframe
+                  id={iframeElId}
+                  src={`https://www.youtube.com/embed/${vid}?enablejsapi=1&autoplay=1&playsinline=1&rel=0&modestbranding=1&controls=0&disablekb=1&iv_load_policy=3&origin=${originParam}`}
+                  title={active.title}
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                  style={{ width: "100%", height: "100%", border: "none", pointerEvents: "none" }}
+                />
+                {/* Transparent tap target -- YouTube's native controls are hidden (controls=0)
+                    in favor of the custom bar below, so tapping the video itself toggles play/pause. */}
+                <button
+                  onClick={togglePlay}
+                  aria-label={playerState.isPlaying ? "Pause" : "Play"}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: isMobile ? 44 : 50,
+                    background: "none",
+                    border: "none",
+                    padding: 0,
+                    cursor: "pointer",
+                  }}
+                />
+                {/* Custom control bar: Play, Pause, Previous, Next, Volume/mute, Progress,
+                    Time, Fullscreen -- elegant and minimal, sitting over the bottom of the
+                    video rather than cluttering the whole screen. */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    padding: isMobile ? "5px 8px 8px" : "7px 12px 10px",
+                    background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 65%, transparent 100%)",
+                    zIndex: 4,
+                  }}
+                >
+                  <input
+                    type="range"
+                    min={0}
+                    max={playerState.duration || 0}
+                    step={0.1}
+                    value={Math.min(playerState.currentTime, playerState.duration || 0)}
+                    onChange={(e) => onSeek(parseFloat(e.target.value))}
+                    style={{ width: "100%", accentColor: CV.P, height: 3, margin: 0, display: "block", cursor: "pointer" }}
+                    aria-label="Seek"
+                  />
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: isMobile ? 2 : 4 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 5 : 10 }}>
+                      {items.length > 1 && (
+                        <button onClick={goPrev} aria-label="Previous project" style={ctrlBtnStyle}>
+                          <PrevIcon size={isMobile ? 13 : 16} />
+                        </button>
+                      )}
+                      <button onClick={togglePlay} aria-label={playerState.isPlaying ? "Pause" : "Play"} style={ctrlBtnStyle}>
+                        {playerState.isPlaying ? <PauseIcon size={isMobile ? 14 : 17} /> : <PlayIcon size={isMobile ? 14 : 17} />}
+                      </button>
+                      {items.length > 1 && (
+                        <button onClick={goNext} aria-label="Next project" style={ctrlBtnStyle}>
+                          <NextIcon size={isMobile ? 13 : 16} />
+                        </button>
+                      )}
+                      <span style={{ fontSize: isMobile ? 9 : 10, color: "rgba(255,255,255,0.75)", marginLeft: 2, whiteSpace: "nowrap" }}>
+                        {formatTime(playerState.currentTime)} / {formatTime(playerState.duration)}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 4 : 8 }}>
+                      <button onClick={toggleMute} aria-label={playerState.muted ? "Unmute" : "Mute"} style={ctrlBtnStyle}>
+                        {playerState.muted || playerState.volume === 0 ? <MuteIcon size={isMobile ? 13 : 16} /> : <VolumeIcon size={isMobile ? 13 : 16} />}
+                      </button>
+                      {!isMobile && (
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          value={playerState.muted ? 0 : playerState.volume}
+                          onChange={(e) => onVolumeChange(parseInt(e.target.value, 10))}
+                          style={{ width: 52, accentColor: CV.P, height: 3, cursor: "pointer" }}
+                          aria-label="Volume"
+                        />
+                      )}
+                      <button onClick={toggleFullscreen} aria-label="Fullscreen" style={ctrlBtnStyle}>
+                        <FullscreenIcon size={isMobile ? 13 : 16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
               <button
                 onClick={() => setPlaying(true)}
@@ -212,7 +540,7 @@ export default function CinematicShowcase({
                   borderRadius: orientation === "portrait" ? 42 : 28,
                   background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
                   padding: 8,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}
@@ -234,7 +562,7 @@ export default function CinematicShowcase({
                   borderRadius: orientation === "portrait" ? 42 : 28,
                   background: `linear-gradient(155deg, #1c1526 0%, ${CV.DARK} 55%, #0c0813 100%)`,
                   padding: orientation === "portrait" ? 12 : 14,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}`,
+                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}

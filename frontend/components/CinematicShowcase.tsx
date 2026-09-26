@@ -402,17 +402,17 @@ export default function CinematicShowcase({
   // outer frame itself animates (desktop morph vs. mobile 3D flip, below), so it's built once.
   const frameChrome = (
     <>
-      {/* Metallic body sheen -- a brushed/anodized-metal light sweep with a second, fainter
-          highlight near the far edge (how a curved metal edge actually catches light twice),
-          instead of one flat diagonal wash. Purely a hardware-realism cue, not any brand's
-          specific design. */}
+      {/* Metallic body sheen -- a conic (all-the-way-around) sweep rather than one diagonal
+          wash, so every side of the ring -- top, right, bottom, left -- catches an equal
+          highlight instead of only two opposite corners. Purely a hardware-realism cue, not
+          any brand's specific design. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "inherit",
           background:
-            "linear-gradient(112deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.18) 8%, rgba(0,0,0,0.08) 16%, rgba(255,255,255,0) 26%, rgba(0,0,0,0.06) 58%, rgba(255,255,255,0) 72%, rgba(255,255,255,0.14) 86%, rgba(255,255,255,0.5) 100%)",
+            "conic-gradient(from 45deg, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.05) 12.5%, rgba(0,0,0,0.08) 25%, rgba(255,255,255,0.55) 37.5%, rgba(255,255,255,0.05) 50%, rgba(0,0,0,0.08) 62.5%, rgba(255,255,255,0.55) 75%, rgba(255,255,255,0.05) 87.5%, rgba(255,255,255,0.55) 100%)",
           pointerEvents: "none",
           zIndex: 1,
         }}
@@ -489,17 +489,16 @@ export default function CinematicShowcase({
           overflow: "hidden",
         }}
       >
-      {/* Soft diagonal sheen across the black bezel itself -- without this it reads as one
-          flat dark slab, especially on the far/right side where the thin outer metal ring's
-          own highlight is too small a strip to register on its own. A faint light streak
-          (echoing the metal ring's sheen) keeps every side of the bezel visibly lit. */}
+      {/* Soft edge glow around the black bezel itself, even on all four sides -- a radial
+          brightening toward the outer edge (rather than one diagonal streak) so top, right,
+          bottom and left all read as equally lit instead of only two corners. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "inherit",
           background:
-            "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 22%, rgba(255,255,255,0) 68%, rgba(255,255,255,0.08) 100%)",
+            "radial-gradient(ellipse at center, rgba(255,255,255,0) 52%, rgba(255,255,255,0.1) 100%)",
           pointerEvents: "none",
         }}
       />
@@ -515,9 +514,9 @@ export default function CinematicShowcase({
           left: orientation === "portrait" ? "50%" : undefined,
           right: orientation === "portrait" ? undefined : 7,
           transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-          width: orientation === "portrait" ? 64 : 22,
-          height: orientation === "portrait" ? 22 : 64,
-          borderRadius: 22,
+          width: orientation === "portrait" ? 130 : 42,
+          height: orientation === "portrait" ? 42 : 130,
+          borderRadius: 24,
           background: "linear-gradient(145deg, #45454e, #0a0a0c 65%)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.16), 0 1px 2px rgba(0,0,0,0.6)",
           display: "flex",
@@ -531,8 +530,8 @@ export default function CinematicShowcase({
           <span
             key={i}
             style={{
-              width: orientation === "portrait" ? 13 : 12,
-              height: orientation === "portrait" ? 13 : 12,
+              width: orientation === "portrait" ? 27 : 25,
+              height: orientation === "portrait" ? 27 : 25,
               borderRadius: "50%",
               background: "radial-gradient(circle at 38% 32%, #4a4a54, #0c0c0f 60%, #000 100%)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 4px rgba(0,0,0,0.7)",
@@ -543,11 +542,11 @@ export default function CinematicShowcase({
           >
             <span
               style={{
-                width: 4,
-                height: 4,
+                width: 8,
+                height: 8,
                 borderRadius: "50%",
                 background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
-                boxShadow: "0 0 3px rgba(130,150,255,0.65)",
+                boxShadow: "0 0 4px rgba(130,150,255,0.65)",
               }}
             />
           </span>
@@ -751,13 +750,10 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  // Polished silver/titanium metal -- a light-to-dark diagonal sweep (rather
-                  // than the previous dark graphite) so the frame itself catches and reflects
-                  // light, matching a natural-metal finish. Still an original, generic shell.
-                  // Light-to-dark-to-light sweep -- rather than fading monotonically to dark
-                  // at one corner, the far edge picks up its own highlight too, so every side
-                  // of the thin metal ring reads as reflective, not just the near side.
-                  background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 10%, #b9bcc2 22%, #9a9da3 34%, #7c7f85 48%, #5c5f64 62%, #797c81 76%, #a3a6ab 88%, #ced0d4 100%)",
+                  // Polished silver/titanium metal, as a conic (all-the-way-around) sweep --
+                  // every side of the thin ring (top, right, bottom, left) picks up the same
+                  // highlight instead of one side reading brighter than another.
+                  background: "conic-gradient(from 45deg, #f2f3f5 0%, #b9bcc2 12.5%, #6c6f74 25%, #f2f3f5 37.5%, #b9bcc2 50%, #6c6f74 62.5%, #f2f3f5 75%, #b9bcc2 87.5%, #f2f3f5 100%)",
                   // Very thin outer metal edge -- the black bezel margin around the screen
                   // (matching the reference photo's presentation) is added inside frameChrome,
                   // without copying any specific manufacturer's exact camera-cutout shape or
@@ -791,7 +787,7 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 10%, #b9bcc2 22%, #9a9da3 34%, #7c7f85 48%, #5c5f64 62%, #797c81 76%, #a3a6ab 88%, #ced0d4 100%)",
+                  background: "conic-gradient(from 45deg, #f2f3f5 0%, #b9bcc2 12.5%, #6c6f74 25%, #f2f3f5 37.5%, #b9bcc2 50%, #6c6f74 62.5%, #f2f3f5 75%, #b9bcc2 87.5%, #f2f3f5 100%)",
                   padding: 2,
                   boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
                   position: "relative",

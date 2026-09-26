@@ -3903,10 +3903,23 @@ export default function Home() {
           <div style={{display:"flex",minHeight:"calc(100vh - 60px)"}}>
             <div style={{width:280,borderRight:`1px solid ${C.BORDER}`,padding:16,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
               <div style={{fontSize:10,letterSpacing:3,color:"#444",marginBottom:12,textTransform:"uppercase"}}>{projects.length} Projects</div>
-              {projects.map(p=>(
-                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:editId===p.id?"#12121e":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:"#555"}}>{p.categories?.join(", ")} · {p.images?.length||0}📷</div></div>
-                  <button onClick={e=>{e.stopPropagation();if(confirm("Delete?")){const remaining=projects.filter(x=>x.id!==p.id);setProjects(ps=>ps.filter(x=>x.id!==p.id));const dropped=Array.from(projectImageUrls(p));if(dropped.length){const inUse=collectAllImageUrls({projects:remaining,blog,settings});deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer"}}>✕</button>
+              {/* ▲▼ reorder this list itself -- previously only images WITHIN a project could
+                  be reordered, not the projects themselves. This order is what Featured Work
+                  and the Cinematic Showcase's selector rail both display in, so it's now how an
+                  admin controls Cinematic Showcase video order too (mark Featured + add a
+                  YouTube URL to include a project there -- see the Cinematic Showcase section
+                  toggle in Settings > Homepage Sections for the on/off switch, and each
+                  project's own Featured checkbox for that project's publish/unpublish state).
+                  Swaps two array entries and persists via the existing setProjects ->
+                  nap_projects effect (line ~2275) -- no new storage or schema. */}
+              {projects.map((p,i)=>(
+                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:editId===p.id?"#12121e":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                  <div style={{minWidth:0}}><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:"#555"}}>{p.categories?.join(", ")} · {p.images?.length||0}📷{p.featured&&p.youtubeUrl?" · 🎬 Cinematic":""}</div></div>
+                  <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+                    <button onClick={e=>{e.stopPropagation();if(i===0)return;setProjects(ps=>{const next=[...ps];[next[i-1],next[i]]=[next[i],next[i-1]];return next;});}} disabled={i===0} title="Move up" style={{background:"none",border:"none",color:i===0?"#333":"#666",cursor:i===0?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▲</button>
+                    <button onClick={e=>{e.stopPropagation();if(i===projects.length-1)return;setProjects(ps=>{const next=[...ps];[next[i+1],next[i]]=[next[i],next[i+1]];return next;});}} disabled={i===projects.length-1} title="Move down" style={{background:"none",border:"none",color:i===projects.length-1?"#333":"#666",cursor:i===projects.length-1?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▼</button>
+                    <button onClick={e=>{e.stopPropagation();if(confirm("Delete?")){const remaining=projects.filter(x=>x.id!==p.id);setProjects(ps=>ps.filter(x=>x.id!==p.id));const dropped=Array.from(projectImageUrls(p));if(dropped.length){const inUse=collectAllImageUrls({projects:remaining,blog,settings});deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer"}}>✕</button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -4846,9 +4859,17 @@ export default function Home() {
             </div>
             <div style={{flex:"1 1 480px",minWidth:280}}>
               <div>
+                {/* Reveal (scroll-triggered fade-in) intentionally REMOVED from these rows --
+                    it was the one real difference between this list and the Work page's
+                    always-visible, always-hoverable category pills. Reveal is a one-shot
+                    IntersectionObserver gate (see the Reveal component above): if this section
+                    sits just outside its rootMargin/threshold at load on a given viewport/zoom,
+                    or the observer never re-fires, the row stays at opacity:0 -- present in the
+                    DOM but invisible and effectively non-interactive until a scroll re-triggers
+                    it. Every row now renders fully visible and clickable/hoverable immediately,
+                    same as WorkGrid's pills, so behavior is consistent between Home and Work. */}
                 {settings.services.map((sv,i)=>(
-                  <Reveal key={sv.id} delay={i*0.07}>
-                  <div className="svc-row" onClick={()=>{
+                  <div key={sv.id} className="svc-row" onClick={()=>{
                     // Each service now links to its OWN real page instead of every row going
                     // to the same generic Packages page (the exact bug flagged: "all services
                     // link to the same page"). Photography/Videography have real, dedicated
@@ -4868,7 +4889,6 @@ export default function Home() {
                     </div>
                     <span className="svc-arrow" style={{width:42,height:42,borderRadius:4,border:`1px solid ${C.LTBORDER}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,color:C.DARK,flexShrink:0}}>→</span>
                   </div>
-                  </Reveal>
                 ))}
               </div>
             </div>

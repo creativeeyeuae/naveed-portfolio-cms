@@ -60,7 +60,7 @@ function HeroTile({
         setHovered(false);
         onHoverChange?.(false);
       }}
-      style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", borderRadius: 6, overflow: "hidden", background: "var(--bg-surface-1, #140D21)", marginBottom: 20 }}
+      style={{ position: "relative", display: "flex", justifyContent: "center", width: "100%", overflow: "hidden", background: "var(--bg-surface-1, #140D21)", marginBottom: 3 }}
     >
       <img
         src={img.url}
@@ -167,8 +167,7 @@ function GalleryTile({
       style={{
         position: "relative",
         breakInside: "avoid",
-        marginBottom: 16,
-        borderRadius: 6,
+        marginBottom: 3,
         overflow: "hidden",
         cursor: "pointer",
         background: "var(--bg-surface-1, #140D21)",
@@ -306,7 +305,7 @@ export default function ProjectGallery({
             <div
               style={{
                 columnWidth: 300,
-                columnGap: 16,
+                columnGap: 3,
               }}
             >
               {rest.map((img, i) => (

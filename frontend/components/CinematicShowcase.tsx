@@ -646,10 +646,13 @@ export default function CinematicShowcase({
           )}
         </motion.div>
 
-        {/* Horizontal project selector -- click-to-switch, no page reload */}
+        {/* Horizontal project selector -- click-to-switch, no page reload.
+            Mobile-only sizing below (gap/marginTop/padding/width/margins/fontSize) is shrunk
+            so the rail reads as a small, compact strip of thumbnails under the player rather
+            than a second full-width row -- desktop keeps its original values untouched. */}
         {items.length > 1 && (
           <motion.div
-            style={{ opacity: railOpacity, display: "flex", gap: 14, marginTop: isMobile ? 28 : 44, overflowX: "auto", padding: "4px 4px 12px", WebkitOverflowScrolling: "touch", justifyContent: isMobile ? "flex-start" : "center" }}
+            style={{ opacity: railOpacity, display: "flex", gap: isMobile ? 8 : 14, marginTop: isMobile ? 18 : 44, overflowX: "auto", padding: isMobile ? "4px 4px 6px" : "4px 4px 12px", WebkitOverflowScrolling: "touch", justifyContent: isMobile ? "flex-start" : "center" }}
             role="listbox"
             aria-label="Select a project to view"
           >
@@ -664,7 +667,7 @@ export default function CinematicShowcase({
                   aria-label={`View ${p.title} project`}
                   style={{
                     flex: "0 0 auto",
-                    width: isMobile ? 120 : 150,
+                    width: isMobile ? 82 : 150,
                     background: "none",
                     border: "none",
                     padding: 0,
@@ -678,10 +681,10 @@ export default function CinematicShowcase({
                     style={{
                       width: "100%",
                       aspectRatio: "16/10",
-                      borderRadius: 6,
+                      borderRadius: isMobile ? 5 : 6,
                       overflow: "hidden",
                       background: CV.DARK,
-                      marginBottom: 8,
+                      marginBottom: isMobile ? 4 : 8,
                       boxShadow: isActive ? `0 0 0 2px ${CV.P}` : `0 0 0 1px ${CV.BORDER}`,
                     }}
                   >
@@ -689,10 +692,12 @@ export default function CinematicShowcase({
                       <img src={p.coverImage} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     )}
                   </div>
-                  <div style={{ fontSize: 9, letterSpacing: 2, color: CV.PL, textTransform: "uppercase", marginBottom: 2 }}>
-                    {p.categories?.[0]}
-                  </div>
-                  <div style={{ fontSize: 12, color: CV.FG, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {!isMobile && (
+                    <div style={{ fontSize: 9, letterSpacing: 2, color: CV.PL, textTransform: "uppercase", marginBottom: 2 }}>
+                      {p.categories?.[0]}
+                    </div>
+                  )}
+                  <div style={{ fontSize: isMobile ? 10 : 12, color: CV.FG, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {p.title}
                   </div>
                 </button>

@@ -89,24 +89,65 @@ function FrameMesh({
     [accentColor]
   );
 
-  // Camera-lens depth cue: a raised metal ring + recessed glass lens, genuinely modeled in 3D
-  // (not a flat CSS dot) -- positioned near one short edge, the way a front-facing camera sits
-  // near the top of a portrait device or the side of a landscape one.
-  const lensX = orientation === "portrait" ? 0 : w / 2 - Math.min(w, h) * 0.09;
-  const lensY = orientation === "portrait" ? h / 2 - Math.min(w, h) * 0.09 : 0;
-  const lensR = Math.min(w, h) * 0.028;
+  // Camera-lens depth cue: a raised, reflective metal "pill" housing containing two lenses --
+  // a generic, original dual-camera layout (this general capsule-plus-lenses arrangement is
+  // common across many phone brands' hardware, not any single manufacturer's exact silhouette
+  // or proportions) -- positioned near one short edge, the way a camera module sits near the
+  // top of a portrait device or the side of a landscape one.
+  const lensCX = orientation === "portrait" ? 0 : w / 2 - Math.min(w, h) * 0.09;
+  const lensCY = orientation === "portrait" ? h / 2 - Math.min(w, h) * 0.09 : 0;
+  const lensR = Math.min(w, h) * 0.02;
+  const lensGap = lensR * 2.2;
+  const pillLong = lensGap + lensR * 3.2;
+  const pillShort = lensR * 2.6;
+  const pillW = orientation === "portrait" ? pillLong : pillShort;
+  const pillH = orientation === "portrait" ? pillShort : pillLong;
+  const pillRadius = Math.min(pillW, pillH) / 2;
+  const lens1X = orientation === "portrait" ? lensCX - lensGap / 2 : lensCX;
+  const lens1Y = orientation === "portrait" ? lensCY : lensCY - lensGap / 2;
+  const lens2X = orientation === "portrait" ? lensCX + lensGap / 2 : lensCX;
+  const lens2Y = orientation === "portrait" ? lensCY : lensCY + lensGap / 2;
+
+  const pillMat = useMemo(
+    () =>
+      new THREE.MeshPhysicalMaterial({
+        // Semi-metallic + high clearcoat so it catches the same key/rim lights as the body,
+        // instead of reading as a flat dark patch -- a small reflective surface of its own.
+        color: new THREE.Color("#1c1c20"),
+        metalness: 0.55,
+        roughness: 0.26,
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.1,
+      }),
+    []
+  );
 
   return (
     <group ref={group}>
       <mesh geometry={useMemo(() => new RoundedBoxGeometry(w, h, depth, 4, radius), [w, h, depth, radius])} material={bodyMat} />
-      <mesh position={[lensX, lensY, depth / 2 + 0.001]}>
-        <cylinderGeometry args={[lensR, lensR, depth * 0.4, 32]} />
-        <meshPhysicalMaterial color="#111114" metalness={0.8} roughness={0.35} clearcoat={0.6} />
-      </mesh>
-      <mesh position={[lensX, lensY, depth / 2 + depth * 0.22]}>
-        <cylinderGeometry args={[lensR * 0.52, lensR * 0.52, depth * 0.12, 24]} />
-        <meshPhysicalMaterial color="#05050a" metalness={0.2} roughness={0.08} clearcoat={1} />
-      </mesh>
+      <mesh
+        geometry={useMemo(
+          () => new RoundedBoxGeometry(pillW, pillH, depth * 0.22, 4, pillRadius),
+          [pillW, pillH, depth, pillRadius]
+        )}
+        material={pillMat}
+        position={[lensCX, lensCY, depth / 2 + depth * 0.05]}
+      />
+      {[
+        [lens1X, lens1Y],
+        [lens2X, lens2Y],
+      ].map(([lx, ly], i) => (
+        <group key={i}>
+          <mesh position={[lx, ly, depth / 2 + depth * 0.17]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[lensR, lensR, depth * 0.3, 32]} />
+            <meshPhysicalMaterial color="#111114" metalness={0.8} roughness={0.35} clearcoat={0.6} />
+          </mesh>
+          <mesh position={[lx, ly, depth / 2 + depth * 0.33]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[lensR * 0.52, lensR * 0.52, depth * 0.1, 24]} />
+            <meshPhysicalMaterial color="#05050a" metalness={0.2} roughness={0.08} clearcoat={1} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }

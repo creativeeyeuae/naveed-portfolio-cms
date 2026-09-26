@@ -412,7 +412,7 @@ export default function CinematicShowcase({
           inset: 0,
           borderRadius: "inherit",
           background:
-            "linear-gradient(112deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.08) 9%, rgba(255,255,255,0) 20%, rgba(255,255,255,0) 76%, rgba(255,255,255,0.05) 88%, rgba(255,255,255,0.18) 100%)",
+            "linear-gradient(112deg, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.18) 8%, rgba(0,0,0,0.08) 16%, rgba(255,255,255,0) 26%, rgba(0,0,0,0.06) 58%, rgba(255,255,255,0) 72%, rgba(255,255,255,0.14) 86%, rgba(255,255,255,0.5) 100%)",
           pointerEvents: "none",
           zIndex: 1,
         }}
@@ -425,8 +425,8 @@ export default function CinematicShowcase({
           inset: 0,
           borderRadius: "inherit",
           background:
-            "repeating-linear-gradient(100deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px)",
-          opacity: 0.5,
+            "repeating-linear-gradient(100deg, rgba(255,255,255,0.06) 0px, rgba(255,255,255,0.06) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px)",
+          opacity: 0.6,
           pointerEvents: "none",
           zIndex: 1,
         }}
@@ -710,12 +710,15 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
+                  // Polished silver/titanium metal -- a light-to-dark diagonal sweep (rather
+                  // than the previous dark graphite) so the frame itself catches and reflects
+                  // light, matching a natural-metal finish. Still an original, generic shell.
+                  background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 12%, #b9bcc2 26%, #9a9da3 40%, #7c7f85 56%, #5c5f64 72%, #404347 88%, #2b2d30 100%)",
                   // Thin, edge-to-edge bezel -- the cinematic, almost-all-screen presentation
                   // requested, without copying any specific manufacturer's exact camera-cutout
                   // shape or silhouette (the lens stays a plain circle, see frameChrome).
                   padding: 3,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
+                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}
@@ -743,9 +746,9 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
+                  background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 12%, #b9bcc2 26%, #9a9da3 40%, #7c7f85 56%, #5c5f64 72%, #404347 88%, #2b2d30 100%)",
                   padding: 3,
-                  boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
+                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}

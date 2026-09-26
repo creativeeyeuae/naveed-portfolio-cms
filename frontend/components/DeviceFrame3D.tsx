@@ -75,13 +75,16 @@ function FrameMesh({
   const bodyMat = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
-        color: new THREE.Color("#3a3a40"),
-        metalness: 0.92,
-        roughness: 0.33,
-        clearcoat: 0.55,
-        clearcoatRoughness: 0.22,
+        // Polished silver/titanium instead of dark graphite -- brighter base + a touch less
+        // roughness/more clearcoat so the real lights below actually read as reflections
+        // sliding across the metal, not just a flat tint.
+        color: new THREE.Color("#c7c9cd"),
+        metalness: 0.88,
+        roughness: 0.26,
+        clearcoat: 0.7,
+        clearcoatRoughness: 0.14,
         emissive: new THREE.Color(accentColor),
-        emissiveIntensity: 0.025,
+        emissiveIntensity: 0.012,
       }),
     [accentColor]
   );
@@ -128,10 +131,18 @@ export default function DeviceFrame3D({
       camera={{ position: [0, 0, 2.4], fov: 32 }}
       style={{ position: "absolute", inset: 0, borderRadius: "inherit", zIndex: 0 }}
     >
-      <ambientLight intensity={0.65} />
-      <directionalLight position={[-2, 2.4, 3]} intensity={1.4} />
-      <directionalLight position={[1.5, -1.2, 1.5]} intensity={0.4} color="#cfd6ff" />
-      <pointLight position={[2, -1, 2]} intensity={0.35} color="#8fa3ff" />
+      {/* Silver metal needs brighter, more directional light than the old dark graphite did to
+          actually read as reflective -- a strong key light for the main highlight sweep, a
+          cooler rim/fill from the opposite side so the shadowed edge never goes flat black,
+          and a soft warm point light low-front for a touch of contact-shadow warmth. No
+          environment/PMREM map (kept out deliberately for performance -- see the note above)
+          so all of the "reflection" read comes from these real lights plus the material's own
+          clearcoat, not image-based reflections. */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[-2, 2.4, 3]} intensity={2.1} />
+      <directionalLight position={[1.6, -1.4, 1.8]} intensity={0.85} color="#dbe4ff" />
+      <pointLight position={[2, -1, 2]} intensity={0.5} color="#8fa3ff" />
+      <pointLight position={[-1.2, -1.6, 1.4]} intensity={0.3} color="#ffe9c9" />
       <FrameMesh
         orientation={orientation}
         accentColor={accentColor}

@@ -493,3 +493,22 @@ textarea.adv-input { font-family: inherit; }
 .adv-step-line.is-upcoming { background: rgba(255,255,255,0.10); }
 
 .adv-contact-card:hover > div { border-color: rgba(139,92,246,0.45); box-shadow: 0 8px 24px -8px rgba(139,92,246,0.3); transform: translateY(-2px); }
+
+/* Rich text (About Bio / project "The Story" / Journal post body) -- shared structural
+   styling for content saved through components/RichTextEditor.tsx and rendered via
+   components/RichText.tsx. Each page still sets its own font-size/line-height/color via
+   its wrapping element (or an extra class alongside "rich-text"); this block only styles
+   the tags the editor can actually produce (see lib/richText.ts's allow-list). */
+.rich-text p { margin: 0 0 18px; }
+.rich-text p:last-child { margin-bottom: 0; }
+.rich-text ul, .rich-text ol { margin: 0 0 18px; padding-left: 1.4em; }
+.rich-text li { margin-bottom: 0.5em; }
+.rich-text h2 { font-size: 1.35em; line-height: 1.35; margin: 0.2em 0 0.6em; font-weight: 700; }
+.rich-text h3 { font-size: 1.15em; line-height: 1.4; margin: 0.2em 0 0.5em; font-weight: 700; }
+.rich-text blockquote {
+  margin: 0 0 18px; padding-left: 18px; border-left: 2px solid var(--c-border,#2D1F45);
+  color: var(--c-mid,#A892C6); font-style: italic;
+}
+.rich-text a { color: var(--c-p,#8B5CF6); text-decoration: underline; text-underline-offset: 2px; }
+.rich-text a:hover { opacity: 0.85; }
+.rich-text strong { font-weight: 700; }

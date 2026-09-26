@@ -8,6 +8,7 @@ import type { PublicSiteInfo } from "@/lib/cmsData";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import CinematicShowcase from "@/components/CinematicShowcase";
+import RichTextEditor from "@/components/RichTextEditor";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -3413,7 +3414,7 @@ export default function Home() {
                   <div><label style={S.lbl}>Name</label><input style={S.inp} value={settingsDraft.aboutName} onChange={e=>updateSD({aboutName:e.target.value})} /></div>
                   <div><label style={S.lbl}>Professional Title</label><input style={S.inp} value={settingsDraft.aboutTitle} onChange={e=>updateSD({aboutTitle:e.target.value})} /></div>
                 </div>
-                <div style={{marginBottom:16}}><label style={S.lbl}>Biography</label><textarea style={{...S.inp,height:120,resize:"vertical" as const}} value={settingsDraft.aboutBio} onChange={e=>updateSD({aboutBio:e.target.value})} /></div>
+                <div style={{marginBottom:16}}><label style={S.lbl}>Biography</label><RichTextEditor value={settingsDraft.aboutBio} onChange={html=>updateSD({aboutBio:html})} minHeight={140} placeholder="Write the biography..." /></div>
                 <SingleImageUpload value={settingsDraft.aboutPhoto} onChange={url=>updateSD({aboutPhoto:url})} label="Profile Photo" />
               </div>
             )}
@@ -3890,7 +3891,7 @@ export default function Home() {
                 </div>
                 <SingleImageUpload value={b.coverImage} onChange={url=>{const old=b.coverImage;const nextBlog=blog.map((x,idx)=>idx===i?{...x,coverImage:url}:x);setBlog(()=>nextBlog);if(old&&old!==url){const inUse=collectAllImageUrls({projects,blog:nextBlog,settings});if(!inUse.has(old))deleteStorageFiles([old]);}}} label="Cover Image" />
                 <div style={{marginBottom:12}}><label style={S.lbl}>Excerpt</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={b.excerpt} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,excerpt:e.target.value}:x))} /></div>
-                <div style={{marginBottom:12}}><label style={S.lbl}>Full Content</label><textarea style={{...S.inp,height:160,resize:"vertical" as const}} value={b.content} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,content:e.target.value}:x))} placeholder="Full article content..." /></div>
+                <div style={{marginBottom:12}}><label style={S.lbl}>Full Content</label><RichTextEditor value={b.content} onChange={html=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,content:html}:x))} minHeight={220} placeholder="Full article content..." /></div>
                 <button onClick={()=>{const remaining=blog.filter((_,idx)=>idx!==i);setBlog(bs=>bs.filter((_,idx)=>idx!==i));if(b.coverImage){const inUse=collectAllImageUrls({projects,blog:remaining,settings});if(!inUse.has(b.coverImage))deleteStorageFiles([b.coverImage]);}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
               </div>
             ))}
@@ -3946,7 +3947,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div style={{marginBottom:16}}><label style={S.lbl}>Short Description</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={form.description||""} onChange={e=>setForm(f=>({...f,description:e.target.value}))} /></div>
-                  <div style={{marginBottom:16}}><label style={S.lbl}>Full Description</label><textarea style={{...S.inp,height:100,resize:"vertical" as const}} value={form.fullDescription||""} onChange={e=>setForm(f=>({...f,fullDescription:e.target.value}))} /></div>
+                  <div style={{marginBottom:16}}><label style={S.lbl}>Full Description</label><RichTextEditor value={form.fullDescription||""} onChange={html=>setForm(f=>({...f,fullDescription:html}))} minHeight={160} placeholder="The story behind this project..." /></div>
                   <div style={{marginBottom:16,display:"flex",gap:10,alignItems:"center"}}>
                     <input type="checkbox" checked={!!form.featured} onChange={e=>setForm(f=>({...f,featured:e.target.checked}))} />
                     <span style={{fontSize:11,letterSpacing:2,color:C.MID,textTransform:"uppercase" as const}}>Featured on homepage</span>

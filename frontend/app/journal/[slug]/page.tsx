@@ -5,6 +5,7 @@ import { getRealBlogPosts, getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata, articleJsonLd, jsonLdScriptProps } from "@/lib/seo";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import RichText from "@/components/RichText";
 
 // Real, indexable per-post URL: /journal/[slug]/. Not one of the 4
 // protected routes. Same build-safety pattern as /work/[slug]: under
@@ -115,7 +116,11 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
             {new Date(post.publishedAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
           </div>
         )}
-        <div style={{ marginTop: 32, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{post.content}</div>
+        {/* post.content is edited with the CMS Rich Text Editor and saved as HTML into the
+            same field that used to hold plain text; RichText renders that HTML (or, for a
+            post saved before the editor existed, the same "pre-wrap" plain text this page
+            used to render directly). */}
+        <RichText html={post.content} style={{ marginTop: 32, lineHeight: 1.8 }} />
       </article>
       <SiteFooter site={site} />
     </main>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
+import RichText from "@/components/RichText";
 
 // Real, indexable static route (/about) -- previously a bare, unstyled legacy stub (no
 // SiteHeader/SiteFooter, no CMS data, disconnected Tailwind classes, from an earlier phase
@@ -48,14 +49,11 @@ export default async function AboutPage() {
             <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>About</div>
             <h2 style={{ fontSize: "clamp(26px,3.4vw,40px)", fontWeight: 700, margin: "0 0 8px" }}>{site.aboutName}</h2>
             <p style={{ fontSize: 15, color: C.MID, margin: "0 0 22px" }}>{site.aboutTitle}</p>
-            {/* aboutBio can contain multiple paragraphs separated by blank lines (the CMS
-                textarea preserves them as literal \n\n) -- split and render each as its own
-                <p> the same way the /work/[slug] page already does for fullDescription, so a
-                multi-paragraph bio doesn't collapse into one run-on block (the browser's
-                default white-space handling ignores \n inside a single <p>). */}
-            {site.aboutBio && site.aboutBio.split(/\n+/).filter((para) => para.trim()).map((para, i) => (
-              <p key={i} style={{ fontSize: 15, lineHeight: 1.8, color: "rgba(255,255,255,0.78)", margin: "0 0 18px" }}>{para}</p>
-            ))}
+            {/* aboutBio is edited with the CMS Rich Text Editor (components/RichTextEditor.tsx)
+                and saved as HTML into the same field that used to hold plain text -- RichText
+                renders that HTML (or, for a bio saved before the editor existed, the same
+                paragraph-per-blank-line structure this page used to build by hand). */}
+            <RichText html={site.aboutBio} style={{ fontSize: 15, lineHeight: 1.8, color: "rgba(255,255,255,0.78)" }} />
 
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 32, fontSize: 14, color: C.MID }}>
               {site.phone && <div>📞 {site.phone}</div>}

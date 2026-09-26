@@ -7,6 +7,7 @@ import ProjectGallery from "@/components/work/ProjectGallery";
 import ProjectEngagement from "@/components/work/ProjectEngagement";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import RichText from "@/components/RichText";
 
 // Real, indexable per-project URL: /work/[slug]/ -- the SINGLE canonical project detail page
 // for the whole site (consolidated from the two pre-existing, independent implementations:
@@ -345,13 +346,14 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
           ))}
         </div>
 
-        {/* FULL DESCRIPTION / STORY -- the main narrative, line breaks preserved, shown once. */}
+        {/* FULL DESCRIPTION / STORY -- the main narrative. fullDescription is edited with the
+            CMS Rich Text Editor and saved as HTML into the same field that used to hold plain
+            text; RichText renders that HTML (or, for a story saved before the editor existed,
+            the same paragraph-per-blank-line structure this page used to build by hand). */}
         {album.fullDescription && (
           <div style={{ marginBottom: 56, maxWidth: 760 }}>
             <SectionEyebrow>The Story</SectionEyebrow>
-            {album.fullDescription.split(/\n+/).filter((para) => para.trim()).map((para, i) => (
-              <p key={i} style={{ margin: "0 0 18px", lineHeight: 1.9, color: "rgba(255,255,255,0.82)", fontSize: 16 }}>{para}</p>
-            ))}
+            <RichText html={album.fullDescription} style={{ lineHeight: 1.9, color: "rgba(255,255,255,0.82)", fontSize: 16 }} />
           </div>
         )}
 

@@ -320,10 +320,10 @@ const DEFAULT_PUBLIC_SITE_INFO: PublicSiteInfo = {
   siteName: "Naveed Anjum",
   siteTagline: "Photography & Cinematography",
   phone: "+971 581 174 911",
-  email: "creativeeyeuae@gmail.com",
+  email: "info@bynaveedanjum.com",
   location: "Dubai, UAE",
   instagram: "https://www.instagram.com/bynaveedanjum/",
-  youtube: "https://youtube.com/@creativeeyeuae",
+  youtube: "https://www.youtube.com/@ByNaveedAnjum",
   linkedin: "https://linkedin.com/in/naveedanjumch",
   footerCopyright: "© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
   // Same defaults as DEF_SETTINGS in app/page.tsx for these additive fields too.

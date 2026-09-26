@@ -8,6 +8,7 @@ import ProjectEngagement from "@/components/work/ProjectEngagement";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import RichText from "@/components/RichText";
+import { CATEGORY_TO_SERVICE_SLUGS, SERVICE_PAGES } from "@/lib/servicePagesData";
 
 // Real, indexable per-project URL: /work/[slug]/ -- the SINGLE canonical project detail page
 // for the whole site (consolidated from the two pre-existing, independent implementations:
@@ -253,6 +254,18 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
     : [];
   const related = (sameCategory.length > 0 ? sameCategory : otherProjects).slice(0, 3);
 
+  // Related SERVICE pages: map this project's real categories to the dedicated service
+  // pages they genuinely support (CATEGORY_TO_SERVICE_SLUGS -- see lib/servicePagesData.ts),
+  // so a real portfolio project also links forward to the commercial service page(s) it backs
+  // up, not just to other portfolio work. Deduped since two categories can map to the same
+  // service page (e.g. "Commercial" and "Editorial" both include brand-photographer-dubai).
+  const relatedServiceSlugs = Array.from(
+    new Set((album.categories || []).flatMap((c) => CATEGORY_TO_SERVICE_SLUGS[c] || []))
+  );
+  const relatedServices = relatedServiceSlugs
+    .map((slug) => SERVICE_PAGES.find((s) => s.slug === slug))
+    .filter((s): s is { slug: string; label: string } => Boolean(s));
+
   const jsonLd = creativeWorkJsonLd({
     path: `/work/${album.slug}/`,
     title: displayName,
@@ -396,6 +409,28 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
                     <div style={{ fontSize: 10, letterSpacing: 3, color: C.PL, textTransform: "uppercase", marginBottom: 6 }}>{p.categories?.join(" · ")}</div>
                     <div style={{ fontSize: 16, letterSpacing: 1, color: "#fff" }}>{p.title}</div>
                   </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* RELATED SERVICES -- links this real project forward to the dedicated service
+            page(s) it genuinely backs up (via CATEGORY_TO_SERVICE_SLUGS), so a visitor
+            looking at proof-of-work lands on the commercial page for that exact service next.
+            Only rendered when this project's categories actually map to something -- an
+            unmapped category (Wedding, Travel, etc.) simply shows nothing here. */}
+        {relatedServices.length > 0 && (
+          <div style={{ marginBottom: 56 }}>
+            <SectionEyebrow>Related Services</SectionEyebrow>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {relatedServices.map((s) => (
+                <Link
+                  key={s.slug}
+                  href={`/${s.slug}/`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", border: `1px solid ${C.BORDER}`, borderRadius: 2, color: C.FG, fontSize: 13, fontWeight: 600, textDecoration: "none", background: C.DARK }}
+                >
+                  {s.label} in Dubai <span style={{ color: C.PL }}>&rarr;</span>
                 </Link>
               ))}
             </div>

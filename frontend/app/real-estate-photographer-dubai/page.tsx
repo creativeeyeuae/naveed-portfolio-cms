@@ -30,6 +30,9 @@ export default function Page() {
         eyebrow: "Real Estate Photography · Dubai",
         h1: "Real Estate Photographer in Dubai",
         serviceLabel: "real estate photography",
+        relatedProjects: [
+          { slug: "luxury-villa-interior-shoot", title: "Luxury Villa Interior Shoot", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789910135937-m3yqrydhaok.jpg", categoryLabel: "Real Estate · Dubai" },
+        ],
         intro:
           "Real estate photography for Dubai's fast-moving property market — clean, accurately lit interiors and exteriors that show a space the way buyers and tenants actually experience it, for listings, brochures and off-plan marketing.",
         sections: [

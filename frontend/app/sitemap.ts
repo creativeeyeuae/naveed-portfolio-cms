@@ -38,9 +38,10 @@ async function getJournalEntries(): Promise<MetadataRoute.Sitemap> {
   }));
 }
 
-// The six real, standalone SEO service pages (app/<slug>/page.tsx) -- unlike the stub
+// The real, standalone SEO service pages (app/<slug>/page.tsx) -- unlike the stub
 // route folders mentioned above, these carry finished, unique content, so they belong in
-// the sitemap. SERVICE_PAGES is the single shared list also used for their cross-linking.
+// the sitemap. SERVICE_PAGES is the single shared list also used for their cross-linking
+// (count grows as new pages are added -- see lib/servicePagesData.ts, do not hardcode a number here).
 function getServicePageEntries(): MetadataRoute.Sitemap {
   return SERVICE_PAGES.map((s) => ({
     url: `https://bynaveedanjum.com/${s.slug}/`,

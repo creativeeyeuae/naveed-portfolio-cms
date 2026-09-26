@@ -16,7 +16,26 @@ export const SERVICE_PAGES: { slug: string; label: string }[] = [
   { slug: "brand-photographer-dubai", label: "Brand Photographer" },
   { slug: "event-photographer-dubai", label: "Event Photographer" },
   { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photographer" },
+  { slug: "fashion-photographer-dubai", label: "Fashion Photographer" },
 ];
+
+// Maps a CMS project category (site_settings("nap_cats"), also each project's own
+// `categories` field) to the standalone service page(s) it's genuinely relevant to -- used
+// to link a real project to its matching service page(s) (app/work/[slug]/page.tsx) and to
+// pull real project examples onto a service page (ServicePage's `relatedProjects`). Only
+// categories with a confident, non-forced match are listed; an unlisted category (e.g.
+// "Wedding", "Travel") simply shows no service links rather than being mapped to something
+// unrelated. Keep this in sync when a category or service page is added/renamed.
+export const CATEGORY_TO_SERVICE_SLUGS: Record<string, string[]> = {
+  "Real Estate": ["real-estate-photographer-dubai", "real-estate-videographer-dubai", "property-videography-dubai"],
+  "Architecture & Interior": ["interior-photographer-dubai", "architectural-photographer-dubai"],
+  "Commercial": ["commercial-photographer-dubai", "brand-photographer-dubai"],
+  "Events": ["event-photographer-dubai"],
+  "Fashion": ["fashion-photographer-dubai"],
+  "Product Photography": ["product-photographer-dubai"],
+  "Portrait Photography": ["personal-branding-photographer-dubai", "corporate-headshot-photographer-dubai", "lifestyle-photographer-dubai"],
+  "Editorial": ["brand-photographer-dubai", "lifestyle-photographer-dubai"],
+};
 
 // Real, sourced upcoming Dubai exhibitions/trade shows -- shown on the exhibition-
 // photographer/videographer pages. Dates confirmed as of Sep 2026 from the organisers'

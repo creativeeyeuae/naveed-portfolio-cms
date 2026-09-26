@@ -25,6 +25,9 @@ export default function Page() {
         eyebrow: "Exhibition Photography · Dubai",
         h1: "Exhibition & Trade Show Stand Photographer in Dubai",
         serviceLabel: "exhibition and trade show stand photography",
+        relatedProjects: [
+          { slug: "jeca-decor-global-big-5-dubai", title: "JECA Décor — Global Big 5 Dubai", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789975119596-sjkqgvmzm1l.jpg", categoryLabel: "Exhibition · Dubai" },
+        ],
         upcomingEvents: UPCOMING_EXHIBITIONS,
         intro:
           "Dubai hosts major international exhibitions and trade shows through the year, drawing exhibiting companies from around the world. This service covers photography of your stand, products and team on the show floor — imagery exhibitors can take home and put to work in marketing, LinkedIn posts and reports back to head office.",

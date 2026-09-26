@@ -23,6 +23,9 @@ export default function Page() {
         eyebrow: "Interior Photography · Dubai",
         h1: "Interior Photographer in Dubai",
         serviceLabel: "interior photography",
+        relatedProjects: [
+          { slug: "luxury-villa-interior-shoot", title: "Luxury Villa Interior Shoot", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789910135937-m3yqrydhaok.jpg", categoryLabel: "Architecture & Interior · Dubai" },
+        ],
         intro:
           "Interior photography for homes, hospitality venues, retail spaces and commercial interiors across Dubai — capturing how a space is designed to feel, not just how it looks in a wide-angle snapshot.",
         sections: [

@@ -16,7 +16,7 @@ import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps }
 
 const P = "#8B5CF6", PL = "#E2D9F3", DARK = "#140D21", BG = "#09060E", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#2D1F45";
 const WA_NUMBER = "971581174911";
-const EMAIL = "creativeeyeuae@gmail.com";
+const EMAIL = "info@bynaveedanjum.com";
 const PHONE_DISPLAY = "+971 58 117 4911";
 
 function waHref(service: string) {
@@ -37,6 +37,10 @@ export type ServicePageData = {
   // exhibition-photographer/videographer pages). Keep this list current -- these dates go
   // stale -- and never invent a date; only add events with a confirmed source.
   upcomingEvents?: { name: string; dates: string; venue: string }[];
+  // Real, existing /work/[slug] projects that genuinely demonstrate this service -- never
+  // invented. Rendered as a small linked gallery so a visitor (and Google) can jump straight
+  // from the service claim to the actual portfolio proof.
+  relatedProjects?: { slug: string; title: string; image: string; categoryLabel?: string }[];
 };
 
 export default function ServicePage({ data }: { data: ServicePageData }) {
@@ -129,6 +133,27 @@ export default function ServicePage({ data }: { data: ServicePageData }) {
         </section>
       )}
 
+      {/* Real portfolio proof -- actual finished /work/[slug] projects, not stock or
+          illustrative images, so the service claim above is immediately backed by real work. */}
+      {data.relatedProjects && data.relatedProjects.length > 0 && (
+        <section style={{ padding: "0 24px", margin: "48px 0 0" }}>
+          <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 20, color: MID, letterSpacing: 1, textTransform: "uppercase" }}>Recent Work</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(240px,1fr))", gap: 14 }}>
+              {data.relatedProjects.map((p) => (
+                <Link key={p.slug} href={`/work/${p.slug}`} style={{ display: "block", position: "relative", overflow: "hidden", aspectRatio: "4/3", borderRadius: 6, border: `1px solid ${BORDER}`, textDecoration: "none" }}>
+                  <img src={p.image} alt={p.title} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(9,6,14,0.92) 0%,transparent 55%)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: 16 }}>
+                    {p.categoryLabel && <div style={{ fontSize: 10, letterSpacing: 2, color: PL, textTransform: "uppercase", marginBottom: 4 }}>{p.categoryLabel}</div>}
+                    <div style={{ fontSize: 14, color: "#fff", fontWeight: 600 }}>{p.title}</div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Service detail sections */}
       <section style={{ padding: "72px 24px" }}>
         <div style={{ maxWidth: 880, margin: "0 auto", display: "flex", flexDirection: "column", gap: 48 }}>
@@ -195,7 +220,7 @@ export default function ServicePage({ data }: { data: ServicePageData }) {
         </div>
         <div style={{ display: "flex", gap: 18 }}>
           <a href="https://www.instagram.com/bynaveedanjum/" target="_blank" rel="noopener noreferrer" style={{ color: MID, textDecoration: "none" }}>Instagram</a>
-          <a href="https://youtube.com/@creativeeyeuae" target="_blank" rel="noopener noreferrer" style={{ color: MID, textDecoration: "none" }}>YouTube</a>
+          <a href="https://www.youtube.com/@ByNaveedAnjum" target="_blank" rel="noopener noreferrer" style={{ color: MID, textDecoration: "none" }}>YouTube</a>
           <a href="https://linkedin.com/in/naveedanjumch" target="_blank" rel="noopener noreferrer" style={{ color: MID, textDecoration: "none" }}>LinkedIn</a>
           <Link href="/" style={{ color: MID, textDecoration: "none" }}>Home</Link>
         </div>

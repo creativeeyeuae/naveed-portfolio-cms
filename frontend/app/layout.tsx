@@ -124,11 +124,11 @@ const structuredData = {
       description:
         "Dubai-based photographer and cinematographer with over 20 years of experience in portrait, commercial, real estate, events and cinematography.",
       address: { "@type": "PostalAddress", addressLocality: "Dubai", addressCountry: "AE" },
-      email: "creativeeyeuae@gmail.com",
+      email: "info@bynaveedanjum.com",
       telephone: "+971581174911",
       sameAs: [
         "https://www.instagram.com/bynaveedanjum/",
-        "https://youtube.com/@creativeeyeuae",
+        "https://www.youtube.com/@ByNaveedAnjum",
         "https://linkedin.com/in/naveedanjumch",
       ],
     },
@@ -139,7 +139,7 @@ const structuredData = {
       url: SITE_URL,
       image: OG_IMAGE,
       telephone: "+971581174911",
-      email: "creativeeyeuae@gmail.com",
+      email: "info@bynaveedanjum.com",
       provider: { "@id": `${SITE_URL}/#person` },
       areaServed: [
         { "@type": "City", name: "Dubai" },

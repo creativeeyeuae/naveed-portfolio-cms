@@ -34,6 +34,10 @@ export default function Page() {
         eyebrow: "Commercial Photography · Dubai",
         h1: "Commercial Photographer in Dubai",
         serviceLabel: "commercial photography",
+        relatedProjects: [
+          { slug: "jeca-decor-global-big-5-dubai", title: "JECA Décor — Global Big 5 Dubai", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789975119596-sjkqgvmzm1l.jpg", categoryLabel: "Commercial · Dubai" },
+          { slug: "world-investment-conference", title: "World Investment Conference", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789355853161-17h3bcrbzo.jpg", categoryLabel: "Commercial · Dubai" },
+        ],
         heroImage: {
           src: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789124446277-hn5lcb8qp26.jpg",
           alt: "Commercial and corporate editorial photography by Naveed Anjum, Creative Fusion — Dubai",

@@ -30,6 +30,10 @@ export default function Page() {
         eyebrow: "Event Photography · Dubai",
         h1: "Event Photographer in Dubai",
         serviceLabel: "event photography",
+        relatedProjects: [
+          { slug: "world-investment-conference", title: "World Investment Conference", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789355853161-17h3bcrbzo.jpg", categoryLabel: "Event · Dubai" },
+          { slug: "kyprqs-nicolaides", title: "Kyprqs Nicolaides", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789997520080-8w3e05l4erl.jpg", categoryLabel: "Event · Dubai" },
+        ],
         intro:
           "Event photography for corporate events, product launches, conferences and private functions across Dubai — candid coverage of the room alongside the formal shots a client actually needs, delivered on a timeline that fits the event.",
         sections: [

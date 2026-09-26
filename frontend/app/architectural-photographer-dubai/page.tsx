@@ -23,6 +23,9 @@ export default function Page() {
         eyebrow: "Architectural Photography · Dubai",
         h1: "Architectural Photographer in Dubai",
         serviceLabel: "architectural photography",
+        relatedProjects: [
+          { slug: "luxury-villa-interior-shoot", title: "Luxury Villa Interior Shoot", image: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789910135937-m3yqrydhaok.jpg", categoryLabel: "Architecture & Interior · Dubai" },
+        ],
         intro:
           "Architectural photography across Dubai's skyline and built environment — buildings, façades and structural details shot with straight lines, controlled perspective and an eye for how light moves across a form through the day.",
         sections: [

@@ -4909,7 +4909,7 @@ export default function Home() {
             </div>
             <span onClick={()=>goTo("work")} style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",cursor:"pointer",borderBottom:`1px solid ${C.PL}`,paddingBottom:2}}>{settings.uiText.homeWorkViewAll}</span>
           </Reveal>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:3}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(4,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
               <Reveal key={p.id} style={{gridColumn:isMobile?"1/2":"1/3"}}>
               <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
@@ -4927,7 +4927,7 @@ export default function Home() {
               </Reveal>
             ))}
             {featured.slice(1).map((p,idx)=>(
-              <Reveal key={p.id} delay={0.1+idx*0.08}>
+              <Reveal key={p.id} delay={0.1+idx*0.08} style={!isMobile && idx<2 ? {gridColumn:"span 2"} : undefined}>
               <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>

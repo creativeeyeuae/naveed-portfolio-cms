@@ -89,7 +89,7 @@ function FrameMesh({
   // Camera-lens depth cue: a raised metal ring + recessed glass lens, genuinely modeled in 3D
   // (not a flat CSS dot) -- positioned near one short edge, the way a front-facing camera sits
   // near the top of a portrait device or the side of a landscape one.
-  const lensX = orientation === "portrait" ? 0 : -w / 2 + Math.min(w, h) * 0.09;
+  const lensX = orientation === "portrait" ? 0 : w / 2 - Math.min(w, h) * 0.09;
   const lensY = orientation === "portrait" ? h / 2 - Math.min(w, h) * 0.09 : 0;
   const lensR = Math.min(w, h) * 0.028;
 

@@ -475,7 +475,8 @@ export default function CinematicShowcase({
           style={{
             position: "absolute",
             top: orientation === "portrait" ? 7 : "50%",
-            left: orientation === "portrait" ? "50%" : 7,
+            left: orientation === "portrait" ? "50%" : undefined,
+            right: orientation === "portrait" ? undefined : 7,
             transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
             width: orientation === "portrait" ? 62 : 7,
             height: orientation === "portrait" ? 16 : 62,
@@ -518,7 +519,7 @@ export default function CinematicShowcase({
           position: "relative",
           width: "100%",
           height: "100%",
-          borderRadius: orientation === "portrait" ? 36 : 20,
+          borderRadius: orientation === "portrait" ? 41 : 27,
           overflow: "hidden",
           background: "#000",
           boxShadow: "inset 0 0 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
@@ -710,7 +711,10 @@ export default function CinematicShowcase({
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
                   background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
-                  padding: 7,
+                  // Thin, edge-to-edge bezel -- the cinematic, almost-all-screen presentation
+                  // requested, without copying any specific manufacturer's exact camera-cutout
+                  // shape or silhouette (the lens stays a plain circle, see frameChrome).
+                  padding: 3,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
@@ -740,7 +744,7 @@ export default function CinematicShowcase({
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
                   background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
-                  padding: orientation === "portrait" ? 10 : 11,
+                  padding: 3,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
                   transformStyle: "preserve-3d",

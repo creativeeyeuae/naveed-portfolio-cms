@@ -438,10 +438,11 @@ export default function CinematicShowcase({
         style={{
           position: "absolute",
           ...(orientation === "portrait"
-            ? { top: "16%", left: -3, width: 3, height: 30 }
-            : { top: -3, left: "20%", width: 30, height: 3 }),
-          borderRadius: 2,
-          background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(0,0,0,0.55))",
+            ? { top: "16%", left: -3.5, width: 3.5, height: 30 }
+            : { top: -3.5, left: "20%", width: 30, height: 3.5 }),
+          borderRadius: 1.5,
+          background: "linear-gradient(180deg, #e4e5e8 0%, #c1c3c7 30%, #8f9195 65%, #5c5e62 100%)",
+          boxShadow: "inset 0 0.5px 0 rgba(255,255,255,0.55), inset 0 -0.5px 1px rgba(0,0,0,0.5), 0 0.5px 1.5px rgba(0,0,0,0.5)",
           zIndex: 2,
         }}
       />
@@ -449,10 +450,11 @@ export default function CinematicShowcase({
         style={{
           position: "absolute",
           ...(orientation === "portrait"
-            ? { top: "28%", left: -3, width: 3, height: 22 }
-            : { top: -3, left: "34%", width: 22, height: 3 }),
-          borderRadius: 2,
-          background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(0,0,0,0.55))",
+            ? { top: "28%", left: -3.5, width: 3.5, height: 22 }
+            : { top: -3.5, left: "34%", width: 22, height: 3.5 }),
+          borderRadius: 1.5,
+          background: "linear-gradient(180deg, #e4e5e8 0%, #c1c3c7 30%, #8f9195 65%, #5c5e62 100%)",
+          boxShadow: "inset 0 0.5px 0 rgba(255,255,255,0.55), inset 0 -0.5px 1px rgba(0,0,0,0.5), 0 0.5px 1.5px rgba(0,0,0,0.5)",
           zIndex: 2,
         }}
       />
@@ -460,13 +462,30 @@ export default function CinematicShowcase({
         style={{
           position: "absolute",
           ...(orientation === "portrait"
-            ? { top: "18%", right: -3, width: 3, height: 36 }
-            : { bottom: -3, left: "56%", width: 36, height: 3 }),
-          borderRadius: 2,
-          background: "linear-gradient(90deg, rgba(255,255,255,0.14), rgba(0,0,0,0.5))",
+            ? { top: "18%", right: -3.5, width: 3.5, height: 36 }
+            : { bottom: -3.5, left: "56%", width: 36, height: 3.5 }),
+          borderRadius: 1.5,
+          background: "linear-gradient(180deg, #d9dadd 0%, #b3b5b9 30%, #7d7f83 65%, #4c4e52 100%)",
+          boxShadow: "inset 0 0.5px 0 rgba(255,255,255,0.5), inset 0 -0.5px 1px rgba(0,0,0,0.45), 0 0.5px 1.5px rgba(0,0,0,0.45)",
           zIndex: 2,
         }}
       />
+      {/* Black bezel margin -- the substantial dark surround between the thin outer metal
+          edge and the screen itself, matching the reference photo's presentation (rather
+          than the screen sitting flush against the metal with no gap). Purely a generic
+          hardware-realism cue; the camera-lens detail inside it stays a plain circle. */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          borderRadius: orientation === "portrait" ? 40 : 27,
+          background: "linear-gradient(160deg, #1c1c1f 0%, #0e0e10 45%, #030304 100%)",
+          padding: isMobile ? 7 : 10,
+          boxShadow: "inset 0 1px 2px rgba(255,255,255,0.05), inset 0 -1px 3px rgba(0,0,0,0.6)",
+          zIndex: 2,
+        }}
+      >
       {/* Flat CSS camera dot -- kept only as the pre-3D/no-WebGL fallback. Once the real 3D
           frame (with its own genuinely-modeled camera-lens ring, see DeviceFrame3D.tsx) has
           mounted, this is hidden so the two don't double up. */}
@@ -519,7 +538,7 @@ export default function CinematicShowcase({
           position: "relative",
           width: "100%",
           height: "100%",
-          borderRadius: orientation === "portrait" ? 41 : 27,
+          borderRadius: orientation === "portrait" ? 34 : 21,
           overflow: "hidden",
           background: "#000",
           boxShadow: "inset 0 0 24px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.04)",
@@ -671,6 +690,7 @@ export default function CinematicShowcase({
           </motion.div>
         </AnimatePresence>
       </div>
+      </div>
     </>
   );
 
@@ -714,10 +734,11 @@ export default function CinematicShowcase({
                   // than the previous dark graphite) so the frame itself catches and reflects
                   // light, matching a natural-metal finish. Still an original, generic shell.
                   background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 12%, #b9bcc2 26%, #9a9da3 40%, #7c7f85 56%, #5c5f64 72%, #404347 88%, #2b2d30 100%)",
-                  // Thin, edge-to-edge bezel -- the cinematic, almost-all-screen presentation
-                  // requested, without copying any specific manufacturer's exact camera-cutout
-                  // shape or silhouette (the lens stays a plain circle, see frameChrome).
-                  padding: 3,
+                  // Very thin outer metal edge -- the black bezel margin around the screen
+                  // (matching the reference photo's presentation) is added inside frameChrome,
+                  // without copying any specific manufacturer's exact camera-cutout shape or
+                  // silhouette (the lens stays a plain circle, see frameChrome).
+                  padding: 2,
                   boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
@@ -747,7 +768,7 @@ export default function CinematicShowcase({
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
                   background: "linear-gradient(155deg, #f2f3f5 0%, #d9dbdf 12%, #b9bcc2 26%, #9a9da3 40%, #7c7f85 56%, #5c5f64 72%, #404347 88%, #2b2d30 100%)",
-                  padding: 3,
+                  padding: 2,
                   boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",

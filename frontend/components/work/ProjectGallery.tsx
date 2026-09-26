@@ -148,14 +148,10 @@ function HeroTile({
 // across two columns.
 function GalleryTile({
   img,
-  permissionEnabled,
   onOpen,
-  onRequestPermission,
 }: {
   img: GalleryImage;
-  permissionEnabled: boolean;
   onOpen: () => void;
-  onRequestPermission: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -189,33 +185,6 @@ function GalleryTile({
           transition: "transform 0.5s ease, filter 0.5s ease",
         }}
       />
-      {permissionEnabled && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRequestPermission();
-          }}
-          title="Picture Permission Request"
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            zIndex: 2,
-            background: "rgba(9,6,14,0.72)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 20,
-            fontSize: 10,
-            letterSpacing: 0.5,
-            padding: "6px 10px",
-            cursor: "pointer",
-            opacity: hovered ? 1 : 0.82,
-            transition: "opacity 0.2s ease",
-          }}
-        >
-          Request Permission
-        </button>
-      )}
       {img.caption && (
         <div
           style={{
@@ -312,9 +281,7 @@ export default function ProjectGallery({
                 <GalleryTile
                   key={img.id}
                   img={img}
-                  permissionEnabled={permissionEnabled}
                   onOpen={() => setLightboxIndex(i + 1)}
-                  onRequestPermission={() => setPermissionFor(img)}
                 />
               ))}
             </div>

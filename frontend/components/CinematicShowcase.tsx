@@ -325,15 +325,31 @@ export default function CinematicShowcase({
   // outer frame itself animates (desktop morph vs. mobile 3D flip, below), so it's built once.
   const frameChrome = (
     <>
-      {/* Metallic body sheen -- a soft diagonal highlight across the physical frame, as if
-          light were catching a brushed/anodized edge. Purely a hardware-realism cue, not any
-          brand's specific design. */}
+      {/* Metallic body sheen -- a brushed/anodized-metal light sweep with a second, fainter
+          highlight near the far edge (how a curved metal edge actually catches light twice),
+          instead of one flat diagonal wash. Purely a hardware-realism cue, not any brand's
+          specific design. */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           borderRadius: "inherit",
-          background: "linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 24%)",
+          background:
+            "linear-gradient(112deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.08) 9%, rgba(255,255,255,0) 20%, rgba(255,255,255,0) 76%, rgba(255,255,255,0.05) 88%, rgba(255,255,255,0.18) 100%)",
+          pointerEvents: "none",
+          zIndex: 1,
+        }}
+      />
+      {/* Faint vertical brushed-metal grain, layered under the sheen -- breaks up what would
+          otherwise be a perfectly flat painted surface. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "inherit",
+          background:
+            "repeating-linear-gradient(100deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, rgba(0,0,0,0) 1px, rgba(0,0,0,0) 3px)",
+          opacity: 0.5,
           pointerEvents: "none",
           zIndex: 1,
         }}
@@ -383,25 +399,41 @@ export default function CinematicShowcase({
           width: orientation === "portrait" ? 62 : 7,
           height: orientation === "portrait" ? 16 : 62,
           borderRadius: 22,
-          background: "radial-gradient(circle at 35% 35%, #232326, #050506 75%)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06), inset 0 0 5px rgba(0,0,0,0.85)",
+          background: "linear-gradient(145deg, #3a3a42, #0a0a0c)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), inset 0 1px 2px rgba(255,255,255,0.12), 0 1px 1px rgba(0,0,0,0.6)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           zIndex: 3,
         }}
       >
-        {/* Front camera lens -- a small cool-tinted highlight inside the cutout, the one
-            detail that reads as "real hardware" rather than a plain dark pill. */}
+        {/* Camera housing sits inside the cutout as its own raised metal ring around the glass
+            lens, rather than the cutout itself being the lens -- the depth cue that reads as
+            an actual sensor assembly rather than a flat dark pill. */}
         <span
           style={{
-            width: 4,
-            height: 4,
+            width: orientation === "portrait" ? 11 : 10,
+            height: orientation === "portrait" ? 11 : 10,
             borderRadius: "50%",
-            background: "radial-gradient(circle at 35% 35%, #4c4f60, #05050a)",
-            boxShadow: "0 0 3px rgba(130,150,255,0.55)",
+            background: "radial-gradient(circle at 38% 32%, #3d3d46, #0c0c0f 60%, #000 100%)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 4px rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
-        />
+        >
+          {/* Front camera lens glass -- a small cool-tinted highlight inside the housing, the
+              one detail that reads as "real hardware" rather than a plain dark pill. */}
+          <span
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: "50%",
+              background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
+              boxShadow: "0 0 3px rgba(130,150,255,0.65)",
+            }}
+          />
+        </span>
       </div>
       <div
         ref={screenRef}
@@ -600,7 +632,7 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  background: `linear-gradient(155deg, #2b2432 0%, #1c1526 32%, ${CV.DARK} 60%, #0a0710 100%)`,
+                  background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
                   padding: 7,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",
@@ -622,7 +654,7 @@ export default function CinematicShowcase({
                   maxWidth: "100%",
                   aspectRatio: frameAspect,
                   borderRadius: orientation === "portrait" ? 44 : 30,
-                  background: `linear-gradient(155deg, #2b2432 0%, #1c1526 32%, ${CV.DARK} 60%, #0a0710 100%)`,
+                  background: "linear-gradient(155deg, #55555d 0%, #35353b 16%, #202024 34%, #131316 58%, #0a0a0c 82%, #050506 100%)",
                   padding: orientation === "portrait" ? 10 : 11,
                   boxShadow: `0 40px 90px -20px rgba(0,0,0,0.65), 0 12px 26px -10px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.5), 0 0 0 1px ${CV.BORDER}, 0 0 140px -30px rgba(139,92,246,0.35)`,
                   position: "relative",

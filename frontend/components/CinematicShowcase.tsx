@@ -514,9 +514,9 @@ export default function CinematicShowcase({
           left: orientation === "portrait" ? "50%" : undefined,
           right: orientation === "portrait" ? undefined : 7,
           transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-          width: orientation === "portrait" ? 130 : 42,
-          height: orientation === "portrait" ? 42 : 130,
-          borderRadius: 24,
+          width: orientation === "portrait" ? 172 : 24,
+          height: orientation === "portrait" ? 24 : 172,
+          borderRadius: 12,
           background: "linear-gradient(145deg, #45454e, #0a0a0c 65%)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.16), 0 1px 2px rgba(0,0,0,0.6)",
           display: "flex",
@@ -530,8 +530,8 @@ export default function CinematicShowcase({
           <span
             key={i}
             style={{
-              width: orientation === "portrait" ? 27 : 25,
-              height: orientation === "portrait" ? 27 : 25,
+              width: 16,
+              height: 16,
               borderRadius: "50%",
               background: "radial-gradient(circle at 38% 32%, #4a4a54, #0c0c0f 60%, #000 100%)",
               boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 4px rgba(0,0,0,0.7)",
@@ -542,11 +542,11 @@ export default function CinematicShowcase({
           >
             <span
               style={{
-                width: 8,
-                height: 8,
+                width: 5,
+                height: 5,
                 borderRadius: "50%",
                 background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
-                boxShadow: "0 0 4px rgba(130,150,255,0.65)",
+                boxShadow: "0 0 3px rgba(130,150,255,0.65)",
               }}
             />
           </span>

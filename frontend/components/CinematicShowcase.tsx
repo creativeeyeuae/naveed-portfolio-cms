@@ -1,7 +1,14 @@
 "use client";
 import { useState, useRef, useMemo, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import dynamic from "next/dynamic";
+import { motion, AnimatePresence, useScroll, useTransform, useReducedMotion, useMotionValueEvent } from "framer-motion";
+
+// The WebGL device-frame body (three.js + @react-three/fiber) is genuinely heavier than the
+// rest of this component, so it lives in its own code-split chunk -- never part of the initial
+// page bundle -- and is only ever loaded client-side, since a <canvas>/WebGL context needs the
+// browser. See the `show3D` IntersectionObserver gate below for when it actually starts loading.
+const DeviceFrame3D = dynamic(() => import("./DeviceFrame3D"), { ssr: false });
 
 // Local, minimal shape -- Project isn't exported from app/page.tsx, so this mirrors just the
 // fields this component actually reads. Every field already exists on the real Project type
@@ -173,6 +180,20 @@ export default function CinematicShowcase({
   const infoY = useTransform(scrollYProgress, [0.35, 1], reduceMotion ? [0, 0] : [18, 0]);
   const railOpacity = useTransform(scrollYProgress, [0.55, 1], [0, 1]);
 
+  // Read into a ref instead of state -- the 3D frame's WebGL scene reads this every animation
+  // frame via its own render loop, and re-rendering this whole component on every scroll pixel
+  // would be wasteful; nothing here needs a React re-render when it changes.
+  const scrollProgressRef = useRef(1);
+  useMotionValueEvent(scrollYProgress, "change", (v) => {
+    scrollProgressRef.current = v;
+  });
+
+  // The WebGL frame is real but non-essential weight -- only start loading/mounting it once
+  // this section is getting close to the viewport, so a visitor who never scrolls this far
+  // never pays for it. Falls back to the existing flat metal-gradient background (unchanged)
+  // until then, and forever if IntersectionObserver isn't available.
+  const [show3D, setShow3D] = useState(false);
+
   // Computed defensively (optional chaining) because these feed hooks below that must run
   // unconditionally, before we know yet whether `items` is even non-empty.
   const active = items.find((p) => p.id === activeId) || items[0];
@@ -186,6 +207,7 @@ export default function CinematicShowcase({
   const playerRef = useRef<any>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenRef = useRef<HTMLDivElement>(null);
+  const sheenRef = useRef<HTMLDivElement>(null);
   const [playerState, setPlayerState] = useState({
     isPlaying: false,
     currentTime: 0,
@@ -247,6 +269,55 @@ export default function CinematicShowcase({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, vid, iframeElId]);
 
+  // Start loading the 3D frame chunk once this section is within ~800px of the viewport.
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof IntersectionObserver === "undefined") return;
+    if (!sectionRef.current || show3D) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setShow3D(true);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: "800px 0px" }
+    );
+    obs.observe(sectionRef.current);
+    return () => obs.disconnect();
+  }, [show3D]);
+
+  // Mouse-reactive "glass" highlight on the screen glass -- a soft specular spot that follows
+  // the pointer across the whole section, imperatively (direct style write, no re-render) so it
+  // stays smooth. Gated behind `show3D` so it starts at the same moment as the 3D frame, and a
+  // visitor who never scrolls here never pays for the rAF loop either.
+  useEffect(() => {
+    if (!show3D) return;
+    const sheen = sheenRef.current;
+    const frame = sectionRef.current;
+    if (!sheen || !frame || typeof window === "undefined") return;
+    let raf = 0;
+    let targetX = 50, targetY = 30, curX = 50, curY = 30;
+    function onMove(e: MouseEvent) {
+      const rect = frame!.getBoundingClientRect();
+      targetX = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+      targetY = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    }
+    function tick() {
+      curX += (targetX - curX) * 0.08;
+      curY += (targetY - curY) * 0.08;
+      if (sheen) {
+        sheen.style.background = `radial-gradient(circle at ${curX}% ${curY}%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.04) 22%, rgba(255,255,255,0) 45%)`;
+      }
+      raf = requestAnimationFrame(tick);
+    }
+    window.addEventListener("mousemove", onMove, { passive: true });
+    raf = requestAnimationFrame(tick);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, [show3D]);
+
   if (items.length === 0) return null;
 
   const frameW = isMobile
@@ -254,6 +325,12 @@ export default function CinematicShowcase({
     : orientation === "portrait" ? 340 : 880;
   const frameAspect = orientation === "portrait" ? "9/16" : "16/9";
   const originParam = typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : "";
+  // Corner radius expressed as a fraction of the frame's shorter side -- lets the 3D frame's
+  // rounded-box geometry match this exact CSS borderRadius (below) at any breakpoint/orientation
+  // without hand-tuning per case.
+  const frameBorderRadiusPx = orientation === "portrait" ? 44 : 30;
+  const frameH = orientation === "portrait" ? frameW * (16 / 9) : frameW * (9 / 16);
+  const radiusFraction = frameBorderRadiusPx / Math.min(frameW, frameH);
 
   function selectProject(id: string) {
     if (id === activeId) return;
@@ -390,51 +467,51 @@ export default function CinematicShowcase({
           zIndex: 2,
         }}
       />
-      <div
-        style={{
-          position: "absolute",
-          top: orientation === "portrait" ? 7 : "50%",
-          left: orientation === "portrait" ? "50%" : 7,
-          transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-          width: orientation === "portrait" ? 62 : 7,
-          height: orientation === "portrait" ? 16 : 62,
-          borderRadius: 22,
-          background: "linear-gradient(145deg, #3a3a42, #0a0a0c)",
-          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), inset 0 1px 2px rgba(255,255,255,0.12), 0 1px 1px rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 3,
-        }}
-      >
-        {/* Camera housing sits inside the cutout as its own raised metal ring around the glass
-            lens, rather than the cutout itself being the lens -- the depth cue that reads as
-            an actual sensor assembly rather than a flat dark pill. */}
-        <span
+      {/* Flat CSS camera dot -- kept only as the pre-3D/no-WebGL fallback. Once the real 3D
+          frame (with its own genuinely-modeled camera-lens ring, see DeviceFrame3D.tsx) has
+          mounted, this is hidden so the two don't double up. */}
+      {!show3D && (
+        <div
           style={{
-            width: orientation === "portrait" ? 11 : 10,
-            height: orientation === "portrait" ? 11 : 10,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 38% 32%, #3d3d46, #0c0c0f 60%, #000 100%)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 4px rgba(0,0,0,0.7)",
+            position: "absolute",
+            top: orientation === "portrait" ? 7 : "50%",
+            left: orientation === "portrait" ? "50%" : 7,
+            transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
+            width: orientation === "portrait" ? 62 : 7,
+            height: orientation === "portrait" ? 16 : 62,
+            borderRadius: 22,
+            background: "linear-gradient(145deg, #3a3a42, #0a0a0c)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), inset 0 1px 2px rgba(255,255,255,0.12), 0 1px 1px rgba(0,0,0,0.6)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            zIndex: 3,
           }}
         >
-          {/* Front camera lens glass -- a small cool-tinted highlight inside the housing, the
-              one detail that reads as "real hardware" rather than a plain dark pill. */}
           <span
             style={{
-              width: 4,
-              height: 4,
+              width: orientation === "portrait" ? 11 : 10,
+              height: orientation === "portrait" ? 11 : 10,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
-              boxShadow: "0 0 3px rgba(130,150,255,0.65)",
+              background: "radial-gradient(circle at 38% 32%, #3d3d46, #0c0c0f 60%, #000 100%)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 4px rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
-          />
-        </span>
-      </div>
+          >
+            <span
+              style={{
+                width: 4,
+                height: 4,
+                borderRadius: "50%",
+                background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
+                boxShadow: "0 0 3px rgba(130,150,255,0.65)",
+              }}
+            />
+          </span>
+        </div>
+      )}
       <div
         ref={screenRef}
         style={{
@@ -589,7 +666,7 @@ export default function CinematicShowcase({
                 </div>
               </button>
             )}
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 30%)", pointerEvents: "none" }} />
+            <div ref={sheenRef} style={{ position: "absolute", inset: 0, background: "linear-gradient(115deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 30%)", pointerEvents: "none" }} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -639,6 +716,14 @@ export default function CinematicShowcase({
                   transformStyle: "preserve-3d",
                 }}
               >
+                {show3D && (
+                  <DeviceFrame3D
+                    orientation={orientation}
+                    accentColor="#8B5CF6"
+                    radiusFraction={radiusFraction}
+                    scrollProgress={scrollProgressRef}
+                  />
+                )}
                 {frameChrome}
               </motion.div>
             ) : (
@@ -661,6 +746,14 @@ export default function CinematicShowcase({
                   transformStyle: "preserve-3d",
                 }}
               >
+                {show3D && (
+                  <DeviceFrame3D
+                    orientation={orientation}
+                    accentColor="#8B5CF6"
+                    radiusFraction={radiusFraction}
+                    scrollProgress={scrollProgressRef}
+                  />
+                )}
                 {frameChrome}
               </motion.div>
             )}

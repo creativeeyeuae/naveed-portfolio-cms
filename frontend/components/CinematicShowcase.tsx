@@ -473,8 +473,9 @@ export default function CinematicShowcase({
       {/* Black bezel margin -- the substantial dark surround between the thin outer metal
           edge and the screen itself, matching the reference photo's presentation (rather
           than the screen sitting flush against the metal with no gap). Purely a generic
-          hardware-realism cue; the real camera detail lives in the 3D pill/lens mesh (see
-          DeviceFrame3D.tsx) -- this fallback dot only shows before that mounts. */}
+          hardware-realism cue -- the camera-lens pill below is drawn in CSS so it stays
+          visible above this opaque bezel (the 3D mesh's own lens detail, see DeviceFrame3D.tsx,
+          sits underneath the bezel and is never actually seen, by design). */}
       <div
         style={{
           position: "relative",
@@ -485,37 +486,56 @@ export default function CinematicShowcase({
           padding: isMobile ? 3.5 : 5,
           boxShadow: "inset 0 1px 2px rgba(255,255,255,0.05), inset 0 -1px 3px rgba(0,0,0,0.6)",
           zIndex: 2,
+          overflow: "hidden",
         }}
       >
-      {/* Flat CSS camera dot -- kept only as the pre-3D/no-WebGL fallback. Once the real 3D
-          frame (with its own genuinely-modeled camera-lens ring, see DeviceFrame3D.tsx) has
-          mounted, this is hidden so the two don't double up. */}
-      {!show3D && (
-        <div
-          style={{
-            position: "absolute",
-            top: orientation === "portrait" ? 7 : "50%",
-            left: orientation === "portrait" ? "50%" : undefined,
-            right: orientation === "portrait" ? undefined : 7,
-            transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-            width: orientation === "portrait" ? 62 : 7,
-            height: orientation === "portrait" ? 16 : 62,
-            borderRadius: 22,
-            background: "linear-gradient(145deg, #3a3a42, #0a0a0c)",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09), inset 0 1px 2px rgba(255,255,255,0.12), 0 1px 1px rgba(0,0,0,0.6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 3,
-          }}
-        >
+      {/* Soft diagonal sheen across the black bezel itself -- without this it reads as one
+          flat dark slab, especially on the far/right side where the thin outer metal ring's
+          own highlight is too small a strip to register on its own. A faint light streak
+          (echoing the metal ring's sheen) keeps every side of the bezel visibly lit. */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "inherit",
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 22%, rgba(255,255,255,0) 68%, rgba(255,255,255,0.08) 100%)",
+          pointerEvents: "none",
+        }}
+      />
+      {/* Camera-lens housing -- a raised capsule with two lenses, an original take on the
+          generic dual-camera-pill layout used across many phone brands' hardware (not any
+          single manufacturer's exact silhouette or proportions). Rendered directly in CSS
+          so it's always visible, rather than only in the 3D mesh (which sits underneath this
+          opaque bezel and would otherwise never be seen). */}
+      <div
+        style={{
+          position: "absolute",
+          top: orientation === "portrait" ? 7 : "50%",
+          left: orientation === "portrait" ? "50%" : undefined,
+          right: orientation === "portrait" ? undefined : 7,
+          transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
+          width: orientation === "portrait" ? 64 : 22,
+          height: orientation === "portrait" ? 22 : 64,
+          borderRadius: 22,
+          background: "linear-gradient(145deg, #45454e, #0a0a0c 65%)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.16), 0 1px 2px rgba(0,0,0,0.6)",
+          display: "flex",
+          flexDirection: orientation === "portrait" ? "row" : "column",
+          alignItems: "center",
+          justifyContent: "space-evenly",
+          zIndex: 3,
+        }}
+      >
+        {[0, 1].map((i) => (
           <span
+            key={i}
             style={{
-              width: orientation === "portrait" ? 11 : 10,
-              height: orientation === "portrait" ? 11 : 10,
+              width: orientation === "portrait" ? 13 : 12,
+              height: orientation === "portrait" ? 13 : 12,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 32%, #3d3d46, #0c0c0f 60%, #000 100%)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), 0 0 4px rgba(0,0,0,0.7)",
+              background: "radial-gradient(circle at 38% 32%, #4a4a54, #0c0c0f 60%, #000 100%)",
+              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 4px rgba(0,0,0,0.7)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -531,8 +551,8 @@ export default function CinematicShowcase({
               }}
             />
           </span>
-        </div>
-      )}
+        ))}
+      </div>
       <div
         ref={screenRef}
         style={{

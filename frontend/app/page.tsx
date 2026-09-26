@@ -4926,7 +4926,7 @@ export default function Home() {
               </Link>
               </Reveal>
             ))}
-            {featured.slice(1,4).map((p,idx)=>(
+            {featured.slice(1).map((p,idx)=>(
               <Reveal key={p.id} delay={0.1+idx*0.08}>
               <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}

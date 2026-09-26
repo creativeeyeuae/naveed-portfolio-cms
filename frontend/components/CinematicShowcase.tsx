@@ -502,11 +502,10 @@ export default function CinematicShowcase({
           pointerEvents: "none",
         }}
       />
-      {/* Camera-lens housing -- a raised capsule with two lenses, an original take on the
-          generic dual-camera-pill layout used across many phone brands' hardware (not any
-          single manufacturer's exact silhouette or proportions). Rendered directly in CSS
-          so it's always visible, rather than only in the 3D mesh (which sits underneath this
-          opaque bezel and would otherwise never be seen). */}
+      {/* Camera lens -- a plain circular dot, generic smartphone hardware, not tied to any
+          single manufacturer's design. Rendered directly in CSS so it's always visible,
+          rather than only in the 3D mesh (which sits underneath this opaque bezel and would
+          otherwise never be seen). */}
       <div
         style={{
           position: "absolute",
@@ -514,43 +513,39 @@ export default function CinematicShowcase({
           left: orientation === "portrait" ? "50%" : undefined,
           right: orientation === "portrait" ? undefined : 7,
           transform: orientation === "portrait" ? "translateX(-50%)" : "translateY(-50%)",
-          width: orientation === "portrait" ? 172 : 24,
-          height: orientation === "portrait" ? 24 : 172,
-          borderRadius: 12,
+          width: 26,
+          height: 26,
+          borderRadius: "50%",
           background: "linear-gradient(145deg, #45454e, #0a0a0c 65%)",
           boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.16), 0 1px 2px rgba(0,0,0,0.6)",
           display: "flex",
-          flexDirection: orientation === "portrait" ? "row" : "column",
           alignItems: "center",
-          justifyContent: "space-evenly",
+          justifyContent: "center",
           zIndex: 3,
         }}
       >
-        {[0, 1].map((i) => (
+        <span
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: "50%",
+            background: "radial-gradient(circle at 38% 32%, #4a4a54, #0c0c0f 60%, #000 100%)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 4px rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <span
-            key={i}
             style={{
-              width: 16,
-              height: 16,
+              width: 5,
+              height: 5,
               borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 32%, #4a4a54, #0c0c0f 60%, #000 100%)",
-              boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.16), 0 0 4px rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
+              boxShadow: "0 0 3px rgba(130,150,255,0.65)",
             }}
-          >
-            <span
-              style={{
-                width: 5,
-                height: 5,
-                borderRadius: "50%",
-                background: "radial-gradient(circle at 35% 35%, #5a6080, #05050a)",
-                boxShadow: "0 0 3px rgba(130,150,255,0.65)",
-              }}
-            />
-          </span>
-        ))}
+          />
+        </span>
       </div>
       <div
         ref={screenRef}

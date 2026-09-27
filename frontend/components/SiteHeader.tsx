@@ -177,7 +177,12 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         .client-tile:hover{transform:scale(1.15)}`}</style>
 
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 501, height: 32, boxSizing: "border-box", padding: isMobile ? "0 20px" : "0 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--c-dark,#140D21)", opacity: scrolled ? 0 : 1, transform: scrolled ? "translateY(-100%)" : "translateY(0)", pointerEvents: scrolled ? "none" : "auto", transition: "opacity 0.35s cubic-bezier(.16,.84,.44,1), transform 0.35s cubic-bezier(.16,.84,.44,1)" }}>
-        <Link href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</Link>
+        {/* Plain <a>, not Next's <Link>: HomeClient only reads ?admin=1 in a mount-only
+            useEffect, so a client-side Link navigation while already on "/" (no remount)
+            silently did nothing until the visitor manually refreshed. A real browser
+            navigation always remounts HomeClient fresh, so Admin opens on the first click
+            from any page, including "/" itself. */}
+        <a href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</a>
         <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
           <select aria-label="Language" value={lang} onChange={(e) => (spa ? spa.onLangChange(e.target.value as Lang) : setStaticLang(e.target.value as Lang))} style={{ background: "transparent", border: "none", color: "var(--c-mid,#A892C6)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", outline: "none" }}>
             {LANGS.map((l) => <option key={l.code} value={l.code} style={{ color: "#000" }}>{l.flag} {l.label}</option>)}

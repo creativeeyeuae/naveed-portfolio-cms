@@ -34,7 +34,7 @@ type MappedReview = {
   text: string;
   relativeTime: string;
 };
-type ArchivedReview = MappedReview & { key: string; firstSeen: string };
+type ArchivedReview = MappedReview & { key: string; firstSeen: string; hidden?: boolean };
 
 function corsHeaders(origin: string | null) {
   return {
@@ -108,9 +108,12 @@ async function writeArchive(env: GoogleReviewsEnv, placeId: string, archive: Arc
 }
 
 function stripInternal(a: ArchivedReview): MappedReview {
-  const { key, firstSeen, ...rest } = a;
+  const { key, firstSeen, hidden, ...rest } = a;
   return rest;
 }
+// Admin-hidden reviews (see CMS > Reviews, functions/api/admin/google-reviews-archive/toggle.ts)
+// never reach the public response -- everything else about the archive is unchanged.
+const visible = (a: ArchivedReview) => !a.hidden;
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -134,7 +137,7 @@ export const onRequestGet: PagesFunction<GoogleReviewsEnv> = async ({ request, e
     });
     if (!gRes.ok) {
       const archive = await readArchive(env, placeId);
-      const reviews = archive.map(stripInternal);
+      const reviews = archive.filter(visible).map(stripInternal);
       return json({ rating: null, total: 0, reviews }, 200, origin);
     }
     const data: any = await gRes.json();
@@ -164,7 +167,7 @@ export const onRequestGet: PagesFunction<GoogleReviewsEnv> = async ({ request, e
       await writeArchive(env, placeId, archive);
     }
 
-    const reviews = archive.length > 0 ? archive.map(stripInternal) : liveReviews;
+    const reviews = archive.length > 0 ? archive.filter(visible).map(stripInternal) : liveReviews;
     const body = { rating: typeof data.rating === "number" ? data.rating : null, total: data.userRatingCount || 0, reviews };
     return new Response(JSON.stringify(body), {
       status: 200,
@@ -172,7 +175,7 @@ export const onRequestGet: PagesFunction<GoogleReviewsEnv> = async ({ request, e
     });
   } catch {
     const archive = await readArchive(env, placeId);
-    const reviews = archive.map(stripInternal);
+    const reviews = archive.filter(visible).map(stripInternal);
     return json({ rating: null, total: 0, reviews }, 200, origin);
   }
 };

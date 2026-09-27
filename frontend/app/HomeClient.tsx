@@ -1923,6 +1923,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [clientDirOpenId,setClientDirOpenId]=useState<string|null>(null);
   const [clientDirDetail,setClientDirDetail]=useState<any|null>(null);
   const [clientDirDetailLoading,setClientDirDetailLoading]=useState(false);
+  // Google Reviews curation, merged into the Reviews tab alongside manual Testimonials --
+  // see functions/api/admin/google-reviews-archive.ts / .../toggle.ts.
+  const [googleRevArchive,setGoogleRevArchive]=useState<any[]|null>(null);
+  const [googleRevLoading,setGoogleRevLoading]=useState(false);
+  const [googleRevErr,setGoogleRevErr]=useState("");
+  const [googleRevBusy,setGoogleRevBusy]=useState<string|null>(null);
   // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
   // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
   const [msgList,setMsgList]=useState<any[]|null>(null);
@@ -2179,6 +2185,32 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       if(res.ok) setClientDirDetail(data);
     }catch{}
     setClientDirDetailLoading(false);
+  }
+
+  // Google Reviews curation -- loads whenever the merged Reviews tab (cmsTab==="testimonials")
+  // opens, using whatever Place ID is already configured in Settings > SEO.
+  async function loadGoogleRevArchive(){
+    if(!adminSession||!settings.googlePlaceId) return;
+    setGoogleRevLoading(true); setGoogleRevErr("");
+    try{
+      const res=await fetch(`/api/admin/google-reviews-archive?placeId=${encodeURIComponent(settings.googlePlaceId)}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load Google reviews");
+      setGoogleRevArchive(data.reviews||[]);
+    }catch(e:any){ setGoogleRevErr(e.message||"Failed to load Google reviews"); }
+    setGoogleRevLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="testimonials"&&adminSession&&settings.googlePlaceId) loadGoogleRevArchive(); },[cmsTab,adminSession,settings.googlePlaceId]);
+  async function toggleGoogleReview(key:string,hidden:boolean){
+    if(!adminSession||!settings.googlePlaceId) return;
+    setGoogleRevBusy(key);
+    try{
+      const res=await fetch("/api/admin/google-reviews-archive/toggle",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({placeId:settings.googlePlaceId,key,hidden})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not update review");
+      await loadGoogleRevArchive();
+    }catch(e:any){ setGoogleRevErr(e.message||"Could not update review"); }
+    setGoogleRevBusy(null);
   }
 
   async function loadMessages(){
@@ -2919,7 +2951,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavSection label="Content" />
         <CmsNavItem icon="🖼" label="Portfolio" active={cmsTab==="projects"} onClick={()=>setCmsTab("projects")} />
         <CmsNavItem icon="🏷" label="Categories" active={cmsTab==="categories"} onClick={()=>setCmsTab("categories")} />
-        <CmsNavItem icon="⭐" label="Testimonials" active={cmsTab==="testimonials"} onClick={()=>setCmsTab("testimonials")} />
+        <CmsNavItem icon="⭐" label="Reviews" active={cmsTab==="testimonials"} onClick={()=>setCmsTab("testimonials")} />
         <CmsNavItem icon="📝" label="Journal" active={cmsTab==="blog"} onClick={()=>setCmsTab("blog")} />
         <CmsNavItem icon="🧾" label="Services" active={cmsTab==="settings"&&settingsTab==="services"} onClick={()=>{setCmsTab("settings");setSettingsTab("services");}} />
         <CmsNavItem icon="💳" label="Packages" active={cmsTab==="settings"&&settingsTab==="pricing"} onClick={()=>{setCmsTab("settings");setSettingsTab("pricing");}} />
@@ -4334,8 +4366,39 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {/* TESTIMONIALS */}
         {cmsTab==="testimonials"&&(
           <div style={{maxWidth:700,margin:"48px auto",padding:"0 24px"}}>
+            {/* GOOGLE REVIEWS -- merged into this tab alongside manual Testimonials below, per
+                the CMS control-center plan. Google reviews aren't written here (they come from
+                the business's real Google profile via functions/api/google-reviews.ts); the
+                only curation available is Hide/Show on the site, using the same archive. */}
+            <div style={{marginBottom:36}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Google Reviews</div>
+                {settings.googlePlaceId&&<button onClick={loadGoogleRevArchive} style={S.btnSm}>↻ Refresh</button>}
+              </div>
+              {!settings.googlePlaceId?(
+                <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No Google Place ID set -- add one in Settings &gt; SEO to pull in real Google reviews here.</div>
+              ):googleRevErr?(
+                <div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{googleRevErr}</div>
+              ):googleRevLoading?(
+                <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              ):!googleRevArchive||googleRevArchive.length===0?(
+                <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No Google reviews archived yet.</div>
+              ):(
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {googleRevArchive.map((r:any)=>(
+                    <div key={r.key} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 14px",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,opacity:r.hidden?0.5:1}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontSize:12.5,color:"#fff"}}>{r.author} <span style={{color:"#FBBC05"}}>{"★".repeat(Math.round(r.rating))}</span></div>
+                        <div style={{fontSize:11.5,color:"#888",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:420}}>{r.text}</div>
+                      </div>
+                      <button onClick={()=>toggleGoogleReview(r.key,!r.hidden)} disabled={googleRevBusy===r.key} style={{...S.btnSm,flexShrink:0}}>{r.hidden?"Show":"Hide"}</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Testimonials</div>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Manual Testimonials</div>
               <button onClick={()=>setTestimonials(ts=>[...ts,{id:Date.now().toString(),name:"Client Name",role:"Role",company:"Company",quote:"Testimonial quote here.",featured:true}])} style={S.btnP}>+ Add</button>
             </div>
             {testimonials.map((t,i)=>(

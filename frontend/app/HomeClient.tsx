@@ -886,6 +886,37 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
   );
 }
 
+// ─── STATUS PILL ─────────────────────────────────────────────────────────────
+// Small colored badge for any status word (booking/payment/lead/request states).
+// Used across the CMS's light-card sections (Dashboard, Bookings, Clients, etc.)
+// so a status reads at a glance instead of as plain gray text.
+const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
+  confirmed:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  completed:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  paid:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  approved:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  granted:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  active:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
+  pending:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
+  under_review:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
+  awaiting_payment:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
+  requested:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
+  cancelled:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+  canceled:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+  failed:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+  rejected:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+  declined:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+};
+function StatusPill({status}:{status:string}) {
+  const key = String(status||"").trim().toLowerCase().replace(/\s+/g,"_");
+  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(139,92,246,0.14)",fg:"#7c3aed"};
+  return (
+    <span style={{display:"inline-block",fontSize:10,fontWeight:700,letterSpacing:0.4,textTransform:"uppercase" as const,padding:"3px 9px",borderRadius:20,background:c.bg,color:c.fg,whiteSpace:"nowrap" as const}}>
+      {String(status||"—").replace(/_/g," ")}
+    </span>
+  );
+}
+
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
 // site: the single large "Featured Projects" highlight (16:9) and every other
@@ -3059,9 +3090,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 {!bookingsList||bookingsList.length===0?(
                   <div style={{fontSize:12,color:"#8a8098",fontStyle:"italic" as const}}>No bookings yet.</div>
                 ):bookingsList.slice(0,5).map((b:any)=>(
-                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid rgba(0,0,0,0.06)",fontSize:12.5}}>
+                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid rgba(0,0,0,0.06)",fontSize:12.5}}>
                     <span style={{color:"#140D21"}}>{b.appointment_ref} — {b.customers?.full_name||"—"}</span>
-                    <span style={{color:"#6E6480"}}>{String(b.status).replace(/_/g," ")}</span>
+                    <StatusPill status={b.status} />
                   </div>
                 ))}
                 <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,marginTop:14}}>View All Bookings →</button>
@@ -3969,28 +4000,44 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
             {settingsTab==="clients"&&(
               <div>
-                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Our Clients</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Currently showing DUMMY placeholder clients for testing. Replace each name/logo below with your real ones, remove any you don't need, and reorder with the arrows -- the homepage marquee reflects this list exactly.</div>
-                <label style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,cursor:"pointer"}}>
-                  <input type="checkbox" checked={settingsDraft.clientsEnabled} onChange={e=>updateSD({clientsEnabled:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}} />
-                  <span style={{fontSize:12,color:C.FG}}>Show "Our Clients" section on the homepage</span>
-                </label>
-                <button onClick={()=>updateSD({clients:[...settingsDraft.clients,{id:Date.now().toString(),name:"New Client",logo:""}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Client</button>
-                {settingsDraft.clients.map((cl,i)=>(
-                  <div key={cl.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
-                    <div style={{display:"flex",gap:12,marginBottom:12}}>
-                      <button title="Move up" disabled={i===0} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i-1],arr[i]]=[arr[i],arr[i-1]];updateSD({clients:arr});}} style={{...S.btnSm,opacity:i===0?0.3:1,padding:"6px 10px"}}>↑</button>
-                      <button title="Move down" disabled={i===settingsDraft.clients.length-1} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i+1],arr[i]]=[arr[i],arr[i+1]];updateSD({clients:arr});}} style={{...S.btnSm,opacity:i===settingsDraft.clients.length-1?0.3:1,padding:"6px 10px"}}>↓</button>
-                      <div style={{flex:1}}><label style={S.lbl}>Client Name</label><input style={S.inp} value={cl.name} onChange={e=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,name:e.target.value}:x)})} /></div>
-                    </div>
-                    <SingleImageUpload label="Logo" value={cl.logo} onChange={url=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:url}:x)})} />
-                    <div style={{display:"flex",gap:16}}>
-                      {cl.logo&&<button onClick={()=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:""}:x)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Logo (show name only)</button>}
-                      <button onClick={()=>updateSD({clients:settingsDraft.clients.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#a33",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Client</button>
-                    </div>
+                <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"18px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap" as const,gap:16}}>
+                  <div style={{maxWidth:520}}>
+                    <div style={{fontSize:14,fontWeight:600,color:"#140D21",marginBottom:6}}>Our Clients</div>
+                    <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6,marginBottom:10}}>Currently showing placeholder clients for testing. Replace each name/logo with your real ones, remove any you don't need, and reorder with the arrows -- the homepage marquee reflects this list exactly.</div>
+                    <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
+                      <input type="checkbox" checked={settingsDraft.clientsEnabled} onChange={e=>updateSD({clientsEnabled:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}} />
+                      <span style={{fontSize:12,color:"#140D21"}}>Show "Our Clients" section on the homepage</span>
+                    </label>
                   </div>
-                ))}
-                {settingsDraft.clients.length===0&&<div style={{fontSize:12,color:"#555"}}>No clients yet -- the section stays hidden on the homepage until you add at least one.</div>}
+                  <button onClick={()=>updateSD({clients:[...settingsDraft.clients,{id:Date.now().toString(),name:"New Client",logo:""}]})} style={S.btnP}>+ Add Client</button>
+                </div>
+
+                {settingsDraft.clients.length===0?(
+                  <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"32px 24px",textAlign:"center" as const,fontSize:12.5,color:"#6E6480"}}>No clients yet -- the section stays hidden on the homepage until you add at least one.</div>
+                ):(
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
+                    {settingsDraft.clients.map((cl,i)=>(
+                      <div key={cl.id} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:18}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                          <span style={{fontSize:10,letterSpacing:1,color:"#6E6480",textTransform:"uppercase" as const}}>Client {i+1}</span>
+                          <div style={{display:"flex",gap:6}}>
+                            <button title="Move up" disabled={i===0} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i-1],arr[i]]=[arr[i],arr[i-1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.LTBORDER}`,borderRadius:6,color:"#140D21",cursor:i===0?"default":"pointer",opacity:i===0?0.3:1,width:24,height:24,fontSize:12}}>↑</button>
+                            <button title="Move down" disabled={i===settingsDraft.clients.length-1} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i+1],arr[i]]=[arr[i],arr[i+1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.LTBORDER}`,borderRadius:6,color:"#140D21",cursor:i===settingsDraft.clients.length-1?"default":"pointer",opacity:i===settingsDraft.clients.length-1?0.3:1,width:24,height:24,fontSize:12}}>↓</button>
+                          </div>
+                        </div>
+                        <div style={{marginBottom:10}}><label style={{...S.lbl,color:"#6E6480"}}>Client Name</label><input style={{...S.inp,background:"#F8F6FC",border:`1px solid ${C.LTBORDER}`,color:"#140D21"}} value={cl.name} onChange={e=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,name:e.target.value}:x)})} /></div>
+                        <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+                          {cl.logo?<img src={cl.logo} alt="" style={{width:56,height:42,objectFit:"contain",background:"#fff",border:`1px solid ${C.LTBORDER}`,borderRadius:6}} />:<div style={{width:56,height:42,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#8a8098",background:"#F8F6FC",border:`1px dashed ${C.LTBORDER}`,borderRadius:6}}>No logo</div>}
+                          <div style={{flex:1}}><SingleImageUpload label="Logo" value={cl.logo} onChange={url=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:url}:x)})} /></div>
+                        </div>
+                        <div style={{display:"flex",gap:14,borderTop:`1px solid ${C.LTBORDER}`,paddingTop:10}}>
+                          {cl.logo&&<button onClick={()=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:""}:x)})} style={{background:"none",border:"none",color:"#6E6480",cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Logo</button>}
+                          <button onClick={()=>updateSD({clients:settingsDraft.clients.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Client</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

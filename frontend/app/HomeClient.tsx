@@ -888,34 +888,43 @@ function SingleImageUpload({value,onChange,label="Photo"}:{value:string;onChange
 
 // ─── STATUS PILL ─────────────────────────────────────────────────────────────
 // Small colored badge for any status word (booking/payment/lead/request states).
-// Used across the CMS's light-card sections (Dashboard, Bookings, Clients, etc.)
-// so a status reads at a glance instead of as plain gray text.
+// Used across the CMS's dark cards so a status reads at a glance instead of as
+// plain gray text -- muted tinted background + bright foreground, tuned to sit
+// on the CMS's dark card color (C.DARK), matching the reference design.
 const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
-  confirmed:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  completed:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  paid:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  approved:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  granted:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  active:{bg:"rgba(34,197,94,0.14)",fg:"#15803d"},
-  pending:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
-  under_review:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
-  awaiting_payment:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
-  requested:{bg:"rgba(245,158,11,0.16)",fg:"#b45309"},
-  cancelled:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
-  canceled:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
-  failed:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
-  rejected:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
-  declined:{bg:"rgba(239,68,68,0.14)",fg:"#dc2626"},
+  confirmed:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  completed:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  paid:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  approved:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  granted:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  active:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
+  pending:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  under_review:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  pending_verification:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  awaiting_payment:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  requested:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  cancelled:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  canceled:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  failed:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  rejected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  payment_rejected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  declined:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
 };
 function StatusPill({status}:{status:string}) {
   const key = String(status||"").trim().toLowerCase().replace(/\s+/g,"_");
-  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(139,92,246,0.14)",fg:"#7c3aed"};
+  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(139,92,246,0.18)",fg:"#c4b5fd"};
   return (
     <span style={{display:"inline-block",fontSize:10,fontWeight:700,letterSpacing:0.4,textTransform:"uppercase" as const,padding:"3px 9px",borderRadius:20,background:c.bg,color:c.fg,whiteSpace:"nowrap" as const}}>
       {String(status||"—").replace(/_/g," ")}
     </span>
   );
 }
+// Shared "card" look used everywhere in the redesign: a dark panel a shade lighter
+// than the page background (matches the reference design's card color exactly),
+// with a consistent radius and border -- swap in for the old plain-black blocks
+// (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
+// alike, so every tab in the CMS shares one visual language.
+const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12};
 
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
@@ -3077,28 +3086,28 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 ["PUBLISHED PROJECTS", String(projects.length)],
                 ["NEW LEADS", String(leads.length)],
               ].map(([label,value])=>(
-                <div key={label} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:20}}>
-                  <div style={{fontSize:11,letterSpacing:1,color:"#6E6480",marginBottom:8,textTransform:"uppercase" as const}}>{label}</div>
-                  <div style={{fontSize:26,fontWeight:700,color:"#140D21"}}>{value}</div>
+                <div key={label} style={{...CARD_STYLE,padding:20}}>
+                  <div style={{fontSize:11,letterSpacing:1,color:C.MID,marginBottom:8,textTransform:"uppercase" as const}}>{label}</div>
+                  <div style={{fontSize:26,fontWeight:700,color:C.FG}}>{value}</div>
                 </div>
               ))}
             </div>
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:16}}>
-              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:22}}>
-                <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:4}}>Recent Bookings</div>
-                <div style={{fontSize:11.5,color:"#6E6480",marginBottom:16}}>Latest bookings received</div>
+              <div style={{...CARD_STYLE,padding:22}}>
+                <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:4}}>Recent Bookings</div>
+                <div style={{fontSize:11.5,color:C.MID,marginBottom:16}}>Latest bookings received</div>
                 {!bookingsList||bookingsList.length===0?(
-                  <div style={{fontSize:12,color:"#8a8098",fontStyle:"italic" as const}}>No bookings yet.</div>
+                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic" as const}}>No bookings yet.</div>
                 ):bookingsList.slice(0,5).map((b:any)=>(
-                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid rgba(0,0,0,0.06)",fontSize:12.5}}>
-                    <span style={{color:"#140D21"}}>{b.appointment_ref} — {b.customers?.full_name||"—"}</span>
+                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.BORDER}`,fontSize:12.5}}>
+                    <span style={{color:C.FG}}>{b.appointment_ref} — {b.customers?.full_name||"—"}</span>
                     <StatusPill status={b.status} />
                   </div>
                 ))}
                 <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,marginTop:14}}>View All Bookings →</button>
               </div>
-              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:22}}>
-                <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:14}}>Quick Actions</div>
+              <div style={{...CARD_STYLE,padding:22}}>
+                <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:14}}>Quick Actions</div>
                 <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
                   <button onClick={()=>{setCmsTab("projects");startEdit(null);}} style={{...S.btnSm,textAlign:"left" as const}}>+ Add Portfolio Project</button>
                   <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,textAlign:"left" as const}}>📥 Review Bookings</button>
@@ -3170,10 +3179,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {seoLoading&&!seoAudit&&<div style={{fontSize:12.5,color:C.MID}}>Loading…</div>}
 
             {!seoLoading&&!seoAudit?.lastAudit&&(
-              <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"40px 24px",textAlign:"center" as const}}>
+              <div style={{...CARD_STYLE,padding:"40px 24px",textAlign:"center" as const}}>
                 <div style={{fontSize:32,marginBottom:12}}>🤖</div>
-                <div style={{fontSize:14,fontWeight:600,color:"#140D21",marginBottom:8}}>No audit has run yet</div>
-                <div style={{fontSize:12.5,color:"#6E6480"}}>Click "Run Full SEO Audit" above to crawl bynaveedanjum.com and generate real findings.</div>
+                <div style={{fontSize:14,fontWeight:600,color:C.FG,marginBottom:8}}>No audit has run yet</div>
+                <div style={{fontSize:12.5,color:C.MID}}>Click "Run Full SEO Audit" above to crawl bynaveedanjum.com and generate real findings.</div>
               </div>
             )}
 
@@ -3185,9 +3194,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:12,marginBottom:28}}>
                   {Object.entries(seoAudit.lastAudit.score_by_category||{}).map(([cat,score]:[string,any])=>(
-                    <div key={cat} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:"14px 16px"}}>
-                      <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase" as const,color:"#6E6480",marginBottom:6}}>{cat}</div>
-                      <div style={{fontSize:22,fontWeight:700,color:score>=80?"#22c55e":score>=50?"#f59e0b":"#ef4444"}}>{score}</div>
+                    <div key={cat} style={{...CARD_STYLE,borderRadius:10,padding:"14px 16px"}}>
+                      <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:6}}>{cat}</div>
+                      <div style={{fontSize:22,fontWeight:700,color:score>=80?"#4ade80":score>=50?"#fbbf24":"#f87171"}}>{score}</div>
                     </div>
                   ))}
                 </div>
@@ -3200,17 +3209,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
                   {(seoAudit.issues||[]).filter((i:any)=>seoFilter==="all"||i.severity===seoFilter).map((issue:any)=>(
-                    <div key={issue.id} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,padding:"14px 16px",opacity:issue.status==="ignored"?0.55:1}}>
+                    <div key={issue.id} style={{...CARD_STYLE,borderRadius:10,padding:"14px 16px",opacity:issue.status==="ignored"?0.55:1}}>
                       <div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap" as const}}>
                         <div style={{flex:1,minWidth:220}}>
                           <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap" as const}}>
                             <span style={{fontSize:9.5,fontWeight:700,letterSpacing:0.5,textTransform:"uppercase" as const,padding:"2px 7px",borderRadius:4,background:issue.severity==="critical"?"#ef4444":issue.severity==="high"?"#f59e0b":issue.severity==="medium"?"#eab308":issue.severity==="low"?"#3b82f6":"#8b5cf6",color:"#fff"}}>{issue.severity}</span>
-                            <span style={{fontSize:9.5,color:"#8a8098"}}>{issue.category}</span>
-                            <span style={{fontSize:12.5,fontWeight:600,color:"#140D21"}}>{issue.title}</span>
+                            <span style={{fontSize:9.5,color:C.MID}}>{issue.category}</span>
+                            <span style={{fontSize:12.5,fontWeight:600,color:C.FG}}>{issue.title}</span>
                           </div>
-                          <div style={{fontSize:11.5,color:"#6E6480",marginBottom:4}}>{issue.page_path}</div>
-                          <div style={{fontSize:12,color:"#4a4458",lineHeight:1.5}}>{issue.description}</div>
-                          {issue.recommendation&&<div style={{fontSize:11.5,color:"#6E6480",marginTop:4}}><b>Fix:</b> {issue.recommendation}</div>}
+                          <div style={{fontSize:11.5,color:C.MID,marginBottom:4}}>{issue.page_path}</div>
+                          <div style={{fontSize:12,color:C.MID,lineHeight:1.5}}>{issue.description}</div>
+                          {issue.recommendation&&<div style={{fontSize:11.5,color:C.MID,marginTop:4}}><b>Fix:</b> {issue.recommendation}</div>}
                         </div>
                         <div style={{display:"flex",gap:6,alignItems:"flex-start",flexShrink:0}}>
                           {issue.status!=="ignored"?(
@@ -3227,18 +3236,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </>
             )}
 
-            <div style={{marginTop:32,padding:"16px 18px",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10}}>
-              <div style={{fontSize:11,fontWeight:600,color:"#140D21",marginBottom:6}}>Image Alt Text (Cloudflare Workers AI)</div>
-              <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6,marginBottom:10}}>
+            <div style={{...CARD_STYLE,marginTop:32,padding:"16px 18px",borderRadius:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:C.FG,marginBottom:6}}>Image Alt Text (Cloudflare Workers AI)</div>
+              <div style={{fontSize:12,color:C.MID,lineHeight:1.6,marginBottom:10}}>
                 Scans every portfolio image with no alt text yet and generates a real, one-sentence description by analyzing that exact image with Cloudflare Workers AI -- already part of this Cloudflare account, no new service. Existing alt text is never overwritten.
               </div>
               <button onClick={runAltTextGen} disabled={altTextRunning} style={{...S.btnP,opacity:altTextRunning?0.6:1,cursor:altTextRunning?"default":"pointer"}}>{altTextRunning?"⏳ Generating…":"✨ Generate Missing Alt Text"}</button>
-              {altTextErr&&<div style={{fontSize:12,color:"#c0392b",marginTop:10}}>⚠️ {altTextErr}</div>}
+              {altTextErr&&<div style={{fontSize:12,color:"#f87171",marginTop:10}}>⚠️ {altTextErr}</div>}
               {altTextResult&&(
-                <div style={{marginTop:10,fontSize:12,color:"#140D21"}}>
+                <div style={{marginTop:10,fontSize:12,color:C.FG}}>
                   <b>{altTextResult.updated}</b> image(s) updated.
                   {(altTextResult.results||[]).some((r:any)=>r.error)&&(
-                    <div style={{marginTop:6,color:"#6E6480"}}>
+                    <div style={{marginTop:6,color:C.MID}}>
                       {(altTextResult.results||[]).filter((r:any)=>r.error).map((r:any,i:number)=>(
                         <div key={i}>⚠ {r.project}: {r.error}</div>
                       ))}
@@ -3248,9 +3257,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               )}
             </div>
 
-            <div style={{marginTop:16,padding:"16px 18px",background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10}}>
-              <div style={{fontSize:11,fontWeight:600,color:"#140D21",marginBottom:6}}>Integrations</div>
-              <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6}}>
+            <div style={{...CARD_STYLE,marginTop:16,padding:"16px 18px",borderRadius:10}}>
+              <div style={{fontSize:11,fontWeight:600,color:C.FG,marginBottom:6}}>Integrations</div>
+              <div style={{fontSize:12,color:C.MID,lineHeight:1.6}}>
                 Google Search Console: <b>Not connected yet</b> · Google Analytics 4: <b>Not connected</b> · Semrush: <b>Not connected</b><br/>
                 This first version audits your real live pages directly. Connecting Search Console for real click/impression data, and one-click safe auto-fixes for real issues, are the next steps.
               </div>
@@ -3261,17 +3270,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {/* ADMIN & ACCESS -- real info about the current, single admin session. */}
         {cmsTab==="access"&&(
           <div style={{maxWidth:600,margin:"48px auto",padding:"0 24px"}}>
-            <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:24}}>
-              <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:16}}>Signed in</div>
-              <div style={{fontSize:13,color:"#140D21",marginBottom:4}}>{adminSession?.user?.email}</div>
-              <div style={{fontSize:11.5,color:"#6E6480",marginBottom:20}}>Authenticated via Supabase Auth (email + password)</div>
-              <div style={{fontSize:11.5,color:"#8a8098",lineHeight:1.6,borderTop:"1px solid rgba(0,0,0,0.06)",paddingTop:16}}>This CMS currently has a single administrator account. Multiple admin users with individual permissions aren't set up yet -- ask if you'd like that added.</div>
+            <div style={{...CARD_STYLE,padding:24}}>
+              <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:16}}>Signed in</div>
+              <div style={{fontSize:13,color:C.FG,marginBottom:4}}>{adminSession?.user?.email}</div>
+              <div style={{fontSize:11.5,color:C.MID,marginBottom:20}}>Authenticated via Supabase Auth (email + password)</div>
+              <div style={{fontSize:11.5,color:C.MID,lineHeight:1.6,borderTop:`1px solid ${C.BORDER}`,paddingTop:16}}>This CMS currently has a single administrator account. Multiple admin users with individual permissions aren't set up yet -- ask if you'd like that added.</div>
             </div>
 
-            <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:24,marginTop:16}}>
-              <div style={{fontSize:15,fontWeight:600,color:"#140D21",marginBottom:6}}>Push Notifications</div>
-              <div style={{fontSize:11.5,color:"#6E6480",marginBottom:16,lineHeight:1.6}}>Get alerted on this device -- desktop or mobile -- for new bookings, receipts awaiting review, new contact messages, and payment approvals/rejections, even when this tab isn't open. On iPhone, add this site to your Home Screen first (Share → Add to Home Screen) -- that's Apple's requirement for push, not something this CMS can skip.</div>
-              {pushStatus==="unsupported"&&<div style={{fontSize:12,color:"#8a8098"}}>Not supported in this browser.</div>}
+            <div style={{...CARD_STYLE,padding:24,marginTop:16}}>
+              <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:6}}>Push Notifications</div>
+              <div style={{fontSize:11.5,color:C.MID,marginBottom:16,lineHeight:1.6}}>Get alerted on this device -- desktop or mobile -- for new bookings, receipts awaiting review, new contact messages, and payment approvals/rejections, even when this tab isn't open. On iPhone, add this site to your Home Screen first (Share → Add to Home Screen) -- that's Apple's requirement for push, not something this CMS can skip.</div>
+              {pushStatus==="unsupported"&&<div style={{fontSize:12,color:C.MID}}>Not supported in this browser.</div>}
               {pushStatus==="denied"&&<div style={{fontSize:12,color:"#c0392b"}}>Notifications are blocked for this site in your browser settings -- allow them there, then reload.</div>}
               {(pushStatus==="off"||pushStatus==="unknown")&&<button onClick={enablePush} disabled={pushBusy} style={{...S.btnP,opacity:pushBusy?0.6:1}}>{pushBusy?"Enabling…":"🔔 Enable Notifications on This Device"}</button>}
               {pushStatus==="on"&&(
@@ -3289,7 +3298,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {cmsTab==="leads"&&(
           <div style={{maxWidth:800,margin:"48px auto",padding:"0 24px"}}>
             <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Contact Form Submissions</div>
-            <div style={{fontSize:12,color:"#888",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
+            <div style={{fontSize:12,color:"#888",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
               Every submission also opens a WhatsApp message to you immediately, so nothing is missed even if this list below is briefly empty. {!settings.emailjsServiceId&&"Add your free EmailJS details in Settings → Contact to also get them by email."}
             </div>
             {leadsLoading?(
@@ -3299,7 +3308,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {leads.map(l=>(
-                  <div key={l.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20,position:"relative"}}>
+                  <div key={l.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20,position:"relative"}}>
                     <button onClick={()=>removeLead(l.id)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:14}}>✕</button>
                     <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:8}}>{new Date(l.date).toLocaleString()}</div>
                     <div style={{fontSize:14,color:"#fff",fontWeight:700,marginBottom:4}}>{l.name} {l.subject&&<span style={{color:C.PL,fontWeight:400}}>· {l.subject}</span>}</div>
@@ -3337,7 +3346,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const canDecide=payment&&payment.status==="under_review"&&payment.receipt_path;
                       const statusColor:Record<string,string>={pending_verification:"#d4a017",confirmed:"#2ecc71",payment_rejected:"#e74c3c",cancelled:"#666",completed:"#3498db"};
                       return(
-                        <div key={b.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                        <div key={b.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
                           <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
                             <div>
                               <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
@@ -3452,7 +3461,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const isSelected=calSelectedDate===dateStr;
                       const isToday=dateStr===todayStr;
                       return(
-                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"#1a1a2e":"#10101c",border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:4,cursor:dayBookings.length?"pointer":"default"}}>
+                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"#1a1a2e":C.DARK,border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:4,cursor:dayBookings.length?"pointer":"default"}}>
                           <div style={{fontSize:11,color:isToday?C.P:"#888"}}>{d}</div>
                           <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:4}}>
                             {dayBookings.slice(0,4).map((b:any)=><div key={b.id} title={b.appointment_ref} style={{width:6,height:6,borderRadius:"50%",background:statusColor[b.status]||C.MID}} />)}
@@ -3467,7 +3476,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>{calSelectedDate}</div>
                       <div style={{display:"flex",flexDirection:"column",gap:8}}>
                         {(byDate.get(calSelectedDate)||[]).map((b:any)=>(
-                          <div key={b.id} style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,fontSize:12.5}}>
+                          <div key={b.id} style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,fontSize:12.5}}>
                             <span>{b.booking_time} · {b.appointment_ref} · {b.customers?.full_name} — {b.service_name}</span>
                             <span style={{color:statusColor[b.status]||C.MID}}>{String(b.status).replace(/_/g," ")}</span>
                           </div>
@@ -3502,15 +3511,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {payTotals&&(
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginBottom:20}}>
-                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Total Paid</div>
                   <div style={{fontSize:20,color:"#2ecc71",fontWeight:700,marginTop:4}}>AED {payTotals.paid.toLocaleString()}</div>
                 </div>
-                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Awaiting / In Review</div>
                   <div style={{fontSize:20,color:"#d4a017",fontWeight:700,marginTop:4}}>AED {payTotals.pending.toLocaleString()}</div>
                 </div>
-                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Payments</div>
                   <div style={{fontSize:20,color:"#fff",fontWeight:700,marginTop:4}}>{payTotals.count}</div>
                 </div>
@@ -3528,7 +3537,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const cust=appt?.customers;
                   const statusColor:Record<string,string>={paid:"#2ecc71",under_review:"#d4a017",pending:"#888",rejected:"#e74c3c"};
                   return(
-                    <div key={p.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                    <div key={p.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                       <div>
                         <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{appt?.appointment_ref||p.appointment_id} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {cust?.full_name||"Unknown client"}</span></div>
                         <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{p.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {appt?.booking_date} {appt?.booking_time}{p.receipt_signed_url&&<> · <a href={p.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>Receipt →</a></>}</div>
@@ -3566,7 +3575,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const cust=appt?.customers;
                   const isPaid=inv.status==="paid";
                   return(
-                    <div key={inv.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                    <div key={inv.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                       <div>
                         <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{inv.invoice_number} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {appt?.appointment_ref} · {cust?.full_name||"Unknown client"}</span></div>
                         <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{appt?.service_name} — {appt?.package_name} · {appt?.booking_date}</div>
@@ -3610,7 +3619,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {filtered.map((c:any)=>{
                     const open=clientDirOpenId===c.id;
                     return(
-                      <div key={c.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                      <div key={c.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setClientDirOpenId(willOpen?c.id:null);if(willOpen)loadClientDirDetail(c.id);}}>
                           <div>
                             <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{c.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.email}</span></div>
@@ -3688,7 +3697,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {threads.map(t=>{
                     const open=msgOpenCustomerId===t.customerId;
                     return(
-                      <div key={t.customerId} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                      <div key={t.customerId} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8,cursor:"pointer"}} onClick={()=>setMsgOpenCustomerId(open?null:t.customerId)}>
                           <div>
                             <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{t.customer?.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.customer?.email}</span></div>
@@ -3740,7 +3749,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",hidden:"#888",deleted:"#e74c3c"};
                   const proj=projects.find(p=>p.id===c.projectId);
                   return(
-                    <div key={c.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:18}}>
+                    <div key={c.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:18}}>
                       <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
                         <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{c.visitorName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.visitorEmail}</span></div>
                         <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[c.status]||C.MID,border:`1px solid ${statusColor[c.status]||C.BORDER}`}}>{c.status}</span>
@@ -3780,7 +3789,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",rejected:"#e74c3c",cancelled:"#666"};
                   const open=permReqOpenId===r.id;
                   return(
-                    <div key={r.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                    <div key={r.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
                       <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                         <img src={r.imageUrl} alt="" style={{width:96,height:96,objectFit:"cover",background:"#000",flexShrink:0,borderRadius:2}} />
                         <div style={{flex:1,minWidth:200}}>
@@ -3882,7 +3891,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Contact Form Email Notifications</div>
-                  <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginBottom:16,background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
+                  <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginBottom:16,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
                     Every contact-form submission already opens a WhatsApp message to you immediately -- that part needs no setup. The CMS Leads tab is meant to also list submissions, but a Supabase permission setting is currently blocking that (flagged separately). To get submissions emailed to you too, create a free EmailJS account (200 emails/month, no card needed) -- takes about 2 minutes:<br/><br/>
                     1. Go to emailjs.com → Sign Up (free)<br/>
                     2. Email Services → Add New Service → connect your Gmail ({settings.email})<br/>
@@ -3903,7 +3912,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>🔤 Typography</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Controls the headline and sub-text style across every hero slide. Leave as-is for the current look.</div>
-                <div style={{background:"#10101c",padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                <div style={{background:C.DARK,padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>Headline</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                     <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.heroTypography.headlineFont} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
@@ -3942,7 +3951,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Hero Slides ({settingsDraft.heroSlides.length})</div>
                 <button onClick={()=>updateSD({heroSlides:[...settingsDraft.heroSlides,{label:"New Slide",headline:"Headline\nHere.",sub:"Supporting text.",btn1:"View Work",btn2:"",img:"",page:"work"}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Slide</button>
                 {settingsDraft.heroSlides.map((sl,i)=>(
-                  <div key={i} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Label</label><input style={S.inp} value={sl.label} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Button 1</label><input style={S.inp} value={sl.btn1} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn1:e.target.value}:x)})} /></div>
@@ -3985,7 +3994,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <SingleImageUpload label="Section Photo (left side of the Services block on the homepage)" value={settingsDraft.servicesImage} onChange={url=>updateSD({servicesImage:url})} />
                 <button onClick={()=>updateSD({services:[...settingsDraft.services,{id:Date.now().toString(),icon:"📸",title:"New Service",desc:"Service description.",detail:"",deliverables:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Service</button>
                 {settingsDraft.services.map((sv,i)=>(
-                  <div key={sv.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={sv.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Icon (emoji)</label><input style={S.inp} value={sv.icon} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,icon:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Title</label><input style={S.inp} value={sv.title} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,title:e.target.value}:x)})} /></div>
@@ -4000,39 +4009,39 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
             {settingsTab==="clients"&&(
               <div>
-                <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"18px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap" as const,gap:16}}>
+                <div style={{...CARD_STYLE,padding:"18px 20px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap" as const,gap:16}}>
                   <div style={{maxWidth:520}}>
-                    <div style={{fontSize:14,fontWeight:600,color:"#140D21",marginBottom:6}}>Our Clients</div>
-                    <div style={{fontSize:12,color:"#6E6480",lineHeight:1.6,marginBottom:10}}>Currently showing placeholder clients for testing. Replace each name/logo with your real ones, remove any you don't need, and reorder with the arrows -- the homepage marquee reflects this list exactly.</div>
+                    <div style={{fontSize:14,fontWeight:600,color:C.FG,marginBottom:6}}>Our Clients</div>
+                    <div style={{fontSize:12,color:C.MID,lineHeight:1.6,marginBottom:10}}>Currently showing placeholder clients for testing. Replace each name/logo with your real ones, remove any you don't need, and reorder with the arrows -- the homepage marquee reflects this list exactly.</div>
                     <label style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}}>
                       <input type="checkbox" checked={settingsDraft.clientsEnabled} onChange={e=>updateSD({clientsEnabled:e.target.checked})} style={{width:16,height:16,cursor:"pointer"}} />
-                      <span style={{fontSize:12,color:"#140D21"}}>Show "Our Clients" section on the homepage</span>
+                      <span style={{fontSize:12,color:C.FG}}>Show "Our Clients" section on the homepage</span>
                     </label>
                   </div>
                   <button onClick={()=>updateSD({clients:[...settingsDraft.clients,{id:Date.now().toString(),name:"New Client",logo:""}]})} style={S.btnP}>+ Add Client</button>
                 </div>
 
                 {settingsDraft.clients.length===0?(
-                  <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:"32px 24px",textAlign:"center" as const,fontSize:12.5,color:"#6E6480"}}>No clients yet -- the section stays hidden on the homepage until you add at least one.</div>
+                  <div style={{...CARD_STYLE,padding:"32px 24px",textAlign:"center" as const,fontSize:12.5,color:C.MID}}>No clients yet -- the section stays hidden on the homepage until you add at least one.</div>
                 ):(
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
                     {settingsDraft.clients.map((cl,i)=>(
-                      <div key={cl.id} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:12,padding:18}}>
+                      <div key={cl.id} style={{...CARD_STYLE,padding:18}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                          <span style={{fontSize:10,letterSpacing:1,color:"#6E6480",textTransform:"uppercase" as const}}>Client {i+1}</span>
+                          <span style={{fontSize:10,letterSpacing:1,color:C.MID,textTransform:"uppercase" as const}}>Client {i+1}</span>
                           <div style={{display:"flex",gap:6}}>
-                            <button title="Move up" disabled={i===0} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i-1],arr[i]]=[arr[i],arr[i-1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.LTBORDER}`,borderRadius:6,color:"#140D21",cursor:i===0?"default":"pointer",opacity:i===0?0.3:1,width:24,height:24,fontSize:12}}>↑</button>
-                            <button title="Move down" disabled={i===settingsDraft.clients.length-1} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i+1],arr[i]]=[arr[i],arr[i+1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.LTBORDER}`,borderRadius:6,color:"#140D21",cursor:i===settingsDraft.clients.length-1?"default":"pointer",opacity:i===settingsDraft.clients.length-1?0.3:1,width:24,height:24,fontSize:12}}>↓</button>
+                            <button title="Move up" disabled={i===0} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i-1],arr[i]]=[arr[i],arr[i-1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.BORDER}`,borderRadius:6,color:C.FG,cursor:i===0?"default":"pointer",opacity:i===0?0.3:1,width:24,height:24,fontSize:12}}>↑</button>
+                            <button title="Move down" disabled={i===settingsDraft.clients.length-1} onClick={()=>{const arr=[...settingsDraft.clients];[arr[i+1],arr[i]]=[arr[i],arr[i+1]];updateSD({clients:arr});}} style={{background:"none",border:`1px solid ${C.BORDER}`,borderRadius:6,color:C.FG,cursor:i===settingsDraft.clients.length-1?"default":"pointer",opacity:i===settingsDraft.clients.length-1?0.3:1,width:24,height:24,fontSize:12}}>↓</button>
                           </div>
                         </div>
-                        <div style={{marginBottom:10}}><label style={{...S.lbl,color:"#6E6480"}}>Client Name</label><input style={{...S.inp,background:"#F8F6FC",border:`1px solid ${C.LTBORDER}`,color:"#140D21"}} value={cl.name} onChange={e=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,name:e.target.value}:x)})} /></div>
+                        <div style={{marginBottom:10}}><label style={S.lbl}>Client Name</label><input style={S.inp} value={cl.name} onChange={e=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,name:e.target.value}:x)})} /></div>
                         <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
-                          {cl.logo?<img src={cl.logo} alt="" style={{width:56,height:42,objectFit:"contain",background:"#fff",border:`1px solid ${C.LTBORDER}`,borderRadius:6}} />:<div style={{width:56,height:42,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#8a8098",background:"#F8F6FC",border:`1px dashed ${C.LTBORDER}`,borderRadius:6}}>No logo</div>}
+                          {cl.logo?<img src={cl.logo} alt="" style={{width:56,height:42,objectFit:"contain",background:"#fff",border:`1px solid ${C.BORDER}`,borderRadius:6}} />:<div style={{width:56,height:42,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:C.MID,background:"#1C1330",border:`1px dashed ${C.BORDER}`,borderRadius:6}}>No logo</div>}
                           <div style={{flex:1}}><SingleImageUpload label="Logo" value={cl.logo} onChange={url=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:url}:x)})} /></div>
                         </div>
-                        <div style={{display:"flex",gap:14,borderTop:`1px solid ${C.LTBORDER}`,paddingTop:10}}>
-                          {cl.logo&&<button onClick={()=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:""}:x)})} style={{background:"none",border:"none",color:"#6E6480",cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Logo</button>}
-                          <button onClick={()=>updateSD({clients:settingsDraft.clients.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Client</button>
+                        <div style={{display:"flex",gap:14,borderTop:`1px solid ${C.BORDER}`,paddingTop:10}}>
+                          {cl.logo&&<button onClick={()=>updateSD({clients:settingsDraft.clients.map((x,idx)=>idx===i?{...x,logo:""}:x)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Logo</button>}
+                          <button onClick={()=>updateSD({clients:settingsDraft.clients.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#f87171",cursor:"pointer",fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const}}>Remove Client</button>
                         </div>
                       </div>
                     ))}
@@ -4046,7 +4055,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>CV Sections</div>
                 <button onClick={()=>updateSD({cvSections:[...settingsDraft.cvSections,{title:"New Section",content:""}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Section</button>
                 {settingsDraft.cvSections.map((sec,i)=>(
-                  <div key={i} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Title</label><input style={S.inp} value={sec.title} onChange={e=>updateSD({cvSections:settingsDraft.cvSections.map((x,idx)=>idx===i?{...x,title:e.target.value}:x)})} /></div>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Content</label><textarea style={{...S.inp,height:80,resize:"vertical" as const}} value={sec.content} onChange={e=>updateSD({cvSections:settingsDraft.cvSections.map((x,idx)=>idx===i?{...x,content:e.target.value}:x)})} /></div>
                     <button onClick={()=>updateSD({cvSections:settingsDraft.cvSections.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
@@ -4055,7 +4064,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{marginTop:32,fontSize:11,letterSpacing:4,color:C.MID,marginBottom:16,textTransform:"uppercase"}}>Skills by Department</div>
                 <button onClick={()=>updateSD({skills:[...settingsDraft.skills,{dept:"New Department",items:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Department</button>
                 {settingsDraft.skills.map((sk,i)=>(
-                  <div key={i} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Department</label><input style={S.inp} value={sk.dept} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,dept:e.target.value}:x)})} /></div>
                     <div style={{marginBottom:8}}><label style={S.lbl}>Skills (comma separated)</label><input style={S.inp} value={sk.items.join(", ")} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,items:e.target.value.split(",").map(s=>s.trim()).filter(Boolean)}:x)})} placeholder="Skill 1, Skill 2, Skill 3" /></div>
                     <button onClick={()=>updateSD({skills:settingsDraft.skills.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
@@ -4076,7 +4085,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     {section.items.map(name=>{
                       const current = settingsDraft.gearImages.find(g=>g.name===name)?.img || "";
                       return (
-                        <div key={name} style={{background:"#10101c",padding:16,marginBottom:10,border:`1px solid ${C.BORDER}`}}>
+                        <div key={name} style={{background:C.DARK,padding:16,marginBottom:10,border:`1px solid ${C.BORDER}`}}>
                           <div style={{fontSize:13,fontWeight:600,color:C.FG,marginBottom:8}}>{name}</div>
                           <SingleImageUpload
                             label="Photo"
@@ -4137,7 +4146,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Change any brand color below and the whole live site repaints instantly -- every page, the CMS excluded. Leave as-is for the current look.</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>
                   {([["P","Primary Accent (Violet)"],["PL","Secondary / Active Text"],["PD","Accent Hover (Darker)"],["GOLD","Gold Accent"],["GOLDL","Gold Accent (Light)"],["BG","Page Background"],["FG","Main Text (on dark)"],["MID","Muted Text (on dark)"],["DARK","Dark Panel / Nav / Footer"],["BORDER","Dark Section Borders"],["LT","Light Section Background"],["LTCARD","Light Section Cards"],["LTBORDER","Light Section Borders"],["INKMID","Muted Text (on light)"]] as [keyof ThemeColors,string][]).map(([key,label])=>(
-                    <div key={key} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:12}}>
+                    <div key={key} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:12}}>
                       <label style={{...S.lbl,marginBottom:8}}>{label}</label>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <input type="color" value={/^#/.test(settingsDraft.theme[key])?settingsDraft.theme[key]:"#000000"} onChange={e=>updateSD({theme:{...settingsDraft.theme,[key]:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
@@ -4180,7 +4189,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 {([
                   ["work","Work"],["about","About"],["packages","Packages"],["gear","Gear"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
                 ] as [keyof SectionBg,string][]).map(([key,label])=>(
-                  <div key={key} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,marginBottom:12}}>
+                  <div key={key} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,marginBottom:12}}>
                     <div style={{fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{label} Page</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
                       <div><label style={S.lbl}>Eyebrow</label><input style={S.inp} value={(settingsDraft.uiText as any)[`${key}BannerEyebrow`]} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,[`${key}BannerEyebrow`]:e.target.value}})} /></div>
@@ -4201,7 +4210,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 ] as [keyof PageEnabled,string][]).map(([key,label])=>{
                   const on=settingsDraft.pageEnabled[key]!==false;
                   return (
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
                       <span style={{fontSize:13,fontWeight:600}}>{label} Page</span>
                       <button onClick={()=>updateSD({pageEnabled:{...settingsDraft.pageEnabled,[key]:!on}})} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} page ${on?"off":"on"}`}>
                         <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
@@ -4221,7 +4230,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 ] as [string,string][]).map(([key,label])=>{
                   const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : key==="video" ? !!settingsDraft.videoSectionEnabled : key==="cinematicShowcase" ? !!settingsDraft.cinematicShowcaseEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
                   return (
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
+                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
                       <span style={{fontSize:13,fontWeight:600}}>{label}</span>
                       <button onClick={()=>{
                         if(key==="clients") updateSD({clientsEnabled:!on});
@@ -4278,7 +4287,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Pricing Packages ({settingsDraft.pricingPackages.length})</div>
                 <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
 
-                <div style={{background:"#10101c",padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                <div style={{background:C.DARK,padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>🎨 Card Style (applies to every package card)</div>
                   <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Padding, fonts and colors used on every pricing card. "On Photo" colors apply only to cards that have a background photo set.</div>
 
@@ -4360,7 +4369,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now",features:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
                 {settingsDraft.pricingPackages.map((pk,i)=>(
-                  <div key={pk.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={pk.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Icon (emoji)</label><input style={S.inp} value={pk.icon} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,icon:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Package Name</label><input style={S.inp} value={pk.label} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
@@ -4444,7 +4453,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               ):(
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {googleRevArchive.map((r:any)=>(
-                    <div key={r.key} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 14px",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,opacity:r.hidden?0.5:1}}>
+                    <div key={r.key} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 14px",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,opacity:r.hidden?0.5:1}}>
                       <div style={{minWidth:0}}>
                         <div style={{fontSize:12.5,color:"#fff"}}>{r.author} <span style={{color:"#FBBC05"}}>{"★".repeat(Math.round(r.rating))}</span></div>
                         <div style={{fontSize:11.5,color:"#888",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:420}}>{r.text}</div>
@@ -4460,7 +4469,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <button onClick={()=>setTestimonials(ts=>[...ts,{id:Date.now().toString(),name:"Client Name",role:"Role",company:"Company",quote:"Testimonial quote here.",featured:true}])} style={S.btnP}>+ Add</button>
             </div>
             {testimonials.map((t,i)=>(
-              <div key={t.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+              <div key={t.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><label style={S.lbl}>Name</label><input style={S.inp} value={t.name} onChange={e=>setTestimonials(ts=>ts.map((x,idx)=>idx===i?{...x,name:e.target.value}:x))} /></div>
                   <div><label style={S.lbl}>Role</label><input style={S.inp} value={t.role} onChange={e=>setTestimonials(ts=>ts.map((x,idx)=>idx===i?{...x,role:e.target.value}:x))} /></div>
@@ -4485,7 +4494,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <button onClick={()=>setBlog(bs=>[...bs,{id:Date.now().toString(),title:"New Post",slug:"new-post",excerpt:"",date:new Date().toISOString().split("T")[0],category:blogCats[0]||"",coverImage:"",content:""}])} style={S.btnP}>+ New Post</button>
             </div>
             {blog.map((b,i)=>(
-              <div key={b.id} style={{background:"#10101c",padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+              <div key={b.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><label style={S.lbl}>Title</label><input style={S.inp} value={b.title} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,title:e.target.value,slug:slugify(e.target.value)}:x))} /></div>
                   <div><label style={S.lbl}>Category</label>

@@ -1900,6 +1900,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [rescheduleTime,setRescheduleTime]=useState("");
   const [cancelReasonFor,setCancelReasonFor]=useState<string|null>(null);
   const [cancelReasonText,setCancelReasonText]=useState("");
+  // Payments ledger (CMS > Payments) -- see functions/api/admin/payments.ts.
+  const [payList,setPayList]=useState<any[]|null>(null);
+  const [payTotals,setPayTotals]=useState<{paid:number;pending:number;count:number}|null>(null);
+  const [payLoading,setPayLoading]=useState(false);
+  const [payErr,setPayErr]=useState("");
+  const [payFilter,setPayFilter]=useState<string>("all");
   // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
   // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
   const [msgList,setMsgList]=useState<any[]|null>(null);
@@ -2091,6 +2097,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setBookingsLoading(false);
   }
   useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+
+  // Payments ledger (CMS > Payments) -- read-only list of every payment; state changes still
+  // only ever happen via payments/[id]/approve.ts and reject.ts, called from the Bookings tab.
+  async function loadPayments(){
+    if(!adminSession) return;
+    setPayLoading(true); setPayErr("");
+    try{
+      const qs=payFilter==="all"?"":`?status=${encodeURIComponent(payFilter)}`;
+      const res=await fetch(`/api/admin/payments${qs}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load payments");
+      setPayList(data.payments||[]); setPayTotals(data.totals||null);
+    }catch(e:any){ setPayErr(e.message||"Failed to load payments"); }
+    setPayLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="payments"&&adminSession) loadPayments(); },[cmsTab,adminSession,payFilter]);
 
   async function loadMessages(){
     if(!adminSession) return;
@@ -2819,6 +2841,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </div>
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
+        <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -3228,6 +3251,69 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   </div>
                 )}
               </>
+          </div>
+        )}
+
+        {/* PAYMENTS LEDGER -- read-only list of every payment (functions/api/admin/payments.ts).
+            Approve/Reject still only happen from the Bookings tab -- this tab is for finance
+            visibility (totals, filtering by status/method), not a second place to act. */}
+        {cmsTab==="payments"&&(
+          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Payments</div>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <select value={payFilter} onChange={e=>setPayFilter(e.target.value)} style={{...S.inp,width:170}}>
+                  <option value="all">All statuses</option>
+                  <option value="paid">Paid</option>
+                  <option value="under_review">Under review</option>
+                  <option value="pending">Pending</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button onClick={loadPayments} style={S.btnSm}>↻ Refresh</button>
+              </div>
+            </div>
+            {payTotals&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginBottom:20}}>
+                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                  <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Total Paid</div>
+                  <div style={{fontSize:20,color:"#2ecc71",fontWeight:700,marginTop:4}}>AED {payTotals.paid.toLocaleString()}</div>
+                </div>
+                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                  <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Awaiting / In Review</div>
+                  <div style={{fontSize:20,color:"#d4a017",fontWeight:700,marginTop:4}}>AED {payTotals.pending.toLocaleString()}</div>
+                </div>
+                <div style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                  <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Payments</div>
+                  <div style={{fontSize:20,color:"#fff",fontWeight:700,marginTop:4}}>{payTotals.count}</div>
+                </div>
+              </div>
+            )}
+            {payErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{payErr}</div>}
+            {payLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!payList||payList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No payments found.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {payList.map((p:any)=>{
+                  const appt=p.appointments;
+                  const cust=appt?.customers;
+                  const statusColor:Record<string,string>={paid:"#2ecc71",under_review:"#d4a017",pending:"#888",rejected:"#e74c3c"};
+                  return(
+                    <div key={p.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{appt?.appointment_ref||p.appointment_id} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {cust?.full_name||"Unknown client"}</span></div>
+                        <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{p.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {appt?.booking_date} {appt?.booking_time}{p.receipt_signed_url&&<> · <a href={p.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>Receipt →</a></>}</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:14}}>
+                        <div style={{fontSize:15,color:"#fff",fontWeight:700}}>AED {Number(p.total).toLocaleString()}</div>
+                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[p.status]||C.MID,border:`1px solid ${statusColor[p.status]||C.BORDER}`}}>{String(p.status).replace(/_/g," ")}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

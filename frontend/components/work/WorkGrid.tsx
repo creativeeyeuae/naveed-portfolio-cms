@@ -69,10 +69,13 @@ function ProjectCard({ p, span }: { p: CmsProject; span?: number }) {
 }
 
 export default function WorkGrid({ projects }: { projects: CmsProject[] }) {
-  const cats = Array.from(new Set(projects.flatMap((p) => p.categories || []))).sort();
   const [filterCat, setFilterCat] = useState("All");
   const [view, setView] = useState<"selected" | "all">("selected");
-  const filtered = filterCat === "All" ? projects : projects.filter((p) => p.categories?.includes(filterCat));
+  // "Selected Work" shows only projects marked Featured in the CMS; "All Projects" keeps
+  // showing every project regardless of featured status (Naveed's request).
+  const base = view === "selected" ? projects.filter((p) => p.featured) : projects;
+  const cats = Array.from(new Set(base.flatMap((p) => p.categories || []))).sort();
+  const filtered = filterCat === "All" ? base : base.filter((p) => p.categories?.includes(filterCat));
 
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", padding: "40px 32px 80px" }}>
@@ -96,10 +99,10 @@ export default function WorkGrid({ projects }: { projects: CmsProject[] }) {
           onClick={() => setFilterCat("All")}
           style={{ fontSize: 11, letterSpacing: 1, padding: "8px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${filterCat === "All" ? C.PL : C.BORDER}`, background: filterCat === "All" ? C.PL : "transparent", color: filterCat === "All" ? C.BG : C.MID, transition: "all 0.2s" }}
         >
-          All ({projects.length})
+          All ({base.length})
         </span>
         {cats.map((c) => {
-          const cnt = projects.filter((p) => p.categories?.includes(c)).length;
+          const cnt = base.filter((p) => p.categories?.includes(c)).length;
           if (!cnt) return null;
           return (
             <span

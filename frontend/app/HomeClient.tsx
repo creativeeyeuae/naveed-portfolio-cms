@@ -3848,7 +3848,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Image Permission Requests</div>
                   <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
                     <input type="checkbox" checked={settingsDraft.imagePermissionEnabled!==false} onChange={e=>updateSD({imagePermissionEnabled:e.target.checked})} />
-                    <span style={{fontSize:13,color:"#ccc"}}>Allow visitors to request permission to use project images (shown on every /work project page)</span>
+                    <span style={{fontSize:13,color:C.FG}}>Allow visitors to request permission to use project images (shown on every /work project page)</span>
                   </label>
                 </div>
               </div>
@@ -3874,13 +3874,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Bank Transfer Instructions (Booking)</div>
-                  <div style={{fontSize:12,color:"#888",lineHeight:1.6,marginBottom:12}}>Shown to clients on the Booking page's payment step when they choose Bank Transfer. Enter your real bank name, account name, IBAN/account number and any reference instructions -- this is never invented for you, so leave it blank until you fill in your real details.</div>
+                  <div style={{fontSize:12,color:C.MID,lineHeight:1.6,marginBottom:12}}>Shown to clients on the Booking page's payment step when they choose Bank Transfer. Enter your real bank name, account name, IBAN/account number and any reference instructions -- this is never invented for you, so leave it blank until you fill in your real details.</div>
                   <textarea style={{...S.inp,height:110,resize:"vertical" as const,fontFamily:"monospace" as const}} value={settingsDraft.bankTransferInstructions} onChange={e=>updateSD({bankTransferInstructions:e.target.value})} placeholder={"Bank Name: \nAccount Name: \nAccount Number / IBAN: \nSWIFT/BIC: \nReference: Please include your booking reference in the transfer description."} />
                 </div>
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Online Payment Link (Booking)</div>
-                  <div style={{fontSize:12,color:"#888",lineHeight:1.6,marginBottom:12}}>
+                  <div style={{fontSize:12,color:C.MID,lineHeight:1.6,marginBottom:12}}>
                     Paste a real hosted payment link here once you've set one up (e.g. a Mamo Business or Tap Payments payment link, or a Stripe Payment Link) and the &quot;Pay Online&quot; option on the Booking page's payment step turns on automatically -- until then it stays disabled exactly as it is now. When a client picks it, they&apos;re sent to this link to pay; you confirm the booking the same way you already confirm bank transfers.
                   </div>
                   <input style={S.inp} value={settingsDraft.paymentLinkUrl} onChange={e=>updateSD({paymentLinkUrl:e.target.value})} placeholder="https://pay.mamopay.com/... or https://pay.tap.company/..." />
@@ -3888,7 +3888,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Contact Form Email Notifications</div>
-                  <div style={{fontSize:12,color:"#888",lineHeight:1.7,marginBottom:16,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
+                  <div style={{fontSize:12,color:C.MID,lineHeight:1.7,marginBottom:16,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
                     Every contact-form submission already opens a WhatsApp message to you immediately -- that part needs no setup. The CMS Leads tab is meant to also list submissions, but a Supabase permission setting is currently blocking that (flagged separately). To get submissions emailed to you too, create a free EmailJS account (200 emails/month, no card needed) -- takes about 2 minutes:<br/><br/>
                     1. Go to emailjs.com → Sign Up (free)<br/>
                     2. Email Services → Add New Service → connect your Gmail ({settings.email})<br/>
@@ -3908,8 +3908,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="hero"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>🔤 Typography</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Controls the headline and sub-text style across every hero slide. Leave as-is for the current look.</div>
-                <div style={{background:C.DARK,padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Controls the headline and sub-text style across every hero slide. Leave as-is for the current look.</div>
+                <div style={{...CARD_STYLE,padding:20,marginBottom:24}}>
                   <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>Headline</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                     <div><label style={S.lbl}>Font</label><select style={S.inp} value={settingsDraft.heroTypography.headlineFont} onChange={e=>updateSD({heroTypography:{...settingsDraft.heroTypography,headlineFont:e.target.value}})}>{HERO_FONT_LABELS.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></div>
@@ -3948,26 +3948,26 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Hero Slides ({settingsDraft.heroSlides.length})</div>
                 <button onClick={()=>updateSD({heroSlides:[...settingsDraft.heroSlides,{label:"New Slide",headline:"Headline\nHere.",sub:"Supporting text.",btn1:"View Work",btn2:"",img:"",page:"work"}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Slide</button>
                 {settingsDraft.heroSlides.map((sl,i)=>(
-                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Label</label><input style={S.inp} value={sl.label} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Button 1</label><input style={S.inp} value={sl.btn1} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn1:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}>
                         <label style={S.lbl}>Button 1 Link (optional)</label>
                         <input style={S.inp} value={sl.btn1Link||""} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn1Link:e.target.value}:x)})} placeholder="Leave blank to keep the default page link" />
-                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /packages). Leave blank to keep this button going to its default page.</div>
+                        <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /packages). Leave blank to keep this button going to its default page.</div>
                       </div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Button 2 (optional — leave blank to hide this button)</label><input style={S.inp} value={sl.btn2} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn2:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}>
                         <label style={S.lbl}>Button 2 Link (optional)</label>
                         <input style={S.inp} value={sl.btn2Link||""} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,btn2Link:e.target.value}:x)})} placeholder="Leave blank to keep sending this button to Booking" />
-                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep this button going to Booking.</div>
+                        <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep this button going to Booking.</div>
                       </div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Headline (use \n for line break)</label><input style={S.inp} value={sl.headline} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,headline:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Sub Text</label><input style={S.inp} value={sl.sub} onChange={e=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,sub:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><SingleImageUpload label="Background Image" value={sl.img} onChange={v=>updateSD({heroSlides:settingsDraft.heroSlides.map((x,idx)=>idx===i?{...x,img:v}:x)})} /></div>
                     </div>
-                    <button onClick={()=>updateSD({heroSlides:settingsDraft.heroSlides.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Slide</button>
+                    <button onClick={()=>updateSD({heroSlides:settingsDraft.heroSlides.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Slide</button>
                   </div>
                 ))}
               </div>
@@ -3991,14 +3991,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <SingleImageUpload label="Section Photo (left side of the Services block on the homepage)" value={settingsDraft.servicesImage} onChange={url=>updateSD({servicesImage:url})} />
                 <button onClick={()=>updateSD({services:[...settingsDraft.services,{id:Date.now().toString(),icon:"📸",title:"New Service",desc:"Service description.",detail:"",deliverables:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Service</button>
                 {settingsDraft.services.map((sv,i)=>(
-                  <div key={sv.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={sv.id} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Icon (emoji)</label><input style={S.inp} value={sv.icon} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,icon:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Title</label><input style={S.inp} value={sv.title} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,title:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Short Description</label><input style={S.inp} value={sv.desc} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,desc:e.target.value}:x)})} /></div>
                       <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Full Description</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={sv.detail} onChange={e=>updateSD({services:settingsDraft.services.map((x,idx)=>idx===i?{...x,detail:e.target.value}:x)})} /></div>
                     </div>
-                    <button onClick={()=>updateSD({services:settingsDraft.services.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                    <button onClick={()=>updateSD({services:settingsDraft.services.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -4052,19 +4052,19 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>CV Sections</div>
                 <button onClick={()=>updateSD({cvSections:[...settingsDraft.cvSections,{title:"New Section",content:""}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Section</button>
                 {settingsDraft.cvSections.map((sec,i)=>(
-                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Title</label><input style={S.inp} value={sec.title} onChange={e=>updateSD({cvSections:settingsDraft.cvSections.map((x,idx)=>idx===i?{...x,title:e.target.value}:x)})} /></div>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Content</label><textarea style={{...S.inp,height:80,resize:"vertical" as const}} value={sec.content} onChange={e=>updateSD({cvSections:settingsDraft.cvSections.map((x,idx)=>idx===i?{...x,content:e.target.value}:x)})} /></div>
-                    <button onClick={()=>updateSD({cvSections:settingsDraft.cvSections.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                    <button onClick={()=>updateSD({cvSections:settingsDraft.cvSections.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
                   </div>
                 ))}
                 <div style={{marginTop:32,fontSize:11,letterSpacing:4,color:C.MID,marginBottom:16,textTransform:"uppercase"}}>Skills by Department</div>
                 <button onClick={()=>updateSD({skills:[...settingsDraft.skills,{dept:"New Department",items:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Department</button>
                 {settingsDraft.skills.map((sk,i)=>(
-                  <div key={i} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={i} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                     <div style={{marginBottom:12}}><label style={S.lbl}>Department</label><input style={S.inp} value={sk.dept} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,dept:e.target.value}:x)})} /></div>
                     <div style={{marginBottom:8}}><label style={S.lbl}>Skills (comma separated)</label><input style={S.inp} value={sk.items.join(", ")} onChange={e=>updateSD({skills:settingsDraft.skills.map((x,idx)=>idx===i?{...x,items:e.target.value.split(",").map(s=>s.trim()).filter(Boolean)}:x)})} placeholder="Skill 1, Skill 2, Skill 3" /></div>
-                    <button onClick={()=>updateSD({skills:settingsDraft.skills.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                    <button onClick={()=>updateSD({skills:settingsDraft.skills.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
                   </div>
                 ))}
               </div>
@@ -4073,7 +4073,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="gear"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Gear Page Photos</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>
                   Upload your own photo for any item on the /gear page -- it replaces the current default photo for that item only, everywhere it appears. Leave an item blank to keep its default photo; nothing on the live page changes until you upload here and Save.
                 </div>
                 {GEAR_PHOTO_SECTIONS.map(section=>(
@@ -4082,7 +4082,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     {section.items.map(name=>{
                       const current = settingsDraft.gearImages.find(g=>g.name===name)?.img || "";
                       return (
-                        <div key={name} style={{background:C.DARK,padding:16,marginBottom:10,border:`1px solid ${C.BORDER}`}}>
+                        <div key={name} style={{...CARD_STYLE,padding:16,marginBottom:10}}>
                           <div style={{fontSize:13,fontWeight:600,color:C.FG,marginBottom:8}}>{name}</div>
                           <SingleImageUpload
                             label="Photo"
@@ -4093,7 +4093,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 : [...settingsDraft.gearImages,{name,img:url}],
                             })}
                           />
-                          {current&&<button onClick={()=>updateSD({gearImages:settingsDraft.gearImages.filter(g=>g.name!==name)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove (use default photo)</button>}
+                          {current&&<button onClick={()=>updateSD({gearImages:settingsDraft.gearImages.filter(g=>g.name!==name)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove (use default photo)</button>}
                         </div>
                       );
                     })}
@@ -4117,7 +4117,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{marginBottom:16}}>
                   <label style={S.lbl}>Google Place ID (for real reviews)</label>
                   <input style={S.inp} value={settingsDraft.googlePlaceId} onChange={e=>updateSD({googlePlaceId:e.target.value})} placeholder="ChIJ... (find at places.google.com)" />
-                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Go to maps.google.com → search your business → share → copy the place ID</div>
+                  <div style={{fontSize:11,color:C.MID,marginTop:4}}>Go to maps.google.com → search your business → share → copy the place ID</div>
                 </div>
               </div>
             )}
@@ -4125,10 +4125,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="popup"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Consultation Popup</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Shows once per visitor session after the delay below, asking for a name + phone number and sending it to you on WhatsApp. Swap the text below to a real seasonal offer any time -- nothing is invented automatically.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:16,lineHeight:1.6}}>Shows once per visitor session after the delay below, asking for a name + phone number and sending it to you on WhatsApp. Swap the text below to a real seasonal offer any time -- nothing is invented automatically.</div>
                 <label style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,cursor:"pointer"}}>
                   <input type="checkbox" checked={settingsDraft.popupEnabled} onChange={e=>updateSD({popupEnabled:e.target.checked})} />
-                  <span style={{fontSize:13,color:"#ccc"}}>Enable popup</span>
+                  <span style={{fontSize:13,color:C.FG}}>Enable popup</span>
                 </label>
                 <div style={{marginBottom:16}}><label style={S.lbl}>Delay Before Showing (seconds)</label><input type="number" min={3} style={{...S.inp,maxWidth:160}} value={settingsDraft.popupDelaySec} onChange={e=>updateSD({popupDelaySec:Number(e.target.value)||20})} /></div>
                 <div style={{marginBottom:16}}><label style={S.lbl}>Popup Title</label><input style={S.inp} value={settingsDraft.popupTitle} onChange={e=>updateSD({popupTitle:e.target.value})} /></div>
@@ -4140,10 +4140,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="colors"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Site Colors</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Change any brand color below and the whole live site repaints instantly -- every page, the CMS excluded. Leave as-is for the current look.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Change any brand color below and the whole live site repaints instantly -- every page, the CMS excluded. Leave as-is for the current look.</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:14}}>
                   {([["P","Primary Accent (Violet)"],["PL","Secondary / Active Text"],["PD","Accent Hover (Darker)"],["GOLD","Gold Accent"],["GOLDL","Gold Accent (Light)"],["BG","Page Background"],["FG","Main Text (on dark)"],["MID","Muted Text (on dark)"],["DARK","Dark Panel / Nav / Footer"],["BORDER","Dark Section Borders"],["LT","Light Section Background"],["LTCARD","Light Section Cards"],["LTBORDER","Light Section Borders"],["INKMID","Muted Text (on light)"]] as [keyof ThemeColors,string][]).map(([key,label])=>(
-                    <div key={key} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:12}}>
+                    <div key={key} style={{...CARD_STYLE,padding:12}}>
                       <label style={{...S.lbl,marginBottom:8}}>{label}</label>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
                         <input type="color" value={/^#/.test(settingsDraft.theme[key])?settingsDraft.theme[key]:"#000000"} onChange={e=>updateSD({theme:{...settingsDraft.theme,[key]:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
@@ -4159,7 +4159,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="text"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Homepage Text</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Every heading, eyebrow label and button below is editable, like the rest of the site's content.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Every heading, eyebrow label and button below is editable, like the rest of the site's content.</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:32}}>
                   <div><label style={S.lbl}>Nav "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.navBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,navBookBtn:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Footer WhatsApp Button</label><input style={S.inp} value={settingsDraft.uiText.footerWhatsappBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,footerWhatsappBtn:e.target.value}})} /></div>
@@ -4182,11 +4182,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
 
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Page Banners</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Each inner page shows a banner under the menu with the eyebrow/title below, plus an optional background photo (leave blank for a plain color band).</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Each inner page shows a banner under the menu with the eyebrow/title below, plus an optional background photo (leave blank for a plain color band).</div>
                 {([
                   ["work","Work"],["about","About"],["packages","Packages"],["gear","Gear"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
                 ] as [keyof SectionBg,string][]).map(([key,label])=>(
-                  <div key={key} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,marginBottom:12}}>
+                  <div key={key} style={{...CARD_STYLE,padding:16,marginBottom:12}}>
                     <div style={{fontSize:11,letterSpacing:2,color:C.PL,textTransform:"uppercase",marginBottom:10}}>{label} Page</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:10}}>
                       <div><label style={S.lbl}>Eyebrow</label><input style={S.inp} value={(settingsDraft.uiText as any)[`${key}BannerEyebrow`]} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,[`${key}BannerEyebrow`]:e.target.value}})} /></div>
@@ -4201,14 +4201,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="pages"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Show / Hide Pages</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn a page off to remove it from the menu and footer everywhere on the site -- nothing is deleted, its content is just hidden until you switch it back on. Home always stays on.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Turn a page off to remove it from the menu and footer everywhere on the site -- nothing is deleted, its content is just hidden until you switch it back on. Home always stays on.</div>
                 {([
                   ["work","Work"],["about","About"],["packages","Packages"],["gear","Gear"],["blog","Journal"],["cv","CV"],["booking","Booking"],["contact","Contact"],
                 ] as [keyof PageEnabled,string][]).map(([key,label])=>{
                   const on=settingsDraft.pageEnabled[key]!==false;
                   return (
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
-                      <span style={{fontSize:13,fontWeight:600}}>{label} Page</span>
+                    <div key={key} style={{...CARD_STYLE,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:600,color:C.FG}}>{label} Page</span>
                       <button onClick={()=>updateSD({pageEnabled:{...settingsDraft.pageEnabled,[key]:!on}})} style={{width:46,height:26,borderRadius:13,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s"}} aria-label={`Turn ${label} page ${on?"off":"on"}`}>
                         <span style={{position:"absolute",top:3,left:on?23:3,width:20,height:20,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
                       </button>
@@ -4221,14 +4221,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     but toggling it writes to clientsEnabled (its existing, already-shipped
                     flag from CMS > Settings > Clients) rather than a new duplicate field. */}
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,margin:"28px 0 20px",textTransform:"uppercase"}}>Show / Hide Homepage Sections</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>Turn any section of the home page off without deleting its content -- switch it back on any time.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Turn any section of the home page off without deleting its content -- switch it back on any time.</div>
                 {([
                   ["hero","Hero Slideshow"],["intro","Intro Strip"],["about","About Naveed"],["video","Full-Width Video"],["cinematicShowcase","Cinematic Showcase"],["services","Services"],["work","Featured Work"],["clients","Our Clients"],["testimonials","Testimonials (Manual)"],["googleReviews","Google Reviews"],["journal","Journal Preview"],["cta","Book CTA"],
                 ] as [string,string][]).map(([key,label])=>{
                   const on = key==="clients" ? settingsDraft.clientsEnabled!==false : key==="googleReviews" ? !!settingsDraft.googleReviewsEnabled : key==="video" ? !!settingsDraft.videoSectionEnabled : key==="cinematicShowcase" ? !!settingsDraft.cinematicShowcaseEnabled : (settingsDraft.homeSections as any)?.[key]!==false;
                   return (
-                    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 18px",marginBottom:10}}>
-                      <span style={{fontSize:13,fontWeight:600}}>{label}</span>
+                    <div key={key} style={{...CARD_STYLE,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 18px",marginBottom:10}}>
+                      <span style={{fontSize:13,fontWeight:600,color:C.FG}}>{label}</span>
                       <button onClick={()=>{
                         if(key==="clients") updateSD({clientsEnabled:!on});
                         else if(key==="googleReviews") updateSD({googleReviewsEnabled:!on});
@@ -4260,7 +4260,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{marginTop:20,marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- YouTube Link</label>
                   <input style={S.inp} value={settingsDraft.videoSectionUrl} onChange={e=>updateSD({videoSectionUrl:e.target.value})} placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..." />
-                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Paste any normal YouTube video/share link -- it plays full-width between About and Services, autoplaying on mute with a mute/unmute + volume control.</div>
+                  <div style={{fontSize:11,color:C.MID,marginTop:4}}>Paste any normal YouTube video/share link -- it plays full-width between About and Services, autoplaying on mute with a mute/unmute + volume control.</div>
                 </div>
                 <div style={{marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- Small Label (optional)</label>
@@ -4269,7 +4269,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{marginBottom:16}}>
                   <label style={S.lbl}>Full-Width Video -- Headline (optional)</label>
                   <input style={S.inp} value={settingsDraft.videoSectionTitle} onChange={e=>updateSD({videoSectionTitle:e.target.value})} placeholder="e.g. Luxury Villa Shoot" />
-                  <div style={{fontSize:11,color:"#444",marginTop:4}}>Both are shown as a caption over the bottom-left of the video, over a slight dark scrim so they stay readable. Leave either blank to skip it.</div>
+                  <div style={{fontSize:11,color:C.MID,marginTop:4}}>Both are shown as a caption over the bottom-left of the video, over a slight dark scrim so they stay readable. Leave either blank to skip it.</div>
                 </div>
                 {settingsDraft.videoSectionEnabled && !settingsDraft.videoSectionUrl && (
                   <div style={{fontSize:11,color:"#c9963f",marginTop:-8,marginBottom:14,lineHeight:1.6}}>
@@ -4282,11 +4282,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {settingsTab==="pricing"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Pricing Packages ({settingsDraft.pricingPackages.length})</div>
-                <div style={{fontSize:12,color:"#555",marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>These cards show on the Packages page under "Your Investment" -- add, remove, reorder or restyle freely. Each can carry its own photo; leave the image blank to show the card without one.</div>
 
-                <div style={{background:C.DARK,padding:20,marginBottom:24,border:`1px solid ${C.BORDER}`}}>
+                <div style={{...CARD_STYLE,padding:20,marginBottom:24}}>
                   <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:12}}>🎨 Card Style (applies to every package card)</div>
-                  <div style={{fontSize:12,color:"#555",marginBottom:16,lineHeight:1.6}}>Padding, fonts and colors used on every pricing card. "On Photo" colors apply only to cards that have a background photo set.</div>
+                  <div style={{fontSize:12,color:C.MID,marginBottom:16,lineHeight:1.6}}>Padding, fonts and colors used on every pricing card. "On Photo" colors apply only to cards that have a background photo set.</div>
 
                   <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:10}}>Padding (px)</div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:16}}>
@@ -4366,7 +4366,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <button onClick={()=>updateSD({pricingPackages:[...settingsDraft.pricingPackages,{id:Date.now().toString(),icon:"📷",label:"New Package",price:"0",priceNote:"Starting price",desc:"Describe what's included.",image:"",ctaLabel:"Enquire Now",features:[]}]})} style={{...S.btnSm,marginBottom:16}}>+ Add Package</button>
                 {settingsDraft.pricingPackages.map((pk,i)=>(
-                  <div key={pk.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+                  <div key={pk.id} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                       <div><label style={S.lbl}>Icon (emoji)</label><input style={S.inp} value={pk.icon} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,icon:e.target.value}:x)})} /></div>
                       <div><label style={S.lbl}>Package Name</label><input style={S.inp} value={pk.label} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,label:e.target.value}:x)})} /></div>
@@ -4377,7 +4377,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       <div>
                         <label style={S.lbl}>Button Link (optional)</label>
                         <input style={S.inp} value={pk.ctaLink||""} onChange={e=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,ctaLink:e.target.value}:x)})} placeholder="Leave blank for the default Contact page" />
-                        <div style={{fontSize:10.5,color:"#666",marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep sending this button to the Contact page.</div>
+                        <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Paste a full link (https://...) or a page path (e.g. /contact). Leave blank to keep sending this button to the Contact page.</div>
                       </div>
                       <div style={{gridColumn:"1/3"}}>
                         <label style={S.lbl}>Includes (one per line -- shows on the card's flip-back side)</label>
@@ -4385,7 +4385,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </div>
                       <div style={{gridColumn:"1/3"}}><SingleImageUpload label="Photo (optional)" value={pk.image} onChange={v=>updateSD({pricingPackages:settingsDraft.pricingPackages.map((x,idx)=>idx===i?{...x,image:v}:x)})} /></div>
                     </div>
-                    <button onClick={()=>updateSD({pricingPackages:settingsDraft.pricingPackages.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Package</button>
+                    <button onClick={()=>updateSD({pricingPackages:settingsDraft.pricingPackages.filter((_,idx)=>idx!==i)})} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Package</button>
                   </div>
                 ))}
               </div>

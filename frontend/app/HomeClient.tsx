@@ -1911,6 +1911,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [invLoading,setInvLoading]=useState(false);
   const [invErr,setInvErr]=useState("");
   const [invActionBusy,setInvActionBusy]=useState<string|null>(null);
+  // Client Directory (CMS > Client Directory) -- see functions/api/admin/clients.ts. Distinct
+  // from Settings > Clients, which is the unrelated homepage "Our Clients" logo carousel.
+  const [clientDirList,setClientDirList]=useState<any[]|null>(null);
+  const [clientDirLoading,setClientDirLoading]=useState(false);
+  const [clientDirErr,setClientDirErr]=useState("");
+  const [clientDirSearch,setClientDirSearch]=useState("");
+  const [clientDirOpenId,setClientDirOpenId]=useState<string|null>(null);
+  const [clientDirDetail,setClientDirDetail]=useState<any|null>(null);
+  const [clientDirDetailLoading,setClientDirDetailLoading]=useState(false);
   // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
   // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
   const [msgList,setMsgList]=useState<any[]|null>(null);
@@ -2142,6 +2151,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       await loadInvoices();
     }catch(e:any){ setInvErr(e.message||"Could not mark invoice paid"); }
     setInvActionBusy(null);
+  }
+
+  // Client Directory (CMS > Client Directory) -- see functions/api/admin/clients.ts and
+  // functions/api/admin/clients/[id].ts (loaded lazily when a row is expanded).
+  async function loadClientDir(){
+    if(!adminSession) return;
+    setClientDirLoading(true); setClientDirErr("");
+    try{
+      const res=await fetch("/api/admin/clients",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load clients");
+      setClientDirList(data.clients||[]);
+    }catch(e:any){ setClientDirErr(e.message||"Failed to load clients"); }
+    setClientDirLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="clientdir"&&adminSession) loadClientDir(); },[cmsTab,adminSession]);
+  async function loadClientDirDetail(customerId:string){
+    if(!adminSession) return;
+    setClientDirDetailLoading(true); setClientDirDetail(null);
+    try{
+      const res=await fetch(`/api/admin/clients/${customerId}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setClientDirDetail(data);
+    }catch{}
+    setClientDirDetailLoading(false);
   }
 
   async function loadMessages(){
@@ -2873,6 +2907,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
+        <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -3384,6 +3419,79 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* CLIENT DIRECTORY -- every customer, with booking count + lifetime total computed
+            from the existing appointments table (functions/api/admin/clients.ts). Expanding a
+            row lazy-loads that one client's full booking/payment/message history. Not to be
+            confused with Settings > Clients, the unrelated homepage logo carousel. */}
+        {cmsTab==="clientdir"&&(
+          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Client Directory</div>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <input style={{...S.inp,width:220}} placeholder="Search name or email…" value={clientDirSearch} onChange={e=>setClientDirSearch(e.target.value)} />
+                <button onClick={loadClientDir} style={S.btnSm}>↻ Refresh</button>
+              </div>
+            </div>
+            {clientDirErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{clientDirErr}</div>}
+            {clientDirLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!clientDirList||clientDirList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No clients yet.</div>
+            ):(()=>{
+              const q=clientDirSearch.trim().toLowerCase();
+              const filtered=q?clientDirList.filter(c=>(c.full_name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)):clientDirList;
+              return(
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  {filtered.map((c:any)=>{
+                    const open=clientDirOpenId===c.id;
+                    return(
+                      <div key={c.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setClientDirOpenId(willOpen?c.id:null);if(willOpen)loadClientDirDetail(c.id);}}>
+                          <div>
+                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{c.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.email}</span></div>
+                            <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{c.booking_count} booking{c.booking_count===1?"":"s"}{c.last_booking_date?` · Last: ${c.last_booking_date}`:" · Not booked yet"}</div>
+                          </div>
+                          <div style={{fontSize:14,color:"#fff",fontWeight:700}}>AED {Number(c.lifetime_total||0).toLocaleString()}</div>
+                        </div>
+                        {open&&(
+                          <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                            {clientDirDetailLoading?(
+                              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+                            ):!clientDirDetail?(
+                              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>Could not load details.</div>
+                            ):(
+                              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                                {c.phone&&<div style={{fontSize:12,color:"#aaa"}}>Phone: {c.phone}{c.whatsapp?` · WhatsApp: ${c.whatsapp}`:""}{c.company?` · ${c.company}`:""}</div>}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Bookings</div>
+                                {(clientDirDetail.bookings||[]).length===0?(
+                                  <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No bookings.</div>
+                                ):clientDirDetail.bookings.map((b:any)=>(
+                                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#1a1a2e",borderRadius:4,fontSize:12.5}}>
+                                    <span>{b.appointment_ref} · {b.service_name} — {b.package_name}</span>
+                                    <span style={{color:C.MID}}>{String(b.status).replace(/_/g," ")}</span>
+                                  </div>
+                                ))}
+                                {(clientDirDetail.messages||[]).length>0&&(
+                                  <>
+                                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Recent Messages</div>
+                                    {clientDirDetail.messages.slice(-3).map((m:any)=>(
+                                      <div key={m.id} style={{fontSize:12.5,color:"#aaa"}}>{m.sender==="admin"?"You: ":`${c.full_name||"Client"}: `}{String(m.body).slice(0,120)}</div>
+                                    ))}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 

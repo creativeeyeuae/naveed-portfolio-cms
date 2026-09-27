@@ -1900,6 +1900,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [rescheduleTime,setRescheduleTime]=useState("");
   const [cancelReasonFor,setCancelReasonFor]=useState<string|null>(null);
   const [cancelReasonText,setCancelReasonText]=useState("");
+  // Calendar (CMS > Calendar) -- pure frontend, reuses bookingsList (no new endpoint).
+  const [calMonth,setCalMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
+  const [calSelectedDate,setCalSelectedDate]=useState<string|null>(null);
   // Payments ledger (CMS > Payments) -- see functions/api/admin/payments.ts.
   const [payList,setPayList]=useState<any[]|null>(null);
   const [payTotals,setPayTotals]=useState<{paid:number;pending:number;count:number}|null>(null);
@@ -2110,7 +2113,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setBookingsErr(e.message||"Failed to load bookings"); }
     setBookingsLoading(false);
   }
-  useEffect(()=>{ if(cmsTab==="bookings"&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+  useEffect(()=>{ if((cmsTab==="bookings"||cmsTab==="calendar")&&adminSession) loadBookings(); },[cmsTab,adminSession]);
 
   // Payments ledger (CMS > Payments) -- read-only list of every payment; state changes still
   // only ever happen via payments/[id]/approve.ts and reject.ts, called from the Bookings tab.
@@ -2905,6 +2908,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </div>
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
+        <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
@@ -3317,6 +3321,84 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   </div>
                 )}
               </>
+          </div>
+        )}
+
+        {/* CALENDAR -- pure frontend view, no new endpoint: reuses bookingsList (loaded by the
+            same loadBookings() the Bookings tab uses -- see the effect above that now also
+            fires when cmsTab==="calendar"). Click a day with dots to see its bookings. */}
+        {cmsTab==="calendar"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Calendar</div>
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                <button onClick={()=>{setCalMonth(new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1));setCalSelectedDate(null);}} style={S.btnSm}>← Prev</button>
+                <div style={{fontSize:13,color:"#fff",minWidth:140,textAlign:"center"}}>{calMonth.toLocaleString(undefined,{month:"long",year:"numeric"})}</div>
+                <button onClick={()=>{setCalMonth(new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1));setCalSelectedDate(null);}} style={S.btnSm}>Next →</button>
+                <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
+              </div>
+            </div>
+            {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
+            {bookingsLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):(()=>{
+              const byDate=new Map<string,any[]>();
+              for(const b of bookingsList||[]){
+                if(!b.booking_date) continue;
+                if(!byDate.has(b.booking_date)) byDate.set(b.booking_date,[]);
+                byDate.get(b.booking_date)!.push(b);
+              }
+              const year=calMonth.getFullYear(), month=calMonth.getMonth();
+              const firstDay=new Date(year,month,1);
+              const startOffset=firstDay.getDay();
+              const daysInMonth=new Date(year,month+1,0).getDate();
+              const cells:(number|null)[]=[];
+              for(let i=0;i<startOffset;i++) cells.push(null);
+              for(let d=1;d<=daysInMonth;d++) cells.push(d);
+              while(cells.length%7!==0) cells.push(null);
+              const statusColor:Record<string,string>={pending_verification:"#d4a017",confirmed:"#2ecc71",payment_rejected:"#e74c3c",cancelled:"#666",completed:"#3498db"};
+              const pad=(n:number)=>String(n).padStart(2,"0");
+              const todayStr=new Date().toISOString().slice(0,10);
+              return(
+                <>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6,marginBottom:6}}>
+                    {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID,textAlign:"center",padding:"4px 0"}}>{d}</div>)}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6}}>
+                    {cells.map((d,i)=>{
+                      if(d===null) return <div key={i} />;
+                      const dateStr=`${year}-${pad(month+1)}-${pad(d)}`;
+                      const dayBookings=byDate.get(dateStr)||[];
+                      const isSelected=calSelectedDate===dateStr;
+                      const isToday=dateStr===todayStr;
+                      return(
+                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"#1a1a2e":"#10101c",border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:4,cursor:dayBookings.length?"pointer":"default"}}>
+                          <div style={{fontSize:11,color:isToday?C.P:"#888"}}>{d}</div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:4}}>
+                            {dayBookings.slice(0,4).map((b:any)=><div key={b.id} title={b.appointment_ref} style={{width:6,height:6,borderRadius:"50%",background:statusColor[b.status]||C.MID}} />)}
+                            {dayBookings.length>4&&<div style={{fontSize:9,color:C.MID}}>+{dayBookings.length-4}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {calSelectedDate&&(byDate.get(calSelectedDate)||[]).length>0&&(
+                    <div style={{marginTop:24}}>
+                      <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>{calSelectedDate}</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {(byDate.get(calSelectedDate)||[]).map((b:any)=>(
+                          <div key={b.id} style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,fontSize:12.5}}>
+                            <span>{b.booking_time} · {b.appointment_ref} · {b.customers?.full_name} — {b.service_name}</span>
+                            <span style={{color:statusColor[b.status]||C.MID}}>{String(b.status).replace(/_/g," ")}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,marginTop:10}}>Open in Bookings →</button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
 

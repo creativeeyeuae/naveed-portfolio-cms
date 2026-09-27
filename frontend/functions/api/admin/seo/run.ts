@@ -23,6 +23,15 @@ const SITE_URL = "https://bynaveedanjum.com";
 // Safety cap so one run can never hang or hammer the live site -- generous enough to
 // cover the whole real sitemap today, revisit if the site grows past this many pages.
 const MAX_PAGES = 60;
+// Cloudflare Pages Functions run under a strict per-request budget (subrequests and CPU
+// time). Auditing 40+ real pages -- each its own fetch + HTML parse -- in a single request
+// was silently hitting that ceiling partway through, which the platform reports back as a
+// raw HTML error page instead of JSON (the "<!DOCTYPE" error), and the run never got the
+// chance to mark itself "failed" in the database, leaving it stuck showing "running"
+// forever with 0 pages crawled. Fix: do the crawl in small batches across several requests
+// instead of one -- see onRequestPost below. Nothing about what gets checked changes, this
+// only changes how many pages get audited per request.
+const BATCH_SIZE = 5;
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -152,73 +161,126 @@ function scoreByCategory(issues: Issue[], pages: number): Record<string, number>
   return out;
 }
 
+// POST body is either {} (start a brand-new run) or {auditId} (continue a run already
+// in progress). The CMS calls this endpoint repeatedly, once per small batch of pages,
+// until the response comes back with done:true -- see runSeoAudit() in HomeClient.tsx.
 export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) => {
   const origin = request.headers.get("Origin");
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
 
-  // 1) Insert a "running" audit row up front so the dashboard can show progress/failure
-  //    even if the crawl itself throws partway through.
-  const createRes = await supaAdmin(env, "seo_audits", {
-    method: "POST",
-    body: JSON.stringify({ status: "running", triggered_by: admin.email }),
-  });
-  if (!createRes.ok) return json({ error: "Could not start audit run.", detail: await createRes.text() }, 500, origin);
-  const [auditRow] = (await createRes.json()) as any[];
-  const auditId = auditRow.id;
+  let body: any = {};
+  try { body = await request.json(); } catch { /* no body -- starting a new run */ }
+
+  let auditIdForCleanup: string | undefined = body?.auditId || undefined;
 
   try {
-    // 2) Fetch the site's own real sitemap.
+    let auditId: string;
+    let offset: number;
+
+    if (body?.auditId) {
+      // 1a) Continuing an existing run -- pick up where the last batch left off.
+      const existingRes = await supaAdmin(env, `seo_audits?id=eq.${body.auditId}&select=*`);
+      const [existing] = existingRes.ok ? ((await existingRes.json()) as any[]) : [];
+      if (!existing) return json({ error: "That audit run could not be found." }, 404, origin);
+      if (existing.status !== "running") {
+        // Already finished (completed or failed) -- just report the current state back.
+        return json({
+          auditId: existing.id, done: true, pagesCrawled: existing.pages_crawled,
+          totalPages: existing.pages_crawled, totalIssues: existing.total_issues,
+          scoreByCategory: existing.score_by_category,
+        }, 200, origin);
+      }
+      auditId = existing.id;
+      offset = existing.pages_crawled || 0;
+    } else {
+      // 1b) Starting a brand-new run -- insert a "running" row up front so the dashboard
+      //     can show progress/failure even if a later batch never comes back.
+      const createRes = await supaAdmin(env, "seo_audits", {
+        method: "POST",
+        body: JSON.stringify({ status: "running", triggered_by: admin.email, pages_crawled: 0 }),
+      });
+      if (!createRes.ok) return json({ error: "Could not start audit run.", detail: await createRes.text() }, 500, origin);
+      const [auditRow] = (await createRes.json()) as any[];
+      if (!auditRow?.id) return json({ error: "Could not start audit run (no row returned)." }, 500, origin);
+      auditId = auditRow.id;
+      offset = 0;
+    }
+    auditIdForCleanup = auditId;
+
+    // 2) Fetch the site's own real sitemap (cheap -- re-fetched each batch so no crawl
+    //    state has to be stored anywhere beyond the simple pages_crawled offset above).
     const sitemapRes = await fetch(`${SITE_URL}/sitemap.xml`);
     if (!sitemapRes.ok) throw new Error(`Could not fetch sitemap.xml (HTTP ${sitemapRes.status})`);
     const sitemapXml = await sitemapRes.text();
     const urls = Array.from(sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)).map((m) => m[1]).slice(0, MAX_PAGES);
     if (urls.length === 0) throw new Error("Sitemap contained no URLs.");
 
-    // 3) Crawl + audit every real page, sequentially (gentle on the live site).
-    const allIssues: Issue[] = [];
-    let pagesCrawled = 0;
-    for (const url of urls) {
+    // 3) Crawl + audit just this one small batch of real pages (gentle on the live site,
+    //    and small enough to comfortably fit inside a single Worker request's budget).
+    const batch = urls.slice(offset, offset + BATCH_SIZE);
+    const batchIssues: Issue[] = [];
+    let crawledInBatch = 0;
+    for (const url of batch) {
       let path = "/";
       try { path = new URL(url).pathname || "/"; } catch { /* keep default */ }
       try {
         const { status, findings } = await analyzePage(url);
-        allIssues.push(...auditOne(path, url, status, findings));
-        pagesCrawled++;
+        batchIssues.push(...auditOne(path, url, status, findings));
       } catch (e: any) {
-        allIssues.push({
+        batchIssues.push({
           page_path: path, page_url: url, category: "Titles", severity: "critical",
           title: "Page could not be fetched", description: e?.message || "Fetch failed.",
           recommendation: "Check that the page is reachable.", current_value: null, recommended_value: null,
         });
       }
+      crawledInBatch++;
     }
 
-    const scores = scoreByCategory(allIssues, pagesCrawled);
-
-    // 4) Store every real finding (bulk insert), then close out the audit row.
-    if (allIssues.length) {
+    // 4) Store this batch's real findings right away, so nothing is lost even if a later
+    //    batch fails.
+    if (batchIssues.length) {
       const insertRes = await supaAdmin(env, "seo_issues", {
         method: "POST",
-        body: JSON.stringify(allIssues.map((i) => ({ ...i, audit_id: auditId, auto_fixable: false }))),
+        body: JSON.stringify(batchIssues.map((i) => ({ ...i, audit_id: auditId, auto_fixable: false }))),
       });
       if (!insertRes.ok) throw new Error(`Could not save findings: ${await insertRes.text()}`);
     }
+
+    const newOffset = offset + crawledInBatch;
+    const done = newOffset >= urls.length;
+
+    if (!done) {
+      await supaAdmin(env, `seo_audits?id=eq.${auditId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ pages_crawled: newOffset }),
+      });
+      return json({ auditId, done: false, pagesCrawled: newOffset, totalPages: urls.length }, 200, origin);
+    }
+
+    // 5) Last batch: pull every real finding recorded across ALL batches of this run
+    //    (not just this last one) so the score reflects the whole crawl, then close out
+    //    the audit row.
+    const allIssuesRes = await supaAdmin(env, `seo_issues?audit_id=eq.${auditId}&select=severity,category`);
+    const allIssues = allIssuesRes.ok ? ((await allIssuesRes.json()) as any[]) : [];
+    const scores = scoreByCategory(allIssues as any, newOffset);
 
     await supaAdmin(env, `seo_audits?id=eq.${auditId}`, {
       method: "PATCH",
       body: JSON.stringify({
         status: "completed", finished_at: new Date().toISOString(),
-        pages_crawled: pagesCrawled, total_issues: allIssues.length, score_by_category: scores,
+        pages_crawled: newOffset, total_issues: allIssues.length, score_by_category: scores,
       }),
     });
 
-    return json({ auditId, pagesCrawled, totalIssues: allIssues.length, scoreByCategory: scores }, 200, origin);
+    return json({ auditId, done: true, pagesCrawled: newOffset, totalPages: urls.length, totalIssues: allIssues.length, scoreByCategory: scores }, 200, origin);
   } catch (e: any) {
-    await supaAdmin(env, `seo_audits?id=eq.${auditId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status: "failed", finished_at: new Date().toISOString(), error: e?.message || "Unknown error" }),
-    });
+    if (auditIdForCleanup) {
+      await supaAdmin(env, `seo_audits?id=eq.${auditIdForCleanup}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "failed", finished_at: new Date().toISOString(), error: e?.message || "Unknown error" }),
+      }).catch(() => {});
+    }
     return json({ error: "SEO audit run failed.", detail: e?.message || String(e) }, 500, origin);
   }
 };

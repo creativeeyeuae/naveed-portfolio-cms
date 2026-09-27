@@ -1868,6 +1868,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [seoLoading,setSeoLoading]=useState(false);
   const [seoRunning,setSeoRunning]=useState(false);
   const [seoErr,setSeoErr]=useState("");
+  const [seoProgress,setSeoProgress]=useState<{crawled:number,total:number}|null>(null);
   const [seoFilter,setSeoFilter]=useState<"all"|"critical"|"high"|"medium"|"low"|"opportunity">("all");
   // Image alt-text automation (Cloudflare Workers AI) -- see functions/api/admin/seo/alt-text.ts.
   const [altTextRunning,setAltTextRunning]=useState(false);
@@ -2316,16 +2317,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   useEffect(()=>{ if(cmsTab==="seoagent"&&adminSession) loadSeoAudit(); },[cmsTab,adminSession]);
 
+  // Crawls the whole real sitemap in small batches (see functions/api/admin/seo/run.ts) --
+  // one page-audit request per batch, repeated until the server says done, so a big site
+  // never has to fit inside a single request's platform limits. Each response updates the
+  // on-screen "Crawling… (x/y pages)" progress.
   async function runSeoAudit(){
     if(!adminSession) return;
-    setSeoRunning(true); setSeoErr("");
+    setSeoRunning(true); setSeoErr(""); setSeoProgress(null);
     try{
-      const res=await fetch("/api/admin/seo/run",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
-      const data=await res.json();
-      if(!res.ok) throw new Error(data.error||"Audit run failed");
+      let auditId:string|undefined;
+      let done=false;
+      let guard=0;
+      while(!done){
+        if(++guard>200) throw new Error("Audit run is taking unexpectedly long. Please try again.");
+        const res=await fetch("/api/admin/seo/run",{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify(auditId?{auditId}:{})});
+        let data:any;
+        try{ data=await res.json(); }
+        catch{ throw new Error(`The server sent back an unexpected response (HTTP ${res.status}). Please try again.`); }
+        if(!res.ok) throw new Error(data.error||"Audit run failed");
+        auditId=data.auditId;
+        done=!!data.done;
+        setSeoProgress({crawled:data.pagesCrawled||0,total:data.totalPages||0});
+      }
       await loadSeoAudit();
     }catch(e:any){ setSeoErr(e.message||"Audit run failed"); }
-    setSeoRunning(false);
+    setSeoRunning(false); setSeoProgress(null);
   }
 
   async function seoIssueAction(issueId:string,action:"ignore"|"reopen"){
@@ -3116,7 +3132,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:6,textTransform:"uppercase" as const}}>SEO Agent</div>
                 <div style={{fontSize:12.5,color:C.MID,lineHeight:1.6}}>Crawls the real live site and audits every real, public page from your sitemap -- titles, meta descriptions, headings, images, canonical tags, Open Graph, structured data, mobile viewport and content depth. No fake data, ever.</div>
               </div>
-              <button onClick={runSeoAudit} disabled={seoRunning} style={{...S.btnP,opacity:seoRunning?0.6:1,cursor:seoRunning?"default":"pointer"}}>{seoRunning?"⏳ Crawling site…":"▶ Run Full SEO Audit"}</button>
+              <button onClick={runSeoAudit} disabled={seoRunning} style={{...S.btnP,opacity:seoRunning?0.6:1,cursor:seoRunning?"default":"pointer"}}>{seoRunning?(seoProgress&&seoProgress.total?`⏳ Crawling… (${seoProgress.crawled}/${seoProgress.total})`:"⏳ Starting crawl…"):"▶ Run Full SEO Audit"}</button>
             </div>
 
             {seoErr&&<div style={{background:"#3a1414",border:"1px solid #ff6b6b",color:"#ff9b9b",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:16}}>⚠️ {seoErr}</div>}

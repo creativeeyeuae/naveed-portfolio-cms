@@ -1894,6 +1894,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bookingsErr,setBookingsErr]=useState("");
   const [bookingActionBusy,setBookingActionBusy]=useState<string|null>(null);
   const [rejectReasonFor,setRejectReasonFor]=useState<string|null>(null);
+  // Reschedule / Cancel -- new admin booking actions (functions/api/admin/bookings/[id]/*).
+  const [rescheduleFor,setRescheduleFor]=useState<string|null>(null);
+  const [rescheduleDate,setRescheduleDate]=useState("");
+  const [rescheduleTime,setRescheduleTime]=useState("");
+  const [cancelReasonFor,setCancelReasonFor]=useState<string|null>(null);
+  const [cancelReasonText,setCancelReasonText]=useState("");
   // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
   // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
   const [msgList,setMsgList]=useState<any[]|null>(null);
@@ -2247,6 +2253,54 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       setRejectReasonFor(null); setRejectReasonText("");
       await loadBookings();
     }catch(e:any){ setBookingsErr(e.message||"Reject failed"); }
+    setBookingActionBusy(null);
+  }
+  async function rescheduleBooking(appointmentId:string){
+    if(!adminSession||!rescheduleDate||!rescheduleTime) return;
+    setBookingActionBusy(appointmentId);
+    try{
+      const res=await fetch(`/api/admin/bookings/${appointmentId}/reschedule`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({booking_date:rescheduleDate,booking_time:rescheduleTime})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Reschedule failed");
+      setRescheduleFor(null); setRescheduleDate(""); setRescheduleTime("");
+      await loadBookings();
+    }catch(e:any){ setBookingsErr(e.message||"Reschedule failed"); }
+    setBookingActionBusy(null);
+  }
+  async function cancelBooking(appointmentId:string){
+    if(!adminSession||!cancelReasonText.trim()) return;
+    setBookingActionBusy(appointmentId);
+    try{
+      const res=await fetch(`/api/admin/bookings/${appointmentId}/cancel`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({reason:cancelReasonText.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Cancel failed");
+      setCancelReasonFor(null); setCancelReasonText("");
+      await loadBookings();
+    }catch(e:any){ setBookingsErr(e.message||"Cancel failed"); }
+    setBookingActionBusy(null);
+  }
+  async function completeBooking(appointmentId:string){
+    if(!adminSession) return;
+    setBookingActionBusy(appointmentId);
+    try{
+      const res=await fetch(`/api/admin/bookings/${appointmentId}/complete`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Mark complete failed");
+      await loadBookings();
+    }catch(e:any){ setBookingsErr(e.message||"Mark complete failed"); }
+    setBookingActionBusy(null);
+  }
+  // No new backend endpoint: reuses the existing client-messages system. HomeClient.tsx's own
+  // client/page.tsx receipt-reupload widget now shows for any bank-transfer payment that
+  // isn't paid yet, so this just nudges the client via the thread they already see.
+  async function requestNewReceipt(appointmentId:string,customerId:string,ref:string){
+    if(!adminSession||!customerId) return;
+    setBookingActionBusy(appointmentId);
+    try{
+      const res=await fetch(`/api/admin/messages`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({customer_id:customerId,body:`Could you please re-upload your payment receipt for booking ${ref}? We couldn't verify the one on file -- you can upload a new one from your client portal.`})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not send request");
+    }catch(e:any){ setBookingsErr(e.message||"Could not send request"); }
     setBookingActionBusy(null);
   }
   const [form,setForm]=useState<Partial<Project>&{images:Img[];reels:string[];videos:string[];categories:string[]}>({title:"",slug:"",categories:[],description:"",fullDescription:"",clientName:"",location:"",projectDate:"",tags:[],featured:false,coverImage:"",images:[],videos:[],reels:[],youtubeUrl:"",projectName:"",bannerTitle:"",bannerImage:""});
@@ -3142,6 +3196,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 <button onClick={()=>setRejectReasonFor(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>✕ Reject</button>
                               </div>
                             )
+                          )}
+                          {!["cancelled","completed"].includes(b.status)&&(
+                            <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10,paddingTop:10,borderTop:`1px solid ${C.BORDER}`}}>
+                              {rescheduleFor===b.id?(
+                                <div style={{display:"flex",gap:8,flexWrap:"wrap",width:"100%",alignItems:"center"}}>
+                                  <input type="date" style={{...S.inp,width:150}} value={rescheduleDate} onChange={e=>setRescheduleDate(e.target.value)} />
+                                  <input type="time" style={{...S.inp,width:120}} value={rescheduleTime} onChange={e=>setRescheduleTime(e.target.value)} />
+                                  <button onClick={()=>rescheduleBooking(b.id)} disabled={bookingActionBusy===b.id||!rescheduleDate||!rescheduleTime} style={S.btnP}>Confirm New Date</button>
+                                  <button onClick={()=>{setRescheduleFor(null);setRescheduleDate("");setRescheduleTime("");}} style={S.btnSm}>Cancel</button>
+                                </div>
+                              ):cancelReasonFor===b.id?(
+                                <div style={{display:"flex",gap:8,flexWrap:"wrap",width:"100%"}}>
+                                  <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Cancellation reason (shown to client)" value={cancelReasonText} onChange={e=>setCancelReasonText(e.target.value)} />
+                                  <button onClick={()=>cancelBooking(b.id)} disabled={bookingActionBusy===b.id||!cancelReasonText.trim()} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Confirm Cancel</button>
+                                  <button onClick={()=>{setCancelReasonFor(null);setCancelReasonText("");}} style={S.btnSm}>Back</button>
+                                </div>
+                              ):(
+                                <>
+                                  <button onClick={()=>{setRescheduleFor(b.id);setRescheduleDate(b.booking_date||"");setRescheduleTime(b.booking_time||"");}} disabled={bookingActionBusy===b.id} style={S.btnSm}>Reschedule</button>
+                                  {b.status==="confirmed"&&<button onClick={()=>completeBooking(b.id)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Mark Complete</button>}
+                                  {payment&&payment.method==="bank_transfer"&&payment.status!=="paid"&&<button onClick={()=>requestNewReceipt(b.id,b.customer_id,b.appointment_ref)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Request New Receipt</button>}
+                                  <button onClick={()=>{setCancelReasonFor(b.id);setCancelReasonText("");}} disabled={bookingActionBusy===b.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Cancel Booking</button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       );

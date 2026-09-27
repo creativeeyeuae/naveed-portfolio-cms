@@ -146,16 +146,16 @@ function BookingCard({ b, onReceiptChanged }: { b: Booking; onReceiptChanged: ()
           )}
         </div>
       )}
-      {payment?.status === "rejected" && (
+      {/* Bank-transfer re-upload widens beyond just "rejected": it also covers the admin's
+          "Request New Receipt" action (e.g. an unreadable file) and the first upload, so any
+          bank-transfer payment that isn't paid yet can always get a fresh receipt attached. */}
+      {payment?.method === "bank_transfer" && payment.status !== "paid" && (
         <div style={{ marginTop: 6 }}>
-          {payment.rejection_reason && (
+          {payment.status === "rejected" && payment.rejection_reason && (
             <div style={{ fontSize: 12.5, color: "#e74c3c", marginBottom: 4 }}>Reason: {payment.rejection_reason}</div>
           )}
           <ReceiptReupload appointmentId={b.id} onDone={onReceiptChanged} />
         </div>
-      )}
-      {b.status === "pending_payment" && payment?.method === "bank_transfer" && !payment?.receipt_path && (
-        <ReceiptReupload appointmentId={b.id} onDone={onReceiptChanged} />
       )}
     </div>
   );

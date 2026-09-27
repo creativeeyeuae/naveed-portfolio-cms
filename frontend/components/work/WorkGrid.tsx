@@ -7,11 +7,10 @@
 // linkable, indexable page at /work so it's reachable from anywhere on the site, not only by
 // clicking through the homepage first.
 //
-// Two tabs live on top of it (Naveed's request): "Selected Work" is this original uniform
-// grid, unchanged. "All Projects" reuses the site's existing bento/masonry pattern -- the
-// same .egallery/.eg-span-* classes the project-detail gallery already uses (styles/globals.css)
-// -- so tiles vary big/small the way the homepage's own layouts do, without inventing a second
-// bento system.
+// Two tabs live on top of it: "Selected Work" and "All Projects". Both render through the
+// exact same uniform grid below -- they used to differ (All Projects used a big/small bento
+// layout), which read as an inconsistent gallery style, so both now share one render path
+// and can't drift apart again.
 import { useState } from "react";
 import Link from "next/link";
 import { CmsProject } from "@/lib/cmsData";
@@ -25,14 +24,6 @@ const C = {
   DARK: "var(--c-dark,#140D21)",
   BORDER: "var(--c-border,#2D1F45)",
 };
-
-// Deterministic big/small rhythm for the "All Projects" bento view -- cycles every 7 tiles
-// (2 big, 5 small) so the grid always reads as varied ("some picture big some small") no
-// matter how many projects exist, without needing to measure each image's real dimensions.
-const BENTO_SPAN = [2, 1, 1, 2, 1, 1, 1];
-function bentoSpan(i: number) {
-  return BENTO_SPAN[i % BENTO_SPAN.length];
-}
 
 function ProjectCard({ p, span }: { p: CmsProject; span?: number }) {
   return (
@@ -122,18 +113,17 @@ export default function WorkGrid({ projects }: { projects: CmsProject[] }) {
         })}
       </div>
 
+      {/* "All Projects" now renders with the exact same uniform grid as "Selected Work"
+          (Naveed's request -- the two tabs previously showed identical content in two
+          different layouts: this uniform grid vs a big/small bento pattern, which read as
+          inconsistent). Both tabs share this one render path so they can never drift apart
+          again; `view` is kept only to highlight which tab is active. */}
       {filtered.length === 0 ? (
         <div style={{ padding: "60px 0", textAlign: "center", color: C.MID, fontSize: 14 }}>No projects in this category yet.</div>
-      ) : view === "selected" ? (
+      ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(360px,1fr))", gap: 3 }}>
           {filtered.map((p) => (
             <ProjectCard key={p.id} p={p} />
-          ))}
-        </div>
-      ) : (
-        <div className="egallery">
-          {filtered.map((p, i) => (
-            <ProjectCard key={p.id} p={p} span={bentoSpan(i)} />
           ))}
         </div>
       )}

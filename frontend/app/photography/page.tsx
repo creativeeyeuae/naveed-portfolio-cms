@@ -1,7 +1,18 @@
-import { getRealProjects, getPublicSiteInfo } from "@/lib/cmsData";
+import { getRealProjects, getPublicSiteInfo, getHubPageFaqs } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
 import WorkGrid from "@/components/work/WorkGrid";
+import FaqSection from "@/components/FaqSection";
+
+// Real default FAQs for this hub page -- editable in CMS > Service Pages ("photography"),
+// same override pattern as every standalone service page. Shown as-is until an admin adds
+// their own FAQs there, never blank.
+const DEFAULT_FAQS = [
+  { q: "What kind of photography services do you offer in Dubai?", a: "Real estate, architectural, commercial, product, event, corporate headshot, personal branding and lifestyle photography -- see the service links above for details on each." },
+  { q: "Do you photograph both stills and video?", a: "Yes -- photography and cinematography are both offered, often on the same booking. See the Cinematography page for video-specific work." },
+  { q: "How do I get a quote for a photography project?", a: "Message on WhatsApp or email with your brief (what's being shot, location, intended use) for a tailored quote." },
+  { q: "Are you available for projects outside Dubai?", a: "Yes -- based in Dubai and available across the UAE." },
+];
 
 // Real, indexable /photography page -- rebuilt from scratch to replace the old version,
 // which called `lib/api.ts` (a client for the `backend/` Cloudflare Worker that was designed
@@ -35,7 +46,7 @@ export async function generateMetadata() {
 }
 
 export default async function PhotographyPage() {
-  const [allProjects, site] = await Promise.all([getRealProjects(), getPublicSiteInfo()]);
+  const [allProjects, site, faqs] = await Promise.all([getRealProjects(), getPublicSiteInfo(), getHubPageFaqs("photography", DEFAULT_FAQS)]);
   const projects = allProjects.filter(
     (p) => !p.categories?.some((c) => VIDEO_CATEGORIES.includes(c))
   );
@@ -74,6 +85,7 @@ export default async function PhotographyPage() {
         </div>
       </div>
       <WorkGrid projects={projects} />
+      <FaqSection faqs={faqs} />
     </InternalPageTemplate>
   );
 }

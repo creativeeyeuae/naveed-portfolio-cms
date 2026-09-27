@@ -649,3 +649,95 @@ export async function submitContactLead(entry: ContactLeadInput): Promise<boolea
     return false;
   }
 }
+
+// ─── SERVICE PAGE OVERRIDES (CMS > Service Pages) ───────────────────────────
+// Every standalone SEO service page (app/<slug>/page.tsx, e.g. commercial-photographer-dubai)
+// and the two hub pages (/photography, /cinematography) previously had their whole content --
+// eyebrow, H1, intro, section copy, FAQs, related projects -- hardcoded directly in the page
+// file, so Naveed could never edit any of it without a code change. This adds one more
+// site_settings row ("nap_service_pages", same key/value JSON pattern as every other CMS
+// field above) holding a single object keyed by page slug ("commercial-photographer-dubai",
+// "photography", ...), each value a PARTIAL override of that page's own hardcoded defaults.
+// Deliberately partial/additive per field, not a full replacement: a page the admin has never
+// opened in CMS > Service Pages has no entry here at all and renders its exact original
+// hardcoded copy, byte for byte -- this can only ever change what an admin actually edited and
+// saved, never silently blank out real content that was never touched.
+export type CmsServicePageContent = {
+  eyebrow?: string;
+  h1?: string;
+  intro?: string;
+  serviceLabel?: string;
+  heroImage?: string;
+  heroImageAlt?: string;
+  sections?: { heading: string; body: string }[];
+  faqs?: { q: string; a: string }[];
+  relatedProjects?: { slug: string; title: string; image: string; categoryLabel?: string }[];
+};
+
+let servicePageOverridesCache: Promise<Record<string, CmsServicePageContent>> | null = null;
+async function readServicePageOverrides(): Promise<Record<string, CmsServicePageContent>> {
+  if (servicePageOverridesCache) return servicePageOverridesCache;
+  servicePageOverridesCache = (async (): Promise<Record<string, CmsServicePageContent>> => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) return {};
+    try {
+      const res = await fetchWithRetry(
+        `${url}/rest/v1/site_settings?select=value&key=eq.nap_service_pages`,
+        { headers: { apikey: anonKey } }
+      );
+      if (!res) return {};
+      const rows = (await res.json()) as { value?: string }[];
+      const value = rows?.[0]?.value;
+      if (!value) return {};
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  })();
+  return servicePageOverridesCache;
+}
+
+// Merges a page's real CMS override (if any) over its hardcoded fallback content -- called
+// from each app/<slug>/page.tsx with that page's own existing hardcoded object as `fallback`,
+// so nothing changes for a page that's never been opened in CMS > Service Pages. Arrays
+// (sections/faqs/relatedProjects) are only replaced when the override actually provides a
+// non-empty array for that field -- an admin who added FAQs but never touched Sections keeps
+// this page's real original Sections, not an emptied-out list.
+export async function getServicePageContent<T extends {
+  eyebrow: string; h1: string; intro: string; serviceLabel: string;
+  heroImage?: { src: string; alt: string };
+  sections: { heading: string; body: string }[];
+  faqs: { q: string; a: string }[];
+  relatedProjects?: { slug: string; title: string; image: string; categoryLabel?: string }[];
+}>(slug: string, fallback: T): Promise<T> {
+  const overrides = await readServicePageOverrides();
+  const o = overrides[slug];
+  if (!o) return fallback;
+  return {
+    ...fallback,
+    eyebrow: o.eyebrow || fallback.eyebrow,
+    h1: o.h1 || fallback.h1,
+    intro: o.intro || fallback.intro,
+    serviceLabel: o.serviceLabel || fallback.serviceLabel,
+    heroImage: o.heroImage
+      ? { src: o.heroImage, alt: o.heroImageAlt || fallback.heroImage?.alt || o.h1 || fallback.h1 }
+      : fallback.heroImage,
+    sections: o.sections && o.sections.length ? o.sections : fallback.sections,
+    faqs: o.faqs && o.faqs.length ? o.faqs : fallback.faqs,
+    relatedProjects: o.relatedProjects && o.relatedProjects.length ? o.relatedProjects : fallback.relatedProjects,
+  };
+}
+
+// Same override lookup, for the two hub pages (/photography, /cinematography) which only
+// need an optional FAQ block added on top of their existing real-project grid -- everything
+// else on those pages (title, description, the project grid itself) is untouched.
+export async function getHubPageFaqs(
+  slug: "photography" | "cinematography",
+  fallback: { q: string; a: string }[] = []
+): Promise<{ q: string; a: string }[]> {
+  const overrides = await readServicePageOverrides();
+  const faqs = overrides[slug]?.faqs;
+  return faqs && faqs.length ? faqs : fallback;
+}

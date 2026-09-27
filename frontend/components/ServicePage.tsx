@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
 import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps } from "@/lib/seo";
+import FaqSection from "@/components/FaqSection";
 
 const P = "#8B5CF6", PL = "#E2D9F3", DARK = "#140D21", BG = "#09060E", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#2D1F45";
 const WA_NUMBER = "971581174911";
@@ -45,18 +46,10 @@ export type ServicePageData = {
 
 export default function ServicePage({ data }: { data: ServicePageData }) {
   const related = SERVICE_PAGES.filter((s) => s.slug !== data.slug);
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: data.faqs.map((f) => ({
-      "@type": "Question",
-      name: f.q,
-      acceptedAnswer: { "@type": "Answer", text: f.a },
-    })),
-  };
   // Service + BreadcrumbList (+ ImageObject when a hero photo is set) -- added once here so
   // every page using ServicePage picks them up automatically, no per-page edits needed.
   // LocalBusiness/ProfessionalService is NOT repeated (already site-wide in app/layout.tsx).
+  // FAQPage schema is handled by <FaqSection> below, next to the FAQ list it describes.
   const serviceSchema = serviceJsonLd({ path: `/${data.slug}/`, name: data.h1, description: data.intro });
   const breadcrumbSchema = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -66,7 +59,6 @@ export default function ServicePage({ data }: { data: ServicePageData }) {
 
   return (
     <div style={{ background: BG, color: FG, minHeight: "100vh", fontFamily: "inherit" }}>
-      <script {...jsonLdScriptProps(faqSchema)} />
       <script {...jsonLdScriptProps(serviceSchema)} />
       <script {...jsonLdScriptProps(breadcrumbSchema)} />
       {imageSchema && <script {...jsonLdScriptProps(imageSchema)} />}
@@ -166,20 +158,8 @@ export default function ServicePage({ data }: { data: ServicePageData }) {
         </div>
       </section>
 
-      {/* FAQs -- also embedded above as FAQPage schema for rich-result eligibility. */}
-      <section style={{ padding: "0 24px 72px", background: DARK }}>
-        <div style={{ maxWidth: 880, margin: "0 auto", padding: "64px 0 0" }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 28 }}>Frequently Asked Questions</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-            {data.faqs.map((f, i) => (
-              <div key={i} style={{ borderBottom: `1px solid ${BORDER}`, paddingBottom: 20 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: FG, marginBottom: 8 }}>{f.q}</div>
-                <div style={{ fontSize: 14, lineHeight: 1.75, color: "rgba(255,255,255,0.68)" }}>{f.a}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* FAQs -- also embedded as FAQPage schema for rich-result eligibility (see FaqSection). */}
+      <FaqSection faqs={data.faqs} background={DARK} />
 
       {/* Related services -- real internal <a>/<Link> anchors so both crawlers and visitors
           can move between every service page and back to the main portfolio. */}

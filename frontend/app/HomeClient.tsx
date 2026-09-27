@@ -37,6 +37,19 @@ type Project = { id:string;title:string;slug:string;categories:string[];descript
                           // "Portrait" for a vertical video.
 };
 type Testimonial = { id:string;name:string;role:string;company:string;quote:string;featured:boolean; };
+// CMS > Service Pages: one optional override per standalone SEO page (the 15 /xxx-dubai
+// pages plus the "photography"/"cinematography" hubs), keyed by slug. Every field is
+// optional -- a page with no entry here, or a field left blank, just keeps showing its real
+// original hardcoded content (see getServicePageContent in lib/cmsData.ts). Never a full
+// content model duplicated here; only what an admin can actually override from this tab.
+type ServicePageFaq = { q:string; a:string };
+type ServicePageSectionItem = { heading:string; body:string };
+type ServicePageRelated = { slug:string; title:string; image:string; categoryLabel:string };
+type ServicePageOverride = {
+  eyebrow:string; h1:string; intro:string; serviceLabel:string;
+  heroImage:string; heroImageAlt:string;
+  sections:ServicePageSectionItem[]; faqs:ServicePageFaq[]; relatedProjects:ServicePageRelated[];
+};
 type BlogPost = { id:string;title:string;slug:string;excerpt:string;date:string;category:string;coverImage:string;content:string; };
 type Service = { id:string;icon:string;title:string;desc:string;detail:string;deliverables:string[]; };
 // CMS-editable "WordPress Customizer"-style theme: every brand color (ThemeColors) and every
@@ -502,7 +515,7 @@ async function hasAdminAccess(): Promise<boolean> {
 // needed, nothing about who can write this table changes, this only fixes which key the
 // CMS's own save calls actually send.
 const sbData = (_sbUrl && _sbKey) ? _createSupabaseClient(_sbUrl,_sbKey,{auth:{persistSession:false,autoRefreshToken:false}}) : null;
-const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog","nap_blogcats"] as const;
+const CLOUD_KEYS = ["nap_settings","nap_projects","nap_cats","nap_testimonials","nap_blog","nap_blogcats","nap_service_pages"] as const;
 async function fetchCloudData(): Promise<Partial<Record<typeof CLOUD_KEYS[number],any>>|null> {
   if(!sbData) return null;
   try {
@@ -1607,6 +1620,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [testimonials,setTestimonials]=useState<Testimonial[]>(DEF_TESTIMONIALS);
   const [blog,setBlog]=useState<BlogPost[]>(DEF_BLOG);
   const [blogCats,setBlogCats]=useState<string[]>(DEF_BLOG_CATS);
+  // CMS > Service Pages -- keyed by slug, see ServicePageOverride above. Starts empty (no
+  // page has been edited yet), which is exactly right: every /xxx-dubai page and the two
+  // hub pages already keep showing their real original hardcoded content until an admin
+  // actually opens this tab and saves something for that specific slug.
+  const [servicePages,setServicePages]=useState<Record<string,ServicePageOverride>>({});
   const [page,setPage]=useState("home");
   const [selProj,setSelProj]=useState<Project|null>(null);
   const [selBlog,setSelBlog]=useState<BlogPost|null>(null);
@@ -1666,6 +1684,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setTestimonials(ls("nap_testimonials",DEF_TESTIMONIALS));
     setBlog(ls("nap_blog",DEF_BLOG));
     setBlogCats(ls("nap_blogcats",DEF_BLOG_CATS));
+    setServicePages(ls("nap_service_pages",{}));
   },[]);
 
   // Admin is reached only via a private link (?admin=1) — never shown in the public nav.
@@ -1790,6 +1809,38 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
   const [editId,setEditId]=useState<string|null>(null);
   const [cmsTab,setCmsTab]=useState("projects");
+
+  // CMS > Service Pages editor state -- same shape as the Projects editor above (spEditSlug
+  // is this tab's "editId": which page's override is currently open; spForm is that page's
+  // in-progress draft, only written into `servicePages` on an explicit Save click).
+  const [spEditSlug,setSpEditSlug]=useState<string|null>(null);
+  const [spForm,setSpForm]=useState<ServicePageOverride>({eyebrow:"",h1:"",intro:"",serviceLabel:"",heroImage:"",heroImageAlt:"",sections:[],faqs:[],relatedProjects:[]});
+  const [spNewSecH,setSpNewSecH]=useState(""); const [spNewSecB,setSpNewSecB]=useState("");
+  const [spNewFaqQ,setSpNewFaqQ]=useState(""); const [spNewFaqA,setSpNewFaqA]=useState("");
+  const [spAddProjId,setSpAddProjId]=useState("");
+  const SP_EMPTY_OVERRIDE:ServicePageOverride={eyebrow:"",h1:"",intro:"",serviceLabel:"",heroImage:"",heroImageAlt:"",sections:[],faqs:[],relatedProjects:[]};
+  // The 15 real /xxx-dubai pages (from lib/servicePagesData.ts, already imported above --
+  // single source of truth, never duplicated) plus the two hub pages that also take an
+  // optional FAQ-only override (app/photography, app/cinematography).
+  const SP_PAGES:{slug:string;label:string}[] = [
+    ...SERVICE_PAGES,
+    {slug:"photography",label:"Photography (hub page)"},
+    {slug:"cinematography",label:"Cinematography (hub page)"},
+  ];
+  function spStartEdit(slug:string){
+    setSpEditSlug(slug);
+    setSpForm({...SP_EMPTY_OVERRIDE,...(servicePages[slug]||{})});
+    setSpNewSecH("");setSpNewSecB("");setSpNewFaqQ("");setSpNewFaqA("");setSpAddProjId("");
+  }
+  function spSave(){
+    if(!spEditSlug)return;
+    setServicePages(sp=>({...sp,[spEditSlug]:spForm}));
+  }
+  function spDeleteOverride(slug:string){
+    if(!confirm("Reset this page back to its default site content? This removes everything edited here for this page."))return;
+    setServicePages(sp=>{const next={...sp};delete next[slug];return next;});
+    if(spEditSlug===slug){setSpEditSlug(null);}
+  }
 
   // Lazy-load contact-form submissions only when the CMS Leads tab is actually opened --
   // never on a normal public page load (see the note above addContactLead/fetchContactLeads).
@@ -2284,6 +2335,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   useEffect(()=>{try{localStorage.setItem("nap_testimonials",JSON.stringify(testimonials));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_testimonials",testimonials,"Testimonials");},[testimonials,authed,cloudDataConfirmed]);
   useEffect(()=>{try{localStorage.setItem("nap_blog",JSON.stringify(blog));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_blog",blog,"Blog");},[blog,authed,cloudDataConfirmed]);
   useEffect(()=>{try{localStorage.setItem("nap_blogcats",JSON.stringify(blogCats));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_blogcats",blogCats,"Blog Categories");},[blogCats,authed,cloudDataConfirmed]);
+  useEffect(()=>{try{localStorage.setItem("nap_service_pages",JSON.stringify(servicePages));}catch{}; if(authed&&cloudDataConfirmed) pushCloudDataChecked("nap_service_pages",servicePages,"Service Pages");},[servicePages,authed,cloudDataConfirmed]);
   // Lets the admin actually see it when saves are blocked, instead of edits silently not going
   // out: authenticated, the initial fetch has finished, but it never confirmed real cloud data
   // (offline, Supabase unreachable, etc). Clears itself the moment a real save succeeds
@@ -2308,6 +2360,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
         if(cloud.nap_blog) setBlog(cloud.nap_blog);
         if(cloud.nap_blogcats) setBlogCats(cloud.nap_blogcats);
+        if(cloud.nap_service_pages) setServicePages(cloud.nap_service_pages);
       }
       setCloudLoaded(true);
       setCloudDataConfirmed(!!cloud);
@@ -2688,7 +2741,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     const cmsPageTitle:Record<string,string> = {
       dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
-      activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent",
+      activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
@@ -2740,6 +2793,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavSection label="SEO" />
         <CmsNavItem icon="🤖" label="SEO Agent" active={cmsTab==="seoagent"} onClick={()=>setCmsTab("seoagent")} />
         <CmsNavItem icon="🔍" label="SEO & Metadata" active={cmsTab==="settings"&&settingsTab==="seo"} onClick={()=>{setCmsTab("settings");setSettingsTab("seo");}} />
+        <CmsNavItem icon="🧭" label="Service Pages" active={cmsTab==="servicepages"} onClick={()=>setCmsTab("servicepages")} />
         <CmsNavSection label="System" />
         <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
         <CmsNavItem icon="⚠️" label="Error Logs" active={cmsTab==="errorlog"} onClick={()=>setCmsTab("errorlog")} />
@@ -4026,6 +4080,113 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
           </div>
         )}
+
+        {/* SERVICE PAGES -- CMS-editable overrides for the 15 standalone /xxx-dubai SEO
+            pages plus the /photography and /cinematography hub pages. Same two-pane
+            list+form layout as PORTFOLIO above. A page with no saved override here keeps
+            showing its real original content untouched (see getServicePageContent /
+            getHubPageFaqs in lib/cmsData.ts) -- this can only ever add/change what's
+            actually saved for a given page, never blank anything out on its own. */}
+        {cmsTab==="servicepages"&&(()=>{
+          const isHub = spEditSlug==="photography"||spEditSlug==="cinematography";
+          return(
+          <div style={{display:"flex",minHeight:"calc(100vh - 60px)"}}>
+            <div style={{width:300,borderRight:`1px solid ${C.BORDER}`,padding:16,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
+              <div style={{fontSize:10,letterSpacing:3,color:"#444",marginBottom:12,textTransform:"uppercase"}}>{SP_PAGES.length} Pages</div>
+              <div style={{fontSize:11,color:"#555",marginBottom:14,lineHeight:1.6}}>Pick a page to edit its title, intro, sections, FAQs and related work. A page you've never saved here keeps showing its normal site content.</div>
+              {SP_PAGES.map(p=>{
+                const customized=!!servicePages[p.slug];
+                return(
+                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:spEditSlug===p.slug?"#12121e":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontSize:12,color:C.FG}}>{p.label}</div>
+                    <div style={{fontSize:10,color:customized?C.PL:"#555"}}>{customized?"● Customized":"Default site content"}</div>
+                  </div>
+                  {customized&&<button onClick={e=>{e.stopPropagation();spDeleteOverride(p.slug);}} title="Reset to default" style={{background:"none",border:"none",color:"#444",cursor:"pointer",flexShrink:0}}>✕</button>}
+                </div>
+                );
+              })}
+            </div>
+            <div style={{flex:1,padding:32,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
+              {spEditSlug?(
+                <div style={{maxWidth:720}} onKeyDown={e=>{ if(e.key==="Enter" && (e.target as HTMLElement).tagName==="INPUT" && (e.target as HTMLElement).getAttribute("data-allow-enter")!=="true"){ e.preventDefault(); } }}>
+                  <div style={{fontSize:13,color:C.MID,marginBottom:20}}>Editing: <strong style={{color:C.FG}}>{SP_PAGES.find(p=>p.slug===spEditSlug)?.label}</strong> · /{spEditSlug==="photography"||spEditSlug==="cinematography"?spEditSlug:spEditSlug}</div>
+
+                  {!isHub&&(<>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+                      <div><label style={S.lbl}>Eyebrow</label><input style={S.inp} value={spForm.eyebrow} onChange={e=>setSpForm(f=>({...f,eyebrow:e.target.value}))} placeholder="Leave blank to keep default" /></div>
+                      <div><label style={S.lbl}>Service Label (used in WhatsApp message)</label><input style={S.inp} value={spForm.serviceLabel} onChange={e=>setSpForm(f=>({...f,serviceLabel:e.target.value}))} placeholder="Leave blank to keep default" /></div>
+                    </div>
+                    <div style={{marginBottom:16}}><label style={S.lbl}>Page Title (H1)</label><input style={S.inp} value={spForm.h1} onChange={e=>setSpForm(f=>({...f,h1:e.target.value}))} placeholder="Leave blank to keep default" /></div>
+                    <div style={{marginBottom:16}}><label style={S.lbl}>Intro</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={spForm.intro} onChange={e=>setSpForm(f=>({...f,intro:e.target.value}))} placeholder="Leave blank to keep default" /></div>
+                    <div style={{marginBottom:16}}>
+                      <SingleImageUpload value={spForm.heroImage} onChange={url=>setSpForm(f=>({...f,heroImage:url}))} label="Hero Image (optional -- leave blank to keep default)" />
+                      <div style={{marginTop:8}}><label style={S.lbl}>Hero Image Alt Text</label><input style={S.inp} value={spForm.heroImageAlt} onChange={e=>setSpForm(f=>({...f,heroImageAlt:e.target.value}))} placeholder="Describe the photo for search engines" /></div>
+                    </div>
+
+                    <div style={{marginBottom:8}}><label style={S.lbl}>Content Sections</label></div>
+                    {spForm.sections.map((s,i)=>(
+                      <div key={i} style={{border:`1px solid ${C.BORDER}`,borderRadius:6,padding:12,marginBottom:10}}>
+                        <input style={{...S.inp,marginBottom:8}} value={s.heading} onChange={e=>setSpForm(f=>({...f,sections:f.sections.map((x,idx)=>idx===i?{...x,heading:e.target.value}:x)}))} placeholder="Heading" />
+                        <textarea style={{...S.inp,height:70,resize:"vertical" as const,marginBottom:8}} value={s.body} onChange={e=>setSpForm(f=>({...f,sections:f.sections.map((x,idx)=>idx===i?{...x,body:e.target.value}:x)}))} placeholder="Body text" />
+                        <button onClick={()=>setSpForm(f=>({...f,sections:f.sections.filter((_,idx)=>idx!==i)}))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove Section</button>
+                      </div>
+                    ))}
+                    <div style={{border:`1px dashed ${C.BORDER}`,borderRadius:6,padding:12,marginBottom:16}}>
+                      <input style={{...S.inp,marginBottom:8}} value={spNewSecH} onChange={e=>setSpNewSecH(e.target.value)} placeholder="New section heading" />
+                      <textarea style={{...S.inp,height:60,resize:"vertical" as const,marginBottom:8}} value={spNewSecB} onChange={e=>setSpNewSecB(e.target.value)} placeholder="New section body" />
+                      <button onClick={()=>{if(!spNewSecH.trim())return;setSpForm(f=>({...f,sections:[...f.sections,{heading:spNewSecH.trim(),body:spNewSecB.trim()}]}));setSpNewSecH("");setSpNewSecB("");}} style={S.btnSm}>+ Add Section</button>
+                    </div>
+                  </>)}
+
+                  <div style={{marginBottom:8}}><label style={S.lbl}>FAQs {isHub&&"(this hub page only shows FAQs -- no other fields above apply)"}</label></div>
+                  {spForm.faqs.map((fq,i)=>(
+                    <div key={i} style={{border:`1px solid ${C.BORDER}`,borderRadius:6,padding:12,marginBottom:10}}>
+                      <input style={{...S.inp,marginBottom:8}} value={fq.q} onChange={e=>setSpForm(f=>({...f,faqs:f.faqs.map((x,idx)=>idx===i?{...x,q:e.target.value}:x)}))} placeholder="Question" />
+                      <textarea style={{...S.inp,height:56,resize:"vertical" as const,marginBottom:8}} value={fq.a} onChange={e=>setSpForm(f=>({...f,faqs:f.faqs.map((x,idx)=>idx===i?{...x,a:e.target.value}:x)}))} placeholder="Answer" />
+                      <button onClick={()=>setSpForm(f=>({...f,faqs:f.faqs.filter((_,idx)=>idx!==i)}))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove FAQ</button>
+                    </div>
+                  ))}
+                  <div style={{border:`1px dashed ${C.BORDER}`,borderRadius:6,padding:12,marginBottom:16}}>
+                    <input style={{...S.inp,marginBottom:8}} value={spNewFaqQ} onChange={e=>setSpNewFaqQ(e.target.value)} placeholder="New FAQ question" />
+                    <textarea style={{...S.inp,height:56,resize:"vertical" as const,marginBottom:8}} value={spNewFaqA} onChange={e=>setSpNewFaqA(e.target.value)} placeholder="New FAQ answer" />
+                    <button onClick={()=>{if(!spNewFaqQ.trim()||!spNewFaqA.trim())return;setSpForm(f=>({...f,faqs:[...f.faqs,{q:spNewFaqQ.trim(),a:spNewFaqA.trim()}]}));setSpNewFaqQ("");setSpNewFaqA("");}} style={S.btnSm}>+ Add FAQ</button>
+                  </div>
+
+                  {!isHub&&(<>
+                    <div style={{marginBottom:8}}><label style={S.lbl}>Related Projects (shown as portfolio proof on this page)</label></div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                      {spForm.relatedProjects.map((rp,i)=>(
+                        <span key={i} style={{fontSize:11,padding:"6px 10px",border:`1px solid ${C.BORDER}`,borderRadius:20,color:C.MID,display:"flex",alignItems:"center",gap:6}}>
+                          {rp.title}
+                          <button onClick={()=>setSpForm(f=>({...f,relatedProjects:f.relatedProjects.filter((_,idx)=>idx!==i)}))} style={{background:"none",border:"none",color:"#666",cursor:"pointer",fontSize:11}}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",gap:8,marginBottom:16}}>
+                      <select style={{...S.inp,flex:1}} value={spAddProjId} onChange={e=>setSpAddProjId(e.target.value)}>
+                        <option value="">Choose a project to add...</option>
+                        {projects.filter(pr=>!spForm.relatedProjects.some(rp=>rp.slug===pr.slug)).map(pr=><option key={pr.id} value={pr.id}>{pr.title}</option>)}
+                      </select>
+                      <button onClick={()=>{
+                        const pr=projects.find(x=>x.id===spAddProjId);
+                        if(!pr)return;
+                        setSpForm(f=>({...f,relatedProjects:[...f.relatedProjects,{slug:pr.slug,title:pr.title,image:pr.coverImage||"",categoryLabel:(pr.categories||[]).join(" · ")}]}));
+                        setSpAddProjId("");
+                      }} style={S.btnP}>Add</button>
+                    </div>
+                  </>)}
+
+                  <div style={{display:"flex",gap:12,marginTop:24}}>
+                    <button onClick={spSave} style={S.btnP}>Save Page</button>
+                    <button onClick={()=>setSpEditSlug(null)} style={S.btnO}>Cancel</button>
+                  </div>
+                </div>
+              ):<div style={{color:"#333",textAlign:"center",marginTop:100,fontSize:13}}>Select a page from the list to edit it</div>}
+            </div>
+          </div>
+          );
+        })()}
         {cropSrc&&<CropModal src={cropSrc} onCancel={()=>setCropSrc(null)} onConfirm={async(file)=>{ try{ const url=await uploadToStorage(file); setForm(f=>({...f,coverImage:url})); }catch(e:any){ alert(e?.message||"Couldn't upload the cropped image."); } setCropSrc(null); }} />}
       </div>
     );

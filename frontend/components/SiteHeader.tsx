@@ -220,12 +220,16 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                     onMouseLeave={() => setPhotoDropdownOpen(false)}
                     style={{ position: "relative" }}
                   >
-                    <span
-                      onClick={() => setPhotoDropdownOpen((v) => !v)}
-                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
+                    <Link
+                      href="/photography"
+                      onClick={() => setPhotoDropdownOpen(false)}
+                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
-                      Photography <span style={{ fontSize: 9 }}>▾</span>
-                    </span>
+                      Photography <span
+                        style={{ fontSize: 9 }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPhotoDropdownOpen((v) => !v); }}
+                      >▾</span>
+                    </Link>
                     {photoDropdownOpen && (
                       <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(20,13,33,0.98)", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
                         {PHOTOGRAPHY_SUBNAV.map((s) => (

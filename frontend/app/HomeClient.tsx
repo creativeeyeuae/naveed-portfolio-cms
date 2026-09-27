@@ -924,7 +924,7 @@ function StatusPill({status}:{status:string}) {
 // with a consistent radius and border -- swap in for the old plain-black blocks
 // (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
 // alike, so every tab in the CMS shares one visual language.
-const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12};
+const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,boxShadow:"0 2px 10px rgba(0,0,0,0.35)"};
 
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
@@ -3298,22 +3298,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {cmsTab==="leads"&&(
           <div style={{maxWidth:800,margin:"48px auto",padding:"0 24px"}}>
             <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Contact Form Submissions</div>
-            <div style={{fontSize:12,color:"#888",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
+            <div style={{...CARD_STYLE,fontSize:12,color:C.MID,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
               Every submission also opens a WhatsApp message to you immediately, so nothing is missed even if this list below is briefly empty. {!settings.emailjsServiceId&&"Add your free EmailJS details in Settings → Contact to also get them by email."}
             </div>
             {leadsLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):leads.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No submissions yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No submissions yet.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {leads.map(l=>(
-                  <div key={l.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20,position:"relative"}}>
-                    <button onClick={()=>removeLead(l.id)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:14}}>✕</button>
-                    <div style={{fontSize:10,color:"#555",letterSpacing:1,marginBottom:8}}>{new Date(l.date).toLocaleString()}</div>
-                    <div style={{fontSize:14,color:"#fff",fontWeight:700,marginBottom:4}}>{l.name} {l.subject&&<span style={{color:C.PL,fontWeight:400}}>· {l.subject}</span>}</div>
+                  <div key={l.id} style={{...CARD_STYLE,padding:20,position:"relative"}}>
+                    <button onClick={()=>removeLead(l.id)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:14}}>✕</button>
+                    <div style={{fontSize:10,color:C.MID,letterSpacing:1,marginBottom:8}}>{new Date(l.date).toLocaleString()}</div>
+                    <div style={{fontSize:14,color:C.FG,fontWeight:700,marginBottom:4}}>{l.name} {l.subject&&<span style={{color:C.PL,fontWeight:400}}>· {l.subject}</span>}</div>
                     <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{l.email}{l.phone&&` · ${l.phone}`}</div>
-                    <div style={{fontSize:13,color:"#ccc",lineHeight:1.6,whiteSpace:"pre-wrap"}}>{l.message}</div>
+                    <div style={{fontSize:13,color:C.FG,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{l.message}</div>
                   </div>
                 ))}
               </div>
@@ -3335,33 +3335,32 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
                 {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
                 {bookingsLoading?(
-                  <div style={{color:"#444",fontSize:13}}>Loading…</div>
+                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
                 ):!bookingsList||bookingsList.length===0?(
-                  <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No bookings yet.</div>
+                  <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No bookings yet.</div>
                 ):(
                   <div style={{display:"flex",flexDirection:"column",gap:14}}>
                     {bookingsList.map((b:any)=>{
                       const payment=(b.payments||[])[0];
                       const cust=b.customers;
                       const canDecide=payment&&payment.status==="under_review"&&payment.receipt_path;
-                      const statusColor:Record<string,string>={pending_verification:"#d4a017",confirmed:"#2ecc71",payment_rejected:"#e74c3c",cancelled:"#666",completed:"#3498db"};
                       return(
-                        <div key={b.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                        <div key={b.id} style={{...CARD_STYLE,padding:20}}>
                           <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
                             <div>
-                              <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
-                              <div style={{fontSize:12,color:"#888",marginTop:2}}>{cust?.full_name} · {cust?.email}{cust?.phone&&` · ${cust.phone}`}</div>
+                              <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
+                              <div style={{fontSize:12,color:C.MID,marginTop:2}}>{cust?.full_name} · {cust?.email}{cust?.phone&&` · ${cust.phone}`}</div>
                             </div>
-                            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[b.status]||C.MID,border:`1px solid ${statusColor[b.status]||C.BORDER}`}}>{String(b.status).replace(/_/g," ")}</span>
+                            <StatusPill status={b.status} />
                           </div>
-                          <div style={{fontSize:12,color:"#aaa",marginBottom:10}}>{b.booking_date} · {b.booking_time} &nbsp;·&nbsp; AED {Number(b.total).toLocaleString()} total ({Number(b.price_base).toLocaleString()} + {Number(b.transaction_fee).toLocaleString()} fee)</div>
+                          <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{b.booking_date} · {b.booking_time} &nbsp;·&nbsp; AED {Number(b.total).toLocaleString()} total ({Number(b.price_base).toLocaleString()} + {Number(b.transaction_fee).toLocaleString()} fee)</div>
                           {payment&&(
-                            <div style={{fontSize:12,color:"#888",marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-                              <span>Payment: {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {payment.status}</span>
+                            <div style={{fontSize:12,color:C.MID,marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+                              <span>Payment: {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"} · </span><StatusPill status={payment.status} />
                               {payment.receipt_signed_url?(
                                 <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>View Receipt →</a>
                               ):payment.method==="bank_transfer"?(
-                                <span style={{color:"#666"}}>Waiting for client's receipt</span>
+                                <span style={{color:C.MID}}>Waiting for client's receipt</span>
                               ):null}
                             </div>
                           )}
@@ -3422,14 +3421,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Calendar</div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
                 <button onClick={()=>{setCalMonth(new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1));setCalSelectedDate(null);}} style={S.btnSm}>← Prev</button>
-                <div style={{fontSize:13,color:"#fff",minWidth:140,textAlign:"center"}}>{calMonth.toLocaleString(undefined,{month:"long",year:"numeric"})}</div>
+                <div style={{fontSize:13,color:C.FG,minWidth:140,textAlign:"center"}}>{calMonth.toLocaleString(undefined,{month:"long",year:"numeric"})}</div>
                 <button onClick={()=>{setCalMonth(new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1));setCalSelectedDate(null);}} style={S.btnSm}>Next →</button>
                 <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
             {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
             {bookingsLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):(()=>{
               const byDate=new Map<string,any[]>();
               for(const b of bookingsList||[]){
@@ -3445,7 +3444,6 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               for(let i=0;i<startOffset;i++) cells.push(null);
               for(let d=1;d<=daysInMonth;d++) cells.push(d);
               while(cells.length%7!==0) cells.push(null);
-              const statusColor:Record<string,string>={pending_verification:"#d4a017",confirmed:"#2ecc71",payment_rejected:"#e74c3c",cancelled:"#666",completed:"#3498db"};
               const pad=(n:number)=>String(n).padStart(2,"0");
               const todayStr=new Date().toISOString().slice(0,10);
               return(
@@ -3461,10 +3459,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const isSelected=calSelectedDate===dateStr;
                       const isToday=dateStr===todayStr;
                       return(
-                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"#1a1a2e":C.DARK,border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:4,cursor:dayBookings.length?"pointer":"default"}}>
-                          <div style={{fontSize:11,color:isToday?C.P:"#888"}}>{d}</div>
+                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"rgba(139,92,246,0.14)":C.DARK,border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:10,cursor:dayBookings.length?"pointer":"default"}}>
+                          <div style={{fontSize:11,color:isToday?C.P:C.MID}}>{d}</div>
                           <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:4}}>
-                            {dayBookings.slice(0,4).map((b:any)=><div key={b.id} title={b.appointment_ref} style={{width:6,height:6,borderRadius:"50%",background:statusColor[b.status]||C.MID}} />)}
+                            {dayBookings.slice(0,4).map((b:any)=><div key={b.id} title={b.appointment_ref} style={{width:6,height:6,borderRadius:"50%",background:(STATUS_PILL_COLORS[String(b.status||"").trim().toLowerCase().replace(/\s+/g,"_")]||{fg:C.MID}).fg}} />)}
                             {dayBookings.length>4&&<div style={{fontSize:9,color:C.MID}}>+{dayBookings.length-4}</div>}
                           </div>
                         </div>
@@ -3476,9 +3474,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>{calSelectedDate}</div>
                       <div style={{display:"flex",flexDirection:"column",gap:8}}>
                         {(byDate.get(calSelectedDate)||[]).map((b:any)=>(
-                          <div key={b.id} style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,fontSize:12.5}}>
+                          <div key={b.id} style={{...CARD_STYLE,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",fontSize:12.5,color:C.FG}}>
                             <span>{b.booking_time} · {b.appointment_ref} · {b.customers?.full_name} — {b.service_name}</span>
-                            <span style={{color:statusColor[b.status]||C.MID}}>{String(b.status).replace(/_/g," ")}</span>
+                            <StatusPill status={b.status} />
                           </div>
                         ))}
                       </div>
@@ -3511,40 +3509,39 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {payTotals&&(
               <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginBottom:20}}>
-                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Total Paid</div>
-                  <div style={{fontSize:20,color:"#2ecc71",fontWeight:700,marginTop:4}}>AED {payTotals.paid.toLocaleString()}</div>
+                  <div style={{fontSize:20,color:"#4ade80",fontWeight:700,marginTop:4}}>AED {payTotals.paid.toLocaleString()}</div>
                 </div>
-                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Awaiting / In Review</div>
-                  <div style={{fontSize:20,color:"#d4a017",fontWeight:700,marginTop:4}}>AED {payTotals.pending.toLocaleString()}</div>
+                  <div style={{fontSize:20,color:"#fbbf24",fontWeight:700,marginTop:4}}>AED {payTotals.pending.toLocaleString()}</div>
                 </div>
-                <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Payments</div>
-                  <div style={{fontSize:20,color:"#fff",fontWeight:700,marginTop:4}}>{payTotals.count}</div>
+                  <div style={{fontSize:20,color:C.FG,fontWeight:700,marginTop:4}}>{payTotals.count}</div>
                 </div>
               </div>
             )}
             {payErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{payErr}</div>}
             {payLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!payList||payList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No payments found.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No payments found.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {payList.map((p:any)=>{
                   const appt=p.appointments;
                   const cust=appt?.customers;
-                  const statusColor:Record<string,string>={paid:"#2ecc71",under_review:"#d4a017",pending:"#888",rejected:"#e74c3c"};
                   return(
-                    <div key={p.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                    <div key={p.id} style={{...CARD_STYLE,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                       <div>
-                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{appt?.appointment_ref||p.appointment_id} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {cust?.full_name||"Unknown client"}</span></div>
-                        <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{p.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {appt?.booking_date} {appt?.booking_time}{p.receipt_signed_url&&<> · <a href={p.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>Receipt →</a></>}</div>
+                        <div style={{fontSize:13,color:C.FG,fontWeight:700}}>{appt?.appointment_ref||p.appointment_id} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {cust?.full_name||"Unknown client"}</span></div>
+                        <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{p.method==="bank_transfer"?"Bank Transfer":"PayPal"} · {appt?.booking_date} {appt?.booking_time}{p.receipt_signed_url&&<> · <a href={p.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>Receipt →</a></>}</div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{fontSize:15,color:"#fff",fontWeight:700}}>AED {Number(p.total).toLocaleString()}</div>
-                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[p.status]||C.MID,border:`1px solid ${statusColor[p.status]||C.BORDER}`}}>{String(p.status).replace(/_/g," ")}</span>
+                        <div style={{fontSize:15,color:C.FG,fontWeight:700}}>AED {Number(p.total).toLocaleString()}</div>
+                        <StatusPill status={p.status} />
                       </div>
                     </div>
                   );
@@ -3565,9 +3562,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {invErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{invErr}</div>}
             {invLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!invList||invList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No invoices yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No invoices yet.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                 {invList.map((inv:any)=>{
@@ -3575,14 +3572,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const cust=appt?.customers;
                   const isPaid=inv.status==="paid";
                   return(
-                    <div key={inv.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                    <div key={inv.id} style={{...CARD_STYLE,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                       <div>
-                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{inv.invoice_number} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {appt?.appointment_ref} · {cust?.full_name||"Unknown client"}</span></div>
-                        <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{appt?.service_name} — {appt?.package_name} · {appt?.booking_date}</div>
+                        <div style={{fontSize:13,color:C.FG,fontWeight:700}}>{inv.invoice_number} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {appt?.appointment_ref} · {cust?.full_name||"Unknown client"}</span></div>
+                        <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{appt?.service_name} — {appt?.package_name} · {appt?.booking_date}</div>
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:14}}>
-                        <div style={{fontSize:15,color:"#fff",fontWeight:700}}>{inv.currency||"AED"} {Number(inv.total).toLocaleString()}</div>
-                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:isPaid?"#2ecc71":"#d4a017",border:`1px solid ${isPaid?"#2ecc71":"#d4a017"}`}}>{inv.status}</span>
+                        <div style={{fontSize:15,color:C.FG,fontWeight:700}}>{inv.currency||"AED"} {Number(inv.total).toLocaleString()}</div>
+                        <StatusPill status={inv.status} />
                         {!isPaid&&<button onClick={()=>markInvoicePaid(inv.id)} disabled={invActionBusy===inv.id} style={S.btnSm}>Mark Paid</button>}
                       </div>
                     </div>

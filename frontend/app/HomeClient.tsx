@@ -909,6 +909,8 @@ const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
   rejected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
   payment_rejected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
   declined:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  deleted:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
+  hidden:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"},
 };
 function StatusPill({status}:{status:string}) {
   const key = String(status||"").trim().toLowerCase().replace(/\s+/g,"_");
@@ -3605,9 +3607,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {clientDirErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{clientDirErr}</div>}
             {clientDirLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!clientDirList||clientDirList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No clients yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No clients yet.</div>
             ):(()=>{
               const q=clientDirSearch.trim().toLowerCase();
               const filtered=q?clientDirList.filter(c=>(c.full_name||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)):clientDirList;
@@ -3616,37 +3618,37 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {filtered.map((c:any)=>{
                     const open=clientDirOpenId===c.id;
                     return(
-                      <div key={c.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16}}>
+                      <div key={c.id} style={{...CARD_STYLE,padding:16}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setClientDirOpenId(willOpen?c.id:null);if(willOpen)loadClientDirDetail(c.id);}}>
                           <div>
-                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{c.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.email}</span></div>
-                            <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{c.booking_count} booking{c.booking_count===1?"":"s"}{c.last_booking_date?` · Last: ${c.last_booking_date}`:" · Not booked yet"}</div>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.email}</span></div>
+                            <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.booking_count} booking{c.booking_count===1?"":"s"}{c.last_booking_date?` · Last: ${c.last_booking_date}`:" · Not booked yet"}</div>
                           </div>
-                          <div style={{fontSize:14,color:"#fff",fontWeight:700}}>AED {Number(c.lifetime_total||0).toLocaleString()}</div>
+                          <div style={{fontSize:14,color:C.FG,fontWeight:700}}>AED {Number(c.lifetime_total||0).toLocaleString()}</div>
                         </div>
                         {open&&(
                           <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
                             {clientDirDetailLoading?(
-                              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+                              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
                             ):!clientDirDetail?(
-                              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>Could not load details.</div>
+                              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>Could not load details.</div>
                             ):(
                               <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                                {c.phone&&<div style={{fontSize:12,color:"#aaa"}}>Phone: {c.phone}{c.whatsapp?` · WhatsApp: ${c.whatsapp}`:""}{c.company?` · ${c.company}`:""}</div>}
+                                {c.phone&&<div style={{fontSize:12,color:C.MID}}>Phone: {c.phone}{c.whatsapp?` · WhatsApp: ${c.whatsapp}`:""}{c.company?` · ${c.company}`:""}</div>}
                                 <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Bookings</div>
                                 {(clientDirDetail.bookings||[]).length===0?(
-                                  <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No bookings.</div>
+                                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No bookings.</div>
                                 ):clientDirDetail.bookings.map((b:any)=>(
-                                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#1a1a2e",borderRadius:4,fontSize:12.5}}>
+                                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(139,92,246,0.08)",borderRadius:8,fontSize:12.5,color:C.FG}}>
                                     <span>{b.appointment_ref} · {b.service_name} — {b.package_name}</span>
-                                    <span style={{color:C.MID}}>{String(b.status).replace(/_/g," ")}</span>
+                                    <StatusPill status={b.status} />
                                   </div>
                                 ))}
                                 {(clientDirDetail.messages||[]).length>0&&(
                                   <>
                                     <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Recent Messages</div>
                                     {clientDirDetail.messages.slice(-3).map((m:any)=>(
-                                      <div key={m.id} style={{fontSize:12.5,color:"#aaa"}}>{m.sender==="admin"?"You: ":`${c.full_name||"Client"}: `}{String(m.body).slice(0,120)}</div>
+                                      <div key={m.id} style={{fontSize:12.5,color:C.MID}}>{m.sender==="admin"?"You: ":`${c.full_name||"Client"}: `}{String(m.body).slice(0,120)}</div>
                                     ))}
                                   </>
                                 )}
@@ -3674,9 +3676,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {msgErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{msgErr}</div>}
             {msgLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!msgList||msgList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No messages yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No messages yet.</div>
             ):(()=>{
               const byCustomer=new Map<string,any[]>();
               for(const m of msgList){
@@ -3694,21 +3696,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {threads.map(t=>{
                     const open=msgOpenCustomerId===t.customerId;
                     return(
-                      <div key={t.customerId} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                      <div key={t.customerId} style={{...CARD_STYLE,padding:20}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8,cursor:"pointer"}} onClick={()=>setMsgOpenCustomerId(open?null:t.customerId)}>
                           <div>
-                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{t.customer?.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.customer?.email}</span></div>
-                            <div style={{fontSize:12,color:"#888",marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{t.customer?.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.customer?.email}</span></div>
+                            <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
                           </div>
-                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
+                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
                         </div>
                         {open&&(
                           <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
                             <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:320,overflowY:"auto",marginBottom:14}}>
                               {t.messages.map((m:any)=>(
                                 <div key={m.id} style={{alignSelf:m.sender==="admin"?"flex-end":"flex-start",maxWidth:"80%"}}>
-                                  <div style={{background:m.sender==="admin"?C.P:"#1a1a2e",color:"#fff",borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
-                                  <div style={{fontSize:10,color:"#666",marginTop:3}}>{m.sender==="admin"?"You":t.customer?.full_name||"Client"} · {new Date(m.created_at).toLocaleString()}</div>
+                                  <div style={{background:m.sender==="admin"?C.P:"rgba(139,92,246,0.10)",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                                  <div style={{fontSize:10,color:C.MID,marginTop:3}}>{m.sender==="admin"?"You":t.customer?.full_name||"Client"} · {new Date(m.created_at).toLocaleString()}</div>
                                 </div>
                               ))}
                             </div>
@@ -3737,22 +3739,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {commentsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{commentsErr}</div>}
             {commentsLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!commentsList||commentsList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No comments yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No comments yet.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {commentsList.map((c:any)=>{
-                  const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",hidden:"#888",deleted:"#e74c3c"};
                   const proj=projects.find(p=>p.id===c.projectId);
                   return(
-                    <div key={c.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:18}}>
+                    <div key={c.id} style={{...CARD_STYLE,padding:18}}>
                       <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8}}>
-                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{c.visitorName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.visitorEmail}</span></div>
-                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[c.status]||C.MID,border:`1px solid ${statusColor[c.status]||C.BORDER}`}}>{c.status}</span>
+                        <div style={{fontSize:13,color:C.FG,fontWeight:700}}>{c.visitorName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.visitorEmail}</span></div>
+                        <StatusPill status={c.status} />
                       </div>
-                      <div style={{fontSize:11,color:"#666",marginBottom:8}}>{proj?.title||c.projectId} · {new Date(c.createdAt).toLocaleString()}</div>
-                      <div style={{fontSize:13,color:"#ccc",lineHeight:1.6,marginBottom:12,whiteSpace:"pre-wrap"}}>{c.comment}</div>
+                      <div style={{fontSize:11,color:C.MID,marginBottom:8}}>{proj?.title||c.projectId} · {new Date(c.createdAt).toLocaleString()}</div>
+                      <div style={{fontSize:13,color:C.FG,lineHeight:1.6,marginBottom:12,whiteSpace:"pre-wrap"}}>{c.comment}</div>
                       <div style={{display:"flex",gap:8}}>
                         {c.status!=="approved"&&<button onClick={()=>moderateComment(c.id,"approve")} disabled={commentActionBusy===c.id} style={S.btnSm}>✓ Approve</button>}
                         {c.status!=="hidden"&&<button onClick={()=>moderateComment(c.id,"hide")} disabled={commentActionBusy===c.id} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Hide</button>}
@@ -3777,29 +3778,28 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {permReqErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{permReqErr}</div>}
             {permReqLoading?(
-              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):!permReqList||permReqList.length===0?(
-              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No permission requests yet.</div>
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No permission requests yet.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:14}}>
                 {permReqList.map((r:any)=>{
-                  const statusColor:Record<string,string>={pending:"#d4a017",approved:"#2ecc71",rejected:"#e74c3c",cancelled:"#666"};
                   const open=permReqOpenId===r.id;
                   return(
-                    <div key={r.id} style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:20}}>
+                    <div key={r.id} style={{...CARD_STYLE,padding:20}}>
                       <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                        <img src={r.imageUrl} alt="" style={{width:96,height:96,objectFit:"cover",background:"#000",flexShrink:0,borderRadius:2}} />
+                        <img src={r.imageUrl} alt="" style={{width:96,height:96,objectFit:"cover",background:"#000",flexShrink:0,borderRadius:8}} />
                         <div style={{flex:1,minWidth:200}}>
                           <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
-                            <div style={{fontSize:14,color:"#fff",fontWeight:700}}>{r.requesterName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {r.requesterEmail}{r.requesterWhatsapp&&` · ${r.requesterWhatsapp}`}</span></div>
-                            <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[r.status]||C.MID,border:`1px solid ${statusColor[r.status]||C.BORDER}`,flexShrink:0}}>{r.status}</span>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{r.requesterName} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {r.requesterEmail}{r.requesterWhatsapp&&` · ${r.requesterWhatsapp}`}</span></div>
+                            <StatusPill status={r.status} />
                           </div>
-                          <div style={{fontSize:11,color:"#666",margin:"4px 0 8px"}}>{r.projectName||r.projectId} · {new Date(r.createdAt).toLocaleString()}</div>
+                          <div style={{fontSize:11,color:C.MID,margin:"4px 0 8px"}}>{r.projectName||r.projectId} · {new Date(r.createdAt).toLocaleString()}</div>
                           <div style={{fontSize:12,color:C.MID,marginBottom:4}}>Intended usage: {(r.usageTypes||[]).join(", ")}</div>
                           {r.usageUrl&&<div style={{fontSize:12,color:C.MID,marginBottom:4}}>URL: <a href={r.usageUrl} target="_blank" rel="noreferrer" style={{color:C.PL}}>{r.usageUrl}</a></div>}
-                          {r.usageDescription&&<div style={{fontSize:12,color:"#ccc",marginBottom:4,whiteSpace:"pre-wrap"}}>{r.usageDescription}</div>}
-                          {r.status==="approved"&&<div style={{fontSize:12,color:"#2ecc71",marginTop:6}}>✓ Approved{r.approvedUsage?` — ${r.approvedUsage}`:""}{r.creditRequired?` (credit required: "${r.creditText}")`:""}</div>}
-                          {r.status==="rejected"&&<div style={{fontSize:12,color:"#e74c3c",marginTop:6}}>✕ Rejected — {r.rejectionReason}</div>}
+                          {r.usageDescription&&<div style={{fontSize:12,color:C.FG,marginBottom:4,whiteSpace:"pre-wrap"}}>{r.usageDescription}</div>}
+                          {r.status==="approved"&&<div style={{fontSize:12,color:"#4ade80",marginTop:6}}>✓ Approved{r.approvedUsage?` — ${r.approvedUsage}`:""}{r.creditRequired?` (credit required: "${r.creditText}")`:""}</div>}
+                          {r.status==="rejected"&&<div style={{fontSize:12,color:"#f87171",marginTop:6}}>✕ Rejected — {r.rejectionReason}</div>}
                         </div>
                       </div>
                       {r.status==="pending"&&(

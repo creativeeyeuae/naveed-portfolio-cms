@@ -1906,6 +1906,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [payLoading,setPayLoading]=useState(false);
   const [payErr,setPayErr]=useState("");
   const [payFilter,setPayFilter]=useState<string>("all");
+  // Invoices (CMS > Invoices) -- see functions/api/admin/invoices.ts.
+  const [invList,setInvList]=useState<any[]|null>(null);
+  const [invLoading,setInvLoading]=useState(false);
+  const [invErr,setInvErr]=useState("");
+  const [invActionBusy,setInvActionBusy]=useState<string|null>(null);
   // Client messages (CMS > Messages) -- same requireAdmin/adminSession pattern as Bookings.
   // See functions/api/admin/messages.ts / functions/api/client/messages.ts.
   const [msgList,setMsgList]=useState<any[]|null>(null);
@@ -2113,6 +2118,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setPayLoading(false);
   }
   useEffect(()=>{ if(cmsTab==="payments"&&adminSession) loadPayments(); },[cmsTab,adminSession,payFilter]);
+
+  // Invoices (CMS > Invoices) -- see functions/api/admin/invoices.ts.
+  async function loadInvoices(){
+    if(!adminSession) return;
+    setInvLoading(true); setInvErr("");
+    try{
+      const res=await fetch("/api/admin/invoices",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load invoices");
+      setInvList(data.invoices||[]);
+    }catch(e:any){ setInvErr(e.message||"Failed to load invoices"); }
+    setInvLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="invoices"&&adminSession) loadInvoices(); },[cmsTab,adminSession]);
+  async function markInvoicePaid(invoiceId:string){
+    if(!adminSession) return;
+    setInvActionBusy(invoiceId);
+    try{
+      const res=await fetch(`/api/admin/invoices/${invoiceId}/mark-paid`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not mark invoice paid");
+      await loadInvoices();
+    }catch(e:any){ setInvErr(e.message||"Could not mark invoice paid"); }
+    setInvActionBusy(null);
+  }
 
   async function loadMessages(){
     if(!adminSession) return;
@@ -2842,6 +2872,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
+        <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -3308,6 +3339,45 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       <div style={{display:"flex",alignItems:"center",gap:14}}>
                         <div style={{fontSize:15,color:"#fff",fontWeight:700}}>AED {Number(p.total).toLocaleString()}</div>
                         <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:statusColor[p.status]||C.MID,border:`1px solid ${statusColor[p.status]||C.BORDER}`}}>{String(p.status).replace(/_/g," ")}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* INVOICES -- auto-created/upserted whenever a payment is approved (see
+            payments/[id]/approve.ts). The one action here (Mark Paid) is only for a booking
+            settled outside that flow (e.g. paid in person), so it has no receipt to approve. */}
+        {cmsTab==="invoices"&&(
+          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Invoices</div>
+              <button onClick={loadInvoices} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {invErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{invErr}</div>}
+            {invLoading?(
+              <div style={{color:"#444",fontSize:13}}>Loading…</div>
+            ):!invList||invList.length===0?(
+              <div style={{color:"#444",fontSize:13,fontStyle:"italic"}}>No invoices yet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {invList.map((inv:any)=>{
+                  const appt=inv.appointments;
+                  const cust=appt?.customers;
+                  const isPaid=inv.status==="paid";
+                  return(
+                    <div key={inv.id} style={{background:"#10101c",border:`1px solid ${C.BORDER}`,borderRadius:4,padding:16,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                      <div>
+                        <div style={{fontSize:13,color:"#fff",fontWeight:700}}>{inv.invoice_number} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {appt?.appointment_ref} · {cust?.full_name||"Unknown client"}</span></div>
+                        <div style={{fontSize:11.5,color:"#888",marginTop:2}}>{appt?.service_name} — {appt?.package_name} · {appt?.booking_date}</div>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:14}}>
+                        <div style={{fontSize:15,color:"#fff",fontWeight:700}}>{inv.currency||"AED"} {Number(inv.total).toLocaleString()}</div>
+                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"4px 10px",borderRadius:20,background:"#1a1a2e",color:isPaid?"#2ecc71":"#d4a017",border:`1px solid ${isPaid?"#2ecc71":"#d4a017"}`}}>{inv.status}</span>
+                        {!isPaid&&<button onClick={()=>markInvoicePaid(inv.id)} disabled={invActionBusy===inv.id} style={S.btnSm}>Mark Paid</button>}
                       </div>
                     </div>
                   );

@@ -2939,6 +2939,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           </div>
         </div>
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
+        <CmsNavSection label="Business" />
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
         <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />

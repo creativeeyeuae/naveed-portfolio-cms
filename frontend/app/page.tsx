@@ -4926,9 +4926,9 @@ export default function Home() {
               </Link>
               </Reveal>
             ))}
-            {featured.slice(1).map((p,idx)=>(
-              <Reveal key={p.id} delay={0.1+idx*0.08} style={!isMobile && idx<2 ? {gridColumn:"span 2"} : undefined}>
-              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:isMobile?"4/3":(idx===0?"16/9":idx===1?"4/3":undefined),height:!isMobile&&idx>=2?"100%":undefined,background:C.DARK,textDecoration:"none"}}
+            {featured.slice(1,3).map((p,idx)=>(
+              <Reveal key={p.id} delay={0.1+idx*0.08} style={!isMobile ? {gridColumn:"span 2"} : undefined}>
+              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:isMobile?"4/3":(idx===0?"16/9":"4/3"),background:C.DARK,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
@@ -4942,6 +4942,30 @@ export default function Home() {
               </Link>
               </Reveal>
             ))}
+            {featured.length>3 && (
+              <Reveal delay={0.26} style={!isMobile ? {gridColumn:"span 2"} : undefined}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:3,height:isMobile?undefined:"100%"}}>
+                {featured.slice(3).map((p,i)=>{
+                  const subLen=featured.length-3;
+                  const lastOdd=!isMobile&&i===subLen-1&&subLen%2===1;
+                  return (
+                  <Link key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",gridColumn:lastOdd?"span 2":undefined,background:C.DARK,textDecoration:"none"}}
+                    onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
+                    onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
+                    <img src={p.coverImage||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
+                    <PhotoCountBadge count={p.images?.length||0} />
+                    <div className="ov" style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent 50%)",opacity:0,transition:"opacity 0.35s",display:"flex",flexDirection:"column",justifyContent:"flex-end",padding:20}}>
+                      <div className="ov-cap" style={{transform:"translateY(14px)",transition:"transform 0.45s cubic-bezier(.16,.84,.44,1)"}}>
+                        <div style={{fontSize:9,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:4}}>{p.categories?.[0]}</div>
+                        <div style={{fontSize:15,letterSpacing:1,color:"#fff"}}>{p.title}</div>
+                      </div>
+                    </div>
+                  </Link>
+                  );
+                })}
+              </div>
+              </Reveal>
+            )}
           </div>
         </div>
       )}

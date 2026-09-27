@@ -4408,8 +4408,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {cats.map((c,i)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.BORDER}`}}>
-                <span style={{fontSize:13}}>{c}</span>
-                <button onClick={()=>setCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer"}}>✕</button>
+                <span style={{fontSize:13,color:C.FG}}>{c}</span>
+                <button onClick={()=>setCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:C.MID,cursor:"pointer"}}>✕</button>
               </div>
             ))}
 
@@ -4420,8 +4420,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
             {blogCats.map((c,i)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",borderBottom:`1px solid ${C.BORDER}`}}>
-                <span style={{fontSize:13}}>{c}</span>
-                <button onClick={()=>setBlogCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer"}}>✕</button>
+                <span style={{fontSize:13,color:C.FG}}>{c}</span>
+                <button onClick={()=>setBlogCats(cs=>cs.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:C.MID,cursor:"pointer"}}>✕</button>
               </div>
             ))}
           </div>
@@ -4440,20 +4440,20 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 {settings.googlePlaceId&&<button onClick={loadGoogleRevArchive} style={S.btnSm}>↻ Refresh</button>}
               </div>
               {!settings.googlePlaceId?(
-                <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No Google Place ID set -- add one in Settings &gt; SEO to pull in real Google reviews here.</div>
+                <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No Google Place ID set -- add one in Settings &gt; SEO to pull in real Google reviews here.</div>
               ):googleRevErr?(
                 <div style={{color:"#e74c3c",fontSize:12,marginBottom:12}}>{googleRevErr}</div>
               ):googleRevLoading?(
-                <div style={{color:"#444",fontSize:13}}>Loading…</div>
+                <div style={{color:C.MID,fontSize:13}}>Loading…</div>
               ):!googleRevArchive||googleRevArchive.length===0?(
-                <div style={{fontSize:12,color:"#666",fontStyle:"italic"}}>No Google reviews archived yet.</div>
+                <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No Google reviews archived yet.</div>
               ):(
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {googleRevArchive.map((r:any)=>(
-                    <div key={r.key} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 14px",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,opacity:r.hidden?0.5:1}}>
+                    <div key={r.key} style={{...CARD_STYLE,display:"flex",justifyContent:"space-between",gap:12,padding:"10px 14px",opacity:r.hidden?0.5:1}}>
                       <div style={{minWidth:0}}>
-                        <div style={{fontSize:12.5,color:"#fff"}}>{r.author} <span style={{color:"#FBBC05"}}>{"★".repeat(Math.round(r.rating))}</span></div>
-                        <div style={{fontSize:11.5,color:"#888",marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:420}}>{r.text}</div>
+                        <div style={{fontSize:12.5,color:C.FG}}>{r.author} <span style={{color:"#FBBC05"}}>{"★".repeat(Math.round(r.rating))}</span></div>
+                        <div style={{fontSize:11.5,color:C.MID,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:420}}>{r.text}</div>
                       </div>
                       <button onClick={()=>toggleGoogleReview(r.key,!r.hidden)} disabled={googleRevBusy===r.key} style={{...S.btnSm,flexShrink:0}}>{r.hidden?"Show":"Hide"}</button>
                     </div>
@@ -4466,7 +4466,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <button onClick={()=>setTestimonials(ts=>[...ts,{id:Date.now().toString(),name:"Client Name",role:"Role",company:"Company",quote:"Testimonial quote here.",featured:true}])} style={S.btnP}>+ Add</button>
             </div>
             {testimonials.map((t,i)=>(
-              <div key={t.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+              <div key={t.id} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><label style={S.lbl}>Name</label><input style={S.inp} value={t.name} onChange={e=>setTestimonials(ts=>ts.map((x,idx)=>idx===i?{...x,name:e.target.value}:x))} /></div>
                   <div><label style={S.lbl}>Role</label><input style={S.inp} value={t.role} onChange={e=>setTestimonials(ts=>ts.map((x,idx)=>idx===i?{...x,role:e.target.value}:x))} /></div>
@@ -4477,7 +4477,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   </div>
                 </div>
                 <div style={{marginBottom:12}}><label style={S.lbl}>Quote</label><textarea style={{...S.inp,height:80,resize:"vertical" as const}} value={t.quote} onChange={e=>setTestimonials(ts=>ts.map((x,idx)=>idx===i?{...x,quote:e.target.value}:x))} /></div>
-                <button onClick={()=>setTestimonials(ts=>ts.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                <button onClick={()=>setTestimonials(ts=>ts.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
               </div>
             ))}
           </div>
@@ -4491,7 +4491,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <button onClick={()=>setBlog(bs=>[...bs,{id:Date.now().toString(),title:"New Post",slug:"new-post",excerpt:"",date:new Date().toISOString().split("T")[0],category:blogCats[0]||"",coverImage:"",content:""}])} style={S.btnP}>+ New Post</button>
             </div>
             {blog.map((b,i)=>(
-              <div key={b.id} style={{background:C.DARK,padding:20,marginBottom:12,border:`1px solid ${C.BORDER}`}}>
+              <div key={b.id} style={{...CARD_STYLE,padding:20,marginBottom:12}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
                   <div><label style={S.lbl}>Title</label><input style={S.inp} value={b.title} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,title:e.target.value,slug:slugify(e.target.value)}:x))} /></div>
                   <div><label style={S.lbl}>Category</label>
@@ -4505,7 +4505,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <SingleImageUpload value={b.coverImage} onChange={url=>{const old=b.coverImage;const nextBlog=blog.map((x,idx)=>idx===i?{...x,coverImage:url}:x);setBlog(()=>nextBlog);if(old&&old!==url){const inUse=collectAllImageUrls({projects,blog:nextBlog,settings});if(!inUse.has(old))deleteStorageFiles([old]);}}} label="Cover Image" />
                 <div style={{marginBottom:12}}><label style={S.lbl}>Excerpt</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={b.excerpt} onChange={e=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,excerpt:e.target.value}:x))} /></div>
                 <div style={{marginBottom:12}}><label style={S.lbl}>Full Content</label><RichTextEditor value={b.content} onChange={html=>setBlog(bs=>bs.map((x,idx)=>idx===i?{...x,content:html}:x))} minHeight={220} placeholder="Full article content..." /></div>
-                <button onClick={()=>{const remaining=blog.filter((_,idx)=>idx!==i);setBlog(bs=>bs.filter((_,idx)=>idx!==i));if(b.coverImage){const inUse=collectAllImageUrls({projects,blog:remaining,settings});if(!inUse.has(b.coverImage))deleteStorageFiles([b.coverImage]);}}} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
+                <button onClick={()=>{const remaining=blog.filter((_,idx)=>idx!==i);setBlog(bs=>bs.filter((_,idx)=>idx!==i));if(b.coverImage){const inUse=collectAllImageUrls({projects,blog:remaining,settings});if(!inUse.has(b.coverImage))deleteStorageFiles([b.coverImage]);}}} style={{background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase" as const}}>Remove</button>
               </div>
             ))}
           </div>
@@ -4515,7 +4515,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {cmsTab==="projects"&&(
           <div style={{display:"flex",minHeight:"calc(100vh - 60px)"}}>
             <div style={{width:280,borderRight:`1px solid ${C.BORDER}`,padding:16,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
-              <div style={{fontSize:10,letterSpacing:3,color:"#444",marginBottom:12,textTransform:"uppercase"}}>{projects.length} Projects</div>
+              <div style={{fontSize:10,letterSpacing:3,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>{projects.length} Projects</div>
               {/* ▲▼ reorder this list itself -- previously only images WITHIN a project could
                   be reordered, not the projects themselves. This order is what Featured Work
                   and the Cinematic Showcase's selector rail both display in, so it's now how an
@@ -4526,12 +4526,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   Swaps two array entries and persists via the existing setProjects ->
                   nap_projects effect (line ~2275) -- no new storage or schema. */}
               {projects.map((p,i)=>(
-                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:editId===p.id?"#12121e":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
-                  <div style={{minWidth:0}}><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:"#555"}}>{p.categories?.join(", ")} · {p.images?.length||0}📷{p.featured&&p.youtubeUrl?" · 🎬 Cinematic":""}</div></div>
+                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:editId===p.id?"rgba(139,92,246,0.14)":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                  <div style={{minWidth:0}}><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:C.MID}}>{p.categories?.join(", ")} · {p.images?.length||0}📷{p.featured&&p.youtubeUrl?" · 🎬 Cinematic":""}</div></div>
                   <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
-                    <button onClick={e=>{e.stopPropagation();if(i===0)return;setProjects(ps=>{const next=[...ps];[next[i-1],next[i]]=[next[i],next[i-1]];return next;});}} disabled={i===0} title="Move up" style={{background:"none",border:"none",color:i===0?"#333":"#666",cursor:i===0?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▲</button>
-                    <button onClick={e=>{e.stopPropagation();if(i===projects.length-1)return;setProjects(ps=>{const next=[...ps];[next[i+1],next[i]]=[next[i],next[i+1]];return next;});}} disabled={i===projects.length-1} title="Move down" style={{background:"none",border:"none",color:i===projects.length-1?"#333":"#666",cursor:i===projects.length-1?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▼</button>
-                    <button onClick={e=>{e.stopPropagation();if(confirm("Delete?")){const remaining=projects.filter(x=>x.id!==p.id);setProjects(ps=>ps.filter(x=>x.id!==p.id));const dropped=Array.from(projectImageUrls(p));if(dropped.length){const inUse=collectAllImageUrls({projects:remaining,blog,settings});deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));}}}} style={{background:"none",border:"none",color:"#444",cursor:"pointer"}}>✕</button>
+                    <button onClick={e=>{e.stopPropagation();if(i===0)return;setProjects(ps=>{const next=[...ps];[next[i-1],next[i]]=[next[i],next[i-1]];return next;});}} disabled={i===0} title="Move up" style={{background:"none",border:"none",color:i===0?C.BORDER:C.MID,cursor:i===0?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▲</button>
+                    <button onClick={e=>{e.stopPropagation();if(i===projects.length-1)return;setProjects(ps=>{const next=[...ps];[next[i+1],next[i]]=[next[i],next[i+1]];return next;});}} disabled={i===projects.length-1} title="Move down" style={{background:"none",border:"none",color:i===projects.length-1?C.BORDER:C.MID,cursor:i===projects.length-1?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▼</button>
+                    <button onClick={e=>{e.stopPropagation();if(confirm("Delete?")){const remaining=projects.filter(x=>x.id!==p.id);setProjects(ps=>ps.filter(x=>x.id!==p.id));const dropped=Array.from(projectImageUrls(p));if(dropped.length){const inUse=collectAllImageUrls({projects:remaining,blog,settings});deleteStorageFiles(dropped.filter(u=>!inUse.has(u)));}}}} style={{background:"none",border:"none",color:C.MID,cursor:"pointer"}}>✕</button>
                   </div>
                 </div>
               ))}
@@ -4644,17 +4644,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           return(
           <div style={{display:"flex",minHeight:"calc(100vh - 60px)"}}>
             <div style={{width:300,borderRight:`1px solid ${C.BORDER}`,padding:16,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
-              <div style={{fontSize:10,letterSpacing:3,color:"#444",marginBottom:12,textTransform:"uppercase"}}>{SP_PAGES.length} Pages</div>
-              <div style={{fontSize:11,color:"#555",marginBottom:14,lineHeight:1.6}}>Pick a page to edit its title, intro, sections, FAQs and related work. A page you've never saved here keeps showing its normal site content.</div>
+              <div style={{fontSize:10,letterSpacing:3,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>{SP_PAGES.length} Pages</div>
+              <div style={{fontSize:11,color:C.MID,marginBottom:14,lineHeight:1.6}}>Pick a page to edit its title, intro, sections, FAQs and related work. A page you've never saved here keeps showing its normal site content.</div>
               {SP_PAGES.map(p=>{
                 const customized=!!servicePages[p.slug];
                 return(
-                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,cursor:"pointer",background:spEditSlug===p.slug?"#12121e":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:spEditSlug===p.slug?"rgba(139,92,246,0.14)":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,color:C.FG}}>{p.label}</div>
-                    <div style={{fontSize:10,color:customized?C.PL:"#555"}}>{customized?"● Customized":"Default site content"}</div>
+                    <div style={{fontSize:10,color:customized?C.PL:C.MID}}>{customized?"● Customized":"Default site content"}</div>
                   </div>
-                  {customized&&<button onClick={e=>{e.stopPropagation();spDeleteOverride(p.slug);}} title="Reset to default" style={{background:"none",border:"none",color:"#444",cursor:"pointer",flexShrink:0}}>✕</button>}
+                  {customized&&<button onClick={e=>{e.stopPropagation();spDeleteOverride(p.slug);}} title="Reset to default" style={{background:"none",border:"none",color:C.MID,cursor:"pointer",flexShrink:0}}>✕</button>}
                 </div>
                 );
               })}
@@ -4734,7 +4734,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     <button onClick={()=>setSpEditSlug(null)} style={S.btnO}>Cancel</button>
                   </div>
                 </div>
-              ):<div style={{color:"#333",textAlign:"center",marginTop:100,fontSize:13}}>Select a page from the list to edit it</div>}
+              ):<div style={{color:C.MID,textAlign:"center",marginTop:100,fontSize:13}}>Select a page from the list to edit it</div>}
             </div>
           </div>
           );

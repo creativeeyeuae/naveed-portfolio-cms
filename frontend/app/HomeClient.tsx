@@ -3147,7 +3147,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap" as const}}>
                   {(["all","critical","high","medium","low","opportunity"] as const).map(f=>(
-                    <button key={f} onClick={()=>setSeoFilter(f)} style={{...S.btnSm,background:seoFilter===f?C.P:"transparent",color:seoFilter===f?"#fff":undefined,borderColor:seoFilter===f?C.P:undefined,textTransform:"capitalize" as const}}>{f}</button>
+                    <button key={f} onClick={()=>setSeoFilter(f)} style={{...S.btnSm,background:seoFilter===f?C.P:"transparent",color:seoFilter===f?"#fff":C.MID,borderColor:seoFilter===f?C.P:undefined,textTransform:"capitalize" as const}}>{f}</button>
                   ))}
                 </div>
 
@@ -3781,12 +3781,6 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {/* SETTINGS TAB */}
         {cmsTab==="settings"&&(
           <div style={{maxWidth:800,margin:"0 auto",padding:"32px 24px"}}>
-            <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-              {[["general","General"],["hero","Hero Slides"],["about","About"],["services","Services"],["clients","🤝 Clients"],["cv","CV & Skills"],["gear","📦 Gear Photos"],["footer","Footer"],["seo","SEO"],["contact","Contact"],["popup","Popup"],["colors","🎨 Colors"],["text","🔤 Text & Banners"],["pages","🔀 Pages"],["pricing","💳 Packages"]].map(([k,l])=>(
-                <button key={k} onClick={()=>setSettingsTab(k)} style={{...S.btnSm,background:settingsTab===k?C.P:"#1a1a2e"}}>{l}</button>
-              ))}
-            </div>
-
             {settingsTab==="general"&&(
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>General Settings</div>

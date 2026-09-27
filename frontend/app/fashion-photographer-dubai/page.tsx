@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 const TITLE = "Fashion Photographer in Dubai | Naveed Anjum — Creative Fusion";
@@ -56,6 +57,10 @@ export default async function Page() {
       { q: "How do we book you for a fashion event?", a: "Message with your event date, venue and what you need covered, and Naveed will confirm availability and scope." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

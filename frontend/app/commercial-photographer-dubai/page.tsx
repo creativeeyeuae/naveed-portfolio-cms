@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 // Metadata now goes through the shared buildMetadata() helper so this page gets a real
@@ -68,6 +69,10 @@ export default async function Page() {
       { q: "How do I request a quote?", a: "Message on WhatsApp or email with your brief (what's being shot, how many images, intended use) for a tailored quote." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

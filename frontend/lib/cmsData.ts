@@ -663,6 +663,7 @@ export async function submitContactLead(entry: ContactLeadInput): Promise<boolea
 // hardcoded copy, byte for byte -- this can only ever change what an admin actually edited and
 // saved, never silently blank out real content that was never touched.
 export type CmsServicePageContent = {
+  enabled?: boolean;
   eyebrow?: string;
   h1?: string;
   intro?: string;
@@ -697,6 +698,28 @@ async function readServicePageOverrides(): Promise<Record<string, CmsServicePage
     }
   })();
   return servicePageOverridesCache;
+}
+
+// Whether a given service page slug (one of the 15 standalone pages, or "photography" /
+// "cinematography") has been turned OFF in CMS > Service Pages. Defaults to enabled (true)
+// when the slug has no override at all, or an override exists but never set `enabled` --
+// only an explicit `enabled: false` turns a page off, matching the additive/partial philosophy
+// of every other field on this settings row.
+export async function isServicePageEnabled(slug: string): Promise<boolean> {
+  const overrides = await readServicePageOverrides();
+  return overrides[slug]?.enabled !== false;
+}
+
+// Bulk version of the same check, for the cross-linking surfaces (ServicePage.tsx's "Related
+// Services" list, the photography hub's related-links row, and the sitemap) that need to test
+// many slugs at once without awaiting isServicePageEnabled() in a loop.
+export async function getDisabledServiceSlugs(): Promise<Set<string>> {
+  const overrides = await readServicePageOverrides();
+  const disabled = new Set<string>();
+  for (const slug in overrides) {
+    if (overrides[slug]?.enabled === false) disabled.add(slug);
+  }
+  return disabled;
 }
 
 // Merges a page's real CMS override (if any) over its hardcoded fallback content -- called

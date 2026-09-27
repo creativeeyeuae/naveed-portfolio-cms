@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
@@ -49,6 +50,10 @@ export default async function Page() {
       { q: "Which areas do you cover?", a: "Based in Dubai and available across the UAE. Share your property location when you enquire." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

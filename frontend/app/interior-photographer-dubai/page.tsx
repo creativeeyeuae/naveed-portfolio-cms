@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
@@ -52,6 +53,10 @@ export default async function Page() {
       { q: "What's the turnaround time for edited photos?", a: "Turnaround depends on shoot size. You'll get a clear delivery timeline before booking." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

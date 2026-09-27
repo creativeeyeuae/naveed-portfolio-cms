@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
@@ -56,6 +57,10 @@ export default async function Page() {
       { q: "Can the images be used for paid advertising as well as our website?", a: "Usage rights are confirmed in writing before the shoot, so you know exactly what you can do with the images across your website, listings and paid ads." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

@@ -1,4 +1,5 @@
-import { getRealProjects, getPublicSiteInfo, getHubPageFaqs } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
+import { getRealProjects, getPublicSiteInfo, getHubPageFaqs, isServicePageEnabled } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
 import WorkGrid from "@/components/work/WorkGrid";
@@ -28,7 +29,13 @@ export async function generateMetadata() {
 }
 
 export default async function CinematographyPage() {
-  const [allProjects, site, faqs] = await Promise.all([getRealProjects(), getPublicSiteInfo(), getHubPageFaqs("cinematography", DEFAULT_FAQS)]);
+  const [allProjects, site, faqs, enabled] = await Promise.all([
+    getRealProjects(),
+    getPublicSiteInfo(),
+    getHubPageFaqs("cinematography", DEFAULT_FAQS),
+    isServicePageEnabled("cinematography"),
+  ]);
+  if (!enabled) notFound();
   const projects = allProjects.filter((p) =>
     p.categories?.some((c) => VIDEO_CATEGORIES.includes(c))
   );

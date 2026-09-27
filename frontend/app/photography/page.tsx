@@ -1,4 +1,5 @@
-import { getRealProjects, getPublicSiteInfo, getHubPageFaqs } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
+import { getRealProjects, getPublicSiteInfo, getHubPageFaqs, isServicePageEnabled, getDisabledServiceSlugs } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
 import WorkGrid from "@/components/work/WorkGrid";
@@ -46,7 +47,14 @@ export async function generateMetadata() {
 }
 
 export default async function PhotographyPage() {
-  const [allProjects, site, faqs] = await Promise.all([getRealProjects(), getPublicSiteInfo(), getHubPageFaqs("photography", DEFAULT_FAQS)]);
+  const [allProjects, site, faqs, enabled, disabledSlugs] = await Promise.all([
+    getRealProjects(),
+    getPublicSiteInfo(),
+    getHubPageFaqs("photography", DEFAULT_FAQS),
+    isServicePageEnabled("photography"),
+    getDisabledServiceSlugs(),
+  ]);
+  if (!enabled) notFound();
   const projects = allProjects.filter(
     (p) => !p.categories?.some((c) => VIDEO_CATEGORIES.includes(c))
   );
@@ -73,7 +81,7 @@ export default async function PhotographyPage() {
             { slug: "product-photographer-dubai", label: "Product Photography" },
             { slug: "event-photographer-dubai", label: "Event Photography" },
             { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photography" },
-          ].map((s) => (
+          ].filter((s) => !disabledSlugs.has(s.slug)).map((s) => (
             <a
               key={s.slug}
               href={`/${s.slug}`}

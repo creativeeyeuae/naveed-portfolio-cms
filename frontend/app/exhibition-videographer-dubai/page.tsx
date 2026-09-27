@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ServicePage, { type ServicePageData } from "@/components/ServicePage";
-import { getServicePageContent } from "@/lib/cmsData";
+import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
+import { notFound } from "next/navigation";
 import { UPCOMING_EXHIBITIONS } from "@/lib/servicePagesData";
 import { buildMetadata } from "@/lib/seo";
 
@@ -51,6 +52,10 @@ export default async function Page() {
       { q: "How far ahead should we book for a specific exhibition?", a: "Message on WhatsApp or email with the exhibition name, dates and your hall/stand number as early as you can, since exhibition dates are fixed and availability is limited around major shows." },
     ],
   };
-  const data = await getServicePageContent(fallback.slug, fallback);
+  const [data, enabled] = await Promise.all([
+    getServicePageContent(fallback.slug, fallback),
+    isServicePageEnabled(fallback.slug),
+  ]);
+  if (!enabled) notFound();
   return <ServicePage data={data} />;
 }

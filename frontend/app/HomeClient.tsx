@@ -46,6 +46,7 @@ type ServicePageFaq = { q:string; a:string };
 type ServicePageSectionItem = { heading:string; body:string };
 type ServicePageRelated = { slug:string; title:string; image:string; categoryLabel:string };
 type ServicePageOverride = {
+  enabled?:boolean;
   eyebrow:string; h1:string; intro:string; serviceLabel:string;
   heroImage:string; heroImageAlt:string;
   sections:ServicePageSectionItem[]; faqs:ServicePageFaq[]; relatedProjects:ServicePageRelated[];
@@ -1882,6 +1883,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(!confirm("Reset this page back to its default site content? This removes everything edited here for this page."))return;
     setServicePages(sp=>{const next={...sp};delete next[slug];return next;});
     if(spEditSlug===slug){setSpEditSlug(null);}
+  }
+  // "Customized" badge in the sidebar should reflect actual edited content, independent of
+  // the enabled/disabled flag below -- a page that's only been turned off (nothing else
+  // edited) still reads as "Default site content", just switched off.
+  function spIsCustomized(o?:ServicePageOverride){
+    if(!o) return false;
+    return !!(o.eyebrow||o.h1||o.intro||o.serviceLabel||o.heroImage||o.heroImageAlt||o.sections?.length||o.faqs?.length||o.relatedProjects?.length);
+  }
+  // On/off toggle for a Service Page -- mirrors Settings > Pages' show/hide switches, but
+  // this one gates the page's own route (via notFound() in each page.tsx) rather than just
+  // hiding a nav link, since these SEO pages aren't in the main site nav at all. Turning a
+  // never-customized page off creates a minimal override with every content field left
+  // empty (so nothing is invented) plus enabled:false; turning it back on, if that's still
+  // the ONLY thing set, removes the override entirely so the page fully returns to
+  // "Default site content" rather than leaving a hollow, always-"Customized" entry behind.
+  function spToggleEnabled(slug:string){
+    setServicePages(sp=>{
+      const current=sp[slug];
+      const turningOn = current?.enabled===false;
+      const next:ServicePageOverride = {...SP_EMPTY_OVERRIDE,...(current||{}),enabled: turningOn?true:false};
+      if(turningOn && !spIsCustomized(next)){
+        const rest={...sp}; delete rest[slug]; return rest;
+      }
+      return {...sp,[slug]:next};
+    });
   }
 
   // Lazy-load contact-form submissions only when the CMS Leads tab is actually opened --
@@ -4645,16 +4671,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <div style={{display:"flex",minHeight:"calc(100vh - 60px)"}}>
             <div style={{width:300,borderRight:`1px solid ${C.BORDER}`,padding:16,overflowY:"auto",maxHeight:"calc(100vh - 60px)"}}>
               <div style={{fontSize:10,letterSpacing:3,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>{SP_PAGES.length} Pages</div>
-              <div style={{fontSize:11,color:C.MID,marginBottom:14,lineHeight:1.6}}>Pick a page to edit its title, intro, sections, FAQs and related work. A page you've never saved here keeps showing its normal site content.</div>
+              <div style={{fontSize:11,color:C.MID,marginBottom:14,lineHeight:1.6}}>Pick a page to edit its title, intro, sections, FAQs and related work. A page you've never saved here keeps showing its normal site content. Use the switch to turn a page on or off -- an off page shows as not found on the live site.</div>
               {SP_PAGES.map(p=>{
-                const customized=!!servicePages[p.slug];
+                const customized=spIsCustomized(servicePages[p.slug]);
+                const on=servicePages[p.slug]?.enabled!==false;
                 return(
-                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:spEditSlug===p.slug?"rgba(139,92,246,0.14)":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:spEditSlug===p.slug?"rgba(139,92,246,0.14)":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,opacity:on?1:0.55}}>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,color:C.FG}}>{p.label}</div>
-                    <div style={{fontSize:10,color:customized?C.PL:C.MID}}>{customized?"● Customized":"Default site content"}</div>
+                    <div style={{fontSize:10,color:!on?C.MID:(customized?C.PL:C.MID)}}>{!on?"Off":(customized?"● Customized":"Default site content")}</div>
                   </div>
-                  {customized&&<button onClick={e=>{e.stopPropagation();spDeleteOverride(p.slug);}} title="Reset to default" style={{background:"none",border:"none",color:C.MID,cursor:"pointer",flexShrink:0}}>✕</button>}
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                    {customized&&<button onClick={e=>{e.stopPropagation();spDeleteOverride(p.slug);}} title="Reset to default" style={{background:"none",border:"none",color:C.MID,cursor:"pointer",flexShrink:0}}>✕</button>}
+                    <button onClick={e=>{e.stopPropagation();spToggleEnabled(p.slug);}} aria-label={`Turn ${p.label} page ${on?"off":"on"}`} style={{width:36,height:20,borderRadius:10,border:"none",cursor:"pointer",position:"relative",background:on?C.P:"#3a3a4a",transition:"background 0.2s",flexShrink:0}}>
+                      <span style={{position:"absolute",top:2,left:on?18:2,width:16,height:16,borderRadius:"50%",background:"#fff",transition:"left 0.2s"}} />
+                    </button>
+                  </div>
                 </div>
                 );
               })}

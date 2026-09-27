@@ -13,6 +13,7 @@
 import Link from "next/link";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
 import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps } from "@/lib/seo";
+import { getDisabledServiceSlugs } from "@/lib/cmsData";
 import FaqSection from "@/components/FaqSection";
 
 const P = "#8B5CF6", PL = "#E2D9F3", DARK = "#140D21", BG = "#09060E", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#2D1F45";
@@ -44,8 +45,9 @@ export type ServicePageData = {
   relatedProjects?: { slug: string; title: string; image: string; categoryLabel?: string }[];
 };
 
-export default function ServicePage({ data }: { data: ServicePageData }) {
-  const related = SERVICE_PAGES.filter((s) => s.slug !== data.slug);
+export default async function ServicePage({ data }: { data: ServicePageData }) {
+  const disabledSlugs = await getDisabledServiceSlugs();
+  const related = SERVICE_PAGES.filter((s) => s.slug !== data.slug && !disabledSlugs.has(s.slug));
   // Service + BreadcrumbList (+ ImageObject when a hero photo is set) -- added once here so
   // every page using ServicePage picks them up automatically, no per-page edits needed.
   // LocalBusiness/ProfessionalService is NOT repeated (already site-wide in app/layout.tsx).

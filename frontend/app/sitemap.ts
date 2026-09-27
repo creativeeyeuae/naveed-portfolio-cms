@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getRealProjects, getRealBlogPosts } from "@/lib/cmsData";
+import { getRealProjects, getRealBlogPosts, getDisabledServiceSlugs } from "@/lib/cmsData";
 import { SERVICE_PAGES } from "@/lib/servicePagesData";
 
 export const dynamic = "force-static";
@@ -42,8 +42,9 @@ async function getJournalEntries(): Promise<MetadataRoute.Sitemap> {
 // route folders mentioned above, these carry finished, unique content, so they belong in
 // the sitemap. SERVICE_PAGES is the single shared list also used for their cross-linking
 // (count grows as new pages are added -- see lib/servicePagesData.ts, do not hardcode a number here).
-function getServicePageEntries(): MetadataRoute.Sitemap {
-  return SERVICE_PAGES.map((s) => ({
+async function getServicePageEntries(): Promise<MetadataRoute.Sitemap> {
+  const disabledSlugs = await getDisabledServiceSlugs();
+  return SERVICE_PAGES.filter((s) => !disabledSlugs.has(s.slug)).map((s) => ({
     url: `https://bynaveedanjum.com/${s.slug}/`,
     lastModified: new Date("2026-09-11"),
     changeFrequency: "monthly" as const,
@@ -52,7 +53,29 @@ function getServicePageEntries(): MetadataRoute.Sitemap {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [work, journal] = await Promise.all([getWorkEntries(), getJournalEntries()]);
+  const [work, journal, serviceEntries, disabledSlugs] = await Promise.all([
+    getWorkEntries(),
+    getJournalEntries(),
+    getServicePageEntries(),
+    getDisabledServiceSlugs(),
+  ]);
+  const hubEntries: MetadataRoute.Sitemap = [];
+  if (!disabledSlugs.has("photography")) {
+    hubEntries.push({
+      url: "https://bynaveedanjum.com/photography/",
+      lastModified: new Date("2026-09-20"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    });
+  }
+  if (!disabledSlugs.has("cinematography")) {
+    hubEntries.push({
+      url: "https://bynaveedanjum.com/cinematography/",
+      lastModified: new Date("2026-09-20"),
+      changeFrequency: "monthly",
+      priority: 0.7,
+    });
+  }
   return [
     {
       url: "https://bynaveedanjum.com/",
@@ -88,18 +111,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    {
-      url: "https://bynaveedanjum.com/photography/",
-      lastModified: new Date("2026-09-20"),
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: "https://bynaveedanjum.com/cinematography/",
-      lastModified: new Date("2026-09-20"),
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
+    ...hubEntries,
     // Journal index and CV -- previously in-memory-only SPA pages (/?page=blog|cv) with no
     // real crawlable URL of their own. Both now real routes (app/journal/page.tsx,
     // app/cv/page.tsx), so they belong here alongside every other real static route.
@@ -115,7 +127,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.6,
     },
-    ...getServicePageEntries(),
+    ...serviceEntries,
     ...work,
     ...journal,
   ];

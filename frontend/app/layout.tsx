@@ -114,6 +114,18 @@ export async function generateMetadata(): Promise<Metadata> {
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
+    // WebSite entity -- was missing entirely (only Person/ProfessionalService existed
+    // below). This is a baseline schema.org best practice: it gives Google a single,
+    // named "site" object to attach to search results (site name under the URL,
+    // sitelinks eligibility) instead of only ever seeing the Person/Service nodes.
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: "Naveed Anjum — Creative Fusion",
+      url: SITE_URL,
+      publisher: { "@id": `${SITE_URL}/#person` },
+      inLanguage: "en",
+    },
     {
       "@type": "Person",
       "@id": `${SITE_URL}/#person`,

@@ -2008,6 +2008,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [followUpsLoading,setFollowUpsLoading]=useState(false);
   const CRM_CONSENT_CATEGORIES:[string,string][]=[["relationship","Relationship / Direct Follow-up"],["service","Service Communication"],["marketing","Marketing"],["promotions","Promotions"],["events","Events"],["offers","Offers"],["wishes","Wishes"]];
   const [clientDirDetailLoading,setClientDirDetailLoading]=useState(false);
+
+  // Email Designer (CMS > Email Designer) -- see functions/api/admin/email/{templates,campaigns}.ts
+  // and functions/_shared/emailRender.ts. The preview below is a client-side approximation of
+  // that same shared renderer -- it never sends anything, so it's fine if it's only visually close.
+  const [emailSubTab,setEmailSubTab]=useState<"templates"|"campaigns">("templates");
+  const [emailTemplates,setEmailTemplates]=useState<any[]|null>(null);
+  const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
+  const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
+  const EMAIL_TEMPLATE_EMPTY={name:"",subject:"",blocks:[] as any[]};
+  const [emailTemplateForm,setEmailTemplateForm]=useState<any>(EMAIL_TEMPLATE_EMPTY);
+  const [emailBusy,setEmailBusy]=useState(false);
+  const [emailPreviewWidth,setEmailPreviewWidth]=useState<"desktop"|"mobile">("desktop");
+  const [emailTestTo,setEmailTestTo]=useState("");
+  const [emailTestBusy,setEmailTestBusy]=useState(false);
+  const [emailTestMsg,setEmailTestMsg]=useState("");
+  const [emailCampaigns,setEmailCampaigns]=useState<any[]|null>(null);
+  const [emailCampaignsLoading,setEmailCampaignsLoading]=useState(false);
+  const [emailCampaignAddOpen,setEmailCampaignAddOpen]=useState(false);
+  const EMAIL_CAMPAIGN_EMPTY={name:"",category:"relationship",template_id:"",audienceType:"all" as "all"|"tag"|"contact",tag_id:"",customer_id:""};
+  const [emailCampaignForm,setEmailCampaignForm]=useState<any>(EMAIL_CAMPAIGN_EMPTY);
+  const [emailCampaignOpenId,setEmailCampaignOpenId]=useState<string|null>(null);
+  const [emailCampaignDetail,setEmailCampaignDetail]=useState<any>(null);
+  const [emailCampaignBusy,setEmailCampaignBusy]=useState(false);
+  const [emailTagsList,setEmailTagsList]=useState<any[]|null>(null);
+  const EMAIL_VARIABLES:[string,string][]=[["first_name","First name"],["last_name","Last name"],["company","Company"],["job_title","Job title"]];
   // Google Reviews curation, merged into the Reviews tab alongside manual Testimonials --
   // see functions/api/admin/google-reviews-archive.ts / .../toggle.ts.
   const [googleRevArchive,setGoogleRevArchive]=useState<any[]|null>(null);
@@ -2370,6 +2395,178 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ alert(e.message||"Could not create contact"); }
     setCrmBusy(false);
   }
+
+  // Email Designer -- templates. See functions/api/admin/email/templates.ts / templates/[id].ts.
+  async function loadEmailTemplates(){
+    if(!adminSession) return;
+    setEmailTemplatesLoading(true);
+    try{
+      const res=await fetch("/api/admin/email/templates",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setEmailTemplates(data.templates||[]);
+    }catch{}
+    setEmailTemplatesLoading(false);
+  }
+  function emailNewTemplate(){
+    setEmailTemplateForm(EMAIL_TEMPLATE_EMPTY);
+    setEmailTemplateEditId("new");
+    setEmailTestMsg("");
+  }
+  function emailOpenTemplate(t:any){
+    setEmailTemplateForm({name:t.name||"",subject:t.subject||"",blocks:Array.isArray(t.blocks)?t.blocks:[]});
+    setEmailTemplateEditId(t.id);
+    setEmailTestMsg("");
+  }
+  async function emailSaveTemplate(){
+    if(!adminSession) return;
+    if(!emailTemplateForm.name.trim()){ alert("Template name is required."); return; }
+    setEmailBusy(true);
+    try{
+      const isNew=emailTemplateEditId==="new";
+      const url=isNew?"/api/admin/email/templates":`/api/admin/email/templates/${emailTemplateEditId}`;
+      const res=await fetch(url,{method:isNew?"POST":"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(emailTemplateForm)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save template");
+      setEmailTemplateEditId(data.template?.id||null);
+      await loadEmailTemplates();
+    }catch(e:any){ alert(e.message||"Could not save template"); }
+    setEmailBusy(false);
+  }
+  async function emailDeleteTemplate(id:string){
+    if(!adminSession) return;
+    if(!confirm("Delete this template? This can't be undone.")) return;
+    setEmailBusy(true);
+    try{
+      const res=await fetch(`/api/admin/email/templates/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not delete template");
+      if(emailTemplateEditId===id){ setEmailTemplateEditId(null); setEmailTemplateForm(EMAIL_TEMPLATE_EMPTY); }
+      await loadEmailTemplates();
+    }catch(e:any){ alert(e.message||"Could not delete template"); }
+    setEmailBusy(false);
+  }
+  function emailAddBlock(type:string){
+    const blank:Record<string,any>={
+      heading:{type:"heading",text:"Heading"},
+      text:{type:"text",html:"Write something…"},
+      image:{type:"image",src:"",alt:"",link:""},
+      button:{type:"button",text:"Click here",href:"https://"},
+      divider:{type:"divider"},
+      spacer:{type:"spacer",height:24},
+      footer:{type:"footer",text:"You're receiving this because you're a valued contact of Creative Fusion."},
+    };
+    setEmailTemplateForm((f:any)=>({...f,blocks:[...(f.blocks||[]),blank[type]]}));
+  }
+  function emailUpdateBlock(idx:number,patch:any){
+    setEmailTemplateForm((f:any)=>{
+      const blocks=[...(f.blocks||[])];
+      blocks[idx]={...blocks[idx],...patch};
+      return {...f,blocks};
+    });
+  }
+  function emailRemoveBlock(idx:number){
+    setEmailTemplateForm((f:any)=>({...f,blocks:(f.blocks||[]).filter((_:any,i:number)=>i!==idx)}));
+  }
+  function emailMoveBlock(idx:number,dir:number){
+    setEmailTemplateForm((f:any)=>{
+      const blocks=[...(f.blocks||[])];
+      const j=idx+dir;
+      if(j<0||j>=blocks.length) return f;
+      [blocks[idx],blocks[j]]=[blocks[j],blocks[idx]];
+      return {...f,blocks};
+    });
+  }
+  async function emailSendTest(){
+    if(!adminSession||!emailTemplateEditId||emailTemplateEditId==="new"){ alert("Save the template first."); return; }
+    if(!emailTestTo.trim()){ alert("Enter a recipient email address."); return; }
+    setEmailTestBusy(true); setEmailTestMsg("");
+    try{
+      const res=await fetch("/api/admin/email/send-test",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({template_id:emailTemplateEditId,to_email:emailTestTo.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not send test email");
+      setEmailTestMsg(`✓ Test email sent to ${emailTestTo.trim()}.`);
+    }catch(e:any){ setEmailTestMsg(e.message||"Could not send test email"); }
+    setEmailTestBusy(false);
+  }
+
+  // Email Designer -- campaigns. See functions/api/admin/email/campaigns.ts / campaigns/[id].ts /
+  // campaigns/[id]/send.ts.
+  async function loadEmailCampaigns(){
+    if(!adminSession) return;
+    setEmailCampaignsLoading(true);
+    try{
+      const res=await fetch("/api/admin/email/campaigns",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setEmailCampaigns(data.campaigns||[]);
+    }catch{}
+    setEmailCampaignsLoading(false);
+  }
+  async function loadEmailTagsList(){
+    if(!adminSession||emailTagsList) return;
+    try{
+      const res=await fetch("/api/admin/crm-tags",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setEmailTagsList(data.tags||[]);
+    }catch{}
+  }
+  async function emailCreateCampaign(){
+    if(!adminSession) return;
+    if(!emailCampaignForm.name.trim()){ alert("Campaign name is required."); return; }
+    if(!emailCampaignForm.template_id){ alert("Pick a template."); return; }
+    if(emailCampaignForm.audienceType==="tag"&&!emailCampaignForm.tag_id){ alert("Pick a tag."); return; }
+    if(emailCampaignForm.audienceType==="contact"&&!emailCampaignForm.customer_id){ alert("Pick a contact."); return; }
+    setEmailCampaignBusy(true);
+    try{
+      const audience=emailCampaignForm.audienceType==="tag"?{type:"tag",tag_id:emailCampaignForm.tag_id}
+        :emailCampaignForm.audienceType==="contact"?{type:"contact",customer_id:emailCampaignForm.customer_id}
+        :{type:"all"};
+      const res=await fetch("/api/admin/email/campaigns",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({name:emailCampaignForm.name.trim(),category:emailCampaignForm.category,template_id:emailCampaignForm.template_id,audience})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not create campaign");
+      setEmailCampaignForm(EMAIL_CAMPAIGN_EMPTY);
+      setEmailCampaignAddOpen(false);
+      await loadEmailCampaigns();
+    }catch(e:any){ alert(e.message||"Could not create campaign"); }
+    setEmailCampaignBusy(false);
+  }
+  async function loadEmailCampaignDetail(id:string){
+    if(!adminSession) return;
+    setEmailCampaignOpenId(id);
+    setEmailCampaignDetail(null);
+    try{
+      const res=await fetch(`/api/admin/email/campaigns/${id}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setEmailCampaignDetail(data);
+    }catch{}
+  }
+  async function emailSendCampaign(id:string){
+    if(!adminSession) return;
+    if(!confirm("Send this campaign now? This will email every eligible, consenting contact and can't be undone.")) return;
+    setEmailCampaignBusy(true);
+    try{
+      const res=await fetch(`/api/admin/email/campaigns/${id}/send`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not send campaign");
+      alert(`Sent: ${data.sent}, Failed: ${data.failed}, Skipped (no email): ${data.skipped_no_email}, Skipped (no consent): ${data.skipped_no_consent}`);
+      await loadEmailCampaigns();
+      await loadEmailCampaignDetail(id);
+    }catch(e:any){ alert(e.message||"Could not send campaign"); }
+    setEmailCampaignBusy(false);
+  }
+  async function emailDeleteCampaign(id:string){
+    if(!adminSession) return;
+    if(!confirm("Delete this draft campaign?")) return;
+    setEmailCampaignBusy(true);
+    try{
+      const res=await fetch(`/api/admin/email/campaigns/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not delete campaign");
+      if(emailCampaignOpenId===id){ setEmailCampaignOpenId(null); setEmailCampaignDetail(null); }
+      await loadEmailCampaigns();
+    }catch(e:any){ alert(e.message||"Could not delete campaign"); }
+    setEmailCampaignBusy(false);
+  }
+  useEffect(()=>{ if(cmsTab==="email"&&adminSession){ loadEmailTemplates(); loadEmailCampaigns(); } },[cmsTab,adminSession]);
 
   // Google Reviews curation -- loads whenever the merged Reviews tab (cmsTab==="testimonials")
   // opens, using whatever Place ID is already configured in Settings > SEO.
@@ -3116,6 +3313,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
+      email:"Email Designer", followups:"Follow-ups", clientdir:"Client Directory", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
@@ -3127,6 +3325,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }
     function CmsNavSection({label}:{label:string}){
       return <div style={{fontSize:10.5,letterSpacing:1.2,textTransform:"uppercase" as const,color:"#6E6480",padding:"16px 12px 6px"}}>{label}</div>;
+    }
+    // Email Designer preview -- a client-side approximation of functions/_shared/emailRender.ts's
+    // blockToHtml, close enough to judge layout while editing. The real send always goes through
+    // that shared server-side renderer (and its sanitizer), never through this preview.
+    function emailBlockPreview(b:any){
+      switch(b.type){
+        case "heading": return <div style={{padding:"18px 22px 6px",fontFamily:"Georgia,serif",fontSize:19,color:"#140D21"}}>{b.text}</div>;
+        case "text": return <div style={{padding:"6px 22px",fontSize:12.5,lineHeight:1.7,color:"#3a3245",whiteSpace:"pre-wrap" as const}}>{b.html}</div>;
+        case "image": return b.src?(<div style={{padding:"6px 22px"}}><img src={b.src} alt={b.alt||""} style={{display:"block",width:"100%",borderRadius:4}} /></div>):(<div style={{padding:"6px 22px",fontSize:11,color:"#9a92a8",fontStyle:"italic"}}>(no image URL yet)</div>);
+        case "button": return <div style={{padding:"14px 22px",textAlign:"center" as const}}><span style={{display:"inline-block",background:"#8B5CF6",color:"#fff",fontSize:12.5,fontWeight:600,padding:"11px 26px",borderRadius:6}}>{b.text}</span></div>;
+        case "divider": return <div style={{padding:"0 22px"}}><div style={{borderTop:"1px solid #e6e1ee"}} /></div>;
+        case "spacer": return <div style={{height:Math.max(4,Math.min(120,Number(b.height)||24))}} />;
+        case "footer": return <div style={{padding:"18px 22px 22px",fontSize:10,lineHeight:1.6,color:"#9a92a8",whiteSpace:"pre-wrap" as const}}>{b.text}</div>;
+        default: return null;
+      }
     }
     const cmsSidebar = (
       <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
@@ -3145,6 +3358,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
+        <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -3964,6 +4178,224 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* EMAIL DESIGNER -- block-based template builder + campaign sender. See
+            functions/api/admin/email/{templates,campaigns}.ts and functions/_shared/emailRender.ts.
+            Templates and campaigns are two independent lists under one tab; creating a template
+            or a draft campaign never sends anything on its own -- only "Send Now" does. */}
+        {cmsTab==="email"&&(
+          <div style={{maxWidth:1040,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap" as const,gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase" as const}}>Email Designer</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setEmailSubTab("templates")} style={emailSubTab==="templates"?S.btnP:S.btnO}>Templates</button>
+                <button onClick={()=>setEmailSubTab("campaigns")} style={emailSubTab==="campaigns"?S.btnP:S.btnO}>Campaigns</button>
+              </div>
+            </div>
+
+            {emailSubTab==="templates"&&(emailTemplateEditId?(
+              <div>
+                <button onClick={()=>{setEmailTemplateEditId(null);setEmailTemplateForm(EMAIL_TEMPLATE_EMPTY);setEmailTestMsg("");}} style={{...S.btnO,marginBottom:16}}>← Back to templates</button>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 360px",gap:20}}>
+                  <div>
+                    <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap" as const}}>
+                      <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Template name" value={emailTemplateForm.name} onChange={e=>setEmailTemplateForm((f:any)=>({...f,name:e.target.value}))} />
+                      <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Subject line" value={emailTemplateForm.subject} onChange={e=>setEmailTemplateForm((f:any)=>({...f,subject:e.target.value}))} />
+                    </div>
+                    <div style={{fontSize:10.5,color:C.MID,marginBottom:14}}>Personalize with: {EMAIL_VARIABLES.map(([k])=>`{{${k}}}`).join("  ")}</div>
+
+                    <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+                      {(emailTemplateForm.blocks||[]).map((b:any,idx:number)=>(
+                        <div key={idx} style={{...CARD_STYLE,padding:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                            <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>{b.type}</span>
+                            <div style={{display:"flex",gap:6}}>
+                              <button onClick={()=>emailMoveBlock(idx,-1)} disabled={idx===0} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↑</button>
+                              <button onClick={()=>emailMoveBlock(idx,1)} disabled={idx===emailTemplateForm.blocks.length-1} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↓</button>
+                              <button onClick={()=>emailRemoveBlock(idx)} style={{...S.btnO,padding:"4px 9px",fontSize:11,color:"#e74c3c"}}>✕</button>
+                            </div>
+                          </div>
+                          {b.type==="heading"&&<input style={S.inp} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Heading text" />}
+                          {b.type==="text"&&<textarea style={{...S.inp,minHeight:70}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="Body text" />}
+                          {b.type==="footer"&&<textarea style={{...S.inp,minHeight:50}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Footer text" />}
+                          {b.type==="image"&&(
+                            <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+                              <input style={S.inp} value={b.src} onChange={e=>emailUpdateBlock(idx,{src:e.target.value})} placeholder="Image URL (upload it in Media Library, then paste the URL here)" />
+                              <input style={S.inp} value={b.alt||""} onChange={e=>emailUpdateBlock(idx,{alt:e.target.value})} placeholder="Alt text" />
+                              <input style={S.inp} value={b.link||""} onChange={e=>emailUpdateBlock(idx,{link:e.target.value})} placeholder="Link URL (optional)" />
+                            </div>
+                          )}
+                          {b.type==="button"&&(
+                            <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+                              <input style={{...S.inp,flex:1,minWidth:140}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Button text" />
+                              <input style={{...S.inp,flex:1,minWidth:140}} value={b.href} onChange={e=>emailUpdateBlock(idx,{href:e.target.value})} placeholder="Button link URL" />
+                            </div>
+                          )}
+                          {b.type==="spacer"&&<input type="number" style={{...S.inp,width:120}} value={b.height||24} onChange={e=>emailUpdateBlock(idx,{height:Number(e.target.value)||24})} placeholder="Height (px)" />}
+                          {b.type==="divider"&&<div style={{fontSize:11,color:C.MID,fontStyle:"italic"}}>A horizontal divider line.</div>}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:14}}>
+                      {["heading","text","image","button","divider","spacer","footer"].map(t=>(
+                        <button key={t} onClick={()=>emailAddBlock(t)} style={{...S.btnO,padding:"6px 12px",fontSize:10.5,textTransform:"capitalize" as const}}>+ {t}</button>
+                      ))}
+                    </div>
+
+                    <div style={{marginTop:20}}>
+                      <button onClick={emailSaveTemplate} disabled={emailBusy} style={S.btnP}>Save Template</button>
+                    </div>
+
+                    <div style={{marginTop:24,paddingTop:20,borderTop:`1px solid ${C.BORDER}`}}>
+                      <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:8}}>Send Test Email</div>
+                      {emailTemplateEditId==="new"&&<div style={{fontSize:11.5,color:C.MID,fontStyle:"italic",marginBottom:8}}>Save the template first.</div>}
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
+                        <input style={{...S.inp,flex:1,minWidth:200}} placeholder="you@example.com" value={emailTestTo} onChange={e=>setEmailTestTo(e.target.value)} />
+                        <button onClick={emailSendTest} disabled={emailTestBusy||emailTemplateEditId==="new"} style={S.btnO}>Send Test</button>
+                      </div>
+                      {emailTestMsg&&<div style={{fontSize:11.5,color:emailTestMsg.startsWith("✓")?"#2ecc71":"#e74c3c",marginTop:8}}>{emailTestMsg}</div>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>Preview</span>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>setEmailPreviewWidth("desktop")} style={{...S.btnO,padding:"4px 10px",fontSize:10.5,background:emailPreviewWidth==="desktop"?C.P:undefined,color:emailPreviewWidth==="desktop"?"#fff":undefined}}>Desktop</button>
+                        <button onClick={()=>setEmailPreviewWidth("mobile")} style={{...S.btnO,padding:"4px 10px",fontSize:10.5,background:emailPreviewWidth==="mobile"?C.P:undefined,color:emailPreviewWidth==="mobile"?"#fff":undefined}}>Mobile</button>
+                      </div>
+                    </div>
+                    <div style={{background:"#f4f1f9",borderRadius:10,padding:16}}>
+                      <div style={{background:"#fff",borderRadius:8,overflow:"hidden" as const,maxWidth:emailPreviewWidth==="mobile"?300:420,margin:"0 auto"}}>
+                        {(emailTemplateForm.blocks||[]).map((b:any,idx:number)=>(<div key={idx}>{emailBlockPreview(b)}</div>))}
+                        {(!emailTemplateForm.blocks||emailTemplateForm.blocks.length===0)&&<div style={{padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ):(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={emailNewTemplate} style={S.btnP}>+ New Template</button>
+                </div>
+                {emailTemplatesLoading?(
+                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                ):!emailTemplates||emailTemplates.length===0?(
+                  <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No templates yet. Create your first one.</div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+                    {emailTemplates.map((t:any)=>(
+                      <div key={t.id} style={{...CARD_STYLE,padding:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap" as const}}>
+                        <div>
+                          <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{t.name}</div>
+                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{t.subject||"(no subject)"} · {(t.blocks||[]).length} block{(t.blocks||[]).length===1?"":"s"}</div>
+                        </div>
+                        <div style={{display:"flex",gap:8}}>
+                          <button onClick={()=>emailOpenTemplate(t)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}}>Edit</button>
+                          <button onClick={()=>emailDeleteTemplate(t.id)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5,color:"#e74c3c"}}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {emailSubTab==="campaigns"&&(emailCampaignOpenId?(
+              <div>
+                <button onClick={()=>{setEmailCampaignOpenId(null);setEmailCampaignDetail(null);}} style={{...S.btnO,marginBottom:16}}>← Back to campaigns</button>
+                {!emailCampaignDetail?(
+                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                ):(
+                  <div>
+                    <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
+                      <div style={{fontSize:15,fontWeight:700,color:C.FG}}>{emailCampaignDetail.campaign.name}</div>
+                      <div style={{fontSize:11.5,color:C.MID,marginTop:4}}>{emailCampaignDetail.campaign.email_templates?.name||"(template deleted)"} · {emailCampaignDetail.campaign.category} · status: {emailCampaignDetail.campaign.status}</div>
+                      {emailCampaignDetail.campaign.status==="draft"&&(
+                        <div style={{display:"flex",gap:10,marginTop:14}}>
+                          <button onClick={()=>emailSendCampaign(emailCampaignDetail.campaign.id)} disabled={emailCampaignBusy} style={S.btnP}>Send Now</button>
+                          <button onClick={()=>emailDeleteCampaign(emailCampaignDetail.campaign.id)} disabled={emailCampaignBusy} style={{...S.btnO,color:"#e74c3c"}}>Delete Draft</button>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:8}}>Recipients · {(emailCampaignDetail.messages||[]).length}</div>
+                    <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+                      {(emailCampaignDetail.messages||[]).map((m:any)=>(
+                        <div key={m.id} style={{...CARD_STYLE,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap" as const}}>
+                          <div style={{fontSize:12,color:C.FG}}>{m.customers?.full_name||m.to_email||"Unknown"}</div>
+                          <span style={{fontSize:10.5,color:m.status==="sent"?"#2ecc71":m.status==="failed"?"#e74c3c":C.MID}}>{m.status}</span>
+                        </div>
+                      ))}
+                      {(!emailCampaignDetail.messages||emailCampaignDetail.messages.length===0)&&<div style={{color:C.MID,fontSize:12,fontStyle:"italic"}}>Not sent yet -- no recipient history.</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ):(
+              <div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
+                  <button onClick={()=>setEmailCampaignAddOpen(v=>!v)} style={S.btnP}>{emailCampaignAddOpen?"Cancel":"+ New Campaign"}</button>
+                </div>
+                {emailCampaignAddOpen&&(
+                  <div style={{...CARD_STYLE,padding:16,marginBottom:16,display:"flex",flexDirection:"column" as const,gap:10}}>
+                    <input style={S.inp} placeholder="Campaign name" value={emailCampaignForm.name} onChange={e=>setEmailCampaignForm((f:any)=>({...f,name:e.target.value}))} />
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
+                      <select style={{...S.inp,flex:1,minWidth:180}} value={emailCampaignForm.template_id} onChange={e=>setEmailCampaignForm((f:any)=>({...f,template_id:e.target.value}))}>
+                        <option value="">Select a template…</option>
+                        {(emailTemplates||[]).map((t:any)=>(<option key={t.id} value={t.id}>{t.name}</option>))}
+                      </select>
+                      <select style={{...S.inp,flex:1,minWidth:180}} value={emailCampaignForm.category} onChange={e=>setEmailCampaignForm((f:any)=>({...f,category:e.target.value}))}>
+                        {CRM_CONSENT_CATEGORIES.map(([key,label])=>(<option key={key} value={key}>{label}</option>))}
+                      </select>
+                    </div>
+                    <div style={{display:"flex",gap:10,flexWrap:"wrap" as const,alignItems:"center"}}>
+                      <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.audienceType} onChange={e=>{const v=e.target.value; setEmailCampaignForm((f:any)=>({...f,audienceType:v})); if(v==="tag") loadEmailTagsList(); if(v==="contact"&&!clientDirList) loadClientDir();}}>
+                        <option value="all">All contacts</option>
+                        <option value="tag">Contacts with a tag</option>
+                        <option value="contact">A single contact</option>
+                      </select>
+                      {emailCampaignForm.audienceType==="tag"&&(
+                        <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.tag_id} onChange={e=>setEmailCampaignForm((f:any)=>({...f,tag_id:e.target.value}))}>
+                          <option value="">Select a tag…</option>
+                          {(emailTagsList||[]).map((tg:any)=>(<option key={tg.id} value={tg.id}>{tg.name}</option>))}
+                        </select>
+                      )}
+                      {emailCampaignForm.audienceType==="contact"&&(
+                        <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.customer_id} onChange={e=>setEmailCampaignForm((f:any)=>({...f,customer_id:e.target.value}))}>
+                          <option value="">Select a contact…</option>
+                          {(clientDirList||[]).map((c:any)=>(<option key={c.id} value={c.id}>{c.full_name}</option>))}
+                        </select>
+                      )}
+                    </div>
+                    <div><button onClick={emailCreateCampaign} disabled={emailCampaignBusy} style={S.btnP}>Create Draft</button></div>
+                  </div>
+                )}
+                {emailCampaignsLoading?(
+                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                ):!emailCampaigns||emailCampaigns.length===0?(
+                  <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No campaigns yet.</div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+                    {emailCampaigns.map((c:any)=>(
+                      <div key={c.id} onClick={()=>loadEmailCampaignDetail(c.id)} style={{...CARD_STYLE,padding:14,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap" as const}}>
+                        <div>
+                          <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{c.name}</div>
+                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.email_templates?.name||"(template deleted)"} · {c.category}</div>
+                        </div>
+                        <div style={{display:"flex",alignItems:"center",gap:10}}>
+                          <span style={{fontSize:10.5,padding:"4px 10px",borderRadius:20,background:c.status==="sent"?"rgba(46,204,113,0.16)":c.status==="sending"?"rgba(241,196,15,0.16)":"rgba(255,255,255,0.08)",color:c.status==="sent"?"#2ecc71":c.status==="sending"?"#f1c40f":C.MID,textTransform:"capitalize" as const}}>{c.status}</span>
+                          <span style={{fontSize:11,color:C.MID}}>{Object.values(c.counts||{}).reduce((a:number,b:any)=>a+Number(b),0)} recipients</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
 

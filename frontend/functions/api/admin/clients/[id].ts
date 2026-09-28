@@ -33,5 +33,22 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env, para
   );
   const messages = msgRes.ok ? ((await msgRes.json()) as any[]) : [];
 
-  return json({ customer, bookings, messages }, 200, origin);
+  // CRM data added by migration 0008. Each fetched independently and defaulted to an empty
+  // list on failure, so this endpoint still returns the booking/message history above even
+  // before that migration has been run against the real database.
+  const [notesRes, meetingsRes, tasksRes, tagLinksRes, consentRes] = await Promise.all([
+    supaAdmin(env, `crm_notes?customer_id=eq.${customerId}&order=created_at.desc&limit=200`, { method: "GET" }),
+    supaAdmin(env, `crm_meetings?customer_id=eq.${customerId}&order=meeting_date.desc.nullslast&limit=200`, { method: "GET" }),
+    supaAdmin(env, `crm_tasks?customer_id=eq.${customerId}&order=due_date.asc.nullslast&limit=200`, { method: "GET" }),
+    supaAdmin(env, `customer_tags?customer_id=eq.${customerId}&select=crm_tags(id,name,slug,color)`, { method: "GET" }),
+    supaAdmin(env, `communication_preferences?customer_id=eq.${customerId}&select=category,allowed,updated_at`, { method: "GET" }),
+  ]);
+  const notes = notesRes.ok ? await notesRes.json() : [];
+  const meetings = meetingsRes.ok ? await meetingsRes.json() : [];
+  const tasks = tasksRes.ok ? await tasksRes.json() : [];
+  const tagLinks = tagLinksRes.ok ? ((await tagLinksRes.json()) as any[]) : [];
+  const tags = tagLinks.map((t) => t.crm_tags).filter(Boolean);
+  const consent = consentRes.ok ? await consentRes.json() : [];
+
+  return json({ customer, bookings, messages, notes, meetings, tasks, tags, consent }, 200, origin);
 };

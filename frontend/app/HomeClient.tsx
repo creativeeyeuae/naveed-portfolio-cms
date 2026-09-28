@@ -1991,6 +1991,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [clientDirSearch,setClientDirSearch]=useState("");
   const [clientDirOpenId,setClientDirOpenId]=useState<string|null>(null);
   const [clientDirDetail,setClientDirDetail]=useState<any|null>(null);
+  // CRM additions (migration 0008) -- notes/meetings/tasks/tags/consent live inside the same
+  // Client Directory detail panel above, plus a standalone Follow-ups view and an Add
+  // Contact form for creating a CRM record that didn't come from a booking.
+  const [crmBusy,setCrmBusy]=useState(false);
+  const [crmNoteText,setCrmNoteText]=useState("");
+  const CRM_MEETING_EMPTY={event:"",meeting_date:"",location:"",how_met:"",interest:"",notes:"",next_action:""};
+  const [crmMeetingForm,setCrmMeetingForm]=useState(CRM_MEETING_EMPTY);
+  const [crmTaskForm,setCrmTaskForm]=useState({title:"",due_date:"",assigned_to:""});
+  const [crmNewTag,setCrmNewTag]=useState("");
+  const [crmAddContactOpen,setCrmAddContactOpen]=useState(false);
+  const CRM_CONTACT_EMPTY={full_name:"",email:"",phone:"",whatsapp:"",company:"",job_title:"",source:""};
+  const [crmAddContactForm,setCrmAddContactForm]=useState<any>(CRM_CONTACT_EMPTY);
+  const [crmDuplicateFound,setCrmDuplicateFound]=useState<any>(null);
+  const [followUpsList,setFollowUpsList]=useState<any[]|null>(null);
+  const [followUpsLoading,setFollowUpsLoading]=useState(false);
+  const CRM_CONSENT_CATEGORIES:[string,string][]=[["relationship","Relationship / Direct Follow-up"],["service","Service Communication"],["marketing","Marketing"],["promotions","Promotions"],["events","Events"],["offers","Offers"],["wishes","Wishes"]];
   const [clientDirDetailLoading,setClientDirDetailLoading]=useState(false);
   // Google Reviews curation, merged into the Reviews tab alongside manual Testimonials --
   // see functions/api/admin/google-reviews-archive.ts / .../toggle.ts.
@@ -2254,6 +2270,105 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       if(res.ok) setClientDirDetail(data);
     }catch{}
     setClientDirDetailLoading(false);
+  }
+
+  // CRM (CMS > Client Directory) -- see functions/api/admin/clients/[id]/{update,notes,meetings,
+  // tasks,tags,consent}.ts. All writes re-fetch the open contact's detail + the list summary.
+  async function crmPost(path:string,body:any){
+    if(!adminSession||!clientDirOpenId) return null;
+    setCrmBusy(true);
+    try{
+      const res=await fetch(`/api/admin/clients/${clientDirOpenId}/${path}`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(body)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Request failed");
+      await loadClientDirDetail(clientDirOpenId);
+      await loadClientDir();
+      return data;
+    }catch(e:any){ alert(e.message||"Request failed"); return null; }
+    finally{ setCrmBusy(false); }
+  }
+  async function crmUpdateFields(fields:any){
+    if(!adminSession||!clientDirOpenId) return;
+    setCrmBusy(true);
+    try{
+      const res=await fetch(`/api/admin/clients/${clientDirOpenId}/update`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(fields)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save");
+      await loadClientDirDetail(clientDirOpenId);
+      await loadClientDir();
+    }catch(e:any){ alert(e.message||"Could not save"); }
+    setCrmBusy(false);
+  }
+  async function crmAddNote(){
+    if(!crmNoteText.trim()) return;
+    const ok=await crmPost("notes",{note:crmNoteText.trim()});
+    if(ok) setCrmNoteText("");
+  }
+  async function crmAddMeeting(){
+    if(!crmMeetingForm.event.trim()&&!crmMeetingForm.meeting_date){ alert("Add at least an event or a date."); return; }
+    const ok=await crmPost("meetings",crmMeetingForm);
+    if(ok) setCrmMeetingForm(CRM_MEETING_EMPTY);
+  }
+  async function crmAddTask(){
+    if(!crmTaskForm.title.trim()){ alert("Task title is required."); return; }
+    const ok=await crmPost("tasks",crmTaskForm);
+    if(ok) setCrmTaskForm({title:"",due_date:"",assigned_to:""});
+  }
+  async function crmAddTag(){
+    if(!crmNewTag.trim()) return;
+    const ok=await crmPost("tags",{name:crmNewTag.trim()});
+    if(ok) setCrmNewTag("");
+  }
+  async function crmRemoveTag(tagId:string){
+    if(!adminSession||!clientDirOpenId) return;
+    setCrmBusy(true);
+    try{
+      const res=await fetch(`/api/admin/clients/${clientDirOpenId}/tags?tag_id=${tagId}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not remove tag"); }
+      await loadClientDirDetail(clientDirOpenId);
+    }catch(e:any){ alert(e.message||"Could not remove tag"); }
+    setCrmBusy(false);
+  }
+  async function crmSetConsent(category:string,allowed:boolean){
+    await crmPost("consent",{category,allowed});
+  }
+  async function crmCompleteTask(taskId:string){
+    if(!adminSession) return;
+    setCrmBusy(true);
+    try{
+      const res=await fetch(`/api/admin/tasks/${taskId}/complete`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not complete task"); }
+      if(clientDirOpenId) await loadClientDirDetail(clientDirOpenId);
+      if(followUpsList) await loadFollowUps();
+    }catch(e:any){ alert(e.message||"Could not complete task"); }
+    setCrmBusy(false);
+  }
+  async function loadFollowUps(){
+    if(!adminSession) return;
+    setFollowUpsLoading(true);
+    try{
+      const res=await fetch("/api/admin/tasks",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setFollowUpsList(data.tasks||[]);
+    }catch{}
+    setFollowUpsLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="followups"&&adminSession) loadFollowUps(); },[cmsTab,adminSession]);
+  async function crmAddContact(force?:boolean){
+    if(!adminSession) return;
+    if(!crmAddContactForm.full_name.trim()){ alert("Name is required."); return; }
+    setCrmBusy(true);
+    try{
+      const res=await fetch("/api/admin/clients",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({...crmAddContactForm,force:!!force})});
+      const data=await res.json();
+      if(res.status===409&&!force){ setCrmDuplicateFound(data.duplicate); setCrmBusy(false); return; }
+      if(!res.ok) throw new Error(data.error||"Could not create contact");
+      setCrmAddContactForm(CRM_CONTACT_EMPTY);
+      setCrmDuplicateFound(null);
+      setCrmAddContactOpen(false);
+      await loadClientDir();
+    }catch(e:any){ alert(e.message||"Could not create contact"); }
+    setCrmBusy(false);
   }
 
   // Google Reviews curation -- loads whenever the merged Reviews tab (cmsTab==="testimonials")
@@ -3029,6 +3144,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
+        <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -3628,9 +3744,36 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Client Directory</div>
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
                 <input style={{...S.inp,width:220}} placeholder="Search name or email…" value={clientDirSearch} onChange={e=>setClientDirSearch(e.target.value)} />
+                <button onClick={()=>setCrmAddContactOpen(v=>!v)} style={S.btnP}>{crmAddContactOpen?"✕ Cancel":"+ Add Contact"}</button>
                 <button onClick={loadClientDir} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
+            {crmAddContactOpen&&(
+              <div style={{...CARD_STYLE,padding:18,marginBottom:18}}>
+                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:12}}>New Contact</div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                  <input style={S.inp} placeholder="Full name *" value={crmAddContactForm.full_name} onChange={e=>setCrmAddContactForm((f:any)=>({...f,full_name:e.target.value}))} />
+                  <input style={S.inp} placeholder="Email" value={crmAddContactForm.email} onChange={e=>setCrmAddContactForm((f:any)=>({...f,email:e.target.value}))} />
+                  <input style={S.inp} placeholder="Phone" value={crmAddContactForm.phone} onChange={e=>setCrmAddContactForm((f:any)=>({...f,phone:e.target.value}))} />
+                  <input style={S.inp} placeholder="WhatsApp" value={crmAddContactForm.whatsapp} onChange={e=>setCrmAddContactForm((f:any)=>({...f,whatsapp:e.target.value}))} />
+                  <input style={S.inp} placeholder="Company" value={crmAddContactForm.company} onChange={e=>setCrmAddContactForm((f:any)=>({...f,company:e.target.value}))} />
+                  <input style={S.inp} placeholder="Job title" value={crmAddContactForm.job_title} onChange={e=>setCrmAddContactForm((f:any)=>({...f,job_title:e.target.value}))} />
+                  <input style={S.inp} placeholder="Source (e.g. referral, event, Instagram)" value={crmAddContactForm.source} onChange={e=>setCrmAddContactForm((f:any)=>({...f,source:e.target.value}))} />
+                </div>
+                {crmDuplicateFound&&(
+                  <div style={{marginTop:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
+                    A contact may already exist: <strong>{crmDuplicateFound.full_name||"Unknown"}</strong> ({crmDuplicateFound.email||crmDuplicateFound.phone||crmDuplicateFound.whatsapp}).
+                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                      <button onClick={()=>crmAddContact(true)} disabled={crmBusy} style={S.btnSm}>Add anyway</button>
+                      <button onClick={()=>setCrmDuplicateFound(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{marginTop:14}}>
+                  <button onClick={()=>crmAddContact(false)} disabled={crmBusy} style={S.btnP}>{crmBusy?"Saving…":"Save Contact"}</button>
+                </div>
+              </div>
+            )}
             {clientDirErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{clientDirErr}</div>}
             {clientDirLoading?(
               <div style={{color:C.MID,fontSize:13}}>Loading…</div>
@@ -3661,7 +3804,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             ):(
                               <div style={{display:"flex",flexDirection:"column",gap:10}}>
                                 {c.phone&&<div style={{fontSize:12,color:C.MID}}>Phone: {c.phone}{c.whatsapp?` · WhatsApp: ${c.whatsapp}`:""}{c.company?` · ${c.company}`:""}</div>}
-                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Bookings</div>
+
+                                {/* --- CRM: profile fields --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>CRM Profile</div>
+                                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                                  {([["company","Company"],["job_title","Job title"],["industry","Industry"],["website","Website"],["source","Source"],["event_met","Event met at"]] as [string,string][]).map(([key,ph])=>(
+                                    <input key={key} style={S.inp} placeholder={ph} defaultValue={clientDirDetail.customer?.[key]||""} onBlur={e=>{ if(e.target.value!==(clientDirDetail.customer?.[key]||"")) crmUpdateFields({[key]:e.target.value}); }} />
+                                  ))}
+                                  <input style={S.inp} type="date" defaultValue={clientDirDetail.customer?.date_met||""} onBlur={e=>{ if(e.target.value!==(clientDirDetail.customer?.date_met||"")) crmUpdateFields({date_met:e.target.value||null}); }} />
+                                  <select style={S.inp} defaultValue={clientDirDetail.customer?.lead_status||"lead"} onChange={e=>crmUpdateFields({lead_status:e.target.value})}>
+                                    {["lead","prospect","client","past_client","inactive"].map(v=><option key={v} value={v}>{v.replace("_"," ")}</option>)}
+                                  </select>
+                                </div>
+
+                                {/* --- CRM: tags --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Tags</div>
+                                <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                                  {(clientDirDetail.tags||[]).map((t:any)=>(
+                                    <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                      {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>crmRemoveTag(t.id)}>✕</span>
+                                    </span>
+                                  ))}
+                                  <input style={{...S.inp,width:140,padding:"4px 10px",fontSize:11}} placeholder="+ tag" value={crmNewTag} onChange={e=>setCrmNewTag(e.target.value)} onKeyDown={e=>e.key==="Enter"&&crmAddTag()} />
+                                </div>
+
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Bookings</div>
                                 {(clientDirDetail.bookings||[]).length===0?(
                                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No bookings.</div>
                                 ):clientDirDetail.bookings.map((b:any)=>(
@@ -3678,6 +3845,72 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                     ))}
                                   </>
                                 )}
+
+                                {/* --- CRM: meetings --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Meetings</div>
+                                {(clientDirDetail.meetings||[]).length===0?(
+                                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No meetings logged.</div>
+                                ):clientDirDetail.meetings.map((m:any)=>(
+                                  <div key={m.id} style={{padding:"8px 12px",background:"rgba(139,92,246,0.06)",borderRadius:8,fontSize:12,color:C.FG}}>
+                                    <div style={{fontWeight:600}}>{m.event||"Meeting"}{m.meeting_date?` · ${m.meeting_date}`:""}{m.location?` · ${m.location}`:""}</div>
+                                    {m.how_met&&<div style={{color:C.MID,marginTop:2}}>How met: {m.how_met}</div>}
+                                    {m.interest&&<div style={{color:C.MID,marginTop:2}}>Interest: {m.interest}</div>}
+                                    {m.notes&&<div style={{color:C.MID,marginTop:2}}>{m.notes}</div>}
+                                    {m.next_action&&<div style={{color:C.PL,marginTop:2}}>Next: {m.next_action}</div>}
+                                  </div>
+                                ))}
+                                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,padding:"10px 12px",background:"rgba(255,255,255,0.02)",borderRadius:8}}>
+                                  <input style={S.inp} placeholder="Event / occasion" value={crmMeetingForm.event} onChange={e=>setCrmMeetingForm((f:any)=>({...f,event:e.target.value}))} />
+                                  <input style={S.inp} type="date" value={crmMeetingForm.meeting_date} onChange={e=>setCrmMeetingForm((f:any)=>({...f,meeting_date:e.target.value}))} />
+                                  <input style={S.inp} placeholder="Location" value={crmMeetingForm.location} onChange={e=>setCrmMeetingForm((f:any)=>({...f,location:e.target.value}))} />
+                                  <input style={S.inp} placeholder="How you met" value={crmMeetingForm.how_met} onChange={e=>setCrmMeetingForm((f:any)=>({...f,how_met:e.target.value}))} />
+                                  <input style={S.inp} placeholder="Their interest" value={crmMeetingForm.interest} onChange={e=>setCrmMeetingForm((f:any)=>({...f,interest:e.target.value}))} />
+                                  <input style={S.inp} placeholder="Next action" value={crmMeetingForm.next_action} onChange={e=>setCrmMeetingForm((f:any)=>({...f,next_action:e.target.value}))} />
+                                  <textarea style={{...S.inp,gridColumn:isMobile?undefined:"1 / -1",minHeight:50}} placeholder="Notes" value={crmMeetingForm.notes} onChange={e=>setCrmMeetingForm((f:any)=>({...f,notes:e.target.value}))} />
+                                  <div style={{gridColumn:isMobile?undefined:"1 / -1"}}><button onClick={crmAddMeeting} disabled={crmBusy} style={S.btnSm}>+ Log Meeting</button></div>
+                                </div>
+
+                                {/* --- CRM: tasks / follow-ups --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Follow-up Tasks</div>
+                                {(clientDirDetail.tasks||[]).length===0?(
+                                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No tasks.</div>
+                                ):clientDirDetail.tasks.map((t:any)=>(
+                                  <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(139,92,246,0.06)",borderRadius:8,fontSize:12,color:t.completed?C.MID:C.FG,textDecoration:t.completed?"line-through":"none"}}>
+                                    <span>{t.title}{t.due_date?` · due ${t.due_date}`:""}</span>
+                                    {!t.completed&&<button onClick={()=>crmCompleteTask(t.id)} disabled={crmBusy} style={{...S.btnO,padding:"5px 10px",fontSize:10}}>✓ Done</button>}
+                                  </div>
+                                ))}
+                                <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"10px 12px",background:"rgba(255,255,255,0.02)",borderRadius:8}}>
+                                  <input style={{...S.inp,flex:2,minWidth:140}} placeholder="Task title" value={crmTaskForm.title} onChange={e=>setCrmTaskForm((f:any)=>({...f,title:e.target.value}))} />
+                                  <input style={{...S.inp,flex:1,minWidth:120}} type="date" value={crmTaskForm.due_date} onChange={e=>setCrmTaskForm((f:any)=>({...f,due_date:e.target.value}))} />
+                                  <button onClick={crmAddTask} disabled={crmBusy} style={S.btnSm}>+ Add Task</button>
+                                </div>
+
+                                {/* --- CRM: notes --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Notes</div>
+                                {(clientDirDetail.notes||[]).length===0?(
+                                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No notes yet.</div>
+                                ):clientDirDetail.notes.map((n:any)=>(
+                                  <div key={n.id} style={{fontSize:12,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>{n.note}<div style={{fontSize:10,opacity:0.7,marginTop:2}}>{new Date(n.created_at).toLocaleString()}</div></div>
+                                ))}
+                                <div style={{display:"flex",gap:8}}>
+                                  <input style={{...S.inp,flex:1}} placeholder="Add a note…" value={crmNoteText} onChange={e=>setCrmNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&crmAddNote()} />
+                                  <button onClick={crmAddNote} disabled={crmBusy||!crmNoteText.trim()} style={S.btnSm}>Add</button>
+                                </div>
+
+                                {/* --- CRM: communication preferences / consent --- */}
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Communication Preferences</div>
+                                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                                  {CRM_CONSENT_CATEGORIES.map(([key,label])=>{
+                                    const pref=(clientDirDetail.consent||[]).find((x:any)=>x.category===key);
+                                    const allowed=!!pref?.allowed;
+                                    return(
+                                      <button key={key} onClick={()=>crmSetConsent(key,!allowed)} disabled={crmBusy} style={{fontSize:10.5,padding:"6px 12px",borderRadius:20,border:`1px solid ${allowed?C.PL:C.BORDER}`,background:allowed?"rgba(139,92,246,0.16)":"transparent",color:allowed?C.PL:C.MID,cursor:"pointer"}}>
+                                        {allowed?"✓ ":"○ "}{label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3685,6 +3918,49 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </div>
                     );
                   })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* FOLLOW-UPS -- cross-contact view of every open crm_tasks row (functions/api/admin/tasks.ts),
+            grouped by due date, so nothing agreed in a meeting gets forgotten. */}
+        {cmsTab==="followups"&&(
+          <div style={{maxWidth:800,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Follow-ups</div>
+              <button onClick={loadFollowUps} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {followUpsLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+            ):!followUpsList||followUpsList.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No open follow-ups. Nice and clear.</div>
+            ):(()=>{
+              const today=new Date().toISOString().slice(0,10);
+              const overdue=followUpsList.filter((t:any)=>t.due_date&&t.due_date<today);
+              const dueToday=followUpsList.filter((t:any)=>t.due_date===today);
+              const upcoming=followUpsList.filter((t:any)=>t.due_date&&t.due_date>today);
+              const noDate=followUpsList.filter((t:any)=>!t.due_date);
+              const groups:[string,any[]][]=[["Overdue",overdue],["Due Today",dueToday],["Upcoming",upcoming],["No Due Date",noDate]];
+              return(
+                <div style={{display:"flex",flexDirection:"column",gap:22}}>
+                  {groups.filter(([,items])=>items.length>0).map(([label,items])=>(
+                    <div key={label}>
+                      <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:label==="Overdue"?"#e74c3c":C.MID,marginBottom:8}}>{label} · {items.length}</div>
+                      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                        {items.map((t:any)=>(
+                          <div key={t.id} style={{...CARD_STYLE,padding:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                            <div>
+                              <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{t.title}</div>
+                              <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{t.customers?.full_name||"Unknown contact"}{t.due_date?` · due ${t.due_date}`:""}</div>
+                            </div>
+                            <button onClick={()=>crmCompleteTask(t.id)} disabled={crmBusy} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}}>✓ Mark Done</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               );
             })()}

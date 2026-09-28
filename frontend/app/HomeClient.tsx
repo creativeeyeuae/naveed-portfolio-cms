@@ -2033,6 +2033,31 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [emailCampaignBusy,setEmailCampaignBusy]=useState(false);
   const [emailTagsList,setEmailTagsList]=useState<any[]|null>(null);
   const EMAIL_VARIABLES:[string,string][]=[["first_name","First name"],["last_name","Last name"],["company","Company"],["job_title","Job title"]];
+
+  // WhatsApp (CMS > WhatsApp) -- inbox UI + conversation/message architecture only. No real
+  // WhatsApp server exists yet; see functions/api/admin/whatsapp/*.ts (admin-session Functions,
+  // exactly like the CRM/Email ones) and functions/api/whatsapp/{webhook,pending}.ts (the
+  // separate, shared-secret-authed layer the future VPS bridge will call -- untouched today).
+  const [waSubTab,setWaSubTab]=useState<"inbox"|"quickreplies"|"connection">("inbox");
+  const [waConversations,setWaConversations]=useState<any[]|null>(null);
+  const [waConversationsLoading,setWaConversationsLoading]=useState(false);
+  const [waSearch,setWaSearch]=useState("");
+  const [waOpenConversationId,setWaOpenConversationId]=useState<string|null>(null);
+  const [waConversationDetail,setWaConversationDetail]=useState<any>(null);
+  const [waConversationLoading,setWaConversationLoading]=useState(false);
+  const [waComposeText,setWaComposeText]=useState("");
+  const [waBusy,setWaBusy]=useState(false);
+  const [waNewConvOpen,setWaNewConvOpen]=useState(false);
+  const WA_NEW_CONV_EMPTY={customer_id:"",wa_phone:"",wa_name:""};
+  const [waNewConvForm,setWaNewConvForm]=useState<any>(WA_NEW_CONV_EMPTY);
+  const [waQuickReplies,setWaQuickReplies]=useState<any[]|null>(null);
+  const [waQuickRepliesLoading,setWaQuickRepliesLoading]=useState(false);
+  const WA_QUICK_REPLY_EMPTY={title:"",body:"",category:""};
+  const [waQuickReplyForm,setWaQuickReplyForm]=useState<any>(WA_QUICK_REPLY_EMPTY);
+  const [waQuickReplyEditId,setWaQuickReplyEditId]=useState<string|null>(null);
+  const [waQuickPickerOpen,setWaQuickPickerOpen]=useState(false);
+  const [waConnection,setWaConnection]=useState<any>(null);
+  const [waConnectionLoading,setWaConnectionLoading]=useState(false);
   // Google Reviews curation, merged into the Reviews tab alongside manual Testimonials --
   // see functions/api/admin/google-reviews-archive.ts / .../toggle.ts.
   const [googleRevArchive,setGoogleRevArchive]=useState<any[]|null>(null);
@@ -2567,6 +2592,127 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setEmailCampaignBusy(false);
   }
   useEffect(()=>{ if(cmsTab==="email"&&adminSession){ loadEmailTemplates(); loadEmailCampaigns(); } },[cmsTab,adminSession]);
+
+  // WhatsApp -- inbox/conversations. See functions/api/admin/whatsapp/conversations(.ts,[id].ts,
+  // [id]/{messages,read}.ts). Sending here only ever enqueues a row (status="queued") -- it
+  // never contacts a real WhatsApp server, because none exists yet in this phase.
+  async function loadWaConversations(){
+    if(!adminSession) return;
+    setWaConversationsLoading(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/conversations",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setWaConversations(data.conversations||[]);
+    }catch{}
+    setWaConversationsLoading(false);
+  }
+  async function loadWaConversationDetail(id:string){
+    if(!adminSession) return;
+    setWaOpenConversationId(id);
+    setWaConversationDetail(null);
+    setWaConversationLoading(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/conversations/${id}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setWaConversationDetail(data);
+      await fetch(`/api/admin/whatsapp/conversations/${id}/read`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      await loadWaConversations();
+    }catch{}
+    setWaConversationLoading(false);
+  }
+  async function waCreateConversation(){
+    if(!adminSession) return;
+    if(!waNewConvForm.wa_phone.trim()){ alert("A WhatsApp phone number is required."); return; }
+    setWaBusy(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/conversations",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(waNewConvForm)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not create conversation");
+      setWaNewConvForm(WA_NEW_CONV_EMPTY);
+      setWaNewConvOpen(false);
+      await loadWaConversations();
+      if(data.conversation?.id) await loadWaConversationDetail(data.conversation.id);
+    }catch(e:any){ alert(e.message||"Could not create conversation"); }
+    setWaBusy(false);
+  }
+  async function waSendMessage(){
+    if(!adminSession||!waOpenConversationId) return;
+    if(!waComposeText.trim()) return;
+    setWaBusy(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/conversations/${waOpenConversationId}/messages`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({body:waComposeText.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save message");
+      setWaComposeText("");
+      await loadWaConversationDetail(waOpenConversationId);
+    }catch(e:any){ alert(e.message||"Could not save message"); }
+    setWaBusy(false);
+  }
+  async function waUpdateConversation(fields:any){
+    if(!adminSession||!waOpenConversationId) return;
+    setWaBusy(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/conversations/${waOpenConversationId}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(fields)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not update conversation");
+      await loadWaConversationDetail(waOpenConversationId);
+    }catch(e:any){ alert(e.message||"Could not update conversation"); }
+    setWaBusy(false);
+  }
+
+  // WhatsApp -- quick replies. See functions/api/admin/whatsapp/quick-replies(.ts,[id].ts).
+  async function loadWaQuickReplies(){
+    if(!adminSession) return;
+    setWaQuickRepliesLoading(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/quick-replies",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setWaQuickReplies(data.quick_replies||[]);
+    }catch{}
+    setWaQuickRepliesLoading(false);
+  }
+  async function waSaveQuickReply(){
+    if(!adminSession) return;
+    if(!waQuickReplyForm.title.trim()||!waQuickReplyForm.body.trim()){ alert("A title and body are required."); return; }
+    setWaBusy(true);
+    try{
+      const isNew=!waQuickReplyEditId;
+      const url=isNew?"/api/admin/whatsapp/quick-replies":`/api/admin/whatsapp/quick-replies/${waQuickReplyEditId}`;
+      const res=await fetch(url,{method:isNew?"POST":"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(waQuickReplyForm)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save quick reply");
+      setWaQuickReplyForm(WA_QUICK_REPLY_EMPTY);
+      setWaQuickReplyEditId(null);
+      await loadWaQuickReplies();
+    }catch(e:any){ alert(e.message||"Could not save quick reply"); }
+    setWaBusy(false);
+  }
+  async function waDeleteQuickReply(id:string){
+    if(!adminSession) return;
+    if(!confirm("Delete this quick reply?")) return;
+    setWaBusy(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/quick-replies/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not delete quick reply");
+      await loadWaQuickReplies();
+    }catch(e:any){ alert(e.message||"Could not delete quick reply"); }
+    setWaBusy(false);
+  }
+
+  // WhatsApp -- connection status. See functions/api/admin/whatsapp/connection.ts. Always
+  // "not_connected" in this phase -- only the future bridge's webhook can ever change it.
+  async function loadWaConnection(){
+    if(!adminSession) return;
+    setWaConnectionLoading(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/connection",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setWaConnection(data.connection);
+    }catch{}
+    setWaConnectionLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="whatsapp"&&adminSession){ loadWaConversations(); loadWaQuickReplies(); loadWaConnection(); } },[cmsTab,adminSession]);
 
   // Google Reviews curation -- loads whenever the merged Reviews tab (cmsTab==="testimonials")
   // opens, using whatever Place ID is already configured in Settings > SEO.
@@ -3313,7 +3459,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
-      email:"Email Designer", followups:"Follow-ups", clientdir:"Client Directory", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
+      email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
@@ -3359,6 +3505,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
         <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
+        <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
@@ -4396,6 +4543,226 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* WHATSAPP -- inbox/chat/contact panel/quick replies/connection status. Fully isolated
+            from the CRM and Email Designer: its own tables (whatsapp_conversations/_messages/
+            _quick_replies/_connection) and its own admin Functions under
+            functions/api/admin/whatsapp/*. Sending here only ever writes a row with
+            status="queued" -- there is no real WhatsApp server behind this yet, by design,
+            per Naveed's explicit instruction for this phase. The future VPS bridge will poll
+            functions/api/whatsapp/pending.ts and post into functions/api/whatsapp/webhook.ts
+            (both gated by a separate shared-secret, not the admin session) without this UI
+            needing to change at all. */}
+        {cmsTab==="whatsapp"&&(
+          <div style={{maxWidth:1180,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap" as const,gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase" as const}}>WhatsApp</div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>setWaSubTab("inbox")} style={waSubTab==="inbox"?S.btnP:S.btnO}>Inbox</button>
+                <button onClick={()=>setWaSubTab("quickreplies")} style={waSubTab==="quickreplies"?S.btnP:S.btnO}>Quick Replies</button>
+                <button onClick={()=>setWaSubTab("connection")} style={waSubTab==="connection"?S.btnP:S.btnO}>Connection</button>
+              </div>
+            </div>
+
+            {(!waConnection||waConnection.status!=="connected")&&(
+              <div style={{...CARD_STYLE,padding:"10px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10,background:"rgba(239,68,68,0.08)",borderColor:"rgba(239,68,68,0.3)"} as any}>
+                <span style={{fontSize:16}}>⚠️</span>
+                <span style={{fontSize:12.5,color:C.FG}}>WhatsApp is <strong>Not Connected</strong>. Messages sent from here are saved and queued only -- nothing is delivered to a real phone yet.</span>
+              </div>
+            )}
+
+            {waSubTab==="inbox"&&(
+              waOpenConversationId?(
+                <div>
+                  <button onClick={()=>{setWaOpenConversationId(null);setWaConversationDetail(null);}} style={{...S.btnO,marginBottom:16}}>← Back to inbox</button>
+                  {waConversationLoading?(
+                    <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                  ):!waConversationDetail?(
+                    <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>Could not load this conversation.</div>
+                  ):(
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 320px",gap:20}}>
+                      <div style={{...CARD_STYLE,display:"flex",flexDirection:"column" as const,height:560,overflow:"hidden" as const}}>
+                        <div style={{padding:"14px 18px",borderBottom:`1px solid ${C.BORDER}`,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap" as const,gap:8}}>
+                          <div>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{waConversationDetail.conversation.wa_name||waConversationDetail.conversation.wa_phone}</div>
+                            <div style={{fontSize:11.5,color:C.MID}}>{waConversationDetail.conversation.wa_phone}</div>
+                          </div>
+                          <StatusPill status={waConversationDetail.conversation.status} />
+                        </div>
+                        <div style={{flex:1,overflowY:"auto" as const,padding:"14px 18px",display:"flex",flexDirection:"column" as const,gap:10}}>
+                          {(waConversationDetail.messages||[]).length===0?(
+                            <div style={{color:C.MID,fontSize:12.5,fontStyle:"italic"}}>No messages yet.</div>
+                          ):waConversationDetail.messages.map((m:any)=>{
+                            const out=m.direction==="outbound";
+                            const tick=m.status==="failed"?"⚠️ Failed":m.status==="read"?"✓✓ Read":m.status==="delivered"?"✓✓ Delivered":m.status==="sent"?"✓ Sent":"⏳ Queued";
+                            return(
+                              <div key={m.id} style={{alignSelf:out?"flex-end":"flex-start",maxWidth:"78%",background:out?"rgba(139,92,246,0.18)":"rgba(255,255,255,0.06)",borderRadius:10,padding:"9px 13px"}}>
+                                <div style={{fontSize:13,color:C.FG,whiteSpace:"pre-wrap" as const}}>{m.body}</div>
+                                <div style={{fontSize:10,color:C.MID,marginTop:4,textAlign:(out?"right":"left") as "left"|"right"}}>{out?tick+" · ":""}{new Date(m.created_at).toLocaleString()}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div style={{padding:"12px 16px",borderTop:`1px solid ${C.BORDER}`,position:"relative" as const}}>
+                          {waQuickPickerOpen&&(
+                            <div style={{position:"absolute" as const,bottom:"100%",left:16,right:16,maxHeight:220,overflowY:"auto" as const,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:8,marginBottom:6,boxShadow:"0 -4px 14px rgba(0,0,0,0.4)"}}>
+                              {(!waQuickReplies||waQuickReplies.length===0)?(
+                                <div style={{padding:12,fontSize:12,color:C.MID,fontStyle:"italic"}}>No quick replies yet.</div>
+                              ):waQuickReplies.map((q:any)=>(
+                                <div key={q.id} onClick={()=>{setWaComposeText(t=>t?`${t}\n${q.body}`:q.body);setWaQuickPickerOpen(false);}} style={{padding:"9px 14px",fontSize:12.5,color:C.FG,cursor:"pointer",borderBottom:`1px solid ${C.BORDER}`}}>
+                                  <div style={{fontWeight:600,fontSize:11.5}}>{q.title}</div>
+                                  <div style={{color:C.MID,marginTop:2}}>{String(q.body).slice(0,80)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                            <button onClick={()=>setWaQuickPickerOpen(o=>!o)} style={{...S.btnO,padding:"10px 12px",fontSize:11}} title="Quick replies">⚡</button>
+                            <textarea style={{...S.inp,flex:1,minHeight:44,maxHeight:120}} placeholder="Type a message… (saved as queued, not sent)" value={waComposeText} onChange={e=>setWaComposeText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();waSendMessage();}}} />
+                            <button onClick={waSendMessage} disabled={waBusy||!waComposeText.trim()} style={S.btnP}>Send</button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{...CARD_STYLE,padding:16,display:"flex",flexDirection:"column" as const,gap:14,alignSelf:"flex-start"}}>
+                        <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>Contact</div>
+                        {waConversationDetail.conversation.customers?(
+                          <div>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{waConversationDetail.conversation.customers.full_name||"Unknown"}</div>
+                            {waConversationDetail.conversation.customers.email&&<div style={{fontSize:12,color:C.MID,marginTop:2}}>{waConversationDetail.conversation.customers.email}</div>}
+                            {waConversationDetail.conversation.customers.phone&&<div style={{fontSize:12,color:C.MID,marginTop:2}}>{waConversationDetail.conversation.customers.phone}</div>}
+                            {waConversationDetail.conversation.customers.company&&<div style={{fontSize:12,color:C.MID,marginTop:2}}>{waConversationDetail.conversation.customers.company}</div>}
+                            {(waConversationDetail.conversation.customers.tags||[]).length>0&&(
+                              <div style={{display:"flex",flexWrap:"wrap" as const,gap:6,marginTop:8}}>
+                                {waConversationDetail.conversation.customers.tags.map((t:any)=>(
+                                  <span key={t.id} style={{fontSize:10.5,padding:"3px 9px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`}}>{t.name}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ):(
+                          <div style={{fontSize:12.5,color:C.MID,fontStyle:"italic"}}>No linked CRM contact -- this is a WhatsApp-only conversation.</div>
+                        )}
+                        <div>
+                          <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:6}}>Status</div>
+                          <select style={S.inp} value={waConversationDetail.conversation.status} onChange={e=>waUpdateConversation({status:e.target.value})} disabled={waBusy}>
+                            {["open","pending","closed"].map(v=><option key={v} value={v}>{v}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:6}}>Assigned To</div>
+                          <input style={S.inp} defaultValue={waConversationDetail.conversation.assigned_to||""} placeholder="Unassigned" onBlur={e=>{ if(e.target.value!==(waConversationDetail.conversation.assigned_to||"")) waUpdateConversation({assigned_to:e.target.value||null}); }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ):(
+                <div>
+                  <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap" as const}}>
+                    <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Search conversations…" value={waSearch} onChange={e=>setWaSearch(e.target.value)} />
+                    <button onClick={()=>setWaNewConvOpen(o=>!o)} style={S.btnP}>+ New Conversation</button>
+                  </div>
+                  {waNewConvOpen&&(
+                    <div style={{...CARD_STYLE,padding:16,marginBottom:16,display:"flex",flexDirection:"column" as const,gap:10}}>
+                      <select style={S.inp} value={waNewConvForm.customer_id} onChange={e=>{
+                        const cid=e.target.value;
+                        const c=(clientDirList||[]).find((x:any)=>x.id===cid);
+                        setWaNewConvForm((f:any)=>({...f,customer_id:cid,wa_phone:(c&&(c.whatsapp||c.phone))||f.wa_phone,wa_name:(c&&c.full_name)||f.wa_name}));
+                      }}>
+                        <option value="">— Link to an existing CRM contact (optional) —</option>
+                        {(clientDirList||[]).map((c:any)=>(<option key={c.id} value={c.id}>{c.full_name||c.email}</option>))}
+                      </select>
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
+                        <input style={{...S.inp,flex:1,minWidth:180}} placeholder="WhatsApp phone number (required)" value={waNewConvForm.wa_phone} onChange={e=>setWaNewConvForm((f:any)=>({...f,wa_phone:e.target.value}))} />
+                        <input style={{...S.inp,flex:1,minWidth:180}} placeholder="Display name (optional)" value={waNewConvForm.wa_name} onChange={e=>setWaNewConvForm((f:any)=>({...f,wa_name:e.target.value}))} />
+                      </div>
+                      <div><button onClick={waCreateConversation} disabled={waBusy} style={S.btnP}>Create Conversation</button></div>
+                    </div>
+                  )}
+                  {waConversationsLoading?(
+                    <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                  ):!waConversations||waConversations.length===0?(
+                    <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No WhatsApp conversations yet.</div>
+                  ):(()=>{
+                    const q=waSearch.trim().toLowerCase();
+                    const filtered=q?waConversations.filter((c:any)=>(c.wa_name||"").toLowerCase().includes(q)||(c.wa_phone||"").toLowerCase().includes(q)||(c.customers?.full_name||"").toLowerCase().includes(q)):waConversations;
+                    return(
+                      <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+                        {filtered.map((c:any)=>(
+                          <div key={c.id} onClick={()=>loadWaConversationDetail(c.id)} style={{...CARD_STYLE,padding:14,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap" as const}}>
+                            <div>
+                              <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{c.wa_name||c.customers?.full_name||c.wa_phone}{Number(c.unread_count||0)>0&&<span style={{marginLeft:8,fontSize:10.5,padding:"2px 8px",borderRadius:20,background:C.P,color:"#fff"}}>{c.unread_count}</span>}</div>
+                              <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.wa_phone}{c.last_message_preview?` · ${String(c.last_message_preview).slice(0,50)}`:""}</div>
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              {c.assigned_to&&<span style={{fontSize:10.5,color:C.MID}}>{c.assigned_to}</span>}
+                              <StatusPill status={c.status} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )
+            )}
+
+            {waSubTab==="quickreplies"&&(
+              <div>
+                <div style={{...CARD_STYLE,padding:16,marginBottom:16,display:"flex",flexDirection:"column" as const,gap:10}}>
+                  <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>{waQuickReplyEditId?"Edit Quick Reply":"New Quick Reply"}</div>
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
+                    <input style={{...S.inp,flex:1,minWidth:160}} placeholder="Title" value={waQuickReplyForm.title} onChange={e=>setWaQuickReplyForm((f:any)=>({...f,title:e.target.value}))} />
+                    <input style={{...S.inp,flex:1,minWidth:160}} placeholder="Category (optional)" value={waQuickReplyForm.category} onChange={e=>setWaQuickReplyForm((f:any)=>({...f,category:e.target.value}))} />
+                  </div>
+                  <textarea style={{...S.inp,minHeight:70}} placeholder="Reply text" value={waQuickReplyForm.body} onChange={e=>setWaQuickReplyForm((f:any)=>({...f,body:e.target.value}))} />
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={waSaveQuickReply} disabled={waBusy} style={S.btnP}>{waQuickReplyEditId?"Save Changes":"+ Add Quick Reply"}</button>
+                    {waQuickReplyEditId&&<button onClick={()=>{setWaQuickReplyEditId(null);setWaQuickReplyForm(WA_QUICK_REPLY_EMPTY);}} style={S.btnO}>Cancel</button>}
+                  </div>
+                </div>
+                {waQuickRepliesLoading?(
+                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                ):!waQuickReplies||waQuickReplies.length===0?(
+                  <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No quick replies yet.</div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
+                    {waQuickReplies.map((q:any)=>(
+                      <div key={q.id} style={{...CARD_STYLE,padding:14,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap" as const}}>
+                        <div>
+                          <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{q.title}{q.category?<span style={{color:C.MID,fontWeight:400}}> · {q.category}</span>:null}</div>
+                          <div style={{fontSize:11.5,color:C.MID,marginTop:2,whiteSpace:"pre-wrap" as const}}>{q.body}</div>
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>{setWaQuickReplyEditId(q.id);setWaQuickReplyForm({title:q.title,body:q.body,category:q.category||""});}} style={{...S.btnO,padding:"5px 12px",fontSize:11}}>Edit</button>
+                          <button onClick={()=>waDeleteQuickReply(q.id)} style={{...S.btnO,padding:"5px 12px",fontSize:11,color:"#e74c3c"}}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {waSubTab==="connection"&&(
+              <div style={{...CARD_STYLE,padding:24,maxWidth:560}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>WhatsApp Connection</div>
+                  <button onClick={loadWaConnection} disabled={waConnectionLoading} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>{waConnectionLoading?"Refreshing…":"Refresh"}</button>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+                  <StatusPill status={(waConnection&&waConnection.status)||"not_connected"} />
+                  <span style={{fontSize:12.5,color:C.MID}}>{waConnection&&waConnection.phone_number?`Number: ${waConnection.phone_number}`:"No WhatsApp number connected yet."}</span>
+                </div>
+                {waConnection&&waConnection.error&&<div style={{fontSize:12,color:"#f87171",marginBottom:16}}>{waConnection.error}</div>}
+                <div style={{fontSize:12.5,color:C.MID,lineHeight:1.7}}>
+                  This page always reads the real connection status from the database, and it always reports <strong>Not Connected</strong> until the future WhatsApp bridge (running on your VPS) reports in for the first time -- nothing here can be switched to "connected" by clicking anything on this page. The database, the API layer, and this whole inbox are ready and waiting for it: once the bridge is installed and scans in through a QR code, it will start pushing real incoming messages into this same inbox and pulling queued outbound messages back out of it -- with no changes needed to this screen.
+                </div>
+              </div>
+            )}
           </div>
         )}
 

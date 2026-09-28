@@ -2301,7 +2301,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   async function crmAddNote(){
     if(!crmNoteText.trim()) return;
-    const ok=await crmPost("notes",{note:crmNoteText.trim()});
+    const ok=await crmPost("notes",{body:crmNoteText.trim()});
     if(ok) setCrmNoteText("");
   }
   async function crmAddMeeting(){
@@ -3813,7 +3813,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                   ))}
                                   <input style={S.inp} type="date" defaultValue={clientDirDetail.customer?.date_met||""} onBlur={e=>{ if(e.target.value!==(clientDirDetail.customer?.date_met||"")) crmUpdateFields({date_met:e.target.value||null}); }} />
                                   <select style={S.inp} defaultValue={clientDirDetail.customer?.lead_status||"lead"} onChange={e=>crmUpdateFields({lead_status:e.target.value})}>
-                                    {["lead","prospect","client","past_client","inactive"].map(v=><option key={v} value={v}>{v.replace("_"," ")}</option>)}
+                                    {["lead","warm","hot","customer","cold","vendor","partner"].map(v=><option key={v} value={v}>{v}</option>)}
                                   </select>
                                 </div>
 
@@ -3891,7 +3891,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 {(clientDirDetail.notes||[]).length===0?(
                                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No notes yet.</div>
                                 ):clientDirDetail.notes.map((n:any)=>(
-                                  <div key={n.id} style={{fontSize:12,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>{n.note}<div style={{fontSize:10,opacity:0.7,marginTop:2}}>{new Date(n.created_at).toLocaleString()}</div></div>
+                                  <div key={n.id} style={{fontSize:12,color:C.MID,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>{n.body}<div style={{fontSize:10,opacity:0.7,marginTop:2}}>{new Date(n.created_at).toLocaleString()}</div></div>
                                 ))}
                                 <div style={{display:"flex",gap:8}}>
                                   <input style={{...S.inp,flex:1}} placeholder="Add a note…" value={crmNoteText} onChange={e=>setCrmNoteText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&crmAddNote()} />

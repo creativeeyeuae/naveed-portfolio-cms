@@ -2009,6 +2009,75 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const CRM_CONSENT_CATEGORIES:[string,string][]=[["relationship","Relationship / Direct Follow-up"],["service","Service Communication"],["marketing","Marketing"],["promotions","Promotions"],["events","Events"],["offers","Offers"],["wishes","Wishes"]];
   const [clientDirDetailLoading,setClientDirDetailLoading]=useState(false);
 
+  // Outreach: Companies + Contacts (CMS > Companies / Contacts) -- Step 1 shared data
+  // foundation. See functions/api/admin/{companies,contacts,outreach-tags,outreach-segments,
+  // outreach-import,business-cards}.ts. Isolated from the Creative Fusion CRM above
+  // (clients.ts) -- outreach_companies/outreach_contacts are separate tables, kept apart so
+  // this never mixes with Naveed's client/booking CRM data.
+  const [companiesList,setCompaniesList]=useState<any[]|null>(null);
+  const [companiesLoading,setCompaniesLoading]=useState(false);
+  const [companiesErr,setCompaniesErr]=useState("");
+  const [companySearch,setCompanySearch]=useState("");
+  const [companyStatusFilter,setCompanyStatusFilter]=useState("all");
+  const [companyOpenId,setCompanyOpenId]=useState<string|null>(null);
+  const [companyDetail,setCompanyDetail]=useState<any|null>(null);
+  const [companyDetailLoading,setCompanyDetailLoading]=useState(false);
+  const [companyAddOpen,setCompanyAddOpen]=useState(false);
+  const COMPANY_EMPTY={name:"",industry:"",website:"",email:"",phone:"",whatsapp:"",country:"",city:"",address:"",linkedin:"",notes:"",status:"prospect"};
+  const [companyAddForm,setCompanyAddForm]=useState<any>(COMPANY_EMPTY);
+  const [companyDuplicateFound,setCompanyDuplicateFound]=useState<any>(null);
+  const [companyBusy,setCompanyBusy]=useState(false);
+  const [companyNewTag,setCompanyNewTag]=useState("");
+
+  const [contactsList,setContactsList]=useState<any[]|null>(null);
+  const [contactsLoading,setContactsLoading]=useState(false);
+  const [contactsErr,setContactsErr]=useState("");
+  const [contactSearch,setContactSearch]=useState("");
+  const [contactStatusFilter,setContactStatusFilter]=useState("all");
+  const [contactOpenId,setContactOpenId]=useState<string|null>(null);
+  const [contactDetail,setContactDetail]=useState<any|null>(null);
+  const [contactDetailLoading,setContactDetailLoading]=useState(false);
+  const [contactAddOpen,setContactAddOpen]=useState(false);
+  const CONTACT_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",country:"",city:"",address:"",notes:"",company_name:"",company_website:"",status:"prospect"};
+  const [contactAddForm,setContactAddForm]=useState<any>(CONTACT_EMPTY);
+  const [contactDuplicateFound,setContactDuplicateFound]=useState<any>(null);
+  const [contactBusy,setContactBusy]=useState(false);
+  const [contactNewTag,setContactNewTag]=useState("");
+
+  // Shared Excel/CSV import wizard (Companies -> Import, Contacts -> Import). entityType
+  // picks which endpoint/fields apply; null means the wizard modal is closed.
+  const [importOpen,setImportOpen]=useState<"company"|"contact"|null>(null);
+  const [importStep,setImportStep]=useState(1);
+  const [importRawRows,setImportRawRows]=useState<any[]|null>(null);
+  const [importColumns,setImportColumns]=useState<string[]>([]);
+  const [importMapping,setImportMapping]=useState<Record<string,string>>({});
+  const [importPreviewResults,setImportPreviewResults]=useState<any[]|null>(null);
+  const [importRowActions,setImportRowActions]=useState<Record<number,"skip"|"update"|"create">>({});
+  const [importTagName,setImportTagName]=useState("");
+  const [importBusy,setImportBusy]=useState(false);
+  const [importErr,setImportErr]=useState("");
+  const [importResult,setImportResult]=useState<any|null>(null);
+
+  // Business Card Scanner (CMS > Contacts > Business Card Scanner). OCR/vision extraction
+  // needs an external service that isn't configured yet (functions/api/admin/business-cards/
+  // scan.ts returns 503 until one is chosen) -- so this always shows the review form, either
+  // pre-filled by that service once it exists, or blank for the admin to type in by hand.
+  // Nothing is ever saved before the admin reviews and presses Save.
+  const [bcOpen,setBcOpen]=useState(false);
+  const [bcImageDataUrl,setBcImageDataUrl]=useState("");
+  const [bcBusy,setBcBusy]=useState(false);
+  const [bcErr,setBcErr]=useState("");
+  const [bcReviewOpen,setBcReviewOpen]=useState(false);
+  const BC_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",company_name:"",address:""};
+  const [bcForm,setBcForm]=useState<any>(BC_EMPTY);
+  const [bcDuplicateFound,setBcDuplicateFound]=useState<any>(null);
+  const [bcTagName,setBcTagName]=useState("");
+
+  // Saved segments (Companies/Contacts > Segments) -- functions/api/admin/outreach-segments.ts.
+  const [segmentsList,setSegmentsList]=useState<any[]|null>(null);
+  const [segmentSaveName,setSegmentSaveName]=useState("");
+  const [segmentsOpen,setSegmentsOpen]=useState(false);
+
   // Email Designer (CMS > Email Designer) -- see functions/api/admin/email/{templates,campaigns}.ts
   // and functions/_shared/emailRender.ts. The preview below is a client-side approximation of
   // that same shared renderer -- it never sends anything, so it's fine if it's only visually close.
@@ -2419,6 +2488,290 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       await loadClientDir();
     }catch(e:any){ alert(e.message||"Could not create contact"); }
     setCrmBusy(false);
+  }
+
+  // Outreach: Companies -- see functions/api/admin/companies.ts / companies/[id].ts /
+  // companies/[id]/tags.ts.
+  async function loadCompanies(){
+    if(!adminSession) return;
+    setCompaniesLoading(true); setCompaniesErr("");
+    try{
+      const res=await fetch("/api/admin/companies",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load companies");
+      setCompaniesList(data.companies||[]);
+    }catch(e:any){ setCompaniesErr(e.message||"Failed to load companies"); }
+    setCompaniesLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="companies"&&adminSession) loadCompanies(); },[cmsTab,adminSession]);
+  async function loadCompanyDetail(id:string){
+    if(!adminSession) return;
+    setCompanyDetailLoading(true); setCompanyDetail(null);
+    try{
+      const res=await fetch(`/api/admin/companies/${id}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setCompanyDetail(data.company);
+    }catch{}
+    setCompanyDetailLoading(false);
+  }
+  async function addCompany(force?:boolean){
+    if(!adminSession) return;
+    if(!companyAddForm.name.trim()){ alert("Company name is required."); return; }
+    setCompanyBusy(true);
+    try{
+      const res=await fetch("/api/admin/companies",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({...companyAddForm,source:companyAddForm.source||"manual",force:!!force})});
+      const data=await res.json();
+      if(res.status===409&&!force){ setCompanyDuplicateFound(data.duplicate); setCompanyBusy(false); return; }
+      if(!res.ok) throw new Error(data.error||"Could not create company");
+      setCompanyAddForm(COMPANY_EMPTY); setCompanyDuplicateFound(null); setCompanyAddOpen(false);
+      await loadCompanies();
+    }catch(e:any){ alert(e.message||"Could not create company"); }
+    setCompanyBusy(false);
+  }
+  async function updateCompanyFields(fields:any){
+    if(!adminSession||!companyOpenId) return;
+    setCompanyBusy(true);
+    try{
+      const res=await fetch(`/api/admin/companies/${companyOpenId}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(fields)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save");
+      await loadCompanyDetail(companyOpenId); await loadCompanies();
+    }catch(e:any){ alert(e.message||"Could not save"); }
+    setCompanyBusy(false);
+  }
+  async function addCompanyTag(){
+    if(!adminSession||!companyOpenId||!companyNewTag.trim()) return;
+    setCompanyBusy(true);
+    try{
+      const res=await fetch(`/api/admin/companies/${companyOpenId}/tags`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({tag_name:companyNewTag.trim()})});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not add tag"); }
+      setCompanyNewTag(""); await loadCompanyDetail(companyOpenId); await loadCompanies();
+    }catch(e:any){ alert(e.message||"Could not add tag"); }
+    setCompanyBusy(false);
+  }
+  async function removeCompanyTag(tagId:string){
+    if(!adminSession||!companyOpenId) return;
+    setCompanyBusy(true);
+    try{
+      const res=await fetch(`/api/admin/companies/${companyOpenId}/tags?tag_id=${tagId}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not remove tag"); }
+      await loadCompanyDetail(companyOpenId); await loadCompanies();
+    }catch(e:any){ alert(e.message||"Could not remove tag"); }
+    setCompanyBusy(false);
+  }
+
+  // Outreach: Contacts -- see functions/api/admin/contacts.ts / contacts/[id].ts /
+  // contacts/[id]/tags.ts.
+  async function loadContacts(){
+    if(!adminSession) return;
+    setContactsLoading(true); setContactsErr("");
+    try{
+      const res=await fetch("/api/admin/contacts",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load contacts");
+      setContactsList(data.contacts||[]);
+    }catch(e:any){ setContactsErr(e.message||"Failed to load contacts"); }
+    setContactsLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="contacts"&&adminSession) loadContacts(); },[cmsTab,adminSession]);
+  async function loadContactDetail(id:string){
+    if(!adminSession) return;
+    setContactDetailLoading(true); setContactDetail(null);
+    try{
+      const res=await fetch(`/api/admin/contacts/${id}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setContactDetail(data.contact);
+    }catch{}
+    setContactDetailLoading(false);
+  }
+  async function addContact(force?:boolean){
+    if(!adminSession) return;
+    if(!contactAddForm.first_name.trim()&&!contactAddForm.last_name.trim()){ alert("Name is required."); return; }
+    setContactBusy(true);
+    try{
+      const res=await fetch("/api/admin/contacts",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({...contactAddForm,source:contactAddForm.source||"manual",force:!!force})});
+      const data=await res.json();
+      if(res.status===409&&!force){ setContactDuplicateFound(data.duplicate); setContactBusy(false); return; }
+      if(!res.ok) throw new Error(data.error||"Could not create contact");
+      setContactAddForm(CONTACT_EMPTY); setContactDuplicateFound(null); setContactAddOpen(false);
+      await loadContacts();
+    }catch(e:any){ alert(e.message||"Could not create contact"); }
+    setContactBusy(false);
+  }
+  async function updateContactFields(fields:any){
+    if(!adminSession||!contactOpenId) return;
+    setContactBusy(true);
+    try{
+      const res=await fetch(`/api/admin/contacts/${contactOpenId}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(fields)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not save");
+      await loadContactDetail(contactOpenId); await loadContacts();
+    }catch(e:any){ alert(e.message||"Could not save"); }
+    setContactBusy(false);
+  }
+  async function addContactTag(){
+    if(!adminSession||!contactOpenId||!contactNewTag.trim()) return;
+    setContactBusy(true);
+    try{
+      const res=await fetch(`/api/admin/contacts/${contactOpenId}/tags`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({tag_name:contactNewTag.trim()})});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not add tag"); }
+      setContactNewTag(""); await loadContactDetail(contactOpenId); await loadContacts();
+    }catch(e:any){ alert(e.message||"Could not add tag"); }
+    setContactBusy(false);
+  }
+  async function removeContactTag(tagId:string){
+    if(!adminSession||!contactOpenId) return;
+    setContactBusy(true);
+    try{
+      const res=await fetch(`/api/admin/contacts/${contactOpenId}/tags?tag_id=${tagId}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      if(!res.ok){ const data=await res.json().catch(()=>({} as any)); throw new Error(data.error||"Could not remove tag"); }
+      await loadContactDetail(contactOpenId); await loadContacts();
+    }catch(e:any){ alert(e.message||"Could not remove tag"); }
+    setContactBusy(false);
+  }
+
+  // Shared Excel/CSV import wizard -- functions/api/admin/outreach-import/{preview,commit}.ts.
+  // Column-name guesses for Step 2's auto-detect; the admin can still override any of them.
+  const IMPORT_FIELD_GUESSES:Record<string,string[]>={
+    name:["company name","company","organisation","organization"],
+    first_name:["first name","firstname","given name"],
+    last_name:["last name","lastname","surname","family name"],
+    full_name:["contact name","full name","name"],
+    job_title:["job title","title","position","role"],
+    email:["email","e-mail","email address"],
+    phone:["phone","phone number","telephone","mobile"],
+    whatsapp:["whatsapp","whatsapp number"],
+    website:["website","web site","url"],
+    linkedin:["linkedin","linkedin url"],
+    industry:["industry","sector"],
+    country:["country"],
+    city:["city","town"],
+    address:["address"],
+    company_name:["company name","company","organisation","organization"],
+    company_website:["company website"],
+  };
+  function importOpenWizard(entityType:"company"|"contact"){
+    setImportOpen(entityType); setImportStep(1); setImportRawRows(null); setImportColumns([]);
+    setImportMapping({}); setImportPreviewResults(null); setImportRowActions({});
+    setImportTagName(""); setImportErr(""); setImportResult(null);
+  }
+  function importCloseWizard(){ setImportOpen(null); }
+  async function importHandleFile(file:File){
+    setImportErr("");
+    try{
+      const XLSX=await import("xlsx");
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:"array"});
+      const sheet=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet,{defval:""}) as any[];
+      if(!rows.length){ setImportErr("That file has no rows."); return; }
+      const columns=Object.keys(rows[0]);
+      const fields=importOpen==="company"
+        ?["name","industry","website","email","phone","whatsapp","country","city","address","linkedin"]
+        :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website"];
+      const mapping:Record<string,string>={};
+      for(const field of fields){
+        const guesses=IMPORT_FIELD_GUESSES[field]||[field];
+        const match=columns.find(c=>guesses.includes(c.trim().toLowerCase()));
+        if(match) mapping[field]=match;
+      }
+      setImportRawRows(rows); setImportColumns(columns); setImportMapping(mapping); setImportStep(2);
+    }catch(e:any){ setImportErr(e.message||"Could not read that file."); }
+  }
+  function importMappedRows(){
+    if(!importRawRows) return [];
+    return importRawRows.map(row=>{
+      const mapped:Record<string,unknown>={};
+      for(const field of Object.keys(importMapping)) mapped[field]=row[importMapping[field]];
+      return mapped;
+    });
+  }
+  async function importRunPreview(){
+    if(!adminSession||!importOpen) return;
+    setImportBusy(true); setImportErr("");
+    try{
+      const res=await fetch("/api/admin/outreach-import/preview",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({entity_type:importOpen,rows:importMappedRows()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not preview import");
+      setImportPreviewResults(data.results||[]);
+      const actions:Record<number,"skip"|"update"|"create">={};
+      for(const r of data.results||[]) actions[r.row_index]=r.status==="invalid"?"skip":r.status==="possible_duplicate"?"skip":"create";
+      setImportRowActions(actions);
+      setImportStep(3);
+    }catch(e:any){ setImportErr(e.message||"Could not preview import"); }
+    setImportBusy(false);
+  }
+  async function importRunCommit(){
+    if(!adminSession||!importOpen||!importPreviewResults) return;
+    setImportBusy(true); setImportErr("");
+    try{
+      const rows=importPreviewResults.map(r=>({data:r.data,action:importRowActions[r.row_index]||"skip",duplicate_id:r.duplicate?.id}));
+      const res=await fetch("/api/admin/outreach-import/commit",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({entity_type:importOpen,rows,tag_name:importTagName.trim(),source:importOpen==="company"?"excel_import":"excel_import"})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Import failed");
+      setImportResult(data); setImportStep(6);
+      if(importOpen==="company") await loadCompanies(); else await loadContacts();
+    }catch(e:any){ setImportErr(e.message||"Import failed"); }
+    setImportBusy(false);
+  }
+
+  // Business Card Scanner -- functions/api/admin/business-cards/{scan,save}.ts. Scan never
+  // auto-saves; it only ever fills the review form below for the admin to check and submit.
+  function bcOpenScanner(){
+    setBcOpen(true); setBcImageDataUrl(""); setBcForm(BC_EMPTY); setBcReviewOpen(false);
+    setBcErr(""); setBcDuplicateFound(null); setBcTagName("");
+  }
+  function bcCloseScanner(){ setBcOpen(false); }
+  async function bcHandleFile(file:File){
+    setBcErr(""); setBcBusy(true);
+    try{
+      const dataUrl:string=await new Promise((resolve,reject)=>{
+        const reader=new FileReader();
+        reader.onload=()=>resolve(reader.result as string);
+        reader.onerror=reject;
+        reader.readAsDataURL(file);
+      });
+      setBcImageDataUrl(dataUrl);
+      if(adminSession){
+        const res=await fetch("/api/admin/business-cards/scan",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({image:dataUrl})});
+        if(res.status===503){ setBcErr("Business card OCR isn't set up yet -- enter the details below by hand."); }
+        else{
+          const data=await res.json().catch(()=>({} as any));
+          if(res.ok&&data.extracted) setBcForm((f:any)=>({...f,...data.extracted}));
+        }
+      }
+    }catch(e:any){ setBcErr(e.message||"Could not read that image."); }
+    setBcReviewOpen(true); setBcBusy(false);
+  }
+  async function bcSave(force?:boolean){
+    if(!adminSession) return;
+    if(!bcForm.first_name.trim()&&!bcForm.last_name.trim()){ alert("Name is required."); return; }
+    setBcBusy(true);
+    try{
+      const res=await fetch("/api/admin/business-cards/save",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({data:{...bcForm,card_image_url:bcImageDataUrl||null},tag_name:bcTagName.trim()||undefined,force:!!force})});
+      const data=await res.json();
+      if(res.status===409&&!force){ setBcDuplicateFound(data.duplicate); setBcBusy(false); return; }
+      if(!res.ok) throw new Error(data.error||"Could not save contact");
+      setBcOpen(false); await loadContacts();
+    }catch(e:any){ alert(e.message||"Could not save contact"); }
+    setBcBusy(false);
+  }
+
+  // Saved segments -- functions/api/admin/outreach-segments.ts.
+  async function loadSegments(entityType:"company"|"contact"){
+    if(!adminSession) return;
+    try{
+      const res=await fetch(`/api/admin/outreach-segments?entity_type=${entityType}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(res.ok) setSegmentsList(data.segments||[]);
+    }catch{}
+  }
+  async function saveSegment(entityType:"company"|"contact",filters:any){
+    if(!adminSession||!segmentSaveName.trim()) return;
+    try{
+      const res=await fetch("/api/admin/outreach-segments",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({name:segmentSaveName.trim(),entity_type:entityType,filters})});
+      if(res.ok){ setSegmentSaveName(""); await loadSegments(entityType); }
+    }catch{}
   }
 
   // Email Designer -- templates. See functions/api/admin/email/templates.ts / templates/[id].ts.
@@ -3459,7 +3812,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
-      email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
+      email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", companies:"Companies", contacts:"Contacts", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
@@ -3503,6 +3856,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
+        <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
+        <CmsNavItem icon="👥" label="Contacts" active={cmsTab==="contacts"} onClick={()=>setCmsTab("contacts")} />
         <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
         <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
         <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
@@ -4282,6 +4637,460 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* OUTREACH: COMPANIES -- Step 1 shared Company + Contact data foundation. Entirely
+            separate from the Creative Fusion CRM's Client Directory above (outreach_companies
+            table, not customers). This will later feed WhatsApp/Email campaigns, which is why
+            it lives next to Client Directory in the nav rather than inside WhatsApp or Email. */}
+        {cmsTab==="companies"&&(()=>{
+          const OUTREACH_STATUSES=["prospect","contacted","interested","client","inactive"];
+          const q=companySearch.trim().toLowerCase();
+          const filtered=(companiesList||[]).filter(c=>{
+            if(companyStatusFilter!=="all"&&c.status!==companyStatusFilter) return false;
+            if(!q) return true;
+            return (c.name||"").toLowerCase().includes(q)||(c.website||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q);
+          });
+          return(
+          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Companies</div>
+              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                <input style={{...S.inp,width:200}} placeholder="Search name, website, email…" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} />
+                <select style={S.inp} value={companyStatusFilter} onChange={e=>setCompanyStatusFilter(e.target.value)}>
+                  <option value="all">All statuses</option>
+                  {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+                <button onClick={()=>setCompanyAddOpen(v=>!v)} style={S.btnP}>{companyAddOpen?"✕ Cancel":"+ Add Company"}</button>
+                <button onClick={()=>importOpenWizard("company")} style={S.btnSm}>⤓ Import</button>
+                <button onClick={()=>{setSegmentsOpen(v=>!v);if(!segmentsOpen)loadSegments("company");}} style={S.btnSm}>📋 Segments</button>
+                <button onClick={loadCompanies} style={S.btnSm}>↻ Refresh</button>
+              </div>
+            </div>
+            {segmentsOpen&&(
+              <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
+                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>Saved Segments</div>
+                {!segmentsList||segmentsList.length===0?(
+                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic",marginBottom:10}}>No saved segments yet.</div>
+                ):(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                    {segmentsList.map((s:any)=>(
+                      <button key={s.id} onClick={()=>{const f=s.filters||{};setCompanySearch(f.search||"");setCompanyStatusFilter(f.status||"all");}} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>{s.name}</button>
+                    ))}
+                  </div>
+                )}
+                <div style={{display:"flex",gap:8}}>
+                  <input style={{...S.inp,flex:1}} placeholder="Name this segment (e.g. Dubai Real Estate Prospects)" value={segmentSaveName} onChange={e=>setSegmentSaveName(e.target.value)} />
+                  <button onClick={()=>saveSegment("company",{search:companySearch,status:companyStatusFilter})} disabled={!segmentSaveName.trim()} style={S.btnSm}>Save current filters</button>
+                </div>
+              </div>
+            )}
+            {companyAddOpen&&(
+              <div style={{...CARD_STYLE,padding:18,marginBottom:18}}>
+                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:12}}>New Company</div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                  <input style={S.inp} placeholder="Company name *" value={companyAddForm.name} onChange={e=>setCompanyAddForm((f:any)=>({...f,name:e.target.value}))} />
+                  <input style={S.inp} placeholder="Industry" value={companyAddForm.industry} onChange={e=>setCompanyAddForm((f:any)=>({...f,industry:e.target.value}))} />
+                  <input style={S.inp} placeholder="Website" value={companyAddForm.website} onChange={e=>setCompanyAddForm((f:any)=>({...f,website:e.target.value}))} />
+                  <input style={S.inp} placeholder="Email" value={companyAddForm.email} onChange={e=>setCompanyAddForm((f:any)=>({...f,email:e.target.value}))} />
+                  <input style={S.inp} placeholder="Phone" value={companyAddForm.phone} onChange={e=>setCompanyAddForm((f:any)=>({...f,phone:e.target.value}))} />
+                  <input style={S.inp} placeholder="WhatsApp" value={companyAddForm.whatsapp} onChange={e=>setCompanyAddForm((f:any)=>({...f,whatsapp:e.target.value}))} />
+                  <input style={S.inp} placeholder="Country" value={companyAddForm.country} onChange={e=>setCompanyAddForm((f:any)=>({...f,country:e.target.value}))} />
+                  <input style={S.inp} placeholder="City" value={companyAddForm.city} onChange={e=>setCompanyAddForm((f:any)=>({...f,city:e.target.value}))} />
+                  <input style={S.inp} placeholder="Address" value={companyAddForm.address} onChange={e=>setCompanyAddForm((f:any)=>({...f,address:e.target.value}))} />
+                  <input style={S.inp} placeholder="LinkedIn" value={companyAddForm.linkedin} onChange={e=>setCompanyAddForm((f:any)=>({...f,linkedin:e.target.value}))} />
+                  <select style={S.inp} value={companyAddForm.status} onChange={e=>setCompanyAddForm((f:any)=>({...f,status:e.target.value}))}>
+                    {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input style={S.inp} placeholder="Source (e.g. manual, referral)" value={companyAddForm.source||""} onChange={e=>setCompanyAddForm((f:any)=>({...f,source:e.target.value}))} />
+                  <textarea style={{...S.inp,gridColumn:isMobile?undefined:"1 / -1",minHeight:50}} placeholder="Notes" value={companyAddForm.notes} onChange={e=>setCompanyAddForm((f:any)=>({...f,notes:e.target.value}))} />
+                </div>
+                {companyDuplicateFound&&(
+                  <div style={{marginTop:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
+                    A company may already exist: <strong>{companyDuplicateFound.name}</strong>{companyDuplicateFound.website?` (${companyDuplicateFound.website})`:""}.
+                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                      <button onClick={()=>addCompany(true)} disabled={companyBusy} style={S.btnSm}>Add anyway</button>
+                      <button onClick={()=>setCompanyDuplicateFound(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{marginTop:14}}>
+                  <button onClick={()=>addCompany(false)} disabled={companyBusy} style={S.btnP}>{companyBusy?"Saving…":"Save Company"}</button>
+                </div>
+              </div>
+            )}
+            {companiesErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{companiesErr}</div>}
+            {companiesLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+            ):!companiesList||companiesList.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No companies yet. Add one, or import a spreadsheet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {filtered.map((c:any)=>{
+                  const open=companyOpenId===c.id;
+                  return(
+                    <div key={c.id} style={{...CARD_STYLE,padding:16}}>
+                      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setCompanyOpenId(willOpen?c.id:null);if(willOpen)loadCompanyDetail(c.id);}}>
+                        <div>
+                          <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.name}{c.industry?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.industry}</span>:null}</div>
+                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.website||c.email||"—"} · {c.contact_count||0} contact{c.contact_count===1?"":"s"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
+                        </div>
+                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
+                      </div>
+                      {open&&(
+                        <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                          {companyDetailLoading?(
+                            <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                          ):!companyDetail?(
+                            <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>Could not load details.</div>
+                          ):(
+                            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                                {([["name","Company name"],["industry","Industry"],["website","Website"],["email","Email"],["phone","Phone"],["whatsapp","WhatsApp"],["country","Country"],["city","City"],["address","Address"],["linkedin","LinkedIn"]] as [string,string][]).map(([key,ph])=>(
+                                  <input key={key} style={S.inp} placeholder={ph} defaultValue={companyDetail[key]||""} onBlur={e=>{ if(e.target.value!==(companyDetail[key]||"")) updateCompanyFields({[key]:e.target.value}); }} />
+                                ))}
+                                <select style={S.inp} defaultValue={companyDetail.status||"prospect"} onChange={e=>updateCompanyFields({status:e.target.value})}>
+                                  {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                              <textarea style={{...S.inp,minHeight:50}} placeholder="Notes" defaultValue={companyDetail.notes||""} onBlur={e=>{ if(e.target.value!==(companyDetail.notes||"")) updateCompanyFields({notes:e.target.value}); }} />
+                              <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Tags</div>
+                              <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                                {(companyDetail.tags||[]).map((t:any)=>(
+                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                    {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>removeCompanyTag(t.id)}>✕</span>
+                                  </span>
+                                ))}
+                                <input style={{...S.inp,width:140,padding:"4px 10px",fontSize:11}} placeholder="+ tag" value={companyNewTag} onChange={e=>setCompanyNewTag(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCompanyTag()} />
+                              </div>
+                              <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:8}}>Contacts at this company</div>
+                              {(companyDetail.contacts||[]).length===0?(
+                                <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No linked contacts yet.</div>
+                              ):companyDetail.contacts.map((p:any)=>(
+                                <div key={p.id} style={{fontSize:12.5,color:C.FG,padding:"6px 0",borderBottom:`1px solid ${C.BORDER}`}}>{p.full_name||[p.first_name,p.last_name].filter(Boolean).join(" ")}{p.job_title?` — ${p.job_title}`:""}{p.email?` · ${p.email}`:""}</div>
+                              ))}
+                              <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Source: {companyDetail.source||"manual"} · Added {companyDetail.created_at?new Date(companyDetail.created_at).toLocaleDateString():"—"}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          );
+        })()}
+
+        {/* OUTREACH: CONTACTS -- see Companies note above for the architecture. A contact can
+            optionally belong to a company (company_id, nullable) without duplicating it. */}
+        {cmsTab==="contacts"&&(()=>{
+          const OUTREACH_STATUSES=["prospect","contacted","interested","client","inactive"];
+          const q=contactSearch.trim().toLowerCase();
+          const filtered=(contactsList||[]).filter(c=>{
+            if(contactStatusFilter!=="all"&&c.status!==contactStatusFilter) return false;
+            if(!q) return true;
+            const name=c.full_name||[c.first_name,c.last_name].filter(Boolean).join(" ");
+            return name.toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").includes(q)||(c.outreach_companies?.name||"").toLowerCase().includes(q);
+          });
+          return(
+          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Contacts</div>
+              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                <input style={{...S.inp,width:200}} placeholder="Search name, email, phone, company…" value={contactSearch} onChange={e=>setContactSearch(e.target.value)} />
+                <select style={S.inp} value={contactStatusFilter} onChange={e=>setContactStatusFilter(e.target.value)}>
+                  <option value="all">All statuses</option>
+                  {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                </select>
+                <button onClick={()=>setContactAddOpen(v=>!v)} style={S.btnP}>{contactAddOpen?"✕ Cancel":"+ Add Contact"}</button>
+                <button onClick={bcOpenScanner} style={S.btnSm}>📇 Scan Business Card</button>
+                <button onClick={()=>importOpenWizard("contact")} style={S.btnSm}>⤓ Import</button>
+                <button onClick={()=>{setSegmentsOpen(v=>!v);if(!segmentsOpen)loadSegments("contact");}} style={S.btnSm}>📋 Segments</button>
+                <button onClick={loadContacts} style={S.btnSm}>↻ Refresh</button>
+              </div>
+            </div>
+            {segmentsOpen&&(
+              <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
+                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>Saved Segments</div>
+                {!segmentsList||segmentsList.length===0?(
+                  <div style={{fontSize:12,color:C.MID,fontStyle:"italic",marginBottom:10}}>No saved segments yet.</div>
+                ):(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                    {segmentsList.map((s:any)=>(
+                      <button key={s.id} onClick={()=>{const f=s.filters||{};setContactSearch(f.search||"");setContactStatusFilter(f.status||"all");}} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>{s.name}</button>
+                    ))}
+                  </div>
+                )}
+                <div style={{display:"flex",gap:8}}>
+                  <input style={{...S.inp,flex:1}} placeholder="Name this segment" value={segmentSaveName} onChange={e=>setSegmentSaveName(e.target.value)} />
+                  <button onClick={()=>saveSegment("contact",{search:contactSearch,status:contactStatusFilter})} disabled={!segmentSaveName.trim()} style={S.btnSm}>Save current filters</button>
+                </div>
+              </div>
+            )}
+            {contactAddOpen&&(
+              <div style={{...CARD_STYLE,padding:18,marginBottom:18}}>
+                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:12}}>New Contact</div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                  <input style={S.inp} placeholder="First name" value={contactAddForm.first_name} onChange={e=>setContactAddForm((f:any)=>({...f,first_name:e.target.value}))} />
+                  <input style={S.inp} placeholder="Last name" value={contactAddForm.last_name} onChange={e=>setContactAddForm((f:any)=>({...f,last_name:e.target.value}))} />
+                  <input style={S.inp} placeholder="Job title" value={contactAddForm.job_title} onChange={e=>setContactAddForm((f:any)=>({...f,job_title:e.target.value}))} />
+                  <input style={S.inp} placeholder="Company (will link or create)" value={contactAddForm.company_name} onChange={e=>setContactAddForm((f:any)=>({...f,company_name:e.target.value}))} />
+                  <input style={S.inp} placeholder="Email" value={contactAddForm.email} onChange={e=>setContactAddForm((f:any)=>({...f,email:e.target.value}))} />
+                  <input style={S.inp} placeholder="Phone" value={contactAddForm.phone} onChange={e=>setContactAddForm((f:any)=>({...f,phone:e.target.value}))} />
+                  <input style={S.inp} placeholder="WhatsApp" value={contactAddForm.whatsapp} onChange={e=>setContactAddForm((f:any)=>({...f,whatsapp:e.target.value}))} />
+                  <input style={S.inp} placeholder="Website" value={contactAddForm.website} onChange={e=>setContactAddForm((f:any)=>({...f,website:e.target.value}))} />
+                  <input style={S.inp} placeholder="LinkedIn" value={contactAddForm.linkedin} onChange={e=>setContactAddForm((f:any)=>({...f,linkedin:e.target.value}))} />
+                  <input style={S.inp} placeholder="Country" value={contactAddForm.country} onChange={e=>setContactAddForm((f:any)=>({...f,country:e.target.value}))} />
+                  <input style={S.inp} placeholder="City" value={contactAddForm.city} onChange={e=>setContactAddForm((f:any)=>({...f,city:e.target.value}))} />
+                  <select style={S.inp} value={contactAddForm.status} onChange={e=>setContactAddForm((f:any)=>({...f,status:e.target.value}))}>
+                    {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <input style={S.inp} placeholder="Source (e.g. manual, referral)" value={contactAddForm.source||""} onChange={e=>setContactAddForm((f:any)=>({...f,source:e.target.value}))} />
+                  <textarea style={{...S.inp,gridColumn:isMobile?undefined:"1 / -1",minHeight:50}} placeholder="Notes" value={contactAddForm.notes} onChange={e=>setContactAddForm((f:any)=>({...f,notes:e.target.value}))} />
+                </div>
+                {contactDuplicateFound&&(
+                  <div style={{marginTop:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
+                    A contact may already exist: <strong>{contactDuplicateFound.full_name}</strong> ({contactDuplicateFound.email||contactDuplicateFound.phone||contactDuplicateFound.whatsapp}).
+                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                      <button onClick={()=>addContact(true)} disabled={contactBusy} style={S.btnSm}>Add anyway</button>
+                      <button onClick={()=>setContactDuplicateFound(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+                <div style={{marginTop:14}}>
+                  <button onClick={()=>addContact(false)} disabled={contactBusy} style={S.btnP}>{contactBusy?"Saving…":"Save Contact"}</button>
+                </div>
+              </div>
+            )}
+            {contactsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{contactsErr}</div>}
+            {contactsLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+            ):!contactsList||contactsList.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No contacts yet. Add one, scan a business card, or import a spreadsheet.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {filtered.map((c:any)=>{
+                  const open=contactOpenId===c.id;
+                  const name=c.full_name||[c.first_name,c.last_name].filter(Boolean).join(" ")||"Unknown";
+                  return(
+                    <div key={c.id} style={{...CARD_STYLE,padding:16}}>
+                      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setContactOpenId(willOpen?c.id:null);if(willOpen)loadContactDetail(c.id);}}>
+                        <div>
+                          <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{name}{c.job_title?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.job_title}</span>:null}</div>
+                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.outreach_companies?.name?`${c.outreach_companies.name} · `:""}{c.email||c.phone||"—"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
+                        </div>
+                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
+                      </div>
+                      {open&&(
+                        <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                          {contactDetailLoading?(
+                            <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                          ):!contactDetail?(
+                            <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>Could not load details.</div>
+                          ):(
+                            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                              {contactDetail.outreach_companies&&<div style={{fontSize:12,color:C.MID}}>Company: <strong style={{color:C.FG}}>{contactDetail.outreach_companies.name}</strong>{contactDetail.outreach_companies.industry?` · ${contactDetail.outreach_companies.industry}`:""}</div>}
+                              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                                {([["first_name","First name"],["last_name","Last name"],["job_title","Job title"],["email","Email"],["phone","Phone"],["whatsapp","WhatsApp"],["website","Website"],["linkedin","LinkedIn"],["country","Country"],["city","City"],["address","Address"]] as [string,string][]).map(([key,ph])=>(
+                                  <input key={key} style={S.inp} placeholder={ph} defaultValue={contactDetail[key]||""} onBlur={e=>{ if(e.target.value!==(contactDetail[key]||"")) updateContactFields({[key]:e.target.value}); }} />
+                                ))}
+                                <select style={S.inp} defaultValue={contactDetail.status||"prospect"} onChange={e=>updateContactFields({status:e.target.value})}>
+                                  {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                              <textarea style={{...S.inp,minHeight:50}} placeholder="Notes" defaultValue={contactDetail.notes||""} onBlur={e=>{ if(e.target.value!==(contactDetail.notes||"")) updateContactFields({notes:e.target.value}); }} />
+                              <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Tags</div>
+                              <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+                                {(contactDetail.tags||[]).map((t:any)=>(
+                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                    {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>removeContactTag(t.id)}>✕</span>
+                                  </span>
+                                ))}
+                                <input style={{...S.inp,width:140,padding:"4px 10px",fontSize:11}} placeholder="+ tag" value={contactNewTag} onChange={e=>setContactNewTag(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addContactTag()} />
+                              </div>
+                              {contactDetail.card_image_url&&(
+                                <div><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:8,marginBottom:6}}>Business Card</div><img src={contactDetail.card_image_url} alt="Business card" style={{maxWidth:280,borderRadius:8,border:`1px solid ${C.BORDER}`}} /></div>
+                              )}
+                              <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Source: {contactDetail.source||"manual"} · Added {contactDetail.created_at?new Date(contactDetail.created_at).toLocaleDateString():"—"}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          );
+        })()}
+
+        {/* OUTREACH: shared Excel/CSV Import Wizard overlay (Companies -> Import, Contacts ->
+            Import). 6 steps: Upload, Column Mapping, Preview, Duplicate Detection, Tags, Import.
+            See functions/api/admin/outreach-import/{preview,commit}.ts. */}
+        {importOpen&&(()=>{
+          const isCompany=importOpen==="company";
+          const fields=isCompany
+            ?["name","industry","website","email","phone","whatsapp","country","city","address","linkedin"]
+            :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website"];
+          const counts=importPreviewResults?{
+            valid:importPreviewResults.filter(r=>r.status==="valid").length,
+            dup:importPreviewResults.filter(r=>r.status==="possible_duplicate").length,
+            invalid:importPreviewResults.filter(r=>r.status==="invalid").length,
+          }:null;
+          return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{...CARD_STYLE,width:"100%",maxWidth:720,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:C.DARK}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.FG}}>Import {isCompany?"Companies":"Contacts"} · Step {importStep} of 6</div>
+                <button onClick={importCloseWizard} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>✕ Close</button>
+              </div>
+              {importErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:14,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{importErr}</div>}
+
+              {importStep===1&&(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Upload an Excel (.xlsx) or CSV file. The first row should be column headers.</div>
+                  <input type="file" accept=".xlsx,.xls,.csv" onChange={e=>{const f=e.target.files?.[0]; if(f) importHandleFile(f);}} style={{color:C.FG,fontSize:12.5}} />
+                </div>
+              )}
+
+              {importStep===2&&importRawRows&&(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>{importRawRows.length} rows found. Match each field to a column from your file (auto-detected where possible).</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:16}}>
+                    {fields.map(field=>(
+                      <div key={field} style={{display:"flex",flexDirection:"column",gap:4}}>
+                        <span style={{fontSize:10.5,color:C.MID,textTransform:"uppercase",letterSpacing:0.5}}>{field.replace(/_/g," ")}</span>
+                        <select style={S.inp} value={importMapping[field]||""} onChange={e=>setImportMapping(m=>({...m,[field]:e.target.value}))}>
+                          <option value="">— not mapped —</option>
+                          {importColumns.map(c=><option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={importRunPreview} disabled={importBusy} style={S.btnP}>{importBusy?"Checking…":"Continue to Preview"}</button>
+                </div>
+              )}
+
+              {importStep===3&&importPreviewResults&&counts&&(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>{counts.valid} ready to import · {counts.dup} possible duplicates · {counts.invalid} invalid (missing info or bad email/phone)</div>
+                  <div style={{maxHeight:260,overflowY:"auto" as const,marginBottom:16,border:`1px solid ${C.BORDER}`,borderRadius:8}}>
+                    {importPreviewResults.slice(0,200).map(r=>(
+                      <div key={r.row_index} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"8px 12px",borderBottom:`1px solid ${C.BORDER}`,fontSize:12}}>
+                        <span style={{color:C.FG}}>{String(r.data.name||r.data.full_name||[r.data.first_name,r.data.last_name].filter(Boolean).join(" ")||"(no name)")}</span>
+                        <span style={{color:r.status==="valid"?"#6fcf97":r.status==="possible_duplicate"?"#e0c060":"#e74c3c"}}>{r.status==="valid"?"Ready":r.status==="possible_duplicate"?"Possible duplicate":r.errors.join(", ")}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setImportStep(4)} style={S.btnP}>Continue to Duplicates</button>
+                </div>
+              )}
+
+              {importStep===4&&importPreviewResults&&(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Decide what to do with possible duplicates. Nothing existing is ever overwritten unless you choose "Update existing".</div>
+                  <div style={{maxHeight:300,overflowY:"auto" as const,marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
+                    {importPreviewResults.filter(r=>r.status!=="invalid").map(r=>(
+                      <div key={r.row_index} style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,fontSize:12}}>
+                        <span style={{color:C.FG}}>{String(r.data.name||r.data.full_name||[r.data.first_name,r.data.last_name].filter(Boolean).join(" ")||"(no name)")}{r.duplicate?<span style={{color:C.MID}}> — matches existing {r.duplicate.name||r.duplicate.full_name}</span>:null}</span>
+                        <div style={{display:"flex",gap:6}}>
+                          {(["skip","update","create"] as const).filter(a=>a!=="update"||r.duplicate).map(a=>(
+                            <button key={a} onClick={()=>setImportRowActions(x=>({...x,[r.row_index]:a}))} style={{...(importRowActions[r.row_index]===a?S.btnP:S.btnO),padding:"5px 10px",fontSize:10.5}}>{a==="skip"?"Skip":a==="update"?"Update existing":"Create new"}</button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <button onClick={()=>setImportStep(5)} style={S.btnP}>Continue to Tags</button>
+                </div>
+              )}
+
+              {importStep===5&&(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:10}}>Optionally apply one tag to everything imported (e.g. "Dubai Real Estate", "Photography Leads").</div>
+                  <input style={{...S.inp,width:"100%",marginBottom:16}} placeholder="Tag for this import (optional)" value={importTagName} onChange={e=>setImportTagName(e.target.value)} />
+                  <button onClick={importRunCommit} disabled={importBusy} style={S.btnP}>{importBusy?"Importing…":`Import ${importPreviewResults?.filter(r=>(importRowActions[r.row_index]||"skip")!=="skip").length||0} record(s)`}</button>
+                </div>
+              )}
+
+              {importStep===6&&importResult&&(
+                <div>
+                  <div style={{fontSize:13,color:C.FG,marginBottom:14}}>Import complete.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:16}}>
+                    {([["Total",importResult.total],["Imported",importResult.imported],["Updated",importResult.updated],["Skipped",importResult.skipped],["Duplicates",importResult.duplicates],["Errors",importResult.errors.length]] as [string,number][]).map(([label,val])=>(
+                      <div key={label} style={{background:"rgba(255,255,255,0.03)",borderRadius:8,padding:"10px 12px",textAlign:"center" as const}}>
+                        <div style={{fontSize:18,fontWeight:700,color:C.FG}}>{val}</div>
+                        <div style={{fontSize:10,color:C.MID,textTransform:"uppercase"}}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {importResult.errors.length>0&&(
+                    <div style={{maxHeight:150,overflowY:"auto" as const,marginBottom:16,fontSize:11.5,color:"#e74c3c"}}>
+                      {importResult.errors.map((e:any,i:number)=><div key={i}>Row {e.row_index+1}: {e.error}</div>)}
+                    </div>
+                  )}
+                  <button onClick={importCloseWizard} style={S.btnP}>Done</button>
+                </div>
+              )}
+            </div>
+          </div>
+          );
+        })()}
+
+        {/* OUTREACH: Business Card Scanner overlay (Contacts -> Business Card Scanner). Always
+            shows the review screen before saving -- scan.ts never auto-saves anything. */}
+        {bcOpen&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+            <div style={{...CARD_STYLE,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:C.DARK}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.FG}}>Scan Business Card</div>
+                <button onClick={bcCloseScanner} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>✕ Close</button>
+              </div>
+              {!bcReviewOpen?(
+                <div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Upload a photo of a business card, or take one now.</div>
+                  <input type="file" accept="image/*" capture="environment" onChange={e=>{const f=e.target.files?.[0]; if(f) bcHandleFile(f);}} style={{color:C.FG,fontSize:12.5}} />
+                  {bcBusy&&<div style={{color:C.MID,fontSize:12,marginTop:12}}>Reading…</div>}
+                </div>
+              ):(
+                <div>
+                  {bcErr&&<div style={{color:"#e0c060",fontSize:12,marginBottom:14,background:"#2a2010",border:"1px solid #4a3a20",borderRadius:4,padding:"10px 14px"}}>{bcErr}</div>}
+                  {bcImageDataUrl&&<img src={bcImageDataUrl} alt="Business card" style={{maxWidth:"100%",borderRadius:8,marginBottom:14,border:`1px solid ${C.BORDER}`}} />}
+                  <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>Review before saving</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                    <input style={S.inp} placeholder="First name" value={bcForm.first_name} onChange={e=>setBcForm((f:any)=>({...f,first_name:e.target.value}))} />
+                    <input style={S.inp} placeholder="Last name" value={bcForm.last_name} onChange={e=>setBcForm((f:any)=>({...f,last_name:e.target.value}))} />
+                    <input style={S.inp} placeholder="Job title" value={bcForm.job_title} onChange={e=>setBcForm((f:any)=>({...f,job_title:e.target.value}))} />
+                    <input style={S.inp} placeholder="Company" value={bcForm.company_name} onChange={e=>setBcForm((f:any)=>({...f,company_name:e.target.value}))} />
+                    <input style={S.inp} placeholder="Phone" value={bcForm.phone} onChange={e=>setBcForm((f:any)=>({...f,phone:e.target.value}))} />
+                    <input style={S.inp} placeholder="WhatsApp" value={bcForm.whatsapp} onChange={e=>setBcForm((f:any)=>({...f,whatsapp:e.target.value}))} />
+                    <input style={S.inp} placeholder="Email" value={bcForm.email} onChange={e=>setBcForm((f:any)=>({...f,email:e.target.value}))} />
+                    <input style={S.inp} placeholder="Website" value={bcForm.website} onChange={e=>setBcForm((f:any)=>({...f,website:e.target.value}))} />
+                    <input style={S.inp} placeholder="LinkedIn" value={bcForm.linkedin} onChange={e=>setBcForm((f:any)=>({...f,linkedin:e.target.value}))} />
+                    <input style={S.inp} placeholder="Address" value={bcForm.address} onChange={e=>setBcForm((f:any)=>({...f,address:e.target.value}))} />
+                  </div>
+                  <input style={{...S.inp,width:"100%",marginBottom:12}} placeholder="Tag (optional, e.g. Exhibition, Event)" value={bcTagName} onChange={e=>setBcTagName(e.target.value)} />
+                  {bcDuplicateFound&&(
+                    <div style={{marginBottom:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
+                      A contact may already exist: <strong>{bcDuplicateFound.full_name}</strong> ({bcDuplicateFound.email||bcDuplicateFound.phone||bcDuplicateFound.whatsapp}).
+                      <div style={{display:"flex",gap:8,marginTop:8}}>
+                        <button onClick={()=>bcSave(true)} disabled={bcBusy} style={S.btnSm}>Save anyway</button>
+                        <button onClick={()=>setBcDuplicateFound(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                    <button onClick={()=>bcSave(false)} disabled={bcBusy} style={S.btnP}>{bcBusy?"Saving…":"Save Contact"}</button>
+                    <button onClick={()=>{ if(!bcTagName.trim()){ alert("Add a tag first, or use Save Contact."); return; } bcSave(false); }} disabled={bcBusy} style={S.btnO}>Save + Tag</button>
+                    <button onClick={bcCloseScanner} style={{...S.btnO,background:"transparent"}}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

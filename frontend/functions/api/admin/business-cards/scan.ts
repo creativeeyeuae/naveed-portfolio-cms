@@ -11,6 +11,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { extractBusinessCard, type ExtractedFields } from "../../../_shared/businessCardExtraction";
 import { extraFieldsAsNotes } from "../../../_shared/outreachHelpers";
+import { validateImageDataUrl } from "../../../_shared/imageValidation";
 
 // Fields the review form (HomeClient.tsx bcForm) has an actual input for. Everything else
 // extraction finds (mobile, secondary_email, fax, instagram, facebook, twitter) still gets
@@ -42,13 +43,15 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
 
   const body = (await request.json().catch(() => ({}))) as { image?: string };
   const image = typeof body.image === "string" ? body.image : "";
-  if (!image || !image.startsWith("data:image/")) {
-    return json({ error: "invalid_image", message: "That doesn't look like an image." }, 400, origin);
-  }
-  // Rough decoded-size check from the base64 payload length, before doing any real work.
-  const approxBytes = Math.floor((image.length - image.indexOf(",") - 1) * 0.75);
-  if (approxBytes > MAX_IMAGE_BYTES) {
-    return json({ error: "image_too_large", message: "That photo is too large. Please retake it." }, 400, origin);
+
+  // Part 2 (Business Card image processing / secure upload foundation): real magic-byte +
+  // dimension validation, never trusting the data: URL's own declared MIME alone. Rejects
+  // anything that isn't an actual JPEG/PNG/WEBP, anything decompression-bomb-sized, and
+  // anything with nonsensical dimensions -- all with a user-friendly message, never a raw
+  // technical error.
+  const validated = validateImageDataUrl(image, MAX_IMAGE_BYTES);
+  if (!validated.ok) {
+    return json({ error: validated.error, message: validated.message }, 400, origin);
   }
 
   const result = await extractBusinessCard(env, image);

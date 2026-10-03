@@ -2774,15 +2774,45 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   function bcRetake(){ setBcCapturedDataUrl(""); bcStartCamera(); }
   function bcCancelCamera(){ bcStopCamera(); setBcCamStep("choose"); setBcCapturedDataUrl(""); setBcCamError(""); }
+  // Part 2 (Business Card image processing / secure upload foundation): every image -- live
+  // capture or upload-fallback alike -- is normalized through this same canvas round-trip
+  // before anything is sent to the server. This caps resolution (plenty for OCR, bounds
+  // payload size) and, as an inherent side effect of re-drawing onto a canvas, strips ALL
+  // metadata (EXIF, GPS location, camera/device info) that a photo-library upload would
+  // otherwise carry untouched -- the live-camera path already got an equivalent canvas
+  // round-trip in bcCapturePhoto, so this mainly closes that gap for uploaded photos.
+  async function bcNormalizeImage(file:File):Promise<string>{
+    const objectUrl=URL.createObjectURL(file);
+    try{
+      const img=await new Promise<HTMLImageElement>((resolve,reject)=>{
+        const el=new Image();
+        el.onload=()=>resolve(el);
+        el.onerror=()=>reject(new Error("That photo couldn't be read. Please try a different photo or use the camera."));
+        el.src=objectUrl;
+      });
+      const MAX_EDGE=1800;
+      const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+      if(!w||!h) throw new Error("That photo couldn't be read. Please try a different photo or use the camera.");
+      const scale=Math.min(1,MAX_EDGE/Math.max(w,h));
+      const outW=Math.max(1,Math.round(w*scale)), outH=Math.max(1,Math.round(h*scale));
+      const canvas=document.createElement("canvas");
+      canvas.width=outW; canvas.height=outH;
+      const ctx=canvas.getContext("2d");
+      if(!ctx) throw new Error("Could not process that photo. Please try again.");
+      ctx.drawImage(img,0,0,outW,outH);
+      return canvas.toDataURL("image/jpeg",0.85);
+    }finally{
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
   async function bcHandleFile(file:File){
     setBcErr(""); setBcBusy(true);
     try{
-      const dataUrl:string=await new Promise((resolve,reject)=>{
-        const reader=new FileReader();
-        reader.onload=()=>resolve(reader.result as string);
-        reader.onerror=reject;
-        reader.readAsDataURL(file);
-      });
+      // Client-side gate first (fast, friendly) -- the server independently re-validates
+      // every image's real bytes regardless, since client-side checks alone are never trusted.
+      if(!file.type.startsWith("image/")){ throw new Error("Please choose a photo (JPEG, PNG, or similar)."); }
+      if(file.size>20*1024*1024){ throw new Error("That photo is too large. Please use a smaller photo or retake it."); }
+      const dataUrl=await bcNormalizeImage(file);
       setBcImageDataUrl(dataUrl);
       if(adminSession){
         const res=await fetch("/api/admin/business-cards/scan",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({image:dataUrl})});
@@ -2799,6 +2829,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             }));
             setBcReviewState(data.review_state||"");
             setBcDetectedLanguage(data.detected_language||"");
+          } else if(!res.ok){
+            // e.g. a rejected image (Part 2 validation) -- previously this was silently
+            // swallowed and the admin got an empty form with no explanation at all.
+            setBcErr(data.message||"Couldn't read that card automatically -- please fill in the details below by hand.");
           }
         }
       }

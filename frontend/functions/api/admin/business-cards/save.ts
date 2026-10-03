@@ -5,9 +5,13 @@
 // with source forced to "business_card" and the card photo URL stored on the contact.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { findOrCreateCompany, isValidEmail, isValidPhone, fullNameOf, normalizePhone, normalizeEmail, normalizeUrl } from "../../../_shared/outreachHelpers";
+import { validateImageDataUrl } from "../../../_shared/imageValidation";
+import { uploadBusinessCardImage } from "../../../_shared/businessCardStorage";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // matches scan.ts -- same decoded-size ceiling
 
 // POST { data: {...reviewed fields...}, tag_name?, force? }
 // data may include: first_name, last_name, full_name, job_title, email, phone, whatsapp,
@@ -69,6 +73,30 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     companyId = await findOrCreateCompany(env, data.company_name as string, normCompanyWebsite || undefined, "business_card");
   }
 
+  // Part 2B: never trust the client's raw card_image_url directly. Prefer the Storage path
+  // scan.ts already uploaded for this exact image (looked up via scan_id) -- that upload was
+  // validated and performed server-side, so reusing its path avoids a second upload and avoids
+  // storing whatever the browser happens to send. Only when no scan path is available (e.g. a
+  // manual save with no scan_id) do we independently validate+upload a raw data: URL the
+  // client supplied; anything else (a non-data: string with no scan, or a failed validation)
+  // is never written.
+  let cardImagePath: string | null = null;
+  const scanIdForImage = (body.scan_id as string | undefined) || undefined;
+  if (scanIdForImage) {
+    try {
+      const scanRes = await supaAdmin(env, `business_card_scans?id=eq.${encodeURIComponent(scanIdForImage)}&select=card_image`, { method: "GET" });
+      const scanRows = scanRes.ok ? ((await scanRes.json()) as any[]) : [];
+      const scanImage = scanRows?.[0]?.card_image as string | null | undefined;
+      if (scanImage) cardImagePath = scanImage;
+    } catch {}
+  }
+  if (!cardImagePath && typeof data.card_image_url === "string" && data.card_image_url.startsWith("data:")) {
+    const validatedImage = validateImageDataUrl(data.card_image_url, MAX_IMAGE_BYTES);
+    if (validatedImage.ok) {
+      cardImagePath = await uploadBusinessCardImage(env, validatedImage.bytes, validatedImage.mime);
+    }
+  }
+
   const row: Record<string, unknown> = {
     company_id: companyId,
     first_name: data.first_name || null,
@@ -84,7 +112,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     city: data.city || null,
     address: data.address || null,
     notes: data.notes || null,
-    card_image_url: data.card_image_url || null,
+    card_image_url: cardImagePath,
     source: "business_card",
   };
   const res = await supaAdmin(env, "outreach_contacts", { method: "POST", body: JSON.stringify(row) });

@@ -1,5 +1,6 @@
 // GET/PATCH/DELETE /api/admin/contacts/:id
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
+import { isLegacyBase64, deleteBusinessCardImage } from "../../../_shared/businessCardStorage";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -46,7 +47,26 @@ export const onRequestDelete: PagesFunction<AdminEnv> = async ({ request, env, p
   if (admin instanceof Response) return admin;
   const id = params.id as string;
 
+  // Part 2B: best-effort Storage cleanup. Fetched before the delete so we still know the
+  // image path afterward; never blocks the delete itself (a cleanup failure just leaves an
+  // orphaned object in the private bucket -- it stays unreferenced and inaccessible, not a
+  // data-loss or security issue). Legacy base64 rows have no Storage object to clean up.
+  let imagePathToClean: string | null = null;
+  try {
+    const existingRes = await supaAdmin(env, `outreach_contacts?id=eq.${id}&select=card_image_url&limit=1`, { method: "GET" });
+    const existingRows = existingRes.ok ? ((await existingRes.json()) as any[]) : [];
+    const existingImage = existingRows?.[0]?.card_image_url as string | null | undefined;
+    if (existingImage && !isLegacyBase64(existingImage)) imagePathToClean = existingImage;
+  } catch {}
+
   const res = await supaAdmin(env, `outreach_contacts?id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   if (!res.ok) return json({ error: "Could not delete contact.", detail: await res.text() }, 500, origin);
+
+  if (imagePathToClean) {
+    try {
+      await deleteBusinessCardImage(env, imagePathToClean);
+    } catch {}
+  }
+
   return json({ ok: true }, 200, origin);
 };

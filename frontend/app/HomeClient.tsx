@@ -2037,6 +2037,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [contactOpenId,setContactOpenId]=useState<string|null>(null);
   const [contactDetail,setContactDetail]=useState<any|null>(null);
   const [contactDetailLoading,setContactDetailLoading]=useState(false);
+  // Part 2B: contact.card_image_url is now a private Storage path (or, for historical rows,
+  // a legacy base64 data: URL) rather than something directly renderable -- this holds the
+  // short-lived signed URL (or the legacy value, passed through) actually used in the <img>.
+  const [contactCardImageUrl,setContactCardImageUrl]=useState<string|null>(null);
   const [contactAddOpen,setContactAddOpen]=useState(false);
   const CONTACT_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",country:"",city:"",address:"",notes:"",company_name:"",company_website:"",status:"prospect"};
   const [contactAddForm,setContactAddForm]=useState<any>(CONTACT_EMPTY);
@@ -2593,11 +2597,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   useEffect(()=>{ if(cmsTab==="contacts"&&adminSession) loadContacts(); },[cmsTab,adminSession]);
   async function loadContactDetail(id:string){
     if(!adminSession) return;
-    setContactDetailLoading(true); setContactDetail(null);
+    setContactDetailLoading(true); setContactDetail(null); setContactCardImageUrl(null);
     try{
       const res=await fetch(`/api/admin/contacts/${id}`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
       const data=await res.json();
       if(res.ok) setContactDetail(data.contact);
+      // Part 2B: the contact's card_image_url is now a private Storage path, not a
+      // renderable src -- fetch a short-lived signed URL (or the legacy base64 value,
+      // passed through) in a second request rather than blocking the detail view on it.
+      if(res.ok&&data.contact?.card_image_url){
+        try{
+          const imgRes=await fetch(`/api/admin/contacts/${id}/card-image`,{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+          const imgData=await imgRes.json();
+          if(imgRes.ok) setContactCardImageUrl(imgData.url||null);
+        }catch{}
+      }
     }catch{}
     setContactDetailLoading(false);
   }
@@ -5021,7 +5035,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 <input style={{...S.inp,width:140,padding:"4px 10px",fontSize:11}} placeholder="+ tag" value={contactNewTag} onChange={e=>setContactNewTag(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addContactTag()} />
                               </div>
                               {contactDetail.card_image_url&&(
-                                <div><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:8,marginBottom:6}}>Business Card</div><img src={contactDetail.card_image_url} alt="Business card" style={{maxWidth:280,borderRadius:8,border:`1px solid ${C.BORDER}`}} /></div>
+                                // Part 2B: card_image_url is a private Storage path now, not a
+                                // renderable src -- contactCardImageUrl (fetched alongside the
+                                // contact via /card-image, a short-lived signed URL) is shown
+                                // instead; it's briefly empty while that request is in flight.
+                                <div><div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:8,marginBottom:6}}>Business Card</div>
+                                {contactCardImageUrl?(
+                                  <img src={contactCardImageUrl} alt="Business card" style={{maxWidth:280,borderRadius:8,border:`1px solid ${C.BORDER}`}} />
+                                ):(
+                                  <div style={{fontSize:12,color:C.MID}}>Loading image…</div>
+                                )}
+                                </div>
                               )}
                               <div style={{fontSize:10.5,color:C.MID,marginTop:4}}>Source: {contactDetail.source||"manual"} · Added {contactDetail.created_at?new Date(contactDetail.created_at).toLocaleDateString():"—"}</div>
                             </div>

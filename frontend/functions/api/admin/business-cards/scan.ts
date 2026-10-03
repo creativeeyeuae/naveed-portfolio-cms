@@ -12,6 +12,7 @@ import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../..
 import { extractBusinessCard, type ExtractedFields } from "../../../_shared/businessCardExtraction";
 import { extraFieldsAsNotes } from "../../../_shared/outreachHelpers";
 import { validateImageDataUrl } from "../../../_shared/imageValidation";
+import { uploadBusinessCardImage } from "../../../_shared/businessCardStorage";
 
 // Fields the review form (HomeClient.tsx bcForm) has an actual input for. Everything else
 // extraction finds (mobile, secondary_email, fax, instagram, facebook, twitter) still gets
@@ -71,9 +72,14 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   // completely unaffected, exactly as it was before this table existed.
   let scanId: string | null = null;
   try {
+    // Part 2B: upload to private Supabase Storage and store only the returned path -- never
+    // the raw base64 -- for newly created scan rows. On upload failure uploadBusinessCardImage
+    // resolves to null (it never throws) and we store null rather than falling back to base64,
+    // per "Raw base64 image data is no longer stored in the database for newly created scans."
+    const storedImagePath = await uploadBusinessCardImage(env, validated.bytes, validated.mime);
     const row = {
       status: result.ok ? "extracted" : "rejected",
-      card_image: image,
+      card_image: storedImagePath,
       raw_text: result.raw_text || null,
       extracted: result.extracted,
       review_state: result.review_state,

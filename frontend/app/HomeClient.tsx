@@ -2072,6 +2072,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bcForm,setBcForm]=useState<any>(BC_EMPTY);
   const [bcDuplicateFound,setBcDuplicateFound]=useState<any>(null);
   const [bcTagName,setBcTagName]=useState("");
+  // Real live-camera capture (Part 1): "choose" = pick camera or upload, "live" = camera
+  // preview streaming, "captured" = frozen still awaiting Retake/Cancel/Continue. The
+  // captured still is handed to the existing bcHandleFile(file) pipeline unchanged --
+  // scan.ts / the review form / save.ts below are not touched by this.
+  const [bcCamStep,setBcCamStep]=useState<"choose"|"live"|"captured">("choose");
+  const [bcCamError,setBcCamError]=useState("");
+  const [bcCapturedDataUrl,setBcCapturedDataUrl]=useState("");
+  const bcVideoRef=useRef<HTMLVideoElement>(null);
+  const bcStreamRef=useRef<MediaStream|null>(null);
 
   // Saved segments (Companies/Contacts > Segments) -- functions/api/admin/outreach-segments.ts.
   const [segmentsList,setSegmentsList]=useState<any[]|null>(null);
@@ -2717,11 +2726,45 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
   // Business Card Scanner -- functions/api/admin/business-cards/{scan,save}.ts. Scan never
   // auto-saves; it only ever fills the review form below for the admin to check and submit.
+  function bcStopCamera(){
+    if(bcStreamRef.current){ bcStreamRef.current.getTracks().forEach(t=>t.stop()); bcStreamRef.current=null; }
+    if(bcVideoRef.current) bcVideoRef.current.srcObject=null;
+  }
   function bcOpenScanner(){
     setBcOpen(true); setBcImageDataUrl(""); setBcForm(BC_EMPTY); setBcReviewOpen(false);
     setBcErr(""); setBcDuplicateFound(null); setBcTagName("");
+    setBcCamStep("choose"); setBcCamError(""); setBcCapturedDataUrl("");
   }
-  function bcCloseScanner(){ setBcOpen(false); }
+  function bcCloseScanner(){ bcStopCamera(); setBcOpen(false); }
+  async function bcStartCamera(){
+    setBcCamError("");
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+      setBcCamError("Live camera isn't supported in this browser. Use Upload Photo instead.");
+      return;
+    }
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+      bcStreamRef.current=stream;
+      setBcCamStep("live");
+      setTimeout(()=>{ if(bcVideoRef.current){ bcVideoRef.current.srcObject=stream; bcVideoRef.current.play().catch(()=>{}); } },0);
+    }catch(e:any){
+      setBcCamError(e&&e.name==="NotAllowedError"?"Camera permission was denied. Allow camera access, or use Upload Photo instead.":"Could not open the camera. Use Upload Photo instead.");
+    }
+  }
+  function bcCapturePhoto(){
+    const video=bcVideoRef.current;
+    if(!video||!video.videoWidth) return;
+    const canvas=document.createElement("canvas");
+    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+    const ctx=canvas.getContext("2d");
+    if(!ctx) return;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    setBcCapturedDataUrl(canvas.toDataURL("image/jpeg",0.92));
+    bcStopCamera();
+    setBcCamStep("captured");
+  }
+  function bcRetake(){ setBcCapturedDataUrl(""); bcStartCamera(); }
+  function bcCancelCamera(){ bcStopCamera(); setBcCamStep("choose"); setBcCapturedDataUrl(""); setBcCamError(""); }
   async function bcHandleFile(file:File){
     setBcErr(""); setBcBusy(true);
     try{
@@ -2743,6 +2786,16 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setBcErr(e.message||"Could not read that image."); }
     setBcReviewOpen(true); setBcBusy(false);
   }
+  function bcUseCapturedPhoto(){
+    if(!bcCapturedDataUrl) return;
+    fetch(bcCapturedDataUrl).then(r=>r.blob()).then(blob=>{
+      const file=new File([blob],"business-card.jpg",{type:"image/jpeg"});
+      bcHandleFile(file);
+    }).catch(()=>setBcErr("Could not use that photo. Please try again."));
+  }
+  // Belt-and-suspenders: also stop any live camera stream if the whole CMS unmounts
+  // while the scanner happens to be open.
+  useEffect(()=>{ return ()=>{ bcStopCamera(); }; },[]);
   async function bcSave(force?:boolean){
     if(!adminSession) return;
     if(!bcForm.first_name.trim()&&!bcForm.last_name.trim()){ alert("Name is required."); return; }
@@ -5052,9 +5105,42 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
               {!bcReviewOpen?(
                 <div>
-                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Upload a photo of a business card, or take one now.</div>
-                  <input type="file" accept="image/*" capture="environment" onChange={e=>{const f=e.target.files?.[0]; if(f) bcHandleFile(f);}} style={{color:C.FG,fontSize:12.5}} />
-                  {bcBusy&&<div style={{color:C.MID,fontSize:12,marginTop:12}}>Reading…</div>}
+                  {bcCamStep==="choose"&&(
+                    <div>
+                      <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Scan a business card with the camera, or upload a photo.</div>
+                      {bcCamError&&<div style={{color:"#e0c060",fontSize:12,marginBottom:14,background:"#2a2010",border:"1px solid #4a3a20",borderRadius:4,padding:"10px 14px"}}>{bcCamError}</div>}
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
+                        <button onClick={bcStartCamera} style={S.btnP}>📷 Open Camera</button>
+                      </div>
+                      <div style={{fontSize:11,color:C.MID,marginBottom:8}}>Or upload a photo instead:</div>
+                      <input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0]; if(f) bcHandleFile(f);}} style={{color:C.FG,fontSize:12.5}} />
+                      {bcBusy&&<div style={{color:C.MID,fontSize:12,marginTop:12}}>Reading…</div>}
+                    </div>
+                  )}
+                  {bcCamStep==="live"&&(
+                    <div>
+                      <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",marginBottom:14}}>
+                        <video ref={bcVideoRef} autoPlay muted playsInline style={{width:"100%",display:"block",maxHeight:380,objectFit:"cover" as const}} />
+                        <div style={{position:"absolute",inset:"12%",border:"2px dashed rgba(255,255,255,0.6)",borderRadius:10,pointerEvents:"none" as const}} />
+                      </div>
+                      <div style={{fontSize:11.5,color:C.MID,marginBottom:14}}>Position the card inside the frame, then capture.</div>
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                        <button onClick={bcCapturePhoto} style={S.btnP}>⬤ Capture</button>
+                        <button onClick={bcCancelCamera} style={{...S.btnO,background:"transparent"}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                  {bcCamStep==="captured"&&bcCapturedDataUrl&&(
+                    <div>
+                      <img src={bcCapturedDataUrl} alt="Captured business card" style={{maxWidth:"100%",borderRadius:8,marginBottom:14,border:`1px solid ${C.BORDER}`}} />
+                      {bcBusy&&<div style={{color:C.MID,fontSize:12,marginBottom:12}}>Reading…</div>}
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                        <button onClick={bcUseCapturedPhoto} disabled={bcBusy} style={S.btnP}>Continue</button>
+                        <button onClick={bcRetake} disabled={bcBusy} style={S.btnO}>Retake</button>
+                        <button onClick={bcCancelCamera} disabled={bcBusy} style={{...S.btnO,background:"transparent"}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ):(
                 <div>

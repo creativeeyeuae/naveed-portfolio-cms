@@ -2068,10 +2068,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bcBusy,setBcBusy]=useState(false);
   const [bcErr,setBcErr]=useState("");
   const [bcReviewOpen,setBcReviewOpen]=useState(false);
-  const BC_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",company_name:"",address:""};
+  const BC_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",company_name:"",company_website:"",address:"",city:"",country:"",notes:""};
   const [bcForm,setBcForm]=useState<any>(BC_EMPTY);
   const [bcDuplicateFound,setBcDuplicateFound]=useState<any>(null);
+  // Part 3: a softer "possible match" (name+company, no exact email/phone/whatsapp) from
+  // save.ts -- a non-blocking suggestion, never an automatic merge.
+  const [bcPossibleMatch,setBcPossibleMatch]=useState<any>(null);
   const [bcTagName,setBcTagName]=useState("");
+  // Part 3: honest (non-fabricated) confidence + detected language from scan.ts, plus the
+  // scan's own id so save.ts can mark it "converted" once a contact is actually created.
+  const [bcReviewState,setBcReviewState]=useState<"high_confidence"|"needs_review"|"uncertain"|"">("");
+  const [bcDetectedLanguage,setBcDetectedLanguage]=useState("");
+  const [bcScanId,setBcScanId]=useState<string|null>(null);
   // Real live-camera capture (Part 1): "choose" = pick camera or upload, "live" = camera
   // preview streaming, "captured" = frozen still awaiting Retake/Cancel/Continue. The
   // captured still is handed to the existing bcHandleFile(file) pipeline unchanged --
@@ -2732,7 +2740,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   function bcOpenScanner(){
     setBcOpen(true); setBcImageDataUrl(""); setBcForm(BC_EMPTY); setBcReviewOpen(false);
-    setBcErr(""); setBcDuplicateFound(null); setBcTagName("");
+    setBcErr(""); setBcDuplicateFound(null); setBcPossibleMatch(null); setBcTagName("");
+    setBcReviewState(""); setBcDetectedLanguage(""); setBcScanId(null);
     setBcCamStep("choose"); setBcCamError(""); setBcCapturedDataUrl("");
   }
   function bcCloseScanner(){ bcStopCamera(); setBcOpen(false); }
@@ -2780,7 +2789,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         if(res.status===503){ setBcErr("Business card OCR isn't set up yet -- enter the details below by hand."); }
         else{
           const data=await res.json().catch(()=>({} as any));
-          if(res.ok&&data.extracted) setBcForm((f:any)=>({...f,...data.extracted}));
+          if(data.scan_id) setBcScanId(data.scan_id);
+          if(res.ok&&data.extracted){
+            // Merge extracted fields, then fold any suggested extra info (mobile, fax, social
+            // links, etc.) into notes without clobbering anything the admin already typed.
+            setBcForm((f:any)=>({
+              ...f,...data.extracted,
+              notes:data.notes_suggestion?(f.notes?`${f.notes}\n${data.notes_suggestion}`:data.notes_suggestion):f.notes,
+            }));
+            setBcReviewState(data.review_state||"");
+            setBcDetectedLanguage(data.detected_language||"");
+          }
         }
       }
     }catch(e:any){ setBcErr(e.message||"Could not read that image."); }
@@ -2801,9 +2820,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(!bcForm.first_name.trim()&&!bcForm.last_name.trim()){ alert("Name is required."); return; }
     setBcBusy(true);
     try{
-      const res=await fetch("/api/admin/business-cards/save",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({data:{...bcForm,card_image_url:bcImageDataUrl||null},tag_name:bcTagName.trim()||undefined,force:!!force})});
+      const res=await fetch("/api/admin/business-cards/save",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({data:{...bcForm,card_image_url:bcImageDataUrl||null},tag_name:bcTagName.trim()||undefined,force:!!force,scan_id:bcScanId||undefined})});
       const data=await res.json();
       if(res.status===409&&!force){ setBcDuplicateFound(data.duplicate); setBcBusy(false); return; }
+      // A possible_match is a non-blocking suggestion (no contact created yet) -- it is NOT
+      // a success response, so it must not fall through to closing the modal below.
+      if(res.ok&&data.possible_match&&!force){ setBcPossibleMatch(data.possible_match); setBcBusy(false); return; }
       if(!res.ok) throw new Error(data.error||"Could not save contact");
       setBcOpen(false); await loadContacts();
     }catch(e:any){ alert(e.message||"Could not save contact"); }
@@ -5146,19 +5168,32 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div>
                   {bcErr&&<div style={{color:"#e0c060",fontSize:12,marginBottom:14,background:"#2a2010",border:"1px solid #4a3a20",borderRadius:4,padding:"10px 14px"}}>{bcErr}</div>}
                   {bcImageDataUrl&&<img src={bcImageDataUrl} alt="Business card" style={{maxWidth:"100%",borderRadius:8,marginBottom:14,border:`1px solid ${C.BORDER}`}} />}
-                  <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>Review before saving</div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:10,flexWrap:"wrap",gap:6}}>
+                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Review before saving</div>
+                    {/* Honest confidence, never a fabricated precise score -- see businessCardExtraction.ts */}
+                    {bcReviewState&&bcReviewState!=="high_confidence"&&(
+                      <div style={{fontSize:10.5,padding:"3px 8px",borderRadius:10,background:bcReviewState==="uncertain"?"#3a1f1f":"#2a2010",color:bcReviewState==="uncertain"?"#e08080":"#e0c060"}}>
+                        {bcReviewState==="uncertain"?"Couldn't read the card clearly -- please check every field":"Needs review -- please check these fields"}
+                        {bcDetectedLanguage==="ar"?" (Arabic)":bcDetectedLanguage==="mixed"?" (Arabic + English)":""}
+                      </div>
+                    )}
+                  </div>
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
                     <input style={S.inp} placeholder="First name" value={bcForm.first_name} onChange={e=>setBcForm((f:any)=>({...f,first_name:e.target.value}))} />
                     <input style={S.inp} placeholder="Last name" value={bcForm.last_name} onChange={e=>setBcForm((f:any)=>({...f,last_name:e.target.value}))} />
                     <input style={S.inp} placeholder="Job title" value={bcForm.job_title} onChange={e=>setBcForm((f:any)=>({...f,job_title:e.target.value}))} />
                     <input style={S.inp} placeholder="Company" value={bcForm.company_name} onChange={e=>setBcForm((f:any)=>({...f,company_name:e.target.value}))} />
+                    <input style={S.inp} placeholder="Company website" value={bcForm.company_website} onChange={e=>setBcForm((f:any)=>({...f,company_website:e.target.value}))} />
                     <input style={S.inp} placeholder="Phone" value={bcForm.phone} onChange={e=>setBcForm((f:any)=>({...f,phone:e.target.value}))} />
                     <input style={S.inp} placeholder="WhatsApp" value={bcForm.whatsapp} onChange={e=>setBcForm((f:any)=>({...f,whatsapp:e.target.value}))} />
                     <input style={S.inp} placeholder="Email" value={bcForm.email} onChange={e=>setBcForm((f:any)=>({...f,email:e.target.value}))} />
                     <input style={S.inp} placeholder="Website" value={bcForm.website} onChange={e=>setBcForm((f:any)=>({...f,website:e.target.value}))} />
                     <input style={S.inp} placeholder="LinkedIn" value={bcForm.linkedin} onChange={e=>setBcForm((f:any)=>({...f,linkedin:e.target.value}))} />
                     <input style={S.inp} placeholder="Address" value={bcForm.address} onChange={e=>setBcForm((f:any)=>({...f,address:e.target.value}))} />
+                    <input style={S.inp} placeholder="City" value={bcForm.city} onChange={e=>setBcForm((f:any)=>({...f,city:e.target.value}))} />
+                    <input style={S.inp} placeholder="Country" value={bcForm.country} onChange={e=>setBcForm((f:any)=>({...f,country:e.target.value}))} />
                   </div>
+                  <textarea style={{...S.inp,width:"100%",marginBottom:12,minHeight:60,resize:"vertical" as const,fontFamily:"inherit"}} placeholder="Notes (e.g. mobile, fax, social links picked up from the card)" value={bcForm.notes} onChange={e=>setBcForm((f:any)=>({...f,notes:e.target.value}))} />
                   <input style={{...S.inp,width:"100%",marginBottom:12}} placeholder="Tag (optional, e.g. Exhibition, Event)" value={bcTagName} onChange={e=>setBcTagName(e.target.value)} />
                   {bcDuplicateFound&&(
                     <div style={{marginBottom:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
@@ -5166,6 +5201,16 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       <div style={{display:"flex",gap:8,marginTop:8}}>
                         <button onClick={()=>bcSave(true)} disabled={bcBusy} style={S.btnSm}>Save anyway</button>
                         <button onClick={()=>setBcDuplicateFound(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Cancel</button>
+                      </div>
+                    </div>
+                  )}
+                  {bcPossibleMatch&&(
+                    <div style={{marginBottom:12,padding:"10px 14px",background:"#1f2a3a",border:"1px solid #2a3a4a",borderRadius:6,fontSize:12,color:"#8ab4e0"}}>
+                      A contact with the same name and company already exists: <strong>{bcPossibleMatch.full_name}</strong>
+                      {bcPossibleMatch.company?.name?` (${bcPossibleMatch.company.name})`:""}. This is only a suggestion -- no email/phone/WhatsApp matched, so nothing was saved.
+                      <div style={{display:"flex",gap:8,marginTop:8}}>
+                        <button onClick={()=>bcSave(true)} disabled={bcBusy} style={S.btnSm}>Save as new contact anyway</button>
+                        <button onClick={()=>setBcPossibleMatch(null)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Go back and review</button>
                       </div>
                     </div>
                   )}

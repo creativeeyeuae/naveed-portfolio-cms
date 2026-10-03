@@ -1,37 +1,112 @@
 // POST /api/admin/business-cards/scan -- OCR/vision extraction for the Business Card Scanner.
 //
-// NOT YET LIVE: extracting name/company/phone/email/etc. from a photographed card needs an
-// external OCR/vision API (e.g. Google Cloud Vision, OpenAI vision, Azure Document
-// Intelligence) that isn't configured for this project yet. Per the standing rule to surface
-// any new recurring/per-use paid service before building it, this endpoint is shipped as a
-// clear "not configured" response rather than silently wiring in a paid API. Once the user
-// picks a provider and its key is added as a Cloudflare Pages secret (env.VISION_API_KEY
-// below is the placeholder name), the body of this function is where that call goes -- the
-// review-before-save flow in business-cards/save.ts is already built and does not change.
-import { requireAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
+// Part 3: now performs real extraction via Cloudflare Workers AI (env.AI -- already bound in
+// this project for a different feature, see functions/api/admin/seo/alt-text.ts; no new paid
+// service). All provider-specific logic lives in ../../../_shared/businessCardExtraction.ts --
+// this file only handles the HTTP contract, auth, validation, and best-effort scan logging.
+//
+// Nothing here changes the review-before-save contract: the frontend still always shows the
+// review screen and nothing is ever auto-saved from this endpoint (save.ts, unchanged, is the
+// only place a contact gets created).
+import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
+import { extractBusinessCard, type ExtractedFields } from "../../../_shared/businessCardExtraction";
+import { extraFieldsAsNotes } from "../../../_shared/outreachHelpers";
 
-type ScanEnv = AdminEnv & { VISION_API_KEY?: string };
+// Fields the review form (HomeClient.tsx bcForm) has an actual input for. Everything else
+// extraction finds (mobile, secondary_email, fax, instagram, facebook, twitter) still gets
+// surfaced -- folded into a suggested notes line -- rather than silently dropped.
+const FORM_KEYS: (keyof ExtractedFields)[] = [
+  "first_name", "last_name", "job_title", "company_name", "company_website",
+  "email", "phone", "whatsapp", "website", "linkedin", "address", "city", "country",
+];
+function splitForForm(extracted: ExtractedFields) {
+  const forForm: Record<string, string> = {};
+  const extra: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(extracted)) {
+    if (!v) continue;
+    if (FORM_KEYS.includes(k as keyof ExtractedFields)) forForm[k] = v as string;
+    else extra[k] = v as string;
+  }
+  return { forForm, notesSuggestion: extraFieldsAsNotes(extra) };
+}
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
 
-export const onRequestPost: PagesFunction<ScanEnv> = async ({ request, env }) => {
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // ~8MB decoded; keeps the AI call and the DB row sane
+
+export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) => {
   const origin = request.headers.get("Origin");
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
 
-  if (!env.VISION_API_KEY) {
+  const body = (await request.json().catch(() => ({}))) as { image?: string };
+  const image = typeof body.image === "string" ? body.image : "";
+  if (!image || !image.startsWith("data:image/")) {
+    return json({ error: "invalid_image", message: "That doesn't look like an image." }, 400, origin);
+  }
+  // Rough decoded-size check from the base64 payload length, before doing any real work.
+  const approxBytes = Math.floor((image.length - image.indexOf(",") - 1) * 0.75);
+  if (approxBytes > MAX_IMAGE_BYTES) {
+    return json({ error: "image_too_large", message: "That photo is too large. Please retake it." }, 400, origin);
+  }
+
+  const result = await extractBusinessCard(env, image);
+
+  if (!result.ok && result.error === "not_configured") {
+    // Unchanged from before Part 3: Workers AI isn't bound (e.g. a preview/dev deploy without
+    // wrangler.toml's [ai] binding). Same graceful message the frontend already handles.
     return json(
-      {
-        error: "not_configured",
-        message:
-          "Business card OCR is not set up yet -- it needs an external vision/OCR service and API key that haven't been chosen. You can still add a contact manually, or type in the card's details by hand.",
-      },
+      { error: "not_configured", message: "Business card OCR is not set up yet -- you can still add a contact manually, or type in the card's details by hand." },
       503,
       origin
     );
   }
 
-  // Placeholder for once a provider is chosen -- intentionally not implemented.
-  return json({ error: "not_configured", message: "Vision provider not implemented yet." }, 503, origin);
+  // Best-effort scan log -- never blocks the response. If migration 0012 hasn't been run yet,
+  // this insert simply fails silently and the rest of the flow (extraction, review, save) is
+  // completely unaffected, exactly as it was before this table existed.
+  let scanId: string | null = null;
+  try {
+    const row = {
+      status: result.ok ? "extracted" : "rejected",
+      card_image: image,
+      raw_text: result.raw_text || null,
+      extracted: result.extracted,
+      review_state: result.review_state,
+      detected_language: result.detected_language,
+      provider: result.provider,
+      error: result.error || null,
+      created_by: admin.email,
+    };
+    const res = await supaAdmin(env, "business_card_scans", { method: "POST", body: JSON.stringify(row) });
+    if (res.ok) scanId = ((await res.json()) as any[])?.[0]?.id || null;
+  } catch {
+    // Table may not exist yet (migration 0012 not run) or the insert failed for any other
+    // reason -- logging the scan is a nice-to-have, not a requirement for scanning to work.
+  }
+
+  if (!result.ok) {
+    return json(
+      { error: result.error || "extraction_failed", message: "Couldn't read that card automatically -- please fill in the details below by hand.", scan_id: scanId },
+      200,
+      origin
+    );
+  }
+
+  const { forForm, notesSuggestion } = splitForForm(result.extracted);
+
+  return json(
+    {
+      extracted: forForm, // only fields bcForm actually has inputs for -- bcHandleFile's
+      // existing merge (setBcForm(f => ({...f, ...data.extracted}))) keeps working unchanged
+      notes_suggestion: notesSuggestion || undefined, // anything extra (mobile, fax, social
+      // links, etc.) folded into a suggested notes line instead of being silently dropped
+      review_state: result.review_state,
+      detected_language: result.detected_language,
+      scan_id: scanId,
+    },
+    200,
+    origin
+  );
 };

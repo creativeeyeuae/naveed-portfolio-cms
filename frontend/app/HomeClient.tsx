@@ -666,7 +666,11 @@ function validateReceiptFile(file:File): string|null {
 // accept an insert from anyone. Stored as its own growing JSON array under a dedicated
 // site_settings key, and only ever read back inside the CMS (never loaded into an
 // ordinary visitor's browser), so other visitors' names/numbers stay out of localStorage.
-type ContactLead = { id:string; date:string; name:string; email:string; phone:string; subject:string; message:string; };
+// converted_customer_id: set once this lead has been turned into (or linked to) a real CRM
+// client via convertLeadToClient() below -- lets the Leads tab show "View client" instead of
+// "Convert" once it's done, and is the only thing that actually connects this separate
+// contact-form inbox to the real customers table.
+type ContactLead = { id:string; date:string; name:string; email:string; phone:string; subject:string; message:string; converted_customer_id?:string|null; };
 async function fetchContactLeads(): Promise<ContactLead[]> {
   if(!sb) return [];
   try{
@@ -689,6 +693,15 @@ async function deleteContactLead(id:string): Promise<boolean> {
   try{
     const existing=await fetchContactLeads();
     await sb.from("site_settings").upsert({key:"nap_contact_submissions",value:JSON.stringify(existing.filter(l=>l.id!==id))},{onConflict:"key"});
+    return true;
+  }catch{ return false; }
+}
+async function updateContactLead(id:string, patch:Partial<ContactLead>): Promise<boolean> {
+  if(!sb) return false;
+  try{
+    const existing=await fetchContactLeads();
+    const next=existing.map(l=>l.id===id?{...l,...patch}:l);
+    await sb.from("site_settings").upsert({key:"nap_contact_submissions",value:JSON.stringify(next)},{onConflict:"key"});
     return true;
   }catch{ return false; }
 }
@@ -1691,6 +1704,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [contactSent,setContactSent]=useState(false);
   const [leads,setLeads]=useState<ContactLead[]>([]);
   const [leadsLoading,setLeadsLoading]=useState(false);
+  const [leadConvertBusy,setLeadConvertBusy]=useState<string|null>(null); // id of the lead currently being converted/linked to a CRM client
   // Branded loading screen on first landing on the homepage. Starts true so the very first
   // paint (server-rendered static HTML included) already shows it -- no flash of the real
   // page underneath before this effect runs. sessionStorage below then instantly turns it
@@ -2394,6 +2408,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       if(res.ok) setClientDirDetail(data);
     }catch{}
     setClientDirDetailLoading(false);
+  }
+  // Shared "jump to this client's full CRM profile" action -- used by the Leads, Bookings,
+  // Payments and Invoices tabs (and WhatsApp) so every tab that touches a customer can open
+  // the same real Client Directory record instead of being a dead end.
+  function openClientInDirectory(customerId:string){
+    setCmsTab("clientdir"); setClientDirOpenId(customerId); loadClientDirDetail(customerId);
   }
 
   // CRM (CMS > Client Directory) -- see functions/api/admin/clients/[id]/{update,notes,meetings,
@@ -3513,6 +3533,28 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setContactForm({name:"",email:"",phone:"",subject:"",message:""});
   }
   function removeLead(id:string){ setLeads(ls=>ls.filter(l=>l.id!==id)); deleteContactLead(id); }
+  // Turns a raw contact-form submission into a real CRM client -- the one real connection
+  // this disconnected inbox was missing. Reuses the exact same POST /api/admin/clients that
+  // the Client Directory's own "Add Contact" button calls. If a client with this email/phone
+  // already exists, links to that existing record instead of creating a duplicate (the point
+  // here is always "get this lead into the CRM", never "make a second copy of them").
+  async function convertLeadToClient(lead:ContactLead){
+    if(!adminSession||leadConvertBusy) return;
+    setLeadConvertBusy(lead.id);
+    try{
+      const res=await fetch("/api/admin/clients",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({full_name:lead.name||lead.email||lead.phone||"Website lead",email:lead.email||null,phone:lead.phone||null,source:"Website contact form"})});
+      const data=await res.json();
+      let customerId:string|null=null;
+      if(res.status===409) customerId=data.duplicate?.id||null;
+      else if(res.ok) customerId=data.client?.id||null;
+      else throw new Error(data.error||"Could not convert this lead");
+      if(customerId){
+        await updateContactLead(lead.id,{converted_customer_id:customerId});
+        setLeads(ls=>ls.map(l=>l.id===lead.id?{...l,converted_customer_id:customerId as string}:l));
+      }
+    }catch(e:any){ alert(e.message||"Could not convert this lead"); }
+    setLeadConvertBusy(null);
+  }
   function saveSettings(){
     const prior=settings,next=settingsDraft;
     setSettings(next);
@@ -4144,13 +4186,37 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           </div>
         )}
 
-        {/* LEADS -- contact-form submissions saved by any visitor (see fetchContactLeads) */}
+        {/* LEADS -- contact-form submissions saved by any visitor (see fetchContactLeads).
+            "Convert to Client" below is the one real connection this inbox was missing -- it
+            calls convertLeadToClient(), which creates (or links to) a real customer row via
+            the same endpoint the Client Directory's own "Add Contact" uses. */}
         {cmsTab==="leads"&&(
           <div style={{maxWidth:800,margin:"48px auto",padding:"0 24px"}}>
             <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Contact Form Submissions</div>
             <div style={{...CARD_STYLE,fontSize:12,color:C.MID,padding:"12px 16px",marginBottom:20,lineHeight:1.6}}>
               Every submission also opens a WhatsApp message to you immediately, so nothing is missed even if this list below is briefly empty. {!settings.emailjsServiceId&&"Add your free EmailJS details in Settings → Contact to also get them by email."}
             </div>
+            {leads.length>0&&(()=>{
+              const weekAgo=Date.now()-7*24*60*60*1000;
+              const converted=leads.filter(l=>l.converted_customer_id).length;
+              const thisWeek=leads.filter(l=>new Date(l.date).getTime()>=weekAgo).length;
+              return(
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                  <div style={{...CARD_STYLE,padding:16}}>
+                    <div style={{fontSize:22,fontWeight:700,color:C.FG}}>{leads.length}</div>
+                    <div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Total Submissions</div>
+                  </div>
+                  <div style={{...CARD_STYLE,padding:16}}>
+                    <div style={{fontSize:22,fontWeight:700,color:"#4ade80"}}>{converted}</div>
+                    <div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Converted to Client</div>
+                  </div>
+                  <div style={{...CARD_STYLE,padding:16}}>
+                    <div style={{fontSize:22,fontWeight:700,color:C.FG}}>{thisWeek}</div>
+                    <div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>This Week</div>
+                  </div>
+                </div>
+              );
+            })()}
             {leadsLoading?(
               <div style={{color:C.MID,fontSize:13}}>Loading…</div>
             ):leads.length===0?(
@@ -4158,12 +4224,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:12}}>
                 {leads.map(l=>(
-                  <div key={l.id} style={{...CARD_STYLE,padding:20,position:"relative"}}>
+                  <div key={l.id} style={{...CARD_STYLE,padding:20,position:"relative",borderLeft:`3px solid ${l.converted_customer_id?"#4ade80":C.P}`}}>
                     <button onClick={()=>removeLead(l.id)} style={{position:"absolute",top:12,right:12,background:"none",border:"none",color:C.MID,cursor:"pointer",fontSize:14}}>✕</button>
                     <div style={{fontSize:10,color:C.MID,letterSpacing:1,marginBottom:8}}>{new Date(l.date).toLocaleString()}</div>
                     <div style={{fontSize:14,color:C.FG,fontWeight:700,marginBottom:4}}>{l.name} {l.subject&&<span style={{color:C.PL,fontWeight:400}}>· {l.subject}</span>}</div>
                     <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{l.email}{l.phone&&` · ${l.phone}`}</div>
-                    <div style={{fontSize:13,color:C.FG,lineHeight:1.6,whiteSpace:"pre-wrap"}}>{l.message}</div>
+                    <div style={{fontSize:13,color:C.FG,lineHeight:1.6,whiteSpace:"pre-wrap",marginBottom:14}}>{l.message}</div>
+                    {l.converted_customer_id?(
+                      <button onClick={()=>openClientInDirectory(l.converted_customer_id!)} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>✓ Converted — View Client →</button>
+                    ):(
+                      <button onClick={()=>convertLeadToClient(l)} disabled={leadConvertBusy===l.id} style={{...S.btnP,padding:"6px 14px",fontSize:11,opacity:leadConvertBusy===l.id?0.6:1}}>{leadConvertBusy===l.id?"Converting…":"→ Convert to Client"}</button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -4183,6 +4254,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
                   </div>
                 </div>
+                {bookingsList&&bookingsList.length>0&&(()=>{
+                  const upcoming=bookingsList.filter((b:any)=>["pending","confirmed"].includes(b.status)).length;
+                  const awaitingReceipt=bookingsList.filter((b:any)=>(b.payments||[]).some((p:any)=>p.status==="under_review")).length;
+                  const completed=bookingsList.filter((b:any)=>b.status==="completed").length;
+                  return(
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:C.FG}}>{upcoming}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Upcoming</div></div>
+                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:"#fbbf24"}}>{awaitingReceipt}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Awaiting Receipt Review</div></div>
+                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:"#4ade80"}}>{completed}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Completed</div></div>
+                    </div>
+                  );
+                })()}
                 {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
                 {bookingsLoading?(
                   <div style={{color:C.MID,fontSize:13}}>Loading…</div>
@@ -4201,7 +4284,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
                               <div style={{fontSize:12,color:C.MID,marginTop:2}}>{cust?.full_name} · {cust?.email}{cust?.phone&&` · ${cust.phone}`}</div>
                             </div>
-                            <StatusPill status={b.status} />
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              {b.customer_id&&<button onClick={()=>openClientInDirectory(b.customer_id)} style={{...S.btnO,padding:"4px 10px",fontSize:10}}>View Client →</button>}
+                              <StatusPill status={b.status} />
+                            </div>
                           </div>
                           <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{b.booking_date} · {b.booking_time} &nbsp;·&nbsp; AED {Number(b.total).toLocaleString()} total ({Number(b.price_base).toLocaleString()} + {Number(b.transaction_fee).toLocaleString()} fee)</div>
                           {payment&&(
@@ -4276,6 +4362,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
+            <div style={{display:"flex",gap:14,flexWrap:"wrap" as const,marginBottom:16,fontSize:10.5,color:C.MID,alignItems:"center"}}>
+              {["pending","confirmed","completed","cancelled"].map(s=>(
+                <span key={s} style={{display:"flex",alignItems:"center",gap:5}}><span style={{width:7,height:7,borderRadius:"50%",display:"inline-block",background:(STATUS_PILL_COLORS[s]||{fg:C.MID}).fg}} />{s}</span>
+              ))}
+            </div>
             {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
             {bookingsLoading?(
               <div style={{color:C.MID,fontSize:13}}>Loading…</div>
@@ -4326,7 +4417,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                         {(byDate.get(calSelectedDate)||[]).map((b:any)=>(
                           <div key={b.id} style={{...CARD_STYLE,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,padding:"10px 14px",fontSize:12.5,color:C.FG}}>
                             <span>{b.booking_time} · {b.appointment_ref} · {b.customers?.full_name} — {b.service_name}</span>
-                            <StatusPill status={b.status} />
+                            <div style={{display:"flex",alignItems:"center",gap:8}}>
+                              {b.customer_id&&<button onClick={()=>openClientInDirectory(b.customer_id)} style={{...S.btnO,padding:"3px 8px",fontSize:10}}>View Client →</button>}
+                              <StatusPill status={b.status} />
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -4358,7 +4452,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
             </div>
             {payTotals&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,minmax(0,1fr))",gap:12,marginBottom:20}}>
                 <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Total Paid</div>
                   <div style={{fontSize:20,color:"#4ade80",fontWeight:700,marginTop:4}}>AED {payTotals.paid.toLocaleString()}</div>
@@ -4366,6 +4460,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Awaiting / In Review</div>
                   <div style={{fontSize:20,color:"#fbbf24",fontWeight:700,marginTop:4}}>AED {payTotals.pending.toLocaleString()}</div>
+                </div>
+                <div style={{...CARD_STYLE,padding:16}}>
+                  <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Rejected</div>
+                  <div style={{fontSize:20,color:"#e74c3c",fontWeight:700,marginTop:4}}>{(payList||[]).filter((p:any)=>p.status==="rejected").length}</div>
                 </div>
                 <div style={{...CARD_STYLE,padding:16}}>
                   <div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Payments</div>
@@ -4391,6 +4489,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:14}}>
                         <div style={{fontSize:15,color:C.FG,fontWeight:700}}>AED {Number(p.total).toLocaleString()}</div>
+                        {appt?.customer_id&&<button onClick={()=>openClientInDirectory(appt.customer_id)} style={{...S.btnO,padding:"4px 10px",fontSize:10}}>View Client →</button>}
                         <StatusPill status={p.status} />
                       </div>
                     </div>
@@ -4410,6 +4509,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Invoices</div>
               <button onClick={loadInvoices} style={S.btnSm}>↻ Refresh</button>
             </div>
+            {invList&&invList.length>0&&(()=>{
+              const paidTotal=invList.filter((i:any)=>i.status==="paid").reduce((s:number,i:any)=>s+Number(i.total||0),0);
+              const outstandingTotal=invList.filter((i:any)=>i.status!=="paid").reduce((s:number,i:any)=>s+Number(i.total||0),0);
+              const outstandingCount=invList.filter((i:any)=>i.status!=="paid").length;
+              return(
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                  <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:20,color:"#4ade80",fontWeight:700}}>AED {paidTotal.toLocaleString()}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Paid</div></div>
+                  <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:20,color:"#fbbf24",fontWeight:700}}>AED {outstandingTotal.toLocaleString()}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Outstanding ({outstandingCount})</div></div>
+                  <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:20,color:C.FG,fontWeight:700}}>{invList.length}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Invoices</div></div>
+                </div>
+              );
+            })()}
             {invErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{invErr}</div>}
             {invLoading?(
               <div style={{color:C.MID,fontSize:13}}>Loading…</div>
@@ -4429,6 +4540,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </div>
                       <div style={{display:"flex",alignItems:"center",gap:14}}>
                         <div style={{fontSize:15,color:C.FG,fontWeight:700}}>{inv.currency||"AED"} {Number(inv.total).toLocaleString()}</div>
+                        {appt?.customer_id&&<button onClick={()=>openClientInDirectory(appt.customer_id)} style={{...S.btnO,padding:"4px 10px",fontSize:10}}>View Client →</button>}
                         <StatusPill status={inv.status} />
                         {!isPaid&&<button onClick={()=>markInvoicePaid(inv.id)} disabled={invActionBusy===inv.id} style={S.btnSm}>Mark Paid</button>}
                       </div>
@@ -4454,6 +4566,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <button onClick={loadClientDir} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
+            {clientDirList&&clientDirList.length>0&&(()=>{
+              const byStage=(s:string)=>clientDirList.filter((c:any)=>(c.lead_status||"lead")===s).length;
+              return(
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+                  <div style={{...CARD_STYLE,padding:14}}><div style={{fontSize:18,fontWeight:700,color:C.FG}}>{clientDirList.length}</div><div style={{fontSize:9.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:3}}>Total Clients</div></div>
+                  <div style={{...CARD_STYLE,padding:14}}><div style={{fontSize:18,fontWeight:700,color:C.P}}>{byStage("lead")}</div><div style={{fontSize:9.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:3}}>Lead</div></div>
+                  <div style={{...CARD_STYLE,padding:14}}><div style={{fontSize:18,fontWeight:700,color:"#fbbf24"}}>{byStage("warm")}</div><div style={{fontSize:9.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:3}}>Warm</div></div>
+                  <div style={{...CARD_STYLE,padding:14}}><div style={{fontSize:18,fontWeight:700,color:"#fb923c"}}>{byStage("hot")}</div><div style={{fontSize:9.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:3}}>Hot</div></div>
+                  <div style={{...CARD_STYLE,padding:14}}><div style={{fontSize:18,fontWeight:700,color:"#4ade80"}}>{byStage("customer")}</div><div style={{fontSize:9.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:3}}>Customer</div></div>
+                </div>
+              );
+            })()}
             {crmAddContactOpen&&(
               <div style={{...CARD_STYLE,padding:18,marginBottom:18}}>
                 <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:12}}>New Contact</div>
@@ -4492,12 +4616,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{display:"flex",flexDirection:"column",gap:10}}>
                   {filtered.map((c:any)=>{
                     const open=clientDirOpenId===c.id;
+                    const stageColor=({lead:C.P,warm:"#fbbf24",hot:"#fb923c",customer:"#4ade80",cold:C.MID,vendor:C.MID,partner:C.MID} as Record<string,string>)[c.lead_status||"lead"]||C.P;
                     return(
-                      <div key={c.id} style={{...CARD_STYLE,padding:16}}>
+                      <div key={c.id} style={{...CARD_STYLE,padding:16,borderLeft:`3px solid ${stageColor}`}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setClientDirOpenId(willOpen?c.id:null);if(willOpen)loadClientDirDetail(c.id);}}>
                           <div>
                             <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {c.email}</span></div>
-                            <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.booking_count} booking{c.booking_count===1?"":"s"}{c.last_booking_date?` · Last: ${c.last_booking_date}`:" · Not booked yet"}</div>
+                            <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.booking_count} booking{c.booking_count===1?"":"s"}{c.last_booking_date?` · Last: ${c.last_booking_date}`:" · Not booked yet"}{c.source?` · ${c.source}`:""}</div>
                           </div>
                           <div style={{fontSize:14,color:C.FG,fontWeight:700}}>AED {Number(c.lifetime_total||0).toLocaleString()}</div>
                         </div>
@@ -5426,7 +5551,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             isMobile={isMobile}
             customersList={clientDirList}
             onConversationsChange={setWaConversations}
-            onOpenCrmProfile={(customerId:string)=>{ setCmsTab("clientdir"); setClientDirOpenId(customerId); loadClientDirDetail(customerId); }}
+            onOpenCrmProfile={openClientInDirectory}
           />
         )}
 

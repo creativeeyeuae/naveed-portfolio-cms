@@ -1110,13 +1110,72 @@ function Lightbox({images,index,onClose,onPrev,onNext}:{images:Img[];index:numbe
 }
 
 // ─── FLOATING WA ─────────────────────────────────────────────────────────────
+// "Live chat" style widget: a chat bubble launcher that opens a small panel with a greeting
+// and a few quick-option buttons (how can I help / ask about services / pricing / book a
+// session). Picking an option, or typing a free message and hitting send, opens wa.me with
+// that text pre-filled -- so every message still lands directly on Naveed's real WhatsApp.
+// No new backend/service: same wa.me hand-off pattern already used by ConsultPopup/Hero/
+// ServicePage. Used across every page view in this file (10 call sites) with the same
+// {num,msg} props, so this one definition updates the widget everywhere at once.
 function FloatingWA({num,msg}:{num:string;msg:string}) {
+  const [open,setOpen] = useState(false);
+  const [text,setText] = useState("");
+  const QUICK:{label:string;text:string}[] = [
+    {label:"How can you help me?", text:"Hi Naveed, how can you help me with my project?"},
+    {label:"Ask about services", text:"Hi Naveed, I'd like to know more about your photography/videography services."},
+    {label:"Check pricing & packages", text:"Hi Naveed, could you share your pricing and packages?"},
+    {label:"Book a session", text:"Hi Naveed, I'd like to book a session. Can we discuss the details?"},
+  ];
+  function send(t:string){
+    const final=(t||"").trim()||msg;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(final)}`,"_blank","noopener,noreferrer");
+    setOpen(false); setText("");
+  }
+  const waIcon=(size:number,color:string)=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  );
   return(
-    <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp"
-      style={{position:"fixed",bottom:28,right:28,zIndex:999,background:"#25D366",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 24px rgba(37,211,102,0.3)",textDecoration:"none",transition:"transform 0.2s"}}
-      onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.1)"} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-    </a>
+    <>
+      {open&&(
+        <div role="dialog" aria-label="Live chat" style={{position:"fixed",bottom:96,right:24,zIndex:999,width:"min(330px,calc(100vw - 32px))",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:16,boxShadow:"0 20px 60px rgba(0,0,0,0.45)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:"min(480px,70vh)"}}>
+          <div style={{background:`linear-gradient(135deg,${C.P} 0%,${C.PD} 100%)`,padding:"16px 18px",display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{waIcon(18,"#fff")}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{color:"#fff",fontSize:14,fontWeight:700,lineHeight:1.2}}>Live Chat</div>
+              <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#4ADE80",display:"inline-block"}} />Replies on WhatsApp</div>
+            </div>
+            <button aria-label="Close chat" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.85)",fontSize:18,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
+          </div>
+          <div style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
+            <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
+              Hi there 👋 How can I help you today? Pick an option below or type your own message.
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {QUICK.map((q,i)=>(
+                <button key={i} onClick={()=>send(q.text)} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}
+                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)";}}
+                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="transparent";}}>
+                  {q.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+            <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
+            <button type="submit" aria-label="Send on WhatsApp" style={{background:"#25D366",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+            </button>
+          </form>
+        </div>
+      )}
+      <button aria-label={open?"Close chat":"Open live chat"} onClick={()=>setOpen(o=>!o)}
+        style={{position:"fixed",bottom:28,right:28,zIndex:999,background:open?C.P:"#25D366",border:"none",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:open?"0 4px 24px rgba(139,92,246,0.4)":"0 4px 24px rgba(37,211,102,0.3)",cursor:"pointer",transition:"transform 0.2s, background 0.2s"}}
+        onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.1)"} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>
+        {open?(
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
+        ):waIcon(26,"white")}
+      </button>
+    </>
   );
 }
 

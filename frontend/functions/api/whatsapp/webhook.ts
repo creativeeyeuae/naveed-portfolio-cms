@@ -9,8 +9,11 @@
 //   {type:"message_in", from, name?, body?, media_url?, media_type?, wa_message_id?}
 //     -- an inbound WhatsApp message. Upserts the conversation by phone number and inserts
 //     one inbound whatsapp_messages row.
-//   {type:"status_update", wa_message_id, status, error?}
-//     -- a delivery-status callback for a message this CMS previously queued.
+//   {type:"status_update", message_id?, wa_message_id?, status, error?}
+//     -- a delivery-status callback for a message this CMS previously queued. Pass message_id
+//     (the whatsapp_messages row id, from GET /api/whatsapp/pending) the first time, right after
+//     actually sending it, together with the real wa_message_id so it gets recorded -- after
+//     that, later receipts (delivered/read) match by wa_message_id alone.
 //   {type:"connection_update", status, phone_number?, qr_code?, error?}
 //     -- the bridge reporting its own connection state (e.g. showing a fresh QR code, or
 //     confirming it's connected) so the CMS's Connection page can display it.
@@ -83,11 +86,28 @@ async function handleMessageIn(env: Env, body: Record<string, any>, origin: stri
 }
 
 async function handleStatusUpdate(env: Env, body: Record<string, any>, origin: string | null) {
-  if (!body.wa_message_id) return json({ error: "'wa_message_id' is required." }, 400, origin);
-  const res = await supaAdmin(env, `whatsapp_messages?wa_message_id=eq.${encodeURIComponent(body.wa_message_id)}`, {
+  // Two ways to identify the row being updated:
+  //   - message_id: the whatsapp_messages row's own id. Used the FIRST time the bridge reports
+  //     on a message it just sent (a queued outbound row never has wa_message_id set yet, so
+  //     matching by wa_message_id alone can't find it) -- also lets us record the real WhatsApp
+  //     message id at the same time, for every later receipt (delivered/read) to match against.
+  //   - wa_message_id: the real WhatsApp message id. Used for every later delivery/read receipt,
+  //     same as before this change -- existing callers are unaffected.
+  if (!body.message_id && !body.wa_message_id) return json({ error: "'message_id' or 'wa_message_id' is required." }, 400, origin);
+
+  const patch: Record<string, any> = { status: body.status || "failed", error: body.error || null };
+  let filter: string;
+  if (body.message_id) {
+    filter = `id=eq.${encodeURIComponent(body.message_id)}`;
+    if (body.wa_message_id) patch.wa_message_id = body.wa_message_id;
+  } else {
+    filter = `wa_message_id=eq.${encodeURIComponent(body.wa_message_id)}`;
+  }
+
+  const res = await supaAdmin(env, `whatsapp_messages?${filter}`, {
     method: "PATCH",
     headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ status: body.status || "failed", error: body.error || null }),
+    body: JSON.stringify(patch),
   });
   if (!res.ok) return json({ error: "Could not update message status.", detail: await res.text() }, 500, origin);
   return json({ ok: true }, 200, origin);

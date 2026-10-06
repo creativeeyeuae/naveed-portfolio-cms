@@ -22,6 +22,11 @@ out/
 # Migration data exports/backups -- local safety copies, never committed
 backups/
 
+# WhatsApp bridge session credentials -- this IS the logged-in WhatsApp session itself
+# (equivalent to a password). Never committed, never leaves the server it's generated on.
+whatsapp-bridge/auth_info_baileys/
+**/auth_info_baileys/
+
 # Logs / OS junk
 *.log
 .DS_Store

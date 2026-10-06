@@ -1463,7 +1463,7 @@ function GoogleReviewsSection({placeId,eyebrow}:{placeId:string;eyebrow:string})
 // Auto-finishes at 100%; clicking anywhere skips straight to the end. sessionStorage (see
 // Home()) makes sure it only plays once per visit, not on every internal navigation back
 // to "/".
-function IntroSplash({siteName,tagline,onDone}:{siteName:string;tagline:string;onDone:()=>void}) {
+function IntroSplash({siteName,tagline,subtitle,onDone}:{siteName:string;tagline:string;subtitle?:string;onDone:()=>void}) {
   const [pct,setPct]=useState(0);
   const [leaving,setLeaving]=useState(false);
   useEffect(()=>{
@@ -1494,7 +1494,10 @@ function IntroSplash({siteName,tagline,onDone}:{siteName:string;tagline:string;o
       <div aria-hidden style={{position:"absolute",bottom:"-25%",right:"-10%",width:460,height:460,borderRadius:"50%",background:"radial-gradient(circle,rgba(168,85,247,0.22),transparent 70%)",filter:"blur(70px)"}} />
       <div style={{position:"relative",textAlign:"center",padding:"0 24px"}}>
         <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",marginBottom:22,opacity:0.85}}>{tagline}</div>
-        <div style={{fontSize:"clamp(30px,6vw,54px)",fontWeight:700,color:C.FG,letterSpacing:0.5,marginBottom:36}}><NoTranslate>{siteName}</NoTranslate></div>
+        <div style={{fontSize:"clamp(38px,8.5vw,72px)",fontWeight:700,color:C.FG,letterSpacing:0.5,marginBottom:subtitle?14:36}}><NoTranslate>{siteName}</NoTranslate></div>
+        {subtitle && (
+          <div style={{fontSize:"clamp(13px,2vw,17px)",color:C.PL,letterSpacing:1,marginBottom:36,opacity:0.9}}>{subtitle}</div>
+        )}
         <div style={{width:220,height:2,background:"rgba(255,255,255,0.12)",position:"relative",overflow:"hidden",margin:"0 auto"}}>
           <div style={{position:"absolute",inset:0,width:`${pct}%`,background:C.P,transition:"width 0.1s linear"}} />
         </div>
@@ -7392,7 +7395,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // ── HOME ──
   return(
     <div key={page} className="pg-fade" style={{...S.base,animation:"pgFadeIn 0.55s cubic-bezier(.16,.84,.44,1) both"}}>
-      {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} onDone={()=>setShowSplash(false)} />}
+      {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} subtitle={settings.uiText.homeAboutSubtitle} onDone={()=>setShowSplash(false)} />}
       <Nav />
       {settings.homeSections?.hero!==false && (
       <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} ready={cmsPhotosReady} />

@@ -102,7 +102,7 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
   // no way back to the rest of the site except the single "Back to Journal" text link, and
   // no nav/footer at all (every other real page has both). Same pattern as /work/[slug].
   return (
-    <main style={{ background: "var(--c-bg,#09060E)", color: "var(--c-fg,#FFFFFF)", minHeight: "100vh" }}>
+    <main style={{ background: "var(--bg-gradient, linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%))", color: "var(--c-fg,#FFFFFF)", minHeight: "100vh" }}>
       <script {...jsonLdScriptProps(jsonLd)} />
       <SiteHeader site={site} />
       <article style={{ maxWidth: 720, margin: "0 auto", padding: "140px 24px 80px", fontFamily: "Georgia, serif" }}>

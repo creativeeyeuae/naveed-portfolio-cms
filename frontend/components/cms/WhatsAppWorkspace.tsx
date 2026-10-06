@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 // ─── THEME (local copy of HomeClient.tsx's C/S/CARD_STYLE/StatusPill tokens, kept in sync by
 // value so this workspace matches the rest of the CMS pixel-for-pixel, without importing from
 // -- and so coupling this component's module graph to -- the giant HomeClient.tsx file) ──────
-const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#703CF8)",GOLDL:"var(--c-goldl,#6226FF)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
+const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#703CF8)",GOLDL:"var(--c-goldl,#6226FF)",BG:"var(--c-bg,#170F28)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#221640)",BORDER:"var(--c-border,#3D2A5E)",
   LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(112,60,248,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
 const S = {
   inp:{background:"#1C1330",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,

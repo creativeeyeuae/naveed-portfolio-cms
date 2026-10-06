@@ -18,11 +18,12 @@ body { top: 0 !important; position: static !important; }
 iframe.goog-te-banner-frame, iframe[id^="\:"] { display: none !important; }
 
 :root {
-  /* Surface tokens (Royal Obsidian base) */
-  --bg-primary: #09060E;
-  --bg-surface-1: #140D21;
-  --bg-surface-2: #1C1330;
-  --bg-surface-3: #241A3D;
+  /* Surface tokens (Royal Obsidian base -- lightened + gradient treatment) */
+  --bg-primary: #170F28;
+  --bg-surface-1: #221640;
+  --bg-surface-2: #2B1E4E;
+  --bg-surface-3: #362759;
+  --bg-gradient: linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%);
 
   /* Typography & contrast tokens */
   --text-primary: #FFFFFF;
@@ -36,8 +37,8 @@ iframe.goog-te-banner-frame, iframe[id^="\:"] { display: none !important; }
   --accent-subtle: rgba(112, 60, 248, 0.12);
 
   /* Grid & border tokens */
-  --border-subtle: #2D1F45;
-  --border-bold: #4A3570;
+  --border-subtle: #3D2A5E;
+  --border-bold: #5A4080;
   --border-accent: rgba(112, 60, 248, 0.35);
 
   /* System spacing */
@@ -51,6 +52,7 @@ html, body {
 }
 
 body {
+  background: var(--bg-gradient, var(--bg-primary));
   background-color: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-sans), 'Plus Jakarta Sans', sans-serif;

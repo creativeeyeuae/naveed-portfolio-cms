@@ -191,7 +191,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
           {site.youtube && <a href={site.youtube} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#D7D4FF)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>YouTube</a>}
         </div>
       </div>
-      <nav role="navigation" aria-label="Main navigation" style={{ position: "fixed", top: scrolled ? 0 : 32, left: 0, right: 0, zIndex: 500, padding: isMobile ? "21px 20px" : "23px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(9,6,14,0.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--c-border,#2D1F45)", transition: "top 0.35s cubic-bezier(.16,.84,.44,1)" }}>
+      <nav role="navigation" aria-label="Main navigation" style={{ position: "fixed", top: scrolled ? 0 : 32, left: 0, right: 0, zIndex: 500, padding: isMobile ? "21px 20px" : "23px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(23,15,40,0.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--c-border,#3D2A5E)", transition: "top 0.35s cubic-bezier(.16,.84,.44,1)" }}>
         {spa ? (
           <div onClick={() => { spa.goTo("home"); onCloseMobileNav(); }} style={{ fontSize: 15, letterSpacing: 4, textTransform: "uppercase", cursor: "pointer", color: "var(--c-fg,#FFFFFF)", fontFamily: "var(--font-serif),'Plus Jakarta Sans',sans-serif" }}><NoTranslate>{site.siteName}</NoTranslate></div>
         ) : (
@@ -199,7 +199,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         )}
 
         {isMobile ? (
-          <button aria-label={mobileNavOpen ? "Close menu" : "Open menu"} onClick={onToggleMobileNav} style={{ background: "none", border: "1px solid var(--c-border,#2D1F45)", color: "var(--c-fg,#FFFFFF)", width: 40, height: 36, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}>
+          <button aria-label={mobileNavOpen ? "Close menu" : "Open menu"} onClick={onToggleMobileNav} style={{ background: "none", border: "1px solid var(--c-border,#3D2A5E)", color: "var(--c-fg,#FFFFFF)", width: 40, height: 36, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}>
             <span style={{ display: "block", width: 18, height: 1, background: "var(--c-fg,#FFFFFF)" }} />
             <span style={{ display: "block", width: 18, height: 1, background: "var(--c-fg,#FFFFFF)" }} />
             <span style={{ display: "block", width: 18, height: 1, background: "var(--c-fg,#FFFFFF)" }} />
@@ -209,7 +209,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             {spa.visibleLinks.map(([k, l]) => (
               <span key={k} onClick={() => spa.goTo(k)} style={{ fontSize: 11, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#D7D4FF)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s", borderBottom: spa.page === k ? "1px solid var(--c-pl,#D7D4FF)" : "1px solid transparent", paddingBottom: 2 }}>{l}</span>
             ))}
-            <button onClick={() => spa.goTo("booking")} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--c-pd,#6226FF)")} onMouseLeave={(e) => (e.currentTarget.style.background = "var(--c-p,#703CF8)")}>{bookBtnLabel}</button>
+            <button onClick={() => spa.goTo("booking")} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#170F28)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--c-pd,#6226FF)")} onMouseLeave={(e) => (e.currentTarget.style.background = "var(--c-p,#703CF8)")}>{bookBtnLabel}</button>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
@@ -236,7 +236,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                       >▾</span>
                     </Link>
                     {photoDropdownOpen && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(20,13,33,0.98)", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(34,22,64,0.98)", border: "1px solid var(--c-border,#3D2A5E)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
                         {PHOTOGRAPHY_SUBNAV.map((s) => (
                           <Link key={s.slug} href={`/${s.slug}`} onClick={() => setPhotoDropdownOpen(false)} style={{ fontSize: 12, letterSpacing: 0.5, color: pathname === `/${s.slug}` ? "var(--c-pl,#D7D4FF)" : "rgba(255,255,255,0.82)", textTransform: "none", textDecoration: "none", padding: "9px 12px", borderRadius: 4, whiteSpace: "nowrap" }}>
                             {s.label}
@@ -248,18 +248,18 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                 )}
               </Fragment>
             ))}
-            <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
+            <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#170F28)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
           </div>
         )}
 
         {isMobile && mobileNavOpen && (
-          <div style={{ position: "fixed", top: scrolled ? 78 : 110, left: 0, right: 0, height: `calc(100vh - ${scrolled ? 78 : 110}px)`, background: "rgba(9,6,14,0.97)", zIndex: 499, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 26, overflowY: "auto", transition: "top 0.35s cubic-bezier(.16,.84,.44,1)" }}>
+          <div style={{ position: "fixed", top: scrolled ? 78 : 110, left: 0, right: 0, height: `calc(100vh - ${scrolled ? 78 : 110}px)`, background: "rgba(23,15,40,0.97)", zIndex: 499, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 26, overflowY: "auto", transition: "top 0.35s cubic-bezier(.16,.84,.44,1)" }}>
             {spa ? (
               <>
                 {spa.visibleLinks.map(([k, l]) => (
                   <span key={k} onClick={() => { spa.goTo(k); onCloseMobileNav(); }} style={{ fontSize: 15, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#D7D4FF)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", cursor: "pointer" }}>{l}</span>
                 ))}
-                <button onClick={() => { spa.goTo("booking"); onCloseMobileNav(); }} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}>{bookBtnLabel}</button>
+                <button onClick={() => { spa.goTo("booking"); onCloseMobileNav(); }} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#170F28)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}>{bookBtnLabel}</button>
               </>
             ) : (
               <>
@@ -278,7 +278,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                     )}
                   </Fragment>
                 ))}
-                <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
+                <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#170F28)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
               </>
             )}
           </div>

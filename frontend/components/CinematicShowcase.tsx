@@ -33,11 +33,11 @@ export type ShowcaseProject = {
 const CV = {
   P: "var(--c-p,#703CF8)",
   PL: "var(--c-pl,#D7D4FF)",
-  BG: "var(--c-bg,#09060E)",
+  BG: "var(--c-bg,#170F28)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
-  DARK: "var(--c-dark,#140D21)",
-  BORDER: "var(--c-border,#2D1F45)",
+  DARK: "var(--c-dark,#221640)",
+  BORDER: "var(--c-border,#3D2A5E)",
 };
 
 // Minimal, Shorts-aware YouTube ID extractor. The existing helpers (getYTId / getYouTubeId in

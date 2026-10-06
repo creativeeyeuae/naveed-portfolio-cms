@@ -42,7 +42,7 @@ function ToolbarButton({
         display: "flex", alignItems: "center", justifyContent: "center",
         width: 30, height: 28, border: "none", borderRadius: 3, padding: 0,
         background: active ? RC.P : "transparent",
-        color: active ? "#09060E" : disabled ? "#444" : RC.MID,
+        color: active ? "#170F28" : disabled ? "#444" : RC.MID,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
     >

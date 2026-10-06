@@ -69,7 +69,7 @@ const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w
 // is Apple-specific -- Safari on iOS ignores the web manifest's own display/icon fields,
 // so these are still needed even though manifest.ts already covers Android/Chrome. This is
 // also the prerequisite Apple imposes before Web Push notifications work on iPhone at all.
-export const viewport: Viewport = { themeColor: "#140D21" };
+export const viewport: Viewport = { themeColor: "#221640" };
 
 // Was a static `export const metadata` with the title/description hardcoded here a second
 // time -- meanwhile CMS > Settings > SEO already had its own "SEO Title"/"Meta Description"

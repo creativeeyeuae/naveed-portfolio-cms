@@ -16,7 +16,8 @@ import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps }
 import { getDisabledServiceSlugs } from "@/lib/cmsData";
 import FaqSection from "@/components/FaqSection";
 
-const P = "#703CF8", PL = "#D7D4FF", DARK = "#140D21", BG = "#09060E", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#2D1F45";
+const P = "#703CF8", PL = "#D7D4FF", DARK = "#221640", BG = "#170F28", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#3D2A5E";
+const BG_GRADIENT = "linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%)";
 const WA_NUMBER = "971581174911";
 const EMAIL = "info@bynaveedanjum.com";
 const PHONE_DISPLAY = "+971 58 117 4911";
@@ -60,7 +61,7 @@ export default async function ServicePage({ data }: { data: ServicePageData }) {
   const imageSchema = data.heroImage ? imageObjectJsonLd({ url: data.heroImage.src, alt: data.heroImage.alt }) : null;
 
   return (
-    <div style={{ background: BG, color: FG, minHeight: "100vh", fontFamily: "inherit" }}>
+    <div style={{ background: BG_GRADIENT, color: FG, minHeight: "100vh", fontFamily: "inherit" }}>
       <script {...jsonLdScriptProps(serviceSchema)} />
       <script {...jsonLdScriptProps(breadcrumbSchema)} />
       {imageSchema && <script {...jsonLdScriptProps(imageSchema)} />}

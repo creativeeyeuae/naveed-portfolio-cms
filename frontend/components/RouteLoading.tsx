@@ -12,12 +12,13 @@
 // static. Nothing here introduces a new color, icon, spinner style, or layout.
 const C = {
   P: "var(--c-p,#703CF8)",
-  BG: "var(--c-bg,#09060E)",
+  BG: "var(--c-bg,#170F28)",
 };
+const BG_GRADIENT = "var(--bg-gradient, linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%))";
 
 export default function RouteLoading() {
   return (
-    <div style={{ background: C.BG, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ background: BG_GRADIENT, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
       <style>{`@keyframes routeLoadingPulse{0%,100%{opacity:0.25;width:24px}50%{opacity:1;width:44px}}`}</style>
       <span style={{ height: 1, background: C.P, display: "inline-block", animation: "routeLoadingPulse 1.1s ease-in-out infinite" }} />
     </div>

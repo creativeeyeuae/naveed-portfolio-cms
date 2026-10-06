@@ -322,7 +322,7 @@ const DEF_SETTINGS: SiteSettings = {
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
   popupCtaLabel:"Request a Callback",
   emailjsServiceId:"", emailjsTemplateId:"", emailjsPublicKey:"",
-  theme:{P:"#703CF8",PL:"#D7D4FF",PD:"#6226FF",GOLD:"#FFC01D",GOLDL:"#FFD966",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(112,60,248,0.14)",INKMID:"#6E6480"},
+  theme:{P:"#703CF8",PL:"#D7D4FF",PD:"#6226FF",GOLD:"#FFC01D",GOLDL:"#FFD966",BG:"#170F28",FG:"#FFFFFF",MID:"#A892C6",DARK:"#221640",BORDER:"#3D2A5E",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(112,60,248,0.14)",INKMID:"#6E6480"},
   uiText:{
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
     homeAboutSubtitle:"Photographer · Cinematographer · Visual Artist",
@@ -843,11 +843,12 @@ function collectAllImageUrls(data: { projects: Project[]; blog: BlogPost[]; sett
 // every C.xxx usage across the whole file -- including standalone components outside Home()
 // like FloatingWA/ConsultPopup/Hero/Lightbox/SmartGrid/CropModal -- just by setting the
 // variable on :root, with zero JS re-render needed anywhere.
-const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#FFC01D)",GOLDL:"var(--c-goldl,#FFD966)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
+const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#FFC01D)",GOLDL:"var(--c-goldl,#FFD966)",BG:"var(--c-bg,#170F28)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#221640)",BORDER:"var(--c-border,#3D2A5E)",
   LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(112,60,248,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
+const BG_GRADIENT = "linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%)";
 
 const S = {
-  base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
+  base:{background:BG_GRADIENT,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
   inp:{background:"#1C1330",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
   btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   btnO:{background:"none",border:"1px solid rgba(255,255,255,0.18)",color:C.FG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},

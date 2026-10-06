@@ -16,7 +16,7 @@ const C = {
   PL: "var(--c-pl,#D7D4FF)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
-  BORDER: "var(--c-border,#2D1F45)",
+  BORDER: "var(--c-border,#3D2A5E)",
 };
 
 const CV_DESCRIPTION =
@@ -67,9 +67,9 @@ export default async function CvPage() {
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div style={{ width: 180, height: 180, borderRadius: "50%", padding: 3, background: `linear-gradient(135deg,${C.P},#6226FF)`, flexShrink: 0 }}>
               {site.aboutPhoto ? (
-                <img src={site.aboutPhoto} alt={site.aboutName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block", border: "4px solid var(--c-bg,#09060E)" }} />
+                <img src={site.aboutPhoto} alt={site.aboutName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block", border: "4px solid var(--c-bg,#170F28)" }} />
               ) : (
-                <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--c-dark,#140D21)", border: "4px solid var(--c-bg,#09060E)" }} />
+                <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "var(--c-dark,#221640)", border: "4px solid var(--c-bg,#170F28)" }} />
               )}
             </div>
           </div>
@@ -81,7 +81,7 @@ export default async function CvPage() {
             <p style={{ color: C.PL, fontSize: 15, fontWeight: 600, letterSpacing: 1.5, marginBottom: 10 }}>{site.aboutTitle}</p>
             <p style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>{[site.phone, site.email].filter(Boolean).join(" · ")}</p>
             <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, marginTop: 22 }}>
-              <a href={`https://wa.me/${site.waNumber}?text=${encodeURIComponent(site.waMsg || "")}`} target="_blank" rel="noopener noreferrer" style={{ background: C.P, color: "#09060E", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>WhatsApp</a>
+              <a href={`https://wa.me/${site.waNumber}?text=${encodeURIComponent(site.waMsg || "")}`} target="_blank" rel="noopener noreferrer" style={{ background: C.P, color: "#170F28", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>WhatsApp</a>
               <Link href="/contact" style={{ background: "none", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book Now</Link>
             </div>
           </div>
@@ -133,7 +133,7 @@ export default async function CvPage() {
         </div>
 
         <div style={{ textAlign: "center", marginTop: 64, paddingTop: 40, borderTop: `1px solid ${C.BORDER}`, display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
-          <Link href="/contact" style={{ background: C.P, color: "#09060E", padding: "13px 36px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book a Session</Link>
+          <Link href="/contact" style={{ background: C.P, color: "#170F28", padding: "13px 36px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Book a Session</Link>
           <a href={`https://wa.me/${site.waNumber}?text=${encodeURIComponent(site.waMsg || "")}`} target="_blank" rel="noopener noreferrer" style={{ background: "none", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", padding: "13px 36px", fontSize: 12, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>WhatsApp</a>
         </div>
       </div>

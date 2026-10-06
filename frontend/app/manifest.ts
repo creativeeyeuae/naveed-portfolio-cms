@@ -18,8 +18,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Dubai-based photography & cinematography by Naveed Anjum — portfolio, bookings, and journal.",
     start_url: "/",
     display: "standalone",
-    background_color: "#140D21",
-    theme_color: "#140D21",
+    background_color: "#221640",
+    theme_color: "#221640",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

@@ -39,12 +39,13 @@ const PLACEHOLDER_SLUG = "__no-projects-yet__";
 const C = {
   P: "var(--c-p,#703CF8)",
   PL: "var(--c-pl,#D7D4FF)",
-  BG: "var(--c-bg,#09060E)",
+  BG: "var(--c-bg,#170F28)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
-  DARK: "var(--c-dark,#140D21)",
-  BORDER: "var(--c-border,#2D1F45)",
+  DARK: "var(--c-dark,#221640)",
+  BORDER: "var(--c-border,#3D2A5E)",
 };
+const BG_GRADIENT = "linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%)";
 
 const MEDIA_CDN_HOST = process.env.NEXT_PUBLIC_MEDIA_CDN_HOST || "media.naveedanjum.com";
 
@@ -212,7 +213,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
   if (redirectTo) {
     const target = `/work/${redirectTo}/`;
     return (
-      <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
+      <main style={{ background: BG_GRADIENT, color: C.FG, minHeight: "100vh" }}>
         <meta httpEquiv="refresh" content={`0; url=${target}`} />
         <script dangerouslySetInnerHTML={{ __html: `window.location.replace(${JSON.stringify(target)});` }} />
         <SiteHeader site={site} />
@@ -277,7 +278,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
   });
 
   return (
-    <main style={{ background: C.BG, color: C.FG, minHeight: "100vh" }}>
+    <main style={{ background: BG_GRADIENT, color: C.FG, minHeight: "100vh" }}>
       <script {...jsonLdScriptProps(jsonLd)} />
 
       <SiteHeader site={site} />

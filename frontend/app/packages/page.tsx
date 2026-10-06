@@ -17,9 +17,9 @@ const C = {
   PL: "var(--c-pl,#D7D4FF)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
-  BG: "var(--c-bg,#09060E)",
-  DARK: "var(--c-dark,#140D21)",
-  BORDER: "var(--c-border,#2D1F45)",
+  BG: "var(--c-bg,#170F28)",
+  DARK: "var(--c-dark,#221640)",
+  BORDER: "var(--c-border,#3D2A5E)",
 };
 
 export async function generateMetadata(): Promise<Metadata> {

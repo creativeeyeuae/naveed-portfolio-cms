@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getRealProjects, getPublicSiteInfo, getHubPageFaqs, isServicePageEnabled, getDisabledServiceSlugs } from "@/lib/cmsData";
+import { getRealProjects, getPublicSiteInfo, getHubPageFaqs, isServicePageEnabled } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
 import InternalPageTemplate from "@/components/InternalPageTemplate";
 import WorkGrid from "@/components/work/WorkGrid";
@@ -9,7 +9,7 @@ import FaqSection from "@/components/FaqSection";
 // same override pattern as every standalone service page. Shown as-is until an admin adds
 // their own FAQs there, never blank.
 const DEFAULT_FAQS = [
-  { q: "What kind of photography services do you offer in Dubai?", a: "Real estate, architectural, commercial, product, event, corporate headshot, personal branding and lifestyle photography -- see the service links above for details on each." },
+  { q: "What kind of photography services do you offer in Dubai?", a: "Real estate, architectural, commercial, product, event, corporate headshot, personal branding and lifestyle photography." },
   { q: "Do you photograph both stills and video?", a: "Yes -- photography and cinematography are both offered, often on the same booking. See the Cinematography page for video-specific work." },
   { q: "How do I get a quote for a photography project?", a: "Message on WhatsApp or email with your brief (what's being shot, location, intended use) for a tailored quote." },
   { q: "Are you available for projects outside Dubai?", a: "Yes -- based in Dubai and available across the UAE." },
@@ -47,12 +47,11 @@ export async function generateMetadata() {
 }
 
 export default async function PhotographyPage() {
-  const [allProjects, site, faqs, enabled, disabledSlugs] = await Promise.all([
+  const [allProjects, site, faqs, enabled] = await Promise.all([
     getRealProjects(),
     getPublicSiteInfo(),
     getHubPageFaqs("photography", DEFAULT_FAQS),
     isServicePageEnabled("photography"),
-    getDisabledServiceSlugs(),
   ]);
   if (!enabled) notFound();
   const projects = allProjects.filter(
@@ -66,32 +65,6 @@ export default async function PhotographyPage() {
       title="Photography"
       description="Portrait, landscape, real estate, fashion, product and event photography across the UAE."
     >
-      {/* Links into the dedicated SEO service pages (app/<slug>/page.tsx, see
-          lib/servicePagesData.ts) -- this hub is the internal-linking bridge between the
-          homepage's "Photography" row and each specific service's own landing page. */}
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "0 40px 56px" }}>
-        <h2 style={{ fontSize: 13, letterSpacing: 3, textTransform: "uppercase", color: "var(--c-mid,#A892C6)", margin: "0 0 18px" }}>
-          Photography Services in Dubai
-        </h2>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-          {[
-            { slug: "commercial-photographer-dubai", label: "Commercial Photography" },
-            { slug: "corporate-headshot-photographer-dubai", label: "Corporate Headshots" },
-            { slug: "real-estate-photographer-dubai", label: "Real Estate Photography" },
-            { slug: "product-photographer-dubai", label: "Product Photography" },
-            { slug: "event-photographer-dubai", label: "Event Photography" },
-            { slug: "lifestyle-photographer-dubai", label: "Lifestyle Photography" },
-          ].filter((s) => !disabledSlugs.has(s.slug)).map((s) => (
-            <a
-              key={s.slug}
-              href={`/${s.slug}`}
-              style={{ fontSize: 13, color: "var(--c-pl,#E2D9F3)", textDecoration: "none", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 30, padding: "9px 18px" }}
-            >
-              {s.label} →
-            </a>
-          ))}
-        </div>
-      </div>
       <WorkGrid projects={projects} />
       <FaqSection faqs={faqs} />
     </InternalPageTemplate>

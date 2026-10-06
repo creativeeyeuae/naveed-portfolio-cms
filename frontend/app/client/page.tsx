@@ -68,7 +68,7 @@ const cardStyle: CSSProperties = {
   padding: 20,
 };
 const btnPrimary: CSSProperties = {
-  background: "var(--accent-primary, #703CF8)",
+  background: "var(--accent-primary, #8B5CF6)",
   color: "#fff",
   border: "none",
   borderRadius: 6,
@@ -142,7 +142,7 @@ function BookingCard({ b, onReceiptChanged }: { b: Booking; onReceiptChanged: ()
             {payment.status === "paid" ? "Paid ✓" : payment.status === "rejected" ? "Rejected" : payment.status === "under_review" ? "Receipt under review" : "Awaiting payment"}
           </span>
           {payment.receipt_signed_url && (
-            <> · <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-primary, #703CF8)" }}>View Receipt →</a></>
+            <> · <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-primary, #8B5CF6)" }}>View Receipt →</a></>
           )}
         </div>
       )}
@@ -209,7 +209,7 @@ function MessageThread({ userEmail }: { userEmail?: string }) {
         ) : (
           messages.map((m) => (
             <div key={m.id} style={{ alignSelf: m.sender === "client" ? "flex-end" : "flex-start", maxWidth: "80%" }}>
-              <div style={{ background: m.sender === "client" ? "var(--accent-primary, #703CF8)" : "rgba(255,255,255,0.06)", color: m.sender === "client" ? "#fff" : "inherit", borderRadius: 10, padding: "8px 12px", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+              <div style={{ background: m.sender === "client" ? "var(--accent-primary, #8B5CF6)" : "rgba(255,255,255,0.06)", color: m.sender === "client" ? "#fff" : "inherit", borderRadius: 10, padding: "8px 12px", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                 {m.body}
               </div>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 3, textAlign: m.sender === "client" ? "right" : "left" }}>
@@ -310,7 +310,7 @@ export default function ClientPortalPage() {
           ) : bookings.length === 0 ? (
             <div style={cardStyle}>
               <p style={{ fontSize: 13, color: "var(--text-muted, #A892C6)", margin: 0 }}>
-                No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #703CF8)" }}>Book a session</Link> and it'll show up here.
+                No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.
               </p>
             </div>
           ) : (

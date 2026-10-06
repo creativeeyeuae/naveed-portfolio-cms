@@ -10,8 +10,8 @@ import Link from "next/link";
 import { CmsBlogPost } from "@/lib/cmsData";
 
 const C = {
-  P: "var(--c-p,#703CF8)",
-  PL: "var(--c-pl,#D7D4FF)",
+  P: "var(--c-p,#8B5CF6)",
+  PL: "var(--c-pl,#E2D9F3)",
   BG: "var(--c-bg,#170F28)",
   MID: "var(--c-mid,#A892C6)",
   DARK: "var(--c-dark,#221640)",

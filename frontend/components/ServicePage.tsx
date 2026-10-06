@@ -16,7 +16,7 @@ import { serviceJsonLd, breadcrumbJsonLd, imageObjectJsonLd, jsonLdScriptProps }
 import { getDisabledServiceSlugs } from "@/lib/cmsData";
 import FaqSection from "@/components/FaqSection";
 
-const P = "#703CF8", PL = "#D7D4FF", DARK = "#221640", BG = "#170F28", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#3D2A5E";
+const P = "#8B5CF6", PL = "#E2D9F3", DARK = "#221640", BG = "#170F28", FG = "#FFFFFF", MID = "#A892C6", BORDER = "#3D2A5E";
 const BG_GRADIENT = "linear-gradient(160deg, #271C48 0%, #1B1230 45%, #170F28 100%)";
 const WA_NUMBER = "971581174911";
 const EMAIL = "info@bynaveedanjum.com";
@@ -80,7 +80,7 @@ export default async function ServicePage({ data }: { data: ServicePageData }) {
           pattern already used site-wide, e.g. PageBanner on the main site) rather than any
           stock or unrelated image standing in for real project work. */}
       <section style={{ position: "relative", overflow: "hidden", background: `linear-gradient(140deg, ${DARK} 0%, ${BG} 100%)`, padding: "72px 24px 56px" }}>
-        <div aria-hidden style={{ position: "absolute", top: -80, right: "-8%", width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, rgba(112,60,248,0.25), transparent 70%)`, filter: "blur(60px)" }} />
+        <div aria-hidden style={{ position: "absolute", top: -80, right: "-8%", width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%)`, filter: "blur(60px)" }} />
         <div style={{ maxWidth: 880, margin: "0 auto", position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
             <span style={{ width: 28, height: 1, background: PL }} />

@@ -67,7 +67,7 @@ export default function LoginPage() {
         padding: "12px 0",
         background: "none",
         border: "none",
-        borderBottom: tab === key ? "2px solid var(--accent-primary, #703CF8)" : "2px solid transparent",
+        borderBottom: tab === key ? "2px solid var(--accent-primary, #8B5CF6)" : "2px solid transparent",
         color: tab === key ? "var(--text-primary,#fff)" : "var(--text-muted, #A892C6)",
         fontSize: 13,
         fontWeight: 700,

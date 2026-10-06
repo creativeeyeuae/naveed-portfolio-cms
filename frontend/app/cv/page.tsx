@@ -12,8 +12,8 @@ import InternalPageTemplate from "@/components/InternalPageTemplate";
 // uses a CSS media query instead (same breakpoint, no client-side state needed), matching
 // the pattern every other standalone page here already uses (see About/Work/Packages).
 const C = {
-  P: "var(--c-p,#703CF8)",
-  PL: "var(--c-pl,#D7D4FF)",
+  P: "var(--c-p,#8B5CF6)",
+  PL: "var(--c-pl,#E2D9F3)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
   BORDER: "var(--c-border,#3D2A5E)",
@@ -44,7 +44,7 @@ export default async function CvPage() {
     >
       <style>{`
         @keyframes cvItemIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes cvGlow{0%,100%{box-shadow:0 0 0 0 rgba(112,60,248,0.55)}50%{box-shadow:0 0 0 6px rgba(112,60,248,0.12)}}
+        @keyframes cvGlow{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0.55)}50%{box-shadow:0 0 0 6px rgba(139,92,246,0.12)}}
         .cv-item{animation:cvItemIn 0.6s cubic-bezier(.16,.84,.44,1) both}
         .cv-dot{animation:cvGlow 2.6s ease-in-out infinite}
         .cv-skill-row{transition:color 0.2s,padding-left 0.2s}
@@ -65,7 +65,7 @@ export default async function CvPage() {
         {/* PROFILE HERO */}
         <div className="cv-hero">
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ width: 180, height: 180, borderRadius: "50%", padding: 3, background: `linear-gradient(135deg,${C.P},#6226FF)`, flexShrink: 0 }}>
+            <div style={{ width: 180, height: 180, borderRadius: "50%", padding: 3, background: `linear-gradient(135deg,${C.P},#A855F7)`, flexShrink: 0 }}>
               {site.aboutPhoto ? (
                 <img src={site.aboutPhoto} alt={site.aboutName} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block", border: "4px solid var(--c-bg,#170F28)" }} />
               ) : (

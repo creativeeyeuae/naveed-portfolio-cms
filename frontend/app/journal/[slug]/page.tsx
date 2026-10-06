@@ -108,7 +108,7 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
       <article style={{ maxWidth: 720, margin: "0 auto", padding: "140px 24px 80px", fontFamily: "Georgia, serif" }}>
         <Link href="/journal" style={{ color: "var(--c-mid,#A892C6)", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", textDecoration: "none" }}>&larr; Back to Journal</Link>
         {post.category && (
-          <div style={{ marginTop: 24, color: "var(--c-p,#703CF8)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>{post.category}</div>
+          <div style={{ marginTop: 24, color: "var(--c-p,#8B5CF6)", fontSize: 11, letterSpacing: 2, textTransform: "uppercase" }}>{post.category}</div>
         )}
         <h1 style={{ fontSize: 32, fontWeight: 300, letterSpacing: 0.5, marginTop: 8 }}>{post.title}</h1>
         {post.publishedAt && (

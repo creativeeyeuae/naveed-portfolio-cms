@@ -117,7 +117,7 @@ export default function PermissionRequestModal({
     <div style={overlayStyle} onClick={onClose}>
       <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, letterSpacing: 3, color: "var(--text-secondary, #D7D4FF)", textTransform: "uppercase" }}>Picture Permission Request</div>
+          <div style={{ fontSize: 11, letterSpacing: 3, color: "var(--text-secondary, #E2D9F3)", textTransform: "uppercase" }}>Picture Permission Request</div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "var(--text-muted, #A892C6)", fontSize: 20, cursor: "pointer", lineHeight: 1 }}>✕</button>
         </div>
 
@@ -128,7 +128,7 @@ export default function PermissionRequestModal({
             </p>
             <button
               onClick={onClose}
-              style={{ marginTop: 14, background: "var(--accent-primary, #703CF8)", border: "none", color: "#fff", padding: "10px 22px", fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}
+              style={{ marginTop: 14, background: "var(--accent-primary, #8B5CF6)", border: "none", color: "#fff", padding: "10px 22px", fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}
             >
               Close
             </button>
@@ -141,7 +141,7 @@ export default function PermissionRequestModal({
               <img src={imageUrl} alt="" style={{ width: 64, height: 64, objectFit: "cover", borderRadius: 4, flexShrink: 0 }} />
               <div style={{ fontSize: 12, color: "var(--text-muted, #A892C6)", lineHeight: 1.5 }}>{projectName}</div>
             </div>
-            <div style={{ fontSize: 11, letterSpacing: 1, color: "var(--text-secondary, #D7D4FF)", textTransform: "uppercase", marginBottom: 8 }}>Intended Usage *</div>
+            <div style={{ fontSize: 11, letterSpacing: 1, color: "var(--text-secondary, #E2D9F3)", textTransform: "uppercase", marginBottom: 8 }}>Intended Usage *</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
               {USAGE_TYPES.map((t) => (
                 <span
@@ -152,8 +152,8 @@ export default function PermissionRequestModal({
                     padding: "6px 12px",
                     cursor: "pointer",
                     borderRadius: 20,
-                    border: `1px solid ${usageTypes.includes(t) ? "var(--accent-primary, #703CF8)" : "var(--border-subtle, #2D1F45)"}`,
-                    color: usageTypes.includes(t) ? "var(--accent-primary, #703CF8)" : "var(--text-muted, #A892C6)",
+                    border: `1px solid ${usageTypes.includes(t) ? "var(--accent-primary, #8B5CF6)" : "var(--border-subtle, #2D1F45)"}`,
+                    color: usageTypes.includes(t) ? "var(--accent-primary, #8B5CF6)" : "var(--text-muted, #A892C6)",
                   }}
                 >
                   {t}
@@ -182,7 +182,7 @@ export default function PermissionRequestModal({
             <button
               onClick={submit}
               disabled={busy}
-              style={{ background: "var(--accent-primary, #703CF8)", border: "none", color: "#fff", padding: "11px 24px", fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, borderRadius: 2 }}
+              style={{ background: "var(--accent-primary, #8B5CF6)", border: "none", color: "#fff", padding: "11px 24px", fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, borderRadius: 2 }}
             >
               {busy ? "Submitting..." : "Submit Request"}
             </button>

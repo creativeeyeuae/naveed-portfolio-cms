@@ -24,7 +24,7 @@ export default function VerifyEmailPage() {
           <>
             <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>Email verified</h1>
             <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14, marginBottom: 24 }}>Your account is ready.</p>
-            <a href="/client" style={{ display: "inline-block", padding: "12px 24px", borderRadius: 6, background: "var(--accent-primary, #703CF8)", color: "#fff", fontWeight: 600, textDecoration: "none" }}>
+            <a href="/client" style={{ display: "inline-block", padding: "12px 24px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, textDecoration: "none" }}>
               Go to your account
             </a>
           </>
@@ -35,7 +35,7 @@ export default function VerifyEmailPage() {
             <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14, marginBottom: 24 }}>
               If you clicked the link in your email, your account should now be verified -- sign in below. If it's not working, the link may have expired; you can request a new one from the sign-in page.
             </p>
-            <a href="/login" style={{ color: "var(--accent-primary, #703CF8)", textDecoration: "underline" }}>Sign in</a>
+            <a href="/login" style={{ color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Sign in</a>
           </>
         )}
       </div>

@@ -7399,7 +7399,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       {showSplash && <IntroSplash siteName={settings.siteName} tagline={settings.siteTagline} subtitle={settings.uiText.homeAboutSubtitle} onDone={()=>setShowSplash(false)} />}
       <Nav />
       {settings.homeSections?.hero!==false && (
+      <div style={{scrollSnapAlign:"start"}}>
       <Hero slides={settings.heroSlides} onNav={goTo} waNumber={WA} typography={settings.heroTypography} ready={cmsPhotosReady} />
+      </div>
       )}
 
       {/* INTRO STRIP */}
@@ -7425,7 +7427,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           links to the existing /about page via goTo() -- doesn't add to or change that page
           itself. Photo reuses settings.aboutPhoto (CMS > Settings > About). */}
       {settings.homeSections?.about!==false && settings.pageEnabled.about!==false && (
-      <div style={{background:C.BG,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
+      <div style={{background:C.BG,padding:"110px 40px",position:"relative",overflow:"hidden",scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
         <div style={{position:"absolute",top:"-14%",left:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
         <Reveal style={{maxWidth:1160,margin:"0 auto",position:"relative",display:"flex",gap:64,alignItems:"flex-start",flexWrap:"wrap"}}>
           {/* alignSelf:"stretch" (was a fixed height:440) so the photo's top stays exactly where
@@ -7487,7 +7489,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           exactly how creativefusion.llc threads its dark charcoal through its white sections
           via repeated dark card elements. */}
       {settings.homeSections?.services!==false && (
-      <div style={{background:C.LT,padding:"130px 40px 140px",position:"relative",overflow:"hidden"}}>
+      <div style={{background:C.LT,padding:"130px 40px 140px",position:"relative",overflow:"hidden",scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
         <div style={{position:"absolute",top:"-12%",right:"-8%",width:560,height:560,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.20),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
         <div style={{position:"absolute",bottom:"-10%",left:"-6%",width:360,height:360,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.10),transparent 70%)",filter:"blur(24px)",pointerEvents:"none"}} />
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
@@ -7558,7 +7560,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           the whole Work page off hides this teaser too, in the same single action, instead of
           needing a second separate toggle in Homepage Sections. */}
       {settings.homeSections?.work!==false && settings.pageEnabled.work!==false && featured.length>0&&(
-        <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px"}}>
+        <div style={{maxWidth:1400,margin:"0 auto",padding:"64px 32px",scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
           <Reveal style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
             <div>
               <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeWorkEyebrow}</div>
@@ -7691,7 +7693,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           as part of the same design language. Auto-rotates like the Hero slideshow. Suppressed
           whenever Google Reviews is on (that section takes exclusive priority in this slot). */}
       {!settings.googleReviewsEnabled && settings.homeSections?.testimonials!==false && featuredTesti.length>0&&(
-        <div style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
+        <div style={{background:C.LT,padding:"0 40px 130px",position:"relative",scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
           <Reveal style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
             <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
               <div style={{width:44,height:44,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
@@ -7713,7 +7715,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* BLOG PREVIEW -- also gated on pageEnabled.blog, same reasoning as Featured Work above. */}
       {settings.homeSections?.journal!==false && settings.pageEnabled.blog!==false && blog.length>0&&(
-        <div style={{background:C.DARK,padding:"60px 40px"}}>
+        <div style={{background:C.DARK,padding:"60px 40px",scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
@@ -7742,7 +7744,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* CTA */}
       {settings.homeSections?.cta!==false && (
-      <Reveal style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
+      <Reveal style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`,scrollSnapAlign:"start",minHeight:"100vh",display:"flex",flexDirection:"column",justifyContent:"center",boxSizing:"border-box"}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeCtaEyebrow}</div>
         <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.uiText.homeCtaTitle}</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>

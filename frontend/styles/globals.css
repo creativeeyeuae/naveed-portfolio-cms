@@ -51,6 +51,14 @@ html, body {
   max-width: 100%;
 }
 
+/* Homepage section-by-section scroll (only activates where a homepage section below sets
+   scroll-snap-align -- other pages have none, so this is a no-op for them). "proximity" (not
+   "mandatory") so a section taller than one screen never traps the scroll -- it just gently
+   settles on the next section once you're near it. */
+html {
+  scroll-snap-type: y proximity;
+}
+
 body {
   margin: 0;
   padding: 0;

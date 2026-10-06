@@ -1109,71 +1109,154 @@ function Lightbox({images,index,onClose,onPrev,onNext}:{images:Img[];index:numbe
   );
 }
 
-// ─── FLOATING WA ─────────────────────────────────────────────────────────────
-// "Live chat" style widget: a chat bubble launcher that opens a small panel with a greeting
-// and a few quick-option buttons (how can I help / ask about services / pricing / book a
-// session). Picking an option, or typing a free message and hitting send, opens wa.me with
-// that text pre-filled -- so every message still lands directly on Naveed's real WhatsApp.
-// No new backend/service: same wa.me hand-off pattern already used by ConsultPopup/Hero/
-// ServicePage. Used across every page view in this file (10 call sites) with the same
-// {num,msg} props, so this one definition updates the widget everywhere at once.
+// ─── FLOATING WA (now: real on-site Live Chat) ───────────────────────────────
+// Naveed asked for the conversation to stay ON the site instead of jumping the visitor to
+// WhatsApp. So this bubble now opens a real chat panel backed by functions/api/visitor/
+// chat.ts (table: live_chat_messages -- database/migrations/0013_live_chat.sql) and shows
+// up live in the CMS's new "Live Chat" tab, with a push alert to Naveed's phone/desktop
+// (same notifyAllAdmins used by Client Messages) -- nothing here opens wa.me anymore.
+//
+// A first-time visitor is asked for name/WhatsApp/email ONCE before their first message
+// goes through, so Naveed has a way to reach them even if they close the tab -- this reuses
+// the exact same low-friction "visitor" identity (api/visitor/identify.ts) already used for
+// likes/comments, so anyone who already liked/commented is recognized instantly with zero
+// extra steps. The panel keeps polling for replies while it's open. A small "prefer
+// WhatsApp instead" link stays available at the bottom (uses the existing num/msg props)
+// for anyone who wants that -- it's just no longer what tapping the bubble does by default.
+// Used across every page view in this file (10 call sites) with the same {num,msg} props,
+// so this one definition updates the widget everywhere at once.
 function FloatingWA({num,msg}:{num:string;msg:string}) {
   const [open,setOpen] = useState(false);
   const [text,setText] = useState("");
-  const QUICK:{label:string;text:string}[] = [
-    {label:"How can you help me?", text:"Hi Naveed, how can you help me with my project?"},
-    {label:"Ask about services", text:"Hi Naveed, I'd like to know more about your photography/videography services."},
-    {label:"Check pricing & packages", text:"Hi Naveed, could you share your pricing and packages?"},
-    {label:"Book a session", text:"Hi Naveed, I'd like to book a session. Can we discuss the details?"},
-  ];
-  function send(t:string){
-    const final=(t||"").trim()||msg;
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(final)}`,"_blank","noopener,noreferrer");
-    setOpen(false); setText("");
+  const [messages,setMessages] = useState<{id:string;sender:string;body:string;created_at:string}[]>([]);
+  const [loaded,setLoaded] = useState(false);
+  const [sending,setSending] = useState(false);
+  const [err,setErr] = useState("");
+  const [needsIdentity,setNeedsIdentity] = useState(false);
+  const [pendingText,setPendingText] = useState("");
+  const [idName,setIdName] = useState(""); const [idEmail,setIdEmail] = useState(""); const [idWa,setIdWa] = useState("");
+  const [idBusy,setIdBusy] = useState(false);
+  const listRef = useRef<HTMLDivElement|null>(null);
+  const unread = messages.filter(m=>m.sender==="admin").length>0 && messages[messages.length-1]?.sender==="admin";
+
+  async function loadThread(){
+    try{
+      const res = await fetch("/api/visitor/chat");
+      const data = await res.json();
+      setMessages(data.messages||[]);
+    }catch{}
+    setLoaded(true);
   }
-  const waIcon=(size:number,color:string)=>(
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  useEffect(()=>{
+    if(!open) return;
+    loadThread();
+    const t=setInterval(loadThread,6000);
+    return ()=>clearInterval(t);
+  },[open]);
+  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity]);
+
+  const QUICK:{label:string;text:string}[] = [
+    {label:"How can you help me?", text:"Hi, how can you help me with my project?"},
+    {label:"Ask about services", text:"Hi, I'd like to know more about your photography/videography services."},
+    {label:"Check pricing & packages", text:"Hi, could you share your pricing and packages?"},
+    {label:"Book a session", text:"Hi, I'd like to book a session. Can we discuss the details?"},
+  ];
+
+  async function actuallySend(t:string){
+    setSending(true); setErr("");
+    try{
+      const res = await fetch("/api/visitor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:t})});
+      const data = await res.json();
+      if(res.status===401&&data?.needsIdentity){ setNeedsIdentity(true); setPendingText(t); setSending(false); return; }
+      if(!res.ok) throw new Error(data?.error||"Could not send your message.");
+      setText("");
+      await loadThread();
+    }catch(e:any){ setErr(e.message||"Could not send your message."); }
+    setSending(false);
+  }
+  function send(t:string){
+    const final=(t||"").trim();
+    if(!final||sending) return;
+    actuallySend(final);
+  }
+  async function submitIdentity(e:React.FormEvent){
+    e.preventDefault();
+    if(!idName.trim()||!idEmail.trim()||!idWa.trim()){ setErr("Please fill in all three fields."); return; }
+    setIdBusy(true); setErr("");
+    try{
+      const res = await fetch("/api/visitor/identify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:idName.trim(),email:idEmail.trim(),whatsapp:idWa.trim()})});
+      const data = await res.json();
+      if(!res.ok) throw new Error(data?.error||"Could not save your details.");
+      setNeedsIdentity(false);
+      const toSend=pendingText; setPendingText("");
+      setIdBusy(false);
+      await actuallySend(toSend);
+    }catch(e:any){ setErr(e.message||"Could not save your details."); setIdBusy(false); }
+  }
+  const chatIcon=(size:number,color:string)=>(
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
   );
   return(
     <>
       {open&&(
         <div role="dialog" aria-label="Live chat" style={{position:"fixed",bottom:96,right:24,zIndex:999,width:"min(330px,calc(100vw - 32px))",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:16,boxShadow:"0 20px 60px rgba(0,0,0,0.45)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:"min(480px,70vh)"}}>
           <div style={{background:`linear-gradient(135deg,${C.P} 0%,${C.PD} 100%)`,padding:"16px 18px",display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{waIcon(18,"#fff")}</div>
+            <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chatIcon(18,"#fff")}</div>
             <div style={{flex:1,minWidth:0}}>
               <div style={{color:"#fff",fontSize:14,fontWeight:700,lineHeight:1.2}}>Live Chat</div>
-              <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#4ADE80",display:"inline-block"}} />Replies on WhatsApp</div>
+              <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#4ADE80",display:"inline-block"}} />Naveed usually replies within a few hours</div>
             </div>
             <button aria-label="Close chat" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.85)",fontSize:18,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
           </div>
-          <div style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
+          <div ref={listRef} style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
             <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
               Hi there 👋 How can I help you today? Pick an option below or type your own message.
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {QUICK.map((q,i)=>(
-                <button key={i} onClick={()=>send(q.text)} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}
-                  onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)";}}
-                  onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="transparent";}}>
-                  {q.label}
-                </button>
-              ))}
-            </div>
+            {loaded&&messages.map(m=>(
+              <div key={m.id} style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
+                <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+              </div>
+            ))}
+            {!needsIdentity&&(
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:messages.length?4:0}}>
+                {QUICK.map((q,i)=>(
+                  <button key={i} onClick={()=>send(q.text)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}
+                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)";}}
+                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="transparent";}}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            {needsIdentity&&(
+              <form onSubmit={submitIdentity} style={{marginTop:6,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{fontSize:12,color:C.MID,marginBottom:2}}>So Naveed can reply to you, please share:</div>
+                <input value={idName} onChange={e=>setIdName(e.target.value)} placeholder="Your name" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
+                <input value={idWa} onChange={e=>setIdWa(e.target.value)} placeholder="WhatsApp number" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
+                <input value={idEmail} onChange={e=>setIdEmail(e.target.value)} placeholder="Email" type="email" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
+                <button type="submit" disabled={idBusy} style={{...S.btnP,marginTop:4}}>{idBusy?"...":"Start chatting"}</button>
+              </form>
+            )}
+            {err&&<div style={{color:"#e74c3c",fontSize:12,marginTop:10}}>{err}</div>}
           </div>
-          <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
-            <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
-            <button type="submit" aria-label="Send on WhatsApp" style={{background:"#25D366",border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-            </button>
+          <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+            <div style={{display:"flex",gap:8}}>
+              <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
+              <button type="submit" disabled={sending||!text.trim()} aria-label="Send message" style={{background:C.P,border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,opacity:sending||!text.trim()?0.6:1}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+              </button>
+            </div>
+            <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.MID,textDecoration:"none",textAlign:"center"}}>Prefer WhatsApp? Chat there instead</a>
           </form>
         </div>
       )}
       <button aria-label={open?"Close chat":"Open live chat"} onClick={()=>setOpen(o=>!o)}
-        style={{position:"fixed",bottom:28,right:28,zIndex:999,background:open?C.P:"#25D366",border:"none",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:open?"0 4px 24px rgba(139,92,246,0.4)":"0 4px 24px rgba(37,211,102,0.3)",cursor:"pointer",transition:"transform 0.2s, background 0.2s"}}
+        style={{position:"fixed",bottom:28,right:28,zIndex:999,background:`linear-gradient(135deg,${C.P} 0%,${C.PD} 100%)`,border:"none",borderRadius:"50%",width:56,height:56,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 24px rgba(139,92,246,0.4)",cursor:"pointer",transition:"transform 0.2s"}}
         onMouseEnter={e=>(e.currentTarget as HTMLElement).style.transform="scale(1.1)"} onMouseLeave={e=>(e.currentTarget as HTMLElement).style.transform="scale(1)"}>
         {open?(
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
-        ):waIcon(26,"white")}
+        ):chatIcon(24,"#fff")}
+        {!open&&unread&&<span style={{position:"absolute",top:2,right:2,width:12,height:12,borderRadius:"50%",background:"#4ADE80",border:`2px solid ${C.BG}`}} />}
       </button>
     </>
   );
@@ -2242,6 +2325,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [msgOpenCustomerId,setMsgOpenCustomerId]=useState<string|null>(null);
   const [msgReplyText,setMsgReplyText]=useState("");
   const [msgSending,setMsgSending]=useState(false);
+  // Live Chat (on-site widget -> CMS) -- separate from Client Messages above (that one
+  // requires a signed-in client account; Live Chat uses the low-friction visitor identity
+  // instead -- see functions/api/admin/livechat.ts).
+  const [lcList,setLcList]=useState<any[]|null>(null);
+  const [lcLoading,setLcLoading]=useState(false);
+  const [lcErr,setLcErr]=useState("");
+  const [lcOpenVisitorId,setLcOpenVisitorId]=useState<string|null>(null);
+  const [lcReplyText,setLcReplyText]=useState("");
+  const [lcSending,setLcSending]=useState(false);
   // Comments moderation (CMS > Comments) -- same requireAdmin/adminSession pattern as Bookings.
   const [commentsList,setCommentsList]=useState<any[]|null>(null);
   const [commentsLoading,setCommentsLoading]=useState(false);
@@ -3214,6 +3306,35 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setMsgSending(false);
   }
 
+  async function loadLiveChat(){
+    if(!adminSession) return;
+    setLcLoading(true); setLcErr("");
+    try{
+      const res=await fetch("/api/admin/livechat",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load live chat");
+      setLcList(data.messages||[]);
+    }catch(e:any){ setLcErr(e.message||"Failed to load live chat"); }
+    setLcLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="livechat"&&adminSession) loadLiveChat(); },[cmsTab,adminSession]);
+  // Refresh the unread-count badge in the CMS nav regardless of which tab is open, same
+  // pattern as Client Messages' unread badge above.
+  useEffect(()=>{ if(adminSession) loadLiveChat(); },[adminSession]);
+
+  async function sendLiveChatReply(visitorId:string){
+    if(!adminSession||!lcReplyText.trim()) return;
+    setLcSending(true);
+    try{
+      const res=await fetch("/api/admin/livechat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({visitor_id:visitorId,body:lcReplyText.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to send reply");
+      setLcReplyText("");
+      await loadLiveChat();
+    }catch(e:any){ setLcErr(e.message||"Failed to send reply"); }
+    setLcSending(false);
+  }
+
   async function loadComments(){
     if(!adminSession) return;
     setCommentsLoading(true); setCommentsErr("");
@@ -3984,6 +4105,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
         <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
+        <CmsNavItem icon="💬" label={`Live Chat${lcList&&lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length>0?` · ${lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="livechat"} onClick={()=>setCmsTab("livechat")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
         <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
@@ -5697,6 +5819,73 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             <div style={{display:"flex",gap:8}}>
                               <input style={{...S.inp,flex:1}} placeholder="Reply…" value={msgReplyText} onChange={e=>setMsgReplyText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendAdminReply(t.customerId)} />
                               <button onClick={()=>sendAdminReply(t.customerId)} disabled={msgSending||!msgReplyText.trim()} style={S.btnP}>{msgSending?"...":"Send"}</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* LIVE CHAT -- one thread per visitor_id, grouped client-side from the flat list
+            functions/api/admin/livechat.ts returns. The visitor-facing widget is FloatingWA
+            (bottom of this file) talking to functions/api/visitor/chat.ts -- stays on the
+            site, never redirects to WhatsApp. Replying also marks that visitor's earlier
+            messages as read server-side, same pattern as Client Messages above. */}
+        {cmsTab==="livechat"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Live Chat</div>
+              <button onClick={loadLiveChat} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            {lcErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{lcErr}</div>}
+            {lcLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+            ):!lcList||lcList.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No live chat messages yet. These come from the chat bubble on the live site.</div>
+            ):(()=>{
+              const byVisitor=new Map<string,any[]>();
+              for(const m of lcList){
+                if(!byVisitor.has(m.visitor_id)) byVisitor.set(m.visitor_id,[]);
+                byVisitor.get(m.visitor_id)!.push(m);
+              }
+              const threads=Array.from(byVisitor.entries()).map(([vid,msgs])=>{
+                const sorted=[...msgs].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime());
+                const last=sorted[sorted.length-1];
+                const unread=msgs.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length;
+                return{visitorId:vid,visitor:last.visitors,messages:sorted,last,unread};
+              }).sort((a,b)=>new Date(b.last.created_at).getTime()-new Date(a.last.created_at).getTime());
+              return(
+                <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                  {threads.map(t=>{
+                    const open=lcOpenVisitorId===t.visitorId;
+                    return(
+                      <div key={t.visitorId} style={{...CARD_STYLE,padding:20}}>
+                        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8,cursor:"pointer"}} onClick={()=>setLcOpenVisitorId(open?null:t.visitorId)}>
+                          <div>
+                            <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{t.visitor?.name||"Unknown visitor"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.visitor?.whatsapp||t.visitor?.email}</span></div>
+                            <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
+                          </div>
+                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
+                        </div>
+                        {open&&(
+                          <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                            {t.visitor?.email&&<div style={{fontSize:11,color:C.MID,marginBottom:10}}>{t.visitor.email}{t.visitor?.whatsapp?` · ${t.visitor.whatsapp}`:""}</div>}
+                            <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:320,overflowY:"auto",marginBottom:14}}>
+                              {t.messages.map((m:any)=>(
+                                <div key={m.id} style={{alignSelf:m.sender==="admin"?"flex-end":"flex-start",maxWidth:"80%"}}>
+                                  <div style={{background:m.sender==="admin"?C.P:"rgba(139,92,246,0.10)",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                                  <div style={{fontSize:10,color:C.MID,marginTop:3}}>{m.sender==="admin"?"You":t.visitor?.name||"Visitor"} · {new Date(m.created_at).toLocaleString()}</div>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{display:"flex",gap:8}}>
+                              <input style={{...S.inp,flex:1}} placeholder="Reply…" value={lcReplyText} onChange={e=>setLcReplyText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&sendLiveChatReply(t.visitorId)} />
+                              <button onClick={()=>sendLiveChatReply(t.visitorId)} disabled={lcSending||!lcReplyText.trim()} style={S.btnP}>{lcSending?"...":"Send"}</button>
                             </div>
                           </div>
                         )}

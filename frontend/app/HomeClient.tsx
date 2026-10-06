@@ -1217,8 +1217,8 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
                 <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
               </div>
             ))}
-            {!needsIdentity&&(
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:messages.length?4:0}}>
+            {!needsIdentity&&!sending&&messages.length===0&&(
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:0}}>
                 {QUICK.map((q,i)=>(
                   <button key={i} onClick={()=>send(q.text)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}
                     onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)";}}
@@ -5857,20 +5857,24 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 const sorted=[...msgs].sort((a,b)=>new Date(a.created_at).getTime()-new Date(b.created_at).getTime());
                 const last=sorted[sorted.length-1];
                 const unread=msgs.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length;
-                return{visitorId:vid,visitor:last.visitors,messages:sorted,last,unread};
+                const needsHuman=msgs.some((m:any)=>m.sender==="visitor"&&m.needs_human&&!m.is_read_by_admin);
+                return{visitorId:vid,visitor:last.visitors,messages:sorted,last,unread,needsHuman};
               }).sort((a,b)=>new Date(b.last.created_at).getTime()-new Date(a.last.created_at).getTime());
               return(
                 <div style={{display:"flex",flexDirection:"column",gap:14}}>
                   {threads.map(t=>{
                     const open=lcOpenVisitorId===t.visitorId;
                     return(
-                      <div key={t.visitorId} style={{...CARD_STYLE,padding:20}}>
+                      <div key={t.visitorId} style={{...CARD_STYLE,padding:20,...(t.needsHuman?{border:`1px solid #e2a03f`}:{})}}>
                         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:8,cursor:"pointer"}} onClick={()=>setLcOpenVisitorId(open?null:t.visitorId)}>
                           <div>
                             <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{t.visitor?.name||"Unknown visitor"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.visitor?.whatsapp||t.visitor?.email}</span></div>
-                            <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
+                            <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?(t.last.is_ai?"AI: ":"You: "):""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
                           </div>
-                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
+                          <div style={{display:"flex",gap:6,flexShrink:0,alignSelf:"flex-start"}}>
+                            {t.needsHuman&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(226,160,63,0.18)",color:"#e2a03f",border:"1px solid #e2a03f"}}>⚠ NEEDS YOU</span>}
+                            {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}}>{t.unread} NEW</span>}
+                          </div>
                         </div>
                         {open&&(
                           <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
@@ -5878,8 +5882,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:320,overflowY:"auto",marginBottom:14}}>
                               {t.messages.map((m:any)=>(
                                 <div key={m.id} style={{alignSelf:m.sender==="admin"?"flex-end":"flex-start",maxWidth:"80%"}}>
-                                  <div style={{background:m.sender==="admin"?C.P:"rgba(139,92,246,0.10)",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
-                                  <div style={{fontSize:10,color:C.MID,marginTop:3}}>{m.sender==="admin"?"You":t.visitor?.name||"Visitor"} · {new Date(m.created_at).toLocaleString()}</div>
+                                  <div style={{background:m.sender==="admin"?(m.is_ai?C.DARK:C.P):"rgba(139,92,246,0.10)",border:m.is_ai?`1px solid ${C.BORDER}`:"none",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                                  <div style={{fontSize:10,color:m.needs_human?"#e2a03f":C.MID,marginTop:3}}>{m.sender==="admin"?(m.is_ai?"🤖 AI reply":"You"):t.visitor?.name||"Visitor"} · {new Date(m.created_at).toLocaleString()}{m.needs_human?" · needs your reply":""}</div>
                                 </div>
                               ))}
                             </div>

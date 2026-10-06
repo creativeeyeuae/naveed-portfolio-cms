@@ -3894,7 +3894,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 20px"}}>
           <div style={{width:26,height:26,borderRadius:"50%",background:C.P,flexShrink:0}} />
           <div>
-            <div style={{fontSize:12.5,fontWeight:700,letterSpacing:0.5,color:"#fff"}}>CREATIVE FUSION</div>
+            <div style={{fontSize:12.5,fontWeight:700,letterSpacing:0.5,color:"#fff"}}>BY NAVEED ANJUM</div>
             <div style={{fontSize:10.5,color:C.MID}}>CMS Admin</div>
           </div>
         </div>

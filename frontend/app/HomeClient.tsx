@@ -952,7 +952,7 @@ function StatusPill({status}:{status:string}) {
 // with a consistent radius and border -- swap in for the old plain-black blocks
 // (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
 // alike, so every tab in the CMS shares one visual language.
-const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,boxShadow:"0 2px 10px rgba(0,0,0,0.35)"};
+const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.4), 0 0 32px rgba(139,92,246,0.06)"};
 
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
@@ -3865,14 +3865,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       settings:{general:"General",hero:"Hero Slides",about:"About",services:"Services",clients:"Clients",cv:"CV & Skills",footer:"Footer",seo:"SEO & Metadata",contact:"Contact",popup:"Popup",colors:"Colors",text:"Text & Banners",pages:"Navigation & Pages",pricing:"Packages"}[settingsTab] || "Settings",
     };
     function CmsNavItem({icon,label,active,onClick}:{icon:string;label:string;active:boolean;onClick:()=>void}){
+      const [hover,setHover]=useState(false);
       return(
-        <button onClick={()=>{onClick();if(isMobile)setMobileNavOpen(false);}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left" as const,padding:"9px 12px",borderRadius:6,border:"none",cursor:"pointer",marginBottom:2,background:active?C.P:"transparent",color:active?"#fff":"#E8E3F0",fontSize:12.5,fontWeight:active?600:400}}>
+        <button
+          onClick={()=>{onClick();if(isMobile)setMobileNavOpen(false);}}
+          onMouseEnter={()=>setHover(true)} onMouseLeave={()=>setHover(false)}
+          style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left" as const,padding:"9px 12px",borderRadius:8,border:"none",cursor:"pointer",marginBottom:2,
+            background:active?`linear-gradient(135deg, ${C.P}, ${C.PD})`:(hover?"rgba(255,255,255,0.06)":"transparent"),
+            color:active?"#fff":"#E8E3F0",fontSize:12.5,fontWeight:active?600:400,
+            boxShadow:active?"0 4px 14px rgba(139,92,246,0.35)":"none",
+            transition:"background 0.15s ease, box-shadow 0.15s ease"}}>
           <span style={{fontSize:13,opacity:active?1:0.85}}>{icon}</span>{label}
         </button>
       );
     }
     function CmsNavSection({label}:{label:string}){
-      return <div style={{fontSize:10.5,letterSpacing:1.2,textTransform:"uppercase" as const,color:"#6E6480",padding:"16px 12px 6px"}}>{label}</div>;
+      return <div style={{fontSize:10,fontWeight:700,letterSpacing:1.4,textTransform:"uppercase" as const,color:"#564A73",padding:"18px 12px 7px"}}>{label}</div>;
     }
     // Email Designer preview -- a client-side approximation of functions/_shared/emailRender.ts's
     // blockToHtml, close enough to judge layout while editing. The real send always goes through
@@ -3891,8 +3899,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }
     const cmsSidebar = (
       <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 20px"}}>
-          <div style={{width:26,height:26,borderRadius:"50%",background:C.P,flexShrink:0}} />
+        <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 18px",marginBottom:6,borderBottom:`1px solid ${C.BORDER}`}}>
+          <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg, ${C.P}, ${C.PD})`,boxShadow:"0 0 0 3px rgba(139,92,246,0.15)",flexShrink:0}} />
           <div>
             <div style={{fontSize:12.5,fontWeight:700,letterSpacing:0.5,color:"#fff"}}>BY NAVEED ANJUM</div>
             <div style={{fontSize:10.5,color:C.MID}}>CMS Admin</div>
@@ -3968,14 +3976,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       }}>
         {cmsSidebar}
         {isMobile&&mobileNavOpen&&<div onClick={()=>setMobileNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:19}} />}
-        <div style={{background:C.LTCARD,borderBottom:`1px solid ${C.LTBORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10,gap:12,flexWrap:"wrap" as const}}>
+        <div style={{background:C.DARK,borderBottom:`1px solid ${C.BORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10,gap:12,flexWrap:"wrap" as const,boxShadow:"0 2px 16px rgba(0,0,0,0.3)"}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             {isMobile&&<button onClick={()=>setMobileNavOpen(v=>!v)} style={{...S.btnO,padding:"8px 12px"}}>☰</button>}
-            <span style={{fontSize:15,fontWeight:700,color:"#140D21"}}>{cmsPageTitle[cmsTab]||cmsPageTitle.settings}</span>
+            <span style={{fontSize:15,fontWeight:700,color:C.FG}}>{cmsPageTitle[cmsTab]||cmsPageTitle.settings}</span>
           </div>
           <div style={{display:"flex",gap:12,alignItems:"center"}}>
             {cmsTab==="projects"&&<button onClick={()=>startEdit(null)} style={S.btnP}>+ New Project</button>}
-            <span style={{fontSize:11,color:"#6E6480"}}>{adminSession?.user?.email}</span>
+            <span style={{fontSize:11,color:C.MID}}>{adminSession?.user?.email}</span>
             <button onClick={adminSignOut} style={S.btnO}>Sign Out</button>
           </div>
         </div>
@@ -4045,11 +4053,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               ):(
                 <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(5,1fr)",gap:14}}>
                   {items.map((it,i)=>(
-                    <div key={i} style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:10,overflow:"hidden"}}>
+                    <div key={i} style={{...CARD_STYLE,overflow:"hidden"}}>
                       <div style={{width:"100%",aspectRatio:"1",backgroundImage:`url(${it.src})`,backgroundSize:"cover",backgroundPosition:"center"}} />
                       <div style={{padding:"8px 10px"}}>
-                        <div style={{fontSize:11,color:"#140D21",fontWeight:600,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{it.label}</div>
-                        <div style={{fontSize:9.5,color:"#8a8098",textTransform:"uppercase" as const,letterSpacing:0.5}}>{it.kind}</div>
+                        <div style={{fontSize:11,color:C.FG,fontWeight:600,whiteSpace:"nowrap" as const,overflow:"hidden",textOverflow:"ellipsis"}}>{it.label}</div>
+                        <div style={{fontSize:9.5,color:C.MID,textTransform:"uppercase" as const,letterSpacing:0.5}}>{it.kind}</div>
                       </div>
                     </div>
                   ))}

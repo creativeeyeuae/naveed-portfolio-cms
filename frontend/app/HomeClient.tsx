@@ -326,7 +326,7 @@ const DEF_SETTINGS: SiteSettings = {
   uiText:{
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
     homeAboutSubtitle:"Photographer · Cinematographer · Visual Artist",
-    homeAboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion.",
+    homeAboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience, crafting luxury visual content for high-end clients. Founder of Creative Fusion.",
     homeAboutHighlight1:"20+ years of experience, 10 of them based in the UAE",
     homeAboutHighlight2:"Specializing in interior, real estate, product, lifestyle & campaign photography",
     homeAboutHighlight3:"Short-form video content for Instagram & TikTok with brand-consistent storytelling",
@@ -6081,7 +6081,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div><label style={S.lbl}>Nav "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.navBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,navBookBtn:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Footer WhatsApp Button</label><input style={S.inp} value={settingsDraft.uiText.footerWhatsappBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,footerWhatsappBtn:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Subtitle (home page)</label><input style={S.inp} value={settingsDraft.uiText.homeAboutSubtitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutSubtitle:e.target.value}})} /></div>
-                  <div style={{gridColumn:"1/3"}}><label style={S.lbl}>About Bio (home page teaser -- short version; full bio is in Settings → About)</label><input style={S.inp} value={settingsDraft.uiText.homeAboutBio} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutBio:e.target.value}})} /></div>
+                  <div style={{gridColumn:"1/3"}}><label style={S.lbl}>About Bio (home page teaser -- short version; full bio is in Settings → About). Press Enter for a new paragraph.</label><textarea style={{...S.inp,height:90,resize:"vertical" as const}} value={settingsDraft.uiText.homeAboutBio} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutBio:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Highlight 1</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight1} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight1:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Highlight 2</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight2} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight2:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Highlight 3</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight3} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight3:e.target.value}})} /></div>
@@ -7445,7 +7445,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div style={{...S.tag(),color:C.PL}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
             <h2 style={{fontSize:"clamp(30px,4vw,48px)",fontWeight:700,letterSpacing:0.5,margin:"0 0 10px",color:C.FG}}>{settings.aboutName}</h2>
             <div style={{fontSize:"clamp(14px,1.4vw,17px)",color:C.PL,letterSpacing:0.5,marginBottom:20}}>{settings.uiText.homeAboutSubtitle}</div>
-            <p style={{fontSize:14,color:C.MID,lineHeight:1.8,margin:"0 0 28px",maxWidth:500}}>{settings.uiText.homeAboutBio}</p>
+            <div style={{maxWidth:500,marginBottom:28}}>
+              {settings.uiText.homeAboutBio.split(/\n+/).map(s=>s.trim()).filter(Boolean).map((para,i)=>(
+                <p key={i} style={{fontSize:14,color:C.MID,lineHeight:1.8,margin:"0 0 12px"}}>{para}</p>
+              ))}
+            </div>
             <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:28}}>
               {[settings.uiText.homeAboutHighlight1,settings.uiText.homeAboutHighlight2,settings.uiText.homeAboutHighlight3].filter(Boolean).map((t,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:14}}>

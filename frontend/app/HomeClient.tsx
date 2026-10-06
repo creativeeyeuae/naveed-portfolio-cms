@@ -6075,7 +6075,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
             {settingsTab==="text"&&(
               <div>
-                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Homepage Text</div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:20,textTransform:"uppercase"}}>Text & Banners</div>
                 <div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Every heading, eyebrow label and button below is editable, like the rest of the site's content.</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:32}}>
                   <div><label style={S.lbl}>Nav "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.navBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,navBookBtn:e.target.value}})} /></div>

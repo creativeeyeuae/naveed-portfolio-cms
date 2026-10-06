@@ -52,6 +52,8 @@ html, body {
 }
 
 body {
+  margin: 0;
+  padding: 0;
   background: var(--bg-gradient, var(--bg-primary));
   background-color: var(--bg-primary);
   color: var(--text-primary);

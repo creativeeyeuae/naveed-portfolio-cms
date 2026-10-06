@@ -67,6 +67,7 @@ type UiText = {
   // settings.aboutBio used on the full About page -- this one is the short teaser version.
   homeAboutSubtitle:string; homeAboutBio:string;
   homeAboutHighlight1:string; homeAboutHighlight2:string; homeAboutHighlight3:string;
+  homeAboutCtaLabel:string;
   homeServicesEyebrow:string; homeServicesTitle:string; homeServicesIntro:string;
   homeWorkEyebrow:string; homeWorkTitle:string; homeWorkViewAll:string;
   homeClientsEyebrow:string; homeClientsTitle:string;
@@ -329,6 +330,7 @@ const DEF_SETTINGS: SiteSettings = {
     homeAboutHighlight1:"20+ years of experience, 10 of them based in the UAE",
     homeAboutHighlight2:"Specializing in interior, real estate, product, lifestyle & campaign photography",
     homeAboutHighlight3:"Short-form video content for Instagram & TikTok with brand-consistent storytelling",
+    homeAboutCtaLabel:"Learn More About Naveed",
     homeServicesEyebrow:"What We Offer", homeServicesTitle:"Services", homeServicesIntro:"Every project is shaped around the brand or story behind it -- from first concept to final delivery.",
     homeWorkEyebrow:"Selected Work", homeWorkTitle:"Featured Projects", homeWorkViewAll:"View All →",
     homeClientsEyebrow:"Our Clients", homeClientsTitle:"Brands We've Worked With",
@@ -6083,6 +6085,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div><label style={S.lbl}>About Highlight 1</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight1} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight1:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Highlight 2</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight2} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight2:e.target.value}})} /></div>
                   <div><label style={S.lbl}>About Highlight 3</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight3} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight3:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>About "Learn More" Button</label><input style={S.inp} value={settingsDraft.uiText.homeAboutCtaLabel} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutCtaLabel:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Services Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeServicesEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesEyebrow:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Services Title</label><input style={S.inp} value={settingsDraft.uiText.homeServicesTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesTitle:e.target.value}})} /></div>
                   <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Services Intro Text</label><input style={S.inp} value={settingsDraft.uiText.homeServicesIntro} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesIntro:e.target.value}})} /></div>
@@ -7458,7 +7461,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontSize:12,color:C.MID}}>{settings.statsClients} Clients across Dubai, UAE</div>
               </div>
             </div>
-            <button onClick={()=>goTo("about")} style={S.btnP}>Learn More About Naveed</button>
+            <button onClick={()=>goTo("about")} style={S.btnP}>{settings.uiText.homeAboutCtaLabel}</button>
           </div>
         </Reveal>
       </div>

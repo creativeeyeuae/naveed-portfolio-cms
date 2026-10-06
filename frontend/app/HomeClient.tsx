@@ -7715,7 +7715,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* BLOG PREVIEW -- also gated on pageEnabled.blog, same reasoning as Featured Work above. */}
       {settings.homeSections?.journal!==false && settings.pageEnabled.blog!==false && blog.length>0&&(
-        <div className="snap-section" style={{background:C.DARK,padding:"60px 40px"}}>
+        <div style={{background:C.DARK,padding:"60px 40px"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
@@ -7744,7 +7744,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* CTA */}
       {settings.homeSections?.cta!==false && (
-      <Reveal className="snap-section" style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
+      <Reveal style={{textAlign:"center",padding:"64px 32px",background:`linear-gradient(135deg,${C.BG} 0%,${C.DARK} 50%,${C.BG} 100%)`}}>
         <div style={{...S.tag(true),marginBottom:12}}><span style={{width:32,height:1,background:C.PL,display:"inline-block"}} />{settings.uiText.homeCtaEyebrow}</div>
         <h2 style={{fontSize:"clamp(26px,3.5vw,44px)",fontWeight:700,letterSpacing:1,margin:"0 0 12px"}}>{settings.uiText.homeCtaTitle}</h2>
         <p style={{color:C.MID,fontSize:14,marginBottom:36}}>Based in {settings.location} · Available across UAE, GCC & internationally</p>

@@ -16,7 +16,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Quote, Link2, Unlink, Eraser } from "lucide-react";
 import { toEditableHtml } from "@/lib/richText";
 
-const RC = { P: "var(--c-p,#8B5CF6)", MID: "var(--c-mid,#A892C6)", BORDER: "rgba(255,255,255,0.10)" };
+const RC = { P: "var(--c-p,#703CF8)", MID: "var(--c-mid,#A892C6)", BORDER: "rgba(255,255,255,0.10)" };
 
 function ToolbarButton({
   label, active, disabled, onClick, children,

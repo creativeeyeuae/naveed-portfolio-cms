@@ -40,11 +40,11 @@ export default function UpdatePasswordPage() {
         {done ? (
           <>
             <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14, marginBottom: 20 }}>Your password has been updated.</p>
-            <a href="/login" style={{ color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Sign in</a>
+            <a href="/login" style={{ color: "var(--accent-primary, #703CF8)", textDecoration: "underline" }}>Sign in</a>
           </>
         ) : !ready ? (
           <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14 }}>
-            This reset link is invalid or has expired. <a href="/reset-password" style={{ color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Request a new one</a>.
+            This reset link is invalid or has expired. <a href="/reset-password" style={{ color: "var(--accent-primary, #703CF8)", textDecoration: "underline" }}>Request a new one</a>.
           </p>
         ) : (
           <form onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 20 }}>
@@ -54,7 +54,7 @@ export default function UpdatePasswordPage() {
               style={{ padding: "12px 14px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle, #2D1F45)", color: "inherit" }} />
             {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
             <button type="submit" disabled={loading}
-              style={{ padding: "12px 14px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+              style={{ padding: "12px 14px", borderRadius: 6, background: "var(--accent-primary, #703CF8)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
               {loading ? "Updating..." : "Update password"}
             </button>
           </form>

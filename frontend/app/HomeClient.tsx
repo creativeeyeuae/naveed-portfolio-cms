@@ -322,7 +322,7 @@ const DEF_SETTINGS: SiteSettings = {
   popupText:"Leave your number and Naveed will personally get back to you to discuss your photography or videography needs -- no obligation.",
   popupCtaLabel:"Request a Callback",
   emailjsServiceId:"", emailjsTemplateId:"", emailjsPublicKey:"",
-  theme:{P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(139,92,246,0.14)",INKMID:"#6E6480"},
+  theme:{P:"#703CF8",PL:"#D7D4FF",PD:"#6226FF",GOLD:"#FFC01D",GOLDL:"#FFD966",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(112,60,248,0.14)",INKMID:"#6E6480"},
   uiText:{
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
     homeAboutSubtitle:"Photographer · Cinematographer · Visual Artist",
@@ -393,10 +393,10 @@ const DEF_SETTINGS: SiteSettings = {
   // whole section on or off with clientsEnabled) once he has real clients cleared to display.
   clientsEnabled:true,
   clients:[
-    {id:"cl1",name:"Client One",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%238B5CF6'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT ONE%3C/text%3E%3C/svg%3E"},
-    {id:"cl2",name:"Client Two",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23A855F7'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT TWO%3C/text%3E%3C/svg%3E"},
-    {id:"cl3",name:"Client Three",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%238B5CF6'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='12' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT THREE%3C/text%3E%3C/svg%3E"},
-    {id:"cl4",name:"Client Four",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23A855F7'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT FOUR%3C/text%3E%3C/svg%3E"},
+    {id:"cl1",name:"Client One",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23703CF8'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23D7D4FF' text-anchor='middle'%3ECLIENT ONE%3C/text%3E%3C/svg%3E"},
+    {id:"cl2",name:"Client Two",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%236226FF'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23D7D4FF' text-anchor='middle'%3ECLIENT TWO%3C/text%3E%3C/svg%3E"},
+    {id:"cl3",name:"Client Three",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23703CF8'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='12' font-weight='700' letter-spacing='1' fill='%23D7D4FF' text-anchor='middle'%3ECLIENT THREE%3C/text%3E%3C/svg%3E"},
+    {id:"cl4",name:"Client Four",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%236226FF'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23D7D4FF' text-anchor='middle'%3ECLIENT FOUR%3C/text%3E%3C/svg%3E"},
   ] as {id:string;name:string;logo:string}[],
   cvSections:[
     {title:"Profile",content:"Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Founder of Creative Fusion, a premium photography and cinematography brand. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces."},
@@ -843,8 +843,8 @@ function collectAllImageUrls(data: { projects: Project[]; blog: BlogPost[]; sett
 // every C.xxx usage across the whole file -- including standalone components outside Home()
 // like FloatingWA/ConsultPopup/Hero/Lightbox/SmartGrid/CropModal -- just by setting the
 // variable on :root, with zero JS re-render needed anywhere.
-const C = { P:"var(--c-p,#8B5CF6)",PL:"var(--c-pl,#E2D9F3)",PD:"var(--c-pd,#A855F7)",GOLD:"var(--c-gold,#8B5CF6)",GOLDL:"var(--c-goldl,#A855F7)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
-  LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(139,92,246,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
+const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#FFC01D)",GOLDL:"var(--c-goldl,#FFD966)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
+  LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(112,60,248,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
 
 const S = {
   base:{background:C.BG,color:C.FG,minHeight:"100vh"} as React.CSSProperties,
@@ -942,7 +942,7 @@ const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
 };
 function StatusPill({status}:{status:string}) {
   const key = String(status||"").trim().toLowerCase().replace(/\s+/g,"_");
-  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(139,92,246,0.18)",fg:"#c4b5fd"};
+  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(112,60,248,0.18)",fg:"#c4b5fd"};
   return (
     <span style={{display:"inline-block",fontSize:10,fontWeight:700,letterSpacing:0.4,textTransform:"uppercase" as const,padding:"3px 9px",borderRadius:20,background:c.bg,color:c.fg,whiteSpace:"nowrap" as const}}>
       {String(status||"—").replace(/_/g," ")}
@@ -954,7 +954,7 @@ function StatusPill({status}:{status:string}) {
 // with a consistent radius and border -- swap in for the old plain-black blocks
 // (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
 // alike, so every tab in the CMS shares one visual language.
-const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.4), 0 0 32px rgba(139,92,246,0.06)"};
+const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.4), 0 0 32px rgba(112,60,248,0.06)"};
 
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
@@ -1362,7 +1362,7 @@ function FullVideoSection({ url, title, subtitle }: { url: string; title?: strin
           value={muted ? 0 : volume}
           onChange={onVolumeChange}
           aria-label="Video volume"
-          style={{width:84,accentColor:"#8B5CF6",cursor:"pointer"}}
+          style={{width:84,accentColor:"#703CF8",cursor:"pointer"}}
         />
       </div>
     </div>
@@ -1404,12 +1404,12 @@ function GoogleReviewsSection({placeId,eyebrow}:{placeId:string;eyebrow:string})
     <div style={{background:C.LT,padding:"96px 0 118px",position:"relative",overflow:"hidden"}}>
       {/* Soft brand-color glow blobs behind the cards -- purely decorative atmosphere, sits
           under everything (zIndex 0) so it never interferes with click targets. */}
-      <div aria-hidden style={{position:"absolute",top:-60,left:"6%",width:280,height:280,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.32),transparent 70%)",filter:"blur(50px)",zIndex:0}} />
+      <div aria-hidden style={{position:"absolute",top:-60,left:"6%",width:280,height:280,borderRadius:"50%",background:"radial-gradient(circle,rgba(112,60,248,0.32),transparent 70%)",filter:"blur(50px)",zIndex:0}} />
       <div aria-hidden style={{position:"absolute",bottom:-90,right:"8%",width:340,height:340,borderRadius:"50%",background:"radial-gradient(circle,rgba(236,72,153,0.24),transparent 70%)",filter:"blur(60px)",zIndex:0}} />
       <Reveal style={{maxWidth:1400,margin:"0 auto 48px",padding:"0 40px",textAlign:"center",position:"relative",zIndex:1}}>
         <div style={{...S.tag(true),marginBottom:20,color:C.P,justifyContent:"center"}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{eyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
         {data?.rating!=null&&(
-          <div style={{display:"inline-flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",border:`1px solid ${C.LTBORDER}`,borderRadius:50,padding:"11px 24px 11px 14px",boxShadow:"0 14px 34px rgba(139,92,246,0.16)"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:10,background:"rgba(255,255,255,0.85)",backdropFilter:"blur(8px)",border:`1px solid ${C.LTBORDER}`,borderRadius:50,padding:"11px 24px 11px 14px",boxShadow:"0 14px 34px rgba(112,60,248,0.16)"}}>
             <GDot />
             <span style={{fontSize:15,fontWeight:800,color:C.DARK}}>{data.rating.toFixed(1)}</span>
             <span style={{color:"#FBBC05",fontSize:14,letterSpacing:1}}>★★★★★</span>
@@ -1426,9 +1426,9 @@ function GoogleReviewsSection({placeId,eyebrow}:{placeId:string;eyebrow:string})
             const stars = "★".repeat(filled) + "☆".repeat(5-filled);
             const short = r.text.length>300 ? r.text.slice(0,300).trimEnd()+"…" : r.text;
             return (
-              <div key={i} className="gr-card" style={{flex:"0 0 335px",position:"relative",overflow:"hidden",background:"rgba(255,255,255,0.78)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(255,255,255,0.9)",borderRadius:20,padding:"32px 26px 26px",boxShadow:"0 22px 48px rgba(139,92,246,0.14), 0 3px 12px rgba(20,13,33,0.05), inset 0 1px 0 rgba(255,255,255,0.7)",display:"flex",flexDirection:"column",height:302}}>
+              <div key={i} className="gr-card" style={{flex:"0 0 335px",position:"relative",overflow:"hidden",background:"rgba(255,255,255,0.78)",backdropFilter:"blur(16px)",WebkitBackdropFilter:"blur(16px)",border:"1px solid rgba(255,255,255,0.9)",borderRadius:20,padding:"32px 26px 26px",boxShadow:"0 22px 48px rgba(112,60,248,0.14), 0 3px 12px rgba(20,13,33,0.05), inset 0 1px 0 rgba(255,255,255,0.7)",display:"flex",flexDirection:"column",height:302}}>
                 <span aria-hidden style={{position:"absolute",top:0,left:0,right:0,height:4,background:"linear-gradient(90deg,#8b5cf6,#ec4899)"}} />
-                <span aria-hidden style={{position:"absolute",top:-10,right:10,fontSize:96,fontFamily:"Georgia, serif",fontWeight:700,background:"linear-gradient(160deg,rgba(139,92,246,0.16),rgba(236,72,153,0.1))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1,userSelect:"none"}}>"</span>
+                <span aria-hidden style={{position:"absolute",top:-10,right:10,fontSize:96,fontFamily:"Georgia, serif",fontWeight:700,background:"linear-gradient(160deg,rgba(112,60,248,0.16),rgba(236,72,153,0.1))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text",lineHeight:1,userSelect:"none"}}>"</span>
                 <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                   <div style={{color:"#FBBC05",fontSize:14,letterSpacing:2}}>{stars}</div>
                   <GDot size={16} />
@@ -1490,7 +1490,7 @@ function IntroSplash({siteName,tagline,onDone}:{siteName:string;tagline:string;o
   }
   return (
     <div onClick={skip} role="button" aria-label="Skip intro" style={{position:"fixed",inset:0,zIndex:9999,background:C.DARK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",transition:"opacity 0.65s ease, transform 0.7s cubic-bezier(.7,0,.3,1)",opacity:leaving?0:1,transform:leaving?"translateY(-6%)":"translateY(0)"}}>
-      <div aria-hidden style={{position:"absolute",top:"-20%",left:"-10%",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.28),transparent 70%)",filter:"blur(60px)"}} />
+      <div aria-hidden style={{position:"absolute",top:"-20%",left:"-10%",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(112,60,248,0.28),transparent 70%)",filter:"blur(60px)"}} />
       <div aria-hidden style={{position:"absolute",bottom:"-25%",right:"-10%",width:460,height:460,borderRadius:"50%",background:"radial-gradient(circle,rgba(168,85,247,0.22),transparent 70%)",filter:"blur(70px)"}} />
       <div style={{position:"relative",textAlign:"center",padding:"0 24px"}}>
         <div style={{fontSize:11,letterSpacing:6,color:C.PL,textTransform:"uppercase",marginBottom:22,opacity:0.85}}>{tagline}</div>
@@ -3807,7 +3807,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       />
       {showInstallBanner&&(
       <div style={{position:"fixed",left:12,right:12,bottom:12,zIndex:600,background:"rgba(20,13,33,0.98)",border:`1px solid ${C.BORDER}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 30px rgba(0,0,0,0.4)",backdropFilter:"blur(10px)"}}>
-        <div style={{width:36,height:36,borderRadius:9,background:"#140D21",display:"flex",alignItems:"center",justifyContent:"center",color:"#A855F7",fontSize:14,fontWeight:700,flexShrink:0}}>NA</div>
+        <div style={{width:36,height:36,borderRadius:9,background:"#140D21",display:"flex",alignItems:"center",justifyContent:"center",color:"#6226FF",fontSize:14,fontWeight:700,flexShrink:0}}>NA</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:12.5,color:C.FG,fontWeight:600,marginBottom:2}}>Install this site as an app</div>
           <div style={{fontSize:11,color:C.MID,lineHeight:1.4}}>
@@ -3875,7 +3875,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left" as const,padding:"9px 12px",borderRadius:8,border:"none",cursor:"pointer",marginBottom:2,
             background:active?`linear-gradient(135deg, ${C.P}, ${C.PD})`:(hover?"rgba(255,255,255,0.06)":"transparent"),
             color:active?"#fff":"#E8E3F0",fontSize:12.5,fontWeight:active?600:400,
-            boxShadow:active?"0 4px 14px rgba(139,92,246,0.35)":"none",
+            boxShadow:active?"0 4px 14px rgba(112,60,248,0.35)":"none",
             transition:"background 0.15s ease, box-shadow 0.15s ease"}}>
           <span style={{fontSize:13,opacity:active?1:0.85}}>{icon}</span>{label}
         </button>
@@ -3892,7 +3892,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         case "heading": return <div style={{padding:"18px 22px 6px",fontFamily:"Georgia,serif",fontSize:19,color:"#140D21"}}>{b.text}</div>;
         case "text": return <div style={{padding:"6px 22px",fontSize:12.5,lineHeight:1.7,color:"#3a3245",whiteSpace:"pre-wrap" as const}}>{b.html}</div>;
         case "image": return b.src?(<div style={{padding:"6px 22px"}}><img src={b.src} alt={b.alt||""} style={{display:"block",width:"100%",borderRadius:4}} /></div>):(<div style={{padding:"6px 22px",fontSize:11,color:"#9a92a8",fontStyle:"italic"}}>(no image URL yet)</div>);
-        case "button": return <div style={{padding:"14px 22px",textAlign:"center" as const}}><span style={{display:"inline-block",background:"#8B5CF6",color:"#fff",fontSize:12.5,fontWeight:600,padding:"11px 26px",borderRadius:6}}>{b.text}</span></div>;
+        case "button": return <div style={{padding:"14px 22px",textAlign:"center" as const}}><span style={{display:"inline-block",background:"#703CF8",color:"#fff",fontSize:12.5,fontWeight:600,padding:"11px 26px",borderRadius:6}}>{b.text}</span></div>;
         case "divider": return <div style={{padding:"0 22px"}}><div style={{borderTop:"1px solid #e6e1ee"}} /></div>;
         case "spacer": return <div style={{height:Math.max(4,Math.min(120,Number(b.height)||24))}} />;
         case "footer": return <div style={{padding:"18px 22px 22px",fontSize:10,lineHeight:1.6,color:"#9a92a8",whiteSpace:"pre-wrap" as const}}>{b.text}</div>;
@@ -3902,7 +3902,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     const cmsSidebar = (
       <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 18px",marginBottom:6,borderBottom:`1px solid ${C.BORDER}`}}>
-          <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg, ${C.P}, ${C.PD})`,boxShadow:"0 0 0 3px rgba(139,92,246,0.15)",flexShrink:0}} />
+          <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg, ${C.P}, ${C.PD})`,boxShadow:"0 0 0 3px rgba(112,60,248,0.15)",flexShrink:0}} />
           <div>
             <div style={{fontSize:12.5,fontWeight:700,letterSpacing:0.5,color:"#fff"}}>BY NAVEED ANJUM</div>
             <div style={{fontSize:10.5,color:C.MID}}>CMS Admin</div>
@@ -4427,7 +4427,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const isSelected=calSelectedDate===dateStr;
                       const isToday=dateStr===todayStr;
                       return(
-                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"rgba(139,92,246,0.14)":C.DARK,border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:10,cursor:dayBookings.length?"pointer":"default"}}>
+                        <div key={i} onClick={()=>setCalSelectedDate(dayBookings.length?dateStr:null)} style={{minHeight:64,padding:8,background:isSelected?"rgba(112,60,248,0.14)":C.DARK,border:`1px solid ${isToday?C.P:C.BORDER}`,borderRadius:10,cursor:dayBookings.length?"pointer":"default"}}>
                           <div style={{fontSize:11,color:isToday?C.P:C.MID}}>{d}</div>
                           <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:4}}>
                             {dayBookings.slice(0,4).map((b:any)=><div key={b.id} title={b.appointment_ref} style={{width:6,height:6,borderRadius:"50%",background:(STATUS_PILL_COLORS[String(b.status||"").trim().toLowerCase().replace(/\s+/g,"_")]||{fg:C.MID}).fg}} />)}
@@ -4679,7 +4679,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:10}}>Tags</div>
                                 <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
                                   {(clientDirDetail.tags||[]).map((t:any)=>(
-                                    <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                    <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
                                       {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>crmRemoveTag(t.id)}>✕</span>
                                     </span>
                                   ))}
@@ -4690,7 +4690,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 {(clientDirDetail.bookings||[]).length===0?(
                                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No bookings.</div>
                                 ):clientDirDetail.bookings.map((b:any)=>(
-                                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(139,92,246,0.08)",borderRadius:8,fontSize:12.5,color:C.FG}}>
+                                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(112,60,248,0.08)",borderRadius:8,fontSize:12.5,color:C.FG}}>
                                     <span>{b.appointment_ref} · {b.service_name} — {b.package_name}</span>
                                     <StatusPill status={b.status} />
                                   </div>
@@ -4709,7 +4709,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 {(clientDirDetail.meetings||[]).length===0?(
                                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No meetings logged.</div>
                                 ):clientDirDetail.meetings.map((m:any)=>(
-                                  <div key={m.id} style={{padding:"8px 12px",background:"rgba(139,92,246,0.06)",borderRadius:8,fontSize:12,color:C.FG}}>
+                                  <div key={m.id} style={{padding:"8px 12px",background:"rgba(112,60,248,0.06)",borderRadius:8,fontSize:12,color:C.FG}}>
                                     <div style={{fontWeight:600}}>{m.event||"Meeting"}{m.meeting_date?` · ${m.meeting_date}`:""}{m.location?` · ${m.location}`:""}</div>
                                     {m.how_met&&<div style={{color:C.MID,marginTop:2}}>How met: {m.how_met}</div>}
                                     {m.interest&&<div style={{color:C.MID,marginTop:2}}>Interest: {m.interest}</div>}
@@ -4733,7 +4733,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 {(clientDirDetail.tasks||[]).length===0?(
                                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic"}}>No tasks.</div>
                                 ):clientDirDetail.tasks.map((t:any)=>(
-                                  <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(139,92,246,0.06)",borderRadius:8,fontSize:12,color:t.completed?C.MID:C.FG,textDecoration:t.completed?"line-through":"none"}}>
+                                  <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 12px",background:"rgba(112,60,248,0.06)",borderRadius:8,fontSize:12,color:t.completed?C.MID:C.FG,textDecoration:t.completed?"line-through":"none"}}>
                                     <span>{t.title}{t.due_date?` · due ${t.due_date}`:""}</span>
                                     {!t.completed&&<button onClick={()=>crmCompleteTask(t.id)} disabled={crmBusy} style={{...S.btnO,padding:"5px 10px",fontSize:10}}>✓ Done</button>}
                                   </div>
@@ -4763,7 +4763,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                     const pref=(clientDirDetail.consent||[]).find((x:any)=>x.category===key);
                                     const allowed=!!pref?.allowed;
                                     return(
-                                      <button key={key} onClick={()=>crmSetConsent(key,!allowed)} disabled={crmBusy} style={{fontSize:10.5,padding:"6px 12px",borderRadius:20,border:`1px solid ${allowed?C.PL:C.BORDER}`,background:allowed?"rgba(139,92,246,0.16)":"transparent",color:allowed?C.PL:C.MID,cursor:"pointer"}}>
+                                      <button key={key} onClick={()=>crmSetConsent(key,!allowed)} disabled={crmBusy} style={{fontSize:10.5,padding:"6px 12px",borderRadius:20,border:`1px solid ${allowed?C.PL:C.BORDER}`,background:allowed?"rgba(112,60,248,0.16)":"transparent",color:allowed?C.PL:C.MID,cursor:"pointer"}}>
                                         {allowed?"✓ ":"○ "}{label}
                                       </button>
                                     );
@@ -4878,7 +4878,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.name}{c.industry?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.industry}</span>:null}</div>
                           <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.website||c.email||"—"} · {c.contact_count||0} contact{c.contact_count===1?"":"s"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
                         </div>
-                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
+                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
                       </div>
                       {open&&(
                         <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
@@ -4900,7 +4900,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Tags</div>
                               <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
                                 {(companyDetail.tags||[]).map((t:any)=>(
-                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
                                     {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>removeCompanyTag(t.id)}>✕</span>
                                   </span>
                                 ))}
@@ -5024,7 +5024,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{name}{c.job_title?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.job_title}</span>:null}</div>
                           <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.outreach_companies?.name?`${c.outreach_companies.name} · `:""}{c.email||c.phone||"—"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
                         </div>
-                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
+                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
                       </div>
                       {open&&(
                         <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
@@ -5047,7 +5047,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Tags</div>
                               <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
                                 {(contactDetail.tags||[]).map((t:any)=>(
-                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
+                                  <span key={t.id} style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:6}}>
                                     {t.name}<span style={{cursor:"pointer",opacity:0.7}} onClick={()=>removeContactTag(t.id)}>✕</span>
                                   </span>
                                 ))}
@@ -5619,14 +5619,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{t.customer?.full_name||"Unknown"} <span style={{color:C.MID,fontWeight:400,fontSize:12}}>· {t.customer?.email}</span></div>
                             <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?"You: ":""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
                           </div>
-                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
+                          {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(112,60,248,0.18)",color:C.PL,border:`1px solid ${C.PL}`,flexShrink:0,alignSelf:"flex-start"}}>{t.unread} NEW</span>}
                         </div>
                         {open&&(
                           <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
                             <div style={{display:"flex",flexDirection:"column",gap:10,maxHeight:320,overflowY:"auto",marginBottom:14}}>
                               {t.messages.map((m:any)=>(
                                 <div key={m.id} style={{alignSelf:m.sender==="admin"?"flex-end":"flex-start",maxWidth:"80%"}}>
-                                  <div style={{background:m.sender==="admin"?C.P:"rgba(139,92,246,0.10)",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                                  <div style={{background:m.sender==="admin"?C.P:"rgba(112,60,248,0.10)",color:C.FG,borderRadius:8,padding:"8px 12px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
                                   <div style={{fontSize:10,color:C.MID,marginTop:3}}>{m.sender==="admin"?"You":t.customer?.full_name||"Client"} · {new Date(m.created_at).toLocaleString()}</div>
                                 </div>
                               ))}
@@ -6227,7 +6227,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     <div>
                       <label style={S.lbl}>Color (no photo, blank = brand accent)</label>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.titleColor)?settingsDraft.pricingCardStyle.titleColor:"#8B5CF6"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
+                        <input type="color" value={/^#/.test(settingsDraft.pricingCardStyle.titleColor)?settingsDraft.pricingCardStyle.titleColor:"#703CF8"} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColor:e.target.value}})} style={{width:36,height:32,padding:0,border:"none",background:"none",cursor:"pointer"}} />
                         <input style={{...S.inp,fontSize:11}} placeholder="Brand accent" value={settingsDraft.pricingCardStyle.titleColor} onChange={e=>updateSD({pricingCardStyle:{...settingsDraft.pricingCardStyle,titleColor:e.target.value}})} />
                       </div>
                     </div>
@@ -6449,7 +6449,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   Swaps two array entries and persists via the existing setProjects ->
                   nap_projects effect (line ~2275) -- no new storage or schema. */}
               {projects.map((p,i)=>(
-                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:editId===p.id?"rgba(139,92,246,0.14)":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
+                <div key={p.id} onClick={()=>startEdit(p)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:editId===p.id?"rgba(112,60,248,0.14)":"none",borderLeft:editId===p.id?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:6}}>
                   <div style={{minWidth:0}}><div style={{fontSize:12,color:C.FG}}>{p.title}</div><div style={{fontSize:10,color:C.MID}}>{p.categories?.join(", ")} · {p.images?.length||0}📷{p.featured&&p.youtubeUrl?" · 🎬 Cinematic":""}</div></div>
                   <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
                     <button onClick={e=>{e.stopPropagation();if(i===0)return;setProjects(ps=>{const next=[...ps];[next[i-1],next[i]]=[next[i],next[i-1]];return next;});}} disabled={i===0} title="Move up" style={{background:"none",border:"none",color:i===0?C.BORDER:C.MID,cursor:i===0?"default":"pointer",fontSize:11,padding:"2px 4px"}}>▲</button>
@@ -6573,7 +6573,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 const customized=spIsCustomized(servicePages[p.slug]);
                 const on=servicePages[p.slug]?.enabled!==false;
                 return(
-                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:spEditSlug===p.slug?"rgba(139,92,246,0.14)":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,opacity:on?1:0.55}}>
+                <div key={p.slug} onClick={()=>spStartEdit(p.slug)} style={{padding:"10px 12px",marginBottom:2,borderRadius:8,cursor:"pointer",background:spEditSlug===p.slug?"rgba(112,60,248,0.14)":"none",borderLeft:spEditSlug===p.slug?`2px solid ${C.P}`:"2px solid transparent",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,opacity:on?1:0.55}}>
                   <div style={{minWidth:0}}>
                     <div style={{fontSize:12,color:C.FG}}>{p.label}</div>
                     <div style={{fontSize:10,color:!on?C.MID:(customized?C.PL:C.MID)}}>{!on?"Off":(customized?"● Customized":"Default site content")}</div>
@@ -6857,7 +6857,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div key={sv.id} className="pflip" style={{height:380}}>
             <div className="pflip-inner">
               <div className="pflip-face" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32}}>
-                <div style={{width:44,height:44,borderRadius:4,background:"rgba(139,92,246,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
+                <div style={{width:44,height:44,borderRadius:4,background:"rgba(112,60,248,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
                 <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.3,margin:"0 0 8px"}}>{sv.title}</h3>
                 <p style={{color:C.MID,fontSize:13,lineHeight:1.7,margin:"0 0 20px"}}>{sv.desc}</p>
                 {sv.deliverables.length>0&&<div style={{fontSize:10,color:C.PL,letterSpacing:1,marginTop:"auto",marginBottom:10}}>↻ Hover to see what's included</div>}
@@ -6906,7 +6906,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       <PageBanner eyebrow={settings.uiText.cvBannerEyebrow} title={settings.uiText.cvBannerTitle} description="20+ years behind the camera across photography, cinematography and creative direction -- skills, tools and experience, at a glance." image={settings.sectionBg.cv} />
       <style>{`
         @keyframes cvItemIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes cvGlow{0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0.55)}50%{box-shadow:0 0 0 6px rgba(139,92,246,0.12)}}
+        @keyframes cvGlow{0%,100%{box-shadow:0 0 0 0 rgba(112,60,248,0.55)}50%{box-shadow:0 0 0 6px rgba(112,60,248,0.12)}}
         .cv-item{animation:cvItemIn 0.6s cubic-bezier(.16,.84,.44,1) both}
         .cv-dot{animation:cvGlow 2.6s ease-in-out infinite}
         .cv-skill-row{transition:color 0.2s,padding-left 0.2s}
@@ -7422,21 +7422,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           itself. Photo reuses settings.aboutPhoto (CMS > Settings > About). */}
       {settings.homeSections?.about!==false && settings.pageEnabled.about!==false && (
       <div style={{background:C.BG,padding:"110px 40px",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:"-14%",left:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.18),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
+        <div style={{position:"absolute",top:"-14%",left:"-8%",width:480,height:480,borderRadius:"50%",background:"radial-gradient(circle,rgba(112,60,248,0.18),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
         <Reveal style={{maxWidth:1160,margin:"0 auto",position:"relative",display:"flex",gap:64,alignItems:"flex-start",flexWrap:"wrap"}}>
           {/* alignSelf:"stretch" (was a fixed height:440) so the photo's top stays exactly where
               it already was but its bottom now runs all the way down to match the content
               column -- level with the "Learn More About Naveed" button -- whatever that
               column's height ends up being. minHeight is just a floor. */}
           <div style={{flex:"0 0 420px",minWidth:280,minHeight:440,alignSelf:"stretch",position:"relative"}}>
-            <div style={{position:"absolute",inset:0,borderRadius:12,overflow:"hidden",boxShadow:"0 30px 70px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.16)"}}>
+            <div style={{position:"absolute",inset:0,borderRadius:12,overflow:"hidden",boxShadow:"0 30px 70px rgba(0,0,0,0.45), 0 0 0 1px rgba(112,60,248,0.16)"}}>
               {/* Gated on cmsPhotosReady (see Home()) so a fresh page load/refresh -- including
                   right after saving a new photo in the admin panel on this same device --
                   never paints the previous photo for a moment before the current one replaces
                   it; the container's own dark background shows through until it's ready. */}
               {cmsPhotosReady && <img src={settings.aboutPhoto} alt={settings.aboutName} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
-            <div style={{position:"absolute",bottom:-22,right:-22,background:C.P,color:C.BG,borderRadius:10,padding:"18px 22px",boxShadow:"0 20px 40px rgba(139,92,246,0.35)",lineHeight:1.15}}>
+            <div style={{position:"absolute",bottom:-22,right:-22,background:C.P,color:C.BG,borderRadius:10,padding:"18px 22px",boxShadow:"0 20px 40px rgba(112,60,248,0.35)",lineHeight:1.15}}>
               <div style={{fontSize:30,fontWeight:800}}>{settings.statsYears}</div>
               <div style={{fontSize:11,letterSpacing:0.5,marginTop:2}}>Years<br/>Experience</div>
             </div>
@@ -7453,13 +7453,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:28}}>
               {[settings.uiText.homeAboutHighlight1,settings.uiText.homeAboutHighlight2,settings.uiText.homeAboutHighlight3].filter(Boolean).map((t,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:14}}>
-                  <span style={{width:30,height:30,borderRadius:6,background:"rgba(139,92,246,0.14)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✓</span>
+                  <span style={{width:30,height:30,borderRadius:6,background:"rgba(112,60,248,0.14)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✓</span>
                   <span style={{fontSize:14,color:C.FG}}>{t}</span>
                 </div>
               ))}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:14,background:"rgba(255,255,255,0.04)",border:`1px solid ${C.BORDER}`,borderRadius:10,padding:"14px 18px",marginBottom:28,maxWidth:420}}>
-              <span style={{width:34,height:34,borderRadius:"50%",background:"rgba(139,92,246,0.16)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>✓</span>
+              <span style={{width:34,height:34,borderRadius:"50%",background:"rgba(112,60,248,0.16)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,flexShrink:0}}>✓</span>
               <div>
                 <div style={{fontSize:13,fontWeight:700,color:C.FG}}>{settings.statsProjects} Projects Delivered</div>
                 <div style={{fontSize:12,color:C.MID}}>{settings.statsClients} Clients across Dubai, UAE</div>
@@ -7484,8 +7484,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           via repeated dark card elements. */}
       {settings.homeSections?.services!==false && (
       <div style={{background:C.LT,padding:"130px 40px 140px",position:"relative",overflow:"hidden"}}>
-        <div style={{position:"absolute",top:"-12%",right:"-8%",width:560,height:560,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.20),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
-        <div style={{position:"absolute",bottom:"-10%",left:"-6%",width:360,height:360,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.10),transparent 70%)",filter:"blur(24px)",pointerEvents:"none"}} />
+        <div style={{position:"absolute",top:"-12%",right:"-8%",width:560,height:560,borderRadius:"50%",background:"radial-gradient(circle,rgba(112,60,248,0.20),transparent 70%)",filter:"blur(20px)",pointerEvents:"none"}} />
+        <div style={{position:"absolute",bottom:"-10%",left:"-6%",width:360,height:360,borderRadius:"50%",background:"radial-gradient(circle,rgba(112,60,248,0.10),transparent 70%)",filter:"blur(24px)",pointerEvents:"none"}} />
         <div style={{maxWidth:1160,margin:"0 auto",position:"relative"}}>
           {/* Header hoisted above both columns (used to float beside the row list, sharing its
               column with it) -- reads clearly above the photo now, and the photo column
@@ -7506,7 +7506,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 the header lives above both columns instead of sharing this row's height.
                 Refresh pass: stronger drop shadow + a soft brand-purple glow ring so the photo
                 lifts off the page instead of sitting flush against it. */}
-            <div style={{flex:"0 0 390px",minWidth:280,minHeight:280,alignSelf:"stretch",position:"relative",borderRadius:10,overflow:"hidden",boxShadow:"0 30px 70px rgba(20,13,33,0.18), 0 0 0 1px rgba(139,92,246,0.14), 0 0 60px rgba(139,92,246,0.12)"}}>
+            <div style={{flex:"0 0 390px",minWidth:280,minHeight:280,alignSelf:"stretch",position:"relative",borderRadius:10,overflow:"hidden",boxShadow:"0 30px 70px rgba(20,13,33,0.18), 0 0 0 1px rgba(112,60,248,0.14), 0 0 60px rgba(112,60,248,0.12)"}}>
               {/* Gated on cmsPhotosReady -- same reason as the Hero/About photo. */}
               {cmsPhotosReady&&<img src={settings.servicesImage} alt={settings.uiText.homeServicesTitle} style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
@@ -7699,7 +7699,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
               {featuredTesti.length>1&&<div style={{display:"flex",gap:10,justifyContent:"center"}}>
                 {featuredTesti.map((_,i)=>(
-                  <span key={i} onClick={()=>setTestiIdx(i)} style={{width:i===testiIdx%featuredTesti.length?26:8,height:8,borderRadius:4,background:i===testiIdx%featuredTesti.length?C.P:"rgba(139,92,246,0.25)",cursor:"pointer",transition:"all 0.3s"}} />
+                  <span key={i} onClick={()=>setTestiIdx(i)} style={{width:i===testiIdx%featuredTesti.length?26:8,height:8,borderRadius:4,background:i===testiIdx%featuredTesti.length?C.P:"rgba(112,60,248,0.25)",cursor:"pointer",transition:"all 0.3s"}} />
                 ))}
               </div>}
             </div>

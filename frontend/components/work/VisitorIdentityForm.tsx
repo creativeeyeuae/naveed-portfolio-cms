@@ -58,7 +58,7 @@ export default function VisitorIdentityForm({
         type="submit"
         disabled={busy}
         style={{
-          background: "var(--accent-primary, #8B5CF6)",
+          background: "var(--accent-primary, #703CF8)",
           border: "none",
           color: "#fff",
           padding: "10px 22px",

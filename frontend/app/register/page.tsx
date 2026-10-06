@@ -53,8 +53,8 @@ export default function RegisterPage() {
             An account already exists for <strong>{email}</strong> -- no new email is sent in this case. Sign in below, or reset your password if you don't remember it.
           </p>
           <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
-            <a href="/login" style={{ display: "inline-block", padding: "12px 24px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, textDecoration: "none" }}>Sign in</a>
-            <a href="/reset-password" style={{ display: "inline-block", padding: "12px 24px", color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Forgot password?</a>
+            <a href="/login" style={{ display: "inline-block", padding: "12px 24px", borderRadius: 6, background: "var(--accent-primary, #703CF8)", color: "#fff", fontWeight: 600, textDecoration: "none" }}>Sign in</a>
+            <a href="/reset-password" style={{ display: "inline-block", padding: "12px 24px", color: "var(--accent-primary, #703CF8)", textDecoration: "underline" }}>Forgot password?</a>
           </div>
         </div>
       </main>
@@ -69,7 +69,7 @@ export default function RegisterPage() {
           <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 14 }}>
             We sent a verification link to <strong>{email}</strong>. Click it to activate your account, then sign in.
           </p>
-          <a href="/login" style={{ display: "inline-block", marginTop: 24, color: "var(--accent-primary, #8B5CF6)", textDecoration: "underline" }}>Back to sign in</a>
+          <a href="/login" style={{ display: "inline-block", marginTop: 24, color: "var(--accent-primary, #703CF8)", textDecoration: "underline" }}>Back to sign in</a>
         </div>
       </main>
     );
@@ -91,7 +91,7 @@ export default function RegisterPage() {
             style={{ padding: "12px 14px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid var(--border-subtle, #2D1F45)", color: "inherit" }} />
           {error && <p style={{ color: "#f87171", fontSize: 13 }}>{error}</p>}
           <button type="submit" disabled={loading}
-            style={{ padding: "12px 14px", borderRadius: 6, background: "var(--accent-primary, #8B5CF6)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+            style={{ padding: "12px 14px", borderRadius: 6, background: "var(--accent-primary, #703CF8)", color: "#fff", fontWeight: 600, border: "none", cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
             {loading ? "Creating account..." : "Create account"}
           </button>
         </form>

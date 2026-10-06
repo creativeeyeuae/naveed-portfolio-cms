@@ -11,7 +11,7 @@
 // on every banner (PageBanner / InternalPageTemplate), just animated as a pulse instead of
 // static. Nothing here introduces a new color, icon, spinner style, or layout.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
+  P: "var(--c-p,#703CF8)",
   BG: "var(--c-bg,#09060E)",
 };
 

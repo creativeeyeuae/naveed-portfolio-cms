@@ -10,8 +10,8 @@ import type { PublicSiteInfo } from "@/lib/cmsData";
 // in-memory views already use via settings.sectionBg, now reaching every internal page too
 // via the `image` prop.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   BG: "var(--c-bg,#09060E)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",

@@ -299,7 +299,7 @@ export default function ProjectGallery({
               rel="noopener noreferrer"
               style={{
                 border: "1px solid var(--border-subtle, #2D1F45)",
-                color: "var(--text-secondary, #E2D9F3)",
+                color: "var(--text-secondary, #D7D4FF)",
                 padding: "10px 20px",
                 fontSize: 12,
                 letterSpacing: 1,
@@ -462,7 +462,7 @@ export default function ProjectGallery({
                     width: 52,
                     height: 40,
                     padding: 0,
-                    border: i === lightboxIndex ? "2px solid var(--accent-primary, #8B5CF6)" : "1px solid rgba(255,255,255,0.2)",
+                    border: i === lightboxIndex ? "2px solid var(--accent-primary, #703CF8)" : "1px solid rgba(255,255,255,0.2)",
                     borderRadius: 2,
                     overflow: "hidden",
                     cursor: "pointer",

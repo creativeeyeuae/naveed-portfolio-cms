@@ -31,8 +31,8 @@ export type ShowcaseProject = {
 // the `C` object in app/page.tsx) so this component automatically stays in sync with any
 // CMS-driven theme colors instead of hard-coding its own separate palette.
 const CV = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   BG: "var(--c-bg,#09060E)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
@@ -754,7 +754,7 @@ export default function CinematicShowcase({
                   // without copying any specific manufacturer's exact camera-cutout shape or
                   // silhouette (the lens stays a plain circle, see frameChrome).
                   padding: 2,
-                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
+                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(112,60,248,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}
@@ -762,7 +762,7 @@ export default function CinematicShowcase({
                 {show3D && (
                   <DeviceFrame3D
                     orientation={orientation}
-                    accentColor="#8B5CF6"
+                    accentColor="#703CF8"
                     radiusFraction={radiusFraction}
                     scrollProgress={scrollProgressRef}
                   />
@@ -784,7 +784,7 @@ export default function CinematicShowcase({
                   borderRadius: orientation === "portrait" ? 44 : 30,
                   background: "conic-gradient(from 45deg, #f2f3f5 0%, #b9bcc2 12.5%, #6c6f74 25%, #f2f3f5 37.5%, #b9bcc2 50%, #6c6f74 62.5%, #f2f3f5 75%, #b9bcc2 87.5%, #f2f3f5 100%)",
                   padding: 2,
-                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(139,92,246,0.4)`,
+                  boxShadow: `0 45px 100px -22px rgba(0,0,0,0.55), 0 16px 34px -12px rgba(0,0,0,0.5), 0 6px 14px -6px rgba(0,0,0,0.4), inset 0 1.5px 0 rgba(255,255,255,0.55), inset 0 -1.5px 0 rgba(0,0,0,0.4), 0 0 0 1px ${CV.BORDER}, 0 0 150px -28px rgba(112,60,248,0.4)`,
                   position: "relative",
                   transformStyle: "preserve-3d",
                 }}
@@ -792,7 +792,7 @@ export default function CinematicShowcase({
                 {show3D && (
                   <DeviceFrame3D
                     orientation={orientation}
-                    accentColor="#8B5CF6"
+                    accentColor="#703CF8"
                     radiusFraction={radiusFraction}
                     scrollProgress={scrollProgressRef}
                   />

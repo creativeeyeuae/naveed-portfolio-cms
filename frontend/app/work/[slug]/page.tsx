@@ -37,8 +37,8 @@ const PLACEHOLDER_SLUG = "__no-projects-yet__";
 // Same CSS-variable-with-fallback tokens as SiteHeader.tsx/SiteFooter.tsx/app/page.tsx's own
 // `C` object -- kept in sync deliberately so this page never drifts into its own palette.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   BG: "var(--c-bg,#09060E)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",

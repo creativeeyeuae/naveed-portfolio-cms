@@ -5,8 +5,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        purple: "#A855F7",
-        gold: "#8B5CF6",
+        purple: "#6226FF",
+        gold: "#FFC01D",
         ink: "#09060E",
       },
       fontFamily: {

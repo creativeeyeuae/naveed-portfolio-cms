@@ -21,8 +21,8 @@ import { useEffect, useState } from "react";
 // ─── THEME (local copy of HomeClient.tsx's C/S/CARD_STYLE/StatusPill tokens, kept in sync by
 // value so this workspace matches the rest of the CMS pixel-for-pixel, without importing from
 // -- and so coupling this component's module graph to -- the giant HomeClient.tsx file) ──────
-const C = { P:"var(--c-p,#8B5CF6)",PL:"var(--c-pl,#E2D9F3)",PD:"var(--c-pd,#A855F7)",GOLD:"var(--c-gold,#8B5CF6)",GOLDL:"var(--c-goldl,#A855F7)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
-  LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(139,92,246,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
+const C = { P:"var(--c-p,#703CF8)",PL:"var(--c-pl,#D7D4FF)",PD:"var(--c-pd,#6226FF)",GOLD:"var(--c-gold,#703CF8)",GOLDL:"var(--c-goldl,#6226FF)",BG:"var(--c-bg,#09060E)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#140D21)",BORDER:"var(--c-border,#2D1F45)",
+  LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(112,60,248,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
 const S = {
   inp:{background:"#1C1330",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
   btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
@@ -36,12 +36,12 @@ const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
   pending:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"}, connecting:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"}, draft:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"},
   closed:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"}, not_connected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"}, failed:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"},
   rejected:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"}, error:{bg:"rgba(239,68,68,0.16)",fg:"#f87171"}, disabled:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"},
-  archived:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"}, read:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"}, delivered:{bg:"rgba(139,92,246,0.18)",fg:"#c4b5fd"},
-  sent:{bg:"rgba(139,92,246,0.18)",fg:"#c4b5fd"}, queued:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
+  archived:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"}, read:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"}, delivered:{bg:"rgba(112,60,248,0.18)",fg:"#c4b5fd"},
+  sent:{bg:"rgba(112,60,248,0.18)",fg:"#c4b5fd"}, queued:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"},
 };
 function StatusPill({status}:{status:string}) {
   const key = String(status||"").trim().toLowerCase().replace(/\s+/g,"_");
-  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(139,92,246,0.18)",fg:"#c4b5fd"};
+  const c = STATUS_PILL_COLORS[key] || {bg:"rgba(112,60,248,0.18)",fg:"#c4b5fd"};
   return <span style={{display:"inline-block",fontSize:10,fontWeight:700,letterSpacing:0.4,textTransform:"uppercase" as const,padding:"3px 9px",borderRadius:20,background:c.bg,color:c.fg,whiteSpace:"nowrap" as const}}>{String(status||"—").replace(/_/g," ")}</span>;
 }
 // Small amber tag used everywhere a control is real UI/state but has no backend behind it yet
@@ -441,7 +441,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
   const navList=(
     <div style={{display:"flex",flexDirection:isMobile?"row":"column" as const,gap:isMobile?6:2,overflowX:isMobile?"auto" as const:"visible" as const,paddingBottom:isMobile?4:0}}>
       {NAV_ITEMS.map(n=>(
-        <button key={n.key} onClick={()=>{setSection(n.key);setNavOpenMobile(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:8,border:"none",cursor:"pointer",whiteSpace:"nowrap" as const,fontSize:12.5,fontWeight:section===n.key?700:500,background:section===n.key?"rgba(139,92,246,0.16)":"transparent",color:section===n.key?C.PL:C.MID,flexShrink:0,textAlign:"left" as const}}>
+        <button key={n.key} onClick={()=>{setSection(n.key);setNavOpenMobile(false);}} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:8,border:"none",cursor:"pointer",whiteSpace:"nowrap" as const,fontSize:12.5,fontWeight:section===n.key?700:500,background:section===n.key?"rgba(112,60,248,0.16)":"transparent",color:section===n.key?C.PL:C.MID,flexShrink:0,textAlign:"left" as const}}>
           <span style={{fontSize:14}}>{n.icon}</span>{n.label}
           {n.key==="inbox"&&stats.unread>0&&<span style={{marginLeft:"auto",fontSize:10,padding:"2px 7px",borderRadius:20,background:C.P,color:"#fff"}}>{stats.unread}</span>}
         </button>
@@ -526,7 +526,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                           const out=m.direction==="outbound";
                           const tick=m.status==="failed"?"⚠️ Failed":m.status==="read"?"✓✓ Read":m.status==="delivered"?"✓✓ Delivered":m.status==="sent"?"✓ Sent":"⏳ Queued";
                           return(
-                            <div key={m.id} style={{alignSelf:out?"flex-end":"flex-start",maxWidth:"78%",background:out?"rgba(139,92,246,0.18)":"rgba(255,255,255,0.06)",borderRadius:10,padding:"9px 13px"}}>
+                            <div key={m.id} style={{alignSelf:out?"flex-end":"flex-start",maxWidth:"78%",background:out?"rgba(112,60,248,0.18)":"rgba(255,255,255,0.06)",borderRadius:10,padding:"9px 13px"}}>
                               <div style={{fontSize:13,color:C.FG,whiteSpace:"pre-wrap" as const}}>{m.body}</div>
                               <div style={{fontSize:10,color:C.MID,marginTop:4,textAlign:(out?"right":"left") as "left"|"right"}}>{out?tick+" · ":""}{new Date(m.created_at).toLocaleString()}</div>
                             </div>
@@ -572,7 +572,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                               {conversationDetail.conversation.customers.company&&<div style={{fontSize:12,color:C.MID,marginTop:2}}>{conversationDetail.conversation.customers.company}</div>}
                               <div style={{display:"flex",flexWrap:"wrap" as const,gap:6,marginTop:8}}>
                                 {(conversationDetail.conversation.customers.tags||[]).map((t:any)=>(
-                                  <span key={t.id} style={{fontSize:10.5,padding:"3px 9px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:5}}>{t.name}<span onClick={()=>crmRemoveTag(t.id)} style={{cursor:"pointer",opacity:0.7}}>✕</span></span>
+                                  <span key={t.id} style={{fontSize:10.5,padding:"3px 9px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`,display:"flex",alignItems:"center",gap:5}}>{t.name}<span onClick={()=>crmRemoveTag(t.id)} style={{cursor:"pointer",opacity:0.7}}>✕</span></span>
                                 ))}
                               </div>
                               <div style={{display:"flex",gap:6,marginTop:8}}>
@@ -837,7 +837,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                 </div>
                 <div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginTop:16,marginBottom:8}}>Variables</div>
                 <div style={{display:"flex",flexWrap:"wrap" as const,gap:6}}>
-                  {WA_VARIABLES.map(([k,label])=>(<span key={k} title={label} style={{fontSize:10,padding:"3px 8px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`}}>{`{{${k}}}`}</span>))}
+                  {WA_VARIABLES.map(([k,label])=>(<span key={k} title={label} style={{fontSize:10,padding:"3px 8px",borderRadius:20,background:"rgba(112,60,248,0.14)",color:C.PL,border:`1px solid ${C.PL}`}}>{`{{${k}}}`}</span>))}
                 </div>
               </div>
               <div style={{...CARD_STYLE,padding:14}}>

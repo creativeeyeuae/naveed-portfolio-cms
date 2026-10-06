@@ -182,13 +182,13 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             silently did nothing until the visitor manually refreshed. A real browser
             navigation always remounts HomeClient fresh, so Admin opens on the first click
             from any page, including "/" itself. */}
-        <a href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</a>
+        <a href="/?admin=1" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#D7D4FF)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Admin</a>
         <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
           <select aria-label="Language" value={lang} onChange={(e) => (spa ? spa.onLangChange(e.target.value as Lang) : setStaticLang(e.target.value as Lang))} style={{ background: "transparent", border: "none", color: "var(--c-mid,#A892C6)", fontSize: 10, letterSpacing: 1, textTransform: "uppercase", cursor: "pointer", outline: "none" }}>
             {LANGS.map((l) => <option key={l.code} value={l.code} style={{ color: "#000" }}>{l.flag} {l.label}</option>)}
           </select>
-          {site.instagram && <a href={site.instagram} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Instagram</a>}
-          {site.youtube && <a href={site.youtube} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#E2D9F3)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>YouTube</a>}
+          {site.instagram && <a href={site.instagram} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#D7D4FF)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>Instagram</a>}
+          {site.youtube && <a href={site.youtube} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, letterSpacing: 2, color: "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} onMouseEnter={(e) => (e.currentTarget.style.color = "var(--c-pl,#D7D4FF)")} onMouseLeave={(e) => (e.currentTarget.style.color = "var(--c-mid,#A892C6)")}>YouTube</a>}
         </div>
       </div>
       <nav role="navigation" aria-label="Main navigation" style={{ position: "fixed", top: scrolled ? 0 : 32, left: 0, right: 0, zIndex: 500, padding: isMobile ? "21px 20px" : "23px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(9,6,14,0.85)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--c-border,#2D1F45)", transition: "top 0.35s cubic-bezier(.16,.84,.44,1)" }}>
@@ -207,15 +207,15 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
         ) : spa ? (
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             {spa.visibleLinks.map(([k, l]) => (
-              <span key={k} onClick={() => spa.goTo(k)} style={{ fontSize: 11, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s", borderBottom: spa.page === k ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{l}</span>
+              <span key={k} onClick={() => spa.goTo(k)} style={{ fontSize: 11, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#D7D4FF)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", cursor: "pointer", transition: "color 0.2s", borderBottom: spa.page === k ? "1px solid var(--c-pl,#D7D4FF)" : "1px solid transparent", paddingBottom: 2 }}>{l}</span>
             ))}
-            <button onClick={() => spa.goTo("booking")} style={{ background: "var(--c-p,#8B5CF6)", border: "none", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--c-pd,#A855F7)")} onMouseLeave={(e) => (e.currentTarget.style.background = "var(--c-p,#8B5CF6)")}>{bookBtnLabel}</button>
+            <button onClick={() => spa.goTo("booking")} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--c-pd,#6226FF)")} onMouseLeave={(e) => (e.currentTarget.style.background = "var(--c-p,#703CF8)")}>{bookBtnLabel}</button>
           </div>
         ) : (
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             {staticVisibleLinks.map((l) => (
               <Fragment key={l.key}>
-                <Link href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
+                <Link href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#D7D4FF)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#D7D4FF)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
                 {/* "Photography" dropdown -- inserted right after Work, before About. Links
                     into the standalone SEO service pages (app/<slug>/page.tsx), which have
                     no CMS pageEnabled toggle and so sit outside staticVisibleLinks entirely. */}
@@ -228,7 +228,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                     <Link
                       href="/photography"
                       onClick={() => setPhotoDropdownOpen(false)}
-                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
+                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#D7D4FF)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#D7D4FF)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
                       Photography <span
                         style={{ fontSize: 9 }}
@@ -238,7 +238,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                     {photoDropdownOpen && (
                       <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(20,13,33,0.98)", border: "1px solid var(--c-border,#2D1F45)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
                         {PHOTOGRAPHY_SUBNAV.map((s) => (
-                          <Link key={s.slug} href={`/${s.slug}`} onClick={() => setPhotoDropdownOpen(false)} style={{ fontSize: 12, letterSpacing: 0.5, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.82)", textTransform: "none", textDecoration: "none", padding: "9px 12px", borderRadius: 4, whiteSpace: "nowrap" }}>
+                          <Link key={s.slug} href={`/${s.slug}`} onClick={() => setPhotoDropdownOpen(false)} style={{ fontSize: 12, letterSpacing: 0.5, color: pathname === `/${s.slug}` ? "var(--c-pl,#D7D4FF)" : "rgba(255,255,255,0.82)", textTransform: "none", textDecoration: "none", padding: "9px 12px", borderRadius: 4, whiteSpace: "nowrap" }}>
                             {s.label}
                           </Link>
                         ))}
@@ -248,7 +248,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                 )}
               </Fragment>
             ))}
-            <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
+            <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#09060E)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
           </div>
         )}
 
@@ -257,28 +257,28 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             {spa ? (
               <>
                 {spa.visibleLinks.map(([k, l]) => (
-                  <span key={k} onClick={() => { spa.goTo(k); onCloseMobileNav(); }} style={{ fontSize: 15, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", cursor: "pointer" }}>{l}</span>
+                  <span key={k} onClick={() => { spa.goTo(k); onCloseMobileNav(); }} style={{ fontSize: 15, letterSpacing: 3, color: spa.page === k ? "var(--c-pl,#D7D4FF)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", cursor: "pointer" }}>{l}</span>
                 ))}
-                <button onClick={() => { spa.goTo("booking"); onCloseMobileNav(); }} style={{ background: "var(--c-p,#8B5CF6)", border: "none", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}>{bookBtnLabel}</button>
+                <button onClick={() => { spa.goTo("booking"); onCloseMobileNav(); }} style={{ background: "var(--c-p,#703CF8)", border: "none", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2 }}>{bookBtnLabel}</button>
               </>
             ) : (
               <>
                 {staticVisibleLinks.map((l) => (
                   <Fragment key={l.key}>
-                    <Link href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
+                    <Link href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#D7D4FF)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
                     {/* Mobile has no hover dropdown -- the Photography sub-links are just
                         flattened inline right after Work, same content as the desktop menu. */}
                     {l.key === "work" && (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "4px 0 6px" }}>
                         <span style={{ fontSize: 10, letterSpacing: 3, color: "var(--c-mid,#A892C6)", textTransform: "uppercase" }}>Photography</span>
                         {PHOTOGRAPHY_SUBNAV.map((s) => (
-                          <Link key={s.slug} href={`/${s.slug}`} onClick={onCloseMobileNav} style={{ fontSize: 13, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.75)", textDecoration: "none", cursor: "pointer" }}>{s.label}</Link>
+                          <Link key={s.slug} href={`/${s.slug}`} onClick={onCloseMobileNav} style={{ fontSize: 13, color: pathname === `/${s.slug}` ? "var(--c-pl,#D7D4FF)" : "rgba(255,255,255,0.75)", textDecoration: "none", cursor: "pointer" }}>{s.label}</Link>
                         ))}
                       </div>
                     )}
                   </Fragment>
                 ))}
-                <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
+                <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#703CF8)", color: "var(--c-bg,#09060E)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
               </>
             )}
           </div>

@@ -12,8 +12,8 @@ import ContactForm from "./ContactForm";
 // a real Supabase write, ported here as lib/cmsData.ts's submitContactLead()), plus the same
 // shared SiteHeader/SiteFooter + PageBanner-style visual language as /work/[slug] and /about.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   BG: "var(--c-bg,#09060E)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
@@ -49,7 +49,7 @@ export default async function ContactPage() {
             {cards.map((c) => {
               const inner = (
                 <div style={{
-                  position: "relative", border: "1px solid rgba(139,92,246,0.16)", background: "rgba(255,255,255,0.02)",
+                  position: "relative", border: "1px solid rgba(112,60,248,0.16)", background: "rgba(255,255,255,0.02)",
                   borderRadius: 14, padding: "22px 20px", height: "100%", boxSizing: "border-box" as const,
                   transition: "border-color 0.2s, box-shadow 0.2s, transform 0.2s",
                 }}>

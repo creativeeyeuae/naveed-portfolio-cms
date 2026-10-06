@@ -13,8 +13,8 @@ import InternalPageTemplate from "@/components/InternalPageTemplate";
 // settings.services (both via getPublicSiteInfo()) -- no hardcoded duplicate pricing/service
 // content. Nothing in the homepage SPA's own in-memory Packages view changed.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",
   BG: "var(--c-bg,#09060E)",

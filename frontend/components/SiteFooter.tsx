@@ -22,8 +22,8 @@ import { SERVICE_PAGES } from "@/lib/servicePagesData";
 // -- on the homepage these variables are set live from settings.theme; on every other route
 // (no theme injection there) the literal fallback color applies directly.
 const C = {
-  P: "var(--c-p,#8B5CF6)",
-  PL: "var(--c-pl,#E2D9F3)",
+  P: "var(--c-p,#703CF8)",
+  PL: "var(--c-pl,#D7D4FF)",
   BG: "var(--c-bg,#09060E)",
   FG: "var(--c-fg,#FFFFFF)",
   MID: "var(--c-mid,#A892C6)",

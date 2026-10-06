@@ -42,7 +42,7 @@ export default async function ContactPage() {
 
   return (
     <InternalPageTemplate site={site} eyebrow={site.contactBannerEyebrow} title={site.contactBannerTitle} image={site.contactBannerImage}>
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "56px 24px 80px" }}>
+      <div className="snap-section" style={{ maxWidth: 680, margin: "0 auto", padding: "56px 24px 80px", width: "100%", boxSizing: "border-box" }}>
         {/* CONTACT METHOD CARDS -- real CMS data only, empty fields hidden entirely */}
         {cards.length > 0 && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 40 }}>

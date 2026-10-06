@@ -59,6 +59,30 @@ html {
   scroll-snap-type: y proximity;
 }
 
+/* Reusable "one section = one screen" block, used by the homepage and other pages below.
+   min-height is listed twice on purpose: 100dvh (the REAL visible screen height, accounting
+   for the mobile browser's address bar showing/hiding) overrides 100vh wherever a browser
+   understands dvh -- older browsers just keep the 100vh line above it. Snap is switched off
+   on small/phone screens: on a phone, content naturally runs taller and people expect normal
+   free scrolling there, not forced full-screen slides -- so .snap-section just behaves like a
+   normal section on mobile, nothing forced, nothing cut off. */
+.snap-section {
+  scroll-snap-align: start;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-sizing: border-box;
+}
+@media (max-width: 767px) {
+  .snap-section {
+    scroll-snap-align: none;
+    min-height: 0;
+    display: block;
+  }
+}
+
 body {
   margin: 0;
   padding: 0;

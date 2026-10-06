@@ -291,32 +291,30 @@ export default async function GearPage() {
           homepage Hero component's own layout technique. */}
       <GearGrid categories={gearWithPhotos} />
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "40px 24px 40px" }}>
-        {/* CTA -- same pattern as /about */}
-        <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 16, borderTop: `1px solid ${C.BORDER}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>
-            Let&apos;s Talk
-          </div>
-          <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>
-            Have a Project In Mind?
-          </h3>
-          <Link
-            href="/contact"
-            style={{
-              background: C.P,
-              color: C.BG,
-              padding: "13px 36px",
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: 3,
-              textTransform: "uppercase",
-              textDecoration: "none",
-              borderRadius: 2,
-            }}
-          >
-            Get In Touch
-          </Link>
+      {/* CTA -- same pattern as /about */}
+      <div className="snap-section" style={{ textAlign: "center", padding: "64px 24px", borderTop: `1px solid ${C.BORDER}`, boxSizing: "border-box" }}>
+        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>
+          Let&apos;s Talk
         </div>
+        <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>
+          Have a Project In Mind?
+        </h3>
+        <Link
+          href="/contact"
+          style={{
+            background: C.P,
+            color: C.BG,
+            padding: "13px 36px",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 3,
+            textTransform: "uppercase",
+            textDecoration: "none",
+            borderRadius: 2,
+          }}
+        >
+          Get In Touch
+        </Link>
       </div>
     </InternalPageTemplate>
   );

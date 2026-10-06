@@ -79,7 +79,7 @@ export default async function ServicePage({ data }: { data: ServicePageData }) {
       {/* Hero band -- solid brand-color gradient (same "no photo yet -> solid band" fallback
           pattern already used site-wide, e.g. PageBanner on the main site) rather than any
           stock or unrelated image standing in for real project work. */}
-      <section style={{ position: "relative", overflow: "hidden", background: `linear-gradient(140deg, ${DARK} 0%, ${BG} 100%)`, padding: "72px 24px 56px" }}>
+      <section className="snap-section" style={{ position: "relative", overflow: "hidden", background: `linear-gradient(140deg, ${DARK} 0%, ${BG} 100%)`, padding: "72px 24px 56px" }}>
         <div aria-hidden style={{ position: "absolute", top: -80, right: "-8%", width: 360, height: 360, borderRadius: "50%", background: `radial-gradient(circle, rgba(139,92,246,0.25), transparent 70%)`, filter: "blur(60px)" }} />
         <div style={{ maxWidth: 880, margin: "0 auto", position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
@@ -180,7 +180,7 @@ export default async function ServicePage({ data }: { data: ServicePageData }) {
       </section>
 
       {/* Final CTA */}
-      <section style={{ padding: "64px 24px", textAlign: "center", background: `linear-gradient(140deg, ${DARK} 0%, ${BG} 100%)` }}>
+      <section className="snap-section" style={{ padding: "64px 24px", textAlign: "center", background: `linear-gradient(140deg, ${DARK} 0%, ${BG} 100%)` }}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
           <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 14 }}>Let&rsquo;s talk about your project</h2>
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.7, marginBottom: 28 }}>

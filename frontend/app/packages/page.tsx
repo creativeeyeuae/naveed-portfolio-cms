@@ -37,7 +37,7 @@ export default async function PackagesPage() {
 
   return (
     <InternalPageTemplate site={site} eyebrow={site.packagesBannerEyebrow} title={site.packagesBannerTitle} image={site.packagesBannerImage}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px" }}>
+      <div className="snap-section" style={{ maxWidth: 1200, margin: "0 auto", padding: "56px 24px 40px", width: "100%", boxSizing: "border-box" }}>
         {/* PRICING TIERS -- real CMS data (Settings > Packages), no invented pricing.
             Hover/keyboard-focus flips each card to a solid-accent back face listing what's
             included (.pflip in globals.css -- the same generic 3D-CSS flip technique the
@@ -161,14 +161,15 @@ export default async function PackagesPage() {
           </div>
         )}
 
-        {/* CTA -- same pattern as /about and /gear */}
-        <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 48, borderTop: `1px solid ${C.BORDER}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let&apos;s Talk</div>
-          <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
-          <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>
-            Get In Touch
-          </Link>
-        </div>
+      </div>
+
+      {/* CTA -- same pattern as /about and /gear */}
+      <div className="snap-section" style={{ textAlign: "center", padding: "64px 24px", borderTop: `1px solid ${C.BORDER}`, boxSizing: "border-box" }}>
+        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let&apos;s Talk</div>
+        <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
+        <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>
+          Get In Touch
+        </Link>
       </div>
     </InternalPageTemplate>
   );

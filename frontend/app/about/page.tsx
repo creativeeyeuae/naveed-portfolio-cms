@@ -42,8 +42,8 @@ export default async function AboutPage() {
         .about-grid { display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:start; }
         @media (max-width: 780px) { .about-grid { grid-template-columns: 1fr; } }
       `}</style>
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px" }}>
-        <div className="about-grid">
+      <div className="snap-section" style={{ maxWidth: 1200, margin: "0 auto", padding: "64px 24px 40px", width: "100%", boxSizing: "border-box" }}>
+        <div className="about-grid" style={{ width: "100%" }}>
           {/* LEFT: bio */}
           <div>
             <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>About</div>
@@ -95,13 +95,13 @@ export default async function AboutPage() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* CTA */}
-        <div style={{ textAlign: "center", padding: "64px 0 24px", marginTop: 48, borderTop: `1px solid ${C.BORDER}` }}>
-          <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let's Talk</div>
-          <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
-          <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Get In Touch</Link>
-        </div>
+      {/* CTA */}
+      <div className="snap-section" style={{ textAlign: "center", padding: "64px 24px", borderTop: `1px solid ${C.BORDER}`, boxSizing: "border-box" }}>
+        <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", marginBottom: 14 }}>Let's Talk</div>
+        <h3 style={{ fontSize: "clamp(22px,3vw,32px)", fontWeight: 700, margin: "0 0 24px" }}>Have a Project In Mind?</h3>
+        <Link href="/contact" style={{ background: C.P, color: C.BG, padding: "13px 36px", fontSize: 13, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", textDecoration: "none", borderRadius: 2 }}>Get In Touch</Link>
       </div>
     </InternalPageTemplate>
   );

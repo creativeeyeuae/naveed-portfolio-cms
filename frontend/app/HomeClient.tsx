@@ -61,6 +61,12 @@ type Service = { id:string;icon:string;title:string;desc:string;detail:string;de
 type ThemeColors = { P:string;PL:string;PD:string;GOLD:string;GOLDL:string;BG:string;FG:string;MID:string;DARK:string;BORDER:string;LT:string;LTCARD:string;LTBORDER:string;INKMID:string; };
 type UiText = {
   navBookBtn:string; footerWhatsappBtn:string;
+  // Home page "About" teaser card (the short intro block with the photo, bio paragraph and
+  // 3 checkmark lines, above the full /about page) -- previously hardcoded directly in the
+  // JSX with no CMS control at all. homeAboutBio is deliberately separate from the longer
+  // settings.aboutBio used on the full About page -- this one is the short teaser version.
+  homeAboutSubtitle:string; homeAboutBio:string;
+  homeAboutHighlight1:string; homeAboutHighlight2:string; homeAboutHighlight3:string;
   homeServicesEyebrow:string; homeServicesTitle:string; homeServicesIntro:string;
   homeWorkEyebrow:string; homeWorkTitle:string; homeWorkViewAll:string;
   homeClientsEyebrow:string; homeClientsTitle:string;
@@ -318,6 +324,11 @@ const DEF_SETTINGS: SiteSettings = {
   theme:{P:"#8B5CF6",PL:"#E2D9F3",PD:"#A855F7",GOLD:"#8B5CF6",GOLDL:"#A855F7",BG:"#09060E",FG:"#FFFFFF",MID:"#A892C6",DARK:"#140D21",BORDER:"#2D1F45",LT:"#F8F6FC",LTCARD:"#FFFFFF",LTBORDER:"rgba(139,92,246,0.14)",INKMID:"#6E6480"},
   uiText:{
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
+    homeAboutSubtitle:"Photographer · Cinematographer · Visual Artist",
+    homeAboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion.",
+    homeAboutHighlight1:"20+ years of experience, 10 of them based in the UAE",
+    homeAboutHighlight2:"Specializing in interior, real estate, product, lifestyle & campaign photography",
+    homeAboutHighlight3:"Short-form video content for Instagram & TikTok with brand-consistent storytelling",
     homeServicesEyebrow:"What We Offer", homeServicesTitle:"Services", homeServicesIntro:"Every project is shaped around the brand or story behind it -- from first concept to final delivery.",
     homeWorkEyebrow:"Selected Work", homeWorkTitle:"Featured Projects", homeWorkViewAll:"View All →",
     homeClientsEyebrow:"Our Clients", homeClientsTitle:"Brands We've Worked With",
@@ -1723,7 +1734,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // defaults -- avoids the React error #418 hydration mismatch that reading localStorage
   // directly in those initializers used to cause.
   useEffect(()=>{
-    setSettings(s=>({...DEF_SETTINGS,...ls("nap_settings",DEF_SETTINGS)}));
+    // uiText gets its own nested merge (not just the outer spread) so that a saved uiText
+    // object from BEFORE a new uiText field existed (e.g. the homeAbout* fields added later)
+    // still falls back to that field's default instead of silently coming back undefined --
+    // a plain {...DEF_SETTINGS,...saved} would otherwise let a saved (older, smaller) uiText
+    // object fully replace the current, larger DEF_SETTINGS.uiText.
+    const saved=ls("nap_settings",DEF_SETTINGS);
+    setSettings(s=>({...DEF_SETTINGS,...saved,uiText:{...DEF_SETTINGS.uiText,...(saved.uiText||{})}}));
     // Projects/Categories/Testimonials/Blog/BlogCats ARE hydrated from localStorage here, same
     // as before -- this is a required safety net, not just a display nicety. The push effects
     // below save whatever is currently in these arrays to Supabase as soon as cloudLoaded goes
@@ -3434,7 +3451,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     fetchCloudData().then(cloud=>{
       if(cancelled) return;
       if(cloud){
-        if(cloud.nap_settings) setSettings(s=>({...DEF_SETTINGS,...cloud.nap_settings}));
+        if(cloud.nap_settings) setSettings(s=>({...DEF_SETTINGS,...cloud.nap_settings,uiText:{...DEF_SETTINGS.uiText,...(cloud.nap_settings.uiText||{})}}));
         if(cloud.nap_projects) setProjects(cloud.nap_projects);
         if(cloud.nap_cats) setCats(cloud.nap_cats);
         if(cloud.nap_testimonials) setTestimonials(cloud.nap_testimonials);
@@ -6053,6 +6070,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:32}}>
                   <div><label style={S.lbl}>Nav "Book" Button</label><input style={S.inp} value={settingsDraft.uiText.navBookBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,navBookBtn:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Footer WhatsApp Button</label><input style={S.inp} value={settingsDraft.uiText.footerWhatsappBtn} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,footerWhatsappBtn:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>About Subtitle (home page)</label><input style={S.inp} value={settingsDraft.uiText.homeAboutSubtitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutSubtitle:e.target.value}})} /></div>
+                  <div style={{gridColumn:"1/3"}}><label style={S.lbl}>About Bio (home page teaser -- short version; full bio is in Settings → About)</label><input style={S.inp} value={settingsDraft.uiText.homeAboutBio} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutBio:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>About Highlight 1</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight1} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight1:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>About Highlight 2</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight2} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight2:e.target.value}})} /></div>
+                  <div><label style={S.lbl}>About Highlight 3</label><input style={S.inp} value={settingsDraft.uiText.homeAboutHighlight3} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeAboutHighlight3:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Services Eyebrow</label><input style={S.inp} value={settingsDraft.uiText.homeServicesEyebrow} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesEyebrow:e.target.value}})} /></div>
                   <div><label style={S.lbl}>Services Title</label><input style={S.inp} value={settingsDraft.uiText.homeServicesTitle} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesTitle:e.target.value}})} /></div>
                   <div style={{gridColumn:"1/3"}}><label style={S.lbl}>Services Intro Text</label><input style={S.inp} value={settingsDraft.uiText.homeServicesIntro} onChange={e=>updateSD({uiText:{...settingsDraft.uiText,homeServicesIntro:e.target.value}})} /></div>
@@ -7411,10 +7433,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <div style={{flex:"1 1 420px",minWidth:280}}>
             <div style={{...S.tag(),color:C.PL}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />About</div>
             <h2 style={{fontSize:"clamp(30px,4vw,48px)",fontWeight:700,letterSpacing:0.5,margin:"0 0 10px",color:C.FG}}>{settings.aboutName}</h2>
-            <div style={{fontSize:"clamp(14px,1.4vw,17px)",color:C.PL,letterSpacing:0.5,marginBottom:20}}>Photographer · Cinematographer · Visual Artist</div>
-            <p style={{fontSize:14,color:C.MID,lineHeight:1.8,margin:"0 0 28px",maxWidth:500}}>A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion.</p>
+            <div style={{fontSize:"clamp(14px,1.4vw,17px)",color:C.PL,letterSpacing:0.5,marginBottom:20}}>{settings.uiText.homeAboutSubtitle}</div>
+            <p style={{fontSize:14,color:C.MID,lineHeight:1.8,margin:"0 0 28px",maxWidth:500}}>{settings.uiText.homeAboutBio}</p>
             <div style={{display:"flex",flexDirection:"column",gap:16,marginBottom:28}}>
-              {["20+ years of experience, 10 of them based in the UAE","Specializing in interior, real estate, product, lifestyle & campaign photography","Short-form video content for Instagram & TikTok with brand-consistent storytelling"].map((t,i)=>(
+              {[settings.uiText.homeAboutHighlight1,settings.uiText.homeAboutHighlight2,settings.uiText.homeAboutHighlight3].filter(Boolean).map((t,i)=>(
                 <div key={i} style={{display:"flex",alignItems:"center",gap:14}}>
                   <span style={{width:30,height:30,borderRadius:6,background:"rgba(139,92,246,0.14)",color:C.PL,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,flexShrink:0}}>✓</span>
                   <span style={{fontSize:14,color:C.FG}}>{t}</span>

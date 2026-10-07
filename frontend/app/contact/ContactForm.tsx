@@ -11,6 +11,7 @@
 // react-hook-form + dead-Worker-API version, which never actually delivered a single lead.
 import { useState } from "react";
 import { PublicSiteInfo, submitContactLead } from "@/lib/cmsData";
+import { COUNTRY_CODES, flagFor } from "@/lib/countryCodes";
 
 // Split into two separate pickers per Naveed's request: a "Category" chip group (what kind
 // of message this is) and a "Project Type" dropdown (which service, if any, it's about) --
@@ -32,6 +33,11 @@ function randDigit() { return 1 + Math.floor(Math.random() * 8); }
 
 export default function ContactForm({ site }: { site: PublicSiteInfo }) {
   const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", projectType: "", message: "" });
+  // WhatsApp number is captured as a country selector + local digits, then combined into
+  // form.phone on submit as "+<dial> <digits>" -- no new field/column, just a friendlier input
+  // so visitors don't type a number missing (or with the wrong) country code.
+  const [waIso, setWaIso] = useState("AE");
+  const [waDigits, setWaDigits] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [hp, setHp] = useState(""); // honeypot -- must stay empty
@@ -51,7 +57,9 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
     if (Date.now() - mountedAt < 1200) return; // submitted too fast to be a real person
     if (Number(captchaAnswer) !== captchaA + captchaB) { setCaptchaError("That's not quite right -- please try again."); refreshCaptcha(); return; }
     setCaptchaError("");
-    const entry = { id: String(Date.now()), date: new Date().toISOString(), ...form };
+    const dial = COUNTRY_CODES.find((c) => c.iso2 === waIso)?.dial || "971";
+    const phone = waDigits.trim() ? `+${dial} ${waDigits.trim()}` : "";
+    const entry = { id: String(Date.now()), date: new Date().toISOString(), ...form, phone };
     // WhatsApp alert now goes out automatically from the server, through the bridge, once
     // this lead is saved below -- see submitContactLead -> /api/notify/trigger's "new_lead"
     // handling. No WhatsApp Web deep link is opened here any more.
@@ -60,6 +68,7 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
     setSending(false);
     setSent(true);
     setForm({ name: "", email: "", phone: "", subject: "", projectType: "", message: "" });
+    setWaDigits("");
     refreshCaptcha();
   }
 
@@ -114,8 +123,31 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
       </div>
 
       <div style={{ position: "relative", zIndex: 1, marginBottom: 16 }}>
-        <label className="adv-label">Phone</label>
-        <input className="adv-input" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+        <label className="adv-label">WhatsApp Number</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <select
+            className="adv-input"
+            aria-label="Country code"
+            style={{ flex: "0 0 128px", minWidth: 0 }}
+            value={waIso}
+            onChange={(e) => setWaIso(e.target.value)}
+          >
+            {COUNTRY_CODES.map((c) => (
+              <option key={c.iso2} value={c.iso2}>
+                {flagFor(c.iso2)} +{c.dial} {c.name}
+              </option>
+            ))}
+          </select>
+          <input
+            className="adv-input"
+            style={{ flex: 1 }}
+            type="tel"
+            inputMode="tel"
+            placeholder="e.g. 50 123 4567"
+            value={waDigits}
+            onChange={(e) => setWaDigits(e.target.value.replace(/[^\d\s]/g, ""))}
+          />
+        </div>
       </div>
 
       <div style={{ position: "relative", zIndex: 1, marginBottom: 26 }}>

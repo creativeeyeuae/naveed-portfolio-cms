@@ -10,6 +10,7 @@ import SiteFooter from "@/components/SiteFooter";
 import CinematicShowcase from "@/components/CinematicShowcase";
 import RichTextEditor from "@/components/RichTextEditor";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
+import { COUNTRY_CODES, flagFor } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -1859,6 +1860,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [lang,setLang]=useState<Lang>("en");
   const [popupOpen,setPopupOpen]=useState(false);
   const [contactForm,setContactForm]=useState({name:"",email:"",phone:"",subject:"",message:""});
+  // WhatsApp number = country selector + local digits, combined into contactForm.phone on
+  // submit as "+<dial> <digits>" -- same trick as the standalone /contact page's ContactForm.tsx,
+  // so visitors pick their country instead of typing (or omitting) a dial code by hand.
+  const [waIso,setWaIso]=useState("AE");
+  const [waDigits,setWaDigits]=useState("");
   const [contactSending,setContactSending]=useState(false);
   const [contactSent,setContactSent]=useState(false);
   const [leads,setLeads]=useState<ContactLead[]>([]);
@@ -3802,7 +3808,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // free EmailJS credentials into Settings > Contact, emails him a copy too.
   async function submitContact(){
     if(!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()) return;
-    const entry:ContactLead={id:String(Date.now()),date:new Date().toISOString(),...contactForm};
+    const waDial=COUNTRY_CODES.find(c=>c.iso2===waIso)?.dial||"971";
+    const phone=waDigits.trim()?`+${waDial} ${waDigits.trim()}`:"";
+    const entry:ContactLead={id:String(Date.now()),date:new Date().toISOString(),...contactForm,phone};
     // WhatsApp alert now goes out automatically from the server, straight through the
     // WhatsApp bridge, once this lead is saved (notifyServer below -> /api/notify/trigger's
     // "new_lead" handling -> _shared/liveChatWhatsapp.ts) -- no longer opens WhatsApp Web in
@@ -3813,6 +3821,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     await sendEmailNotification(settings,entry);
     setContactSending(false); setContactSent(true);
     setContactForm({name:"",email:"",phone:"",subject:"",message:""});
+    setWaDigits("");
   }
   function removeLead(id:string){ setLeads(ls=>ls.filter(l=>l.id!==id)); deleteContactLead(id); }
   // Turns a raw contact-form submission into a real CRM client -- the one real connection
@@ -7724,7 +7733,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
                 <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder={T.formName} />
                 <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder={T.formEmail} />
-                <input style={S.inp} type="tel" value={contactForm.phone} onChange={e=>setContactForm(f=>({...f,phone:e.target.value}))} placeholder={T.formPhone} />
+                <div style={{display:"flex",gap:6}}>
+                  <select style={{...S.inp,flex:"0 0 92px",minWidth:0,padding:"0 4px"}} aria-label="Country code" value={waIso} onChange={e=>setWaIso(e.target.value)}>
+                    {COUNTRY_CODES.map(c=>(<option key={c.iso2} value={c.iso2}>{flagFor(c.iso2)} +{c.dial}</option>))}
+                  </select>
+                  <input style={{...S.inp,flex:1}} type="tel" inputMode="tel" value={waDigits} onChange={e=>setWaDigits(e.target.value.replace(/[^\d\s]/g,""))} placeholder="WhatsApp: 50 123 4567" />
+                </div>
                 <input style={S.inp} value={contactForm.subject} onChange={e=>setContactForm(f=>({...f,subject:e.target.value}))} placeholder={T.formSubject} />
               </div>
               <textarea style={{...S.inp,height:110,resize:"vertical" as const,marginBottom:16}} value={contactForm.message} onChange={e=>setContactForm(f=>({...f,message:e.target.value}))} placeholder={T.formMessage} />

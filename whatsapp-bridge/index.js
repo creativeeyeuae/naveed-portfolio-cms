@@ -18,6 +18,28 @@ require("dotenv").config();
 const path = require("path");
 const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
+const QRCodeLib = require("qrcode");
+
+// Draw the QR using plain "#" / " " characters only -- no Unicode block glyphs.
+// Some server/VNC console fonts can't render the Unicode half-block characters
+// qrcode-terminal normally uses, and silently show garbled diamonds instead
+// (unscannable). Plain ASCII renders correctly everywhere.
+function printAsciiQr(qrData) {
+  const code = QRCodeLib.create(qrData, { errorCorrectionLevel: "L" });
+  const modules = code.modules; // square BitMatrix
+  const size = modules.size;
+  const border = 2;
+  const lines = [];
+  for (let y = -border; y < size + border; y++) {
+    let line = "";
+    for (let x = -border; x < size + border; x++) {
+      const dark = y >= 0 && y < size && x >= 0 && x < size && modules.get(y, x);
+      line += dark ? "##" : "  ";
+    }
+    lines.push(line);
+  }
+  console.log("\n" + lines.join("\n") + "\n");
+}
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 
 const TARGET = (process.env.BRIDGE_TARGET_URL || "").replace(/\/+$/, "");
@@ -89,7 +111,7 @@ async function start() {
         }
       } else {
         console.log("\n=== Scan this QR code with the WhatsApp phone you're connecting (WhatsApp > Linked Devices > Link a Device) ===\n");
-        qrcodeTerminal.generate(qr, { small: true });
+        printAsciiQr(qr);
       }
       await callWebhook({ type: "connection_update", status: "connecting", qr_code: qr });
     }

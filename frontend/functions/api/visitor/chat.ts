@@ -117,6 +117,24 @@ const HANDOFF_NO = "[[HANDOFF:NO]]";
 // a normal AI reply again on its own.
 const AI_FALLBACK_REPLY = "Thanks for your message! I'm stepping in personally and will get back to you very shortly.";
 
+// AI-initiated WhatsApp handover -- a SEPARATE, additional option alongside the EXISTING
+// manual Take Over control in the CMS (api/admin/livechat.ts's ai_paused toggle, untouched
+// by any of this). When the AI itself decides a human may be needed, the visitor is shown
+// this EXACT fixed question (not the model's own free-text wording) with two choices,
+// rendered as buttons by HomeClient.tsx's FloatingWA widget:
+//   "Connect with Naveed on WhatsApp"  -> sends WA_HANDOVER_SENTINEL back to this endpoint,
+//                                         handled right at the top of onRequestPost below.
+//   "I have another question"         -> handled entirely client-side (dismiss + keep
+//                                         chatting); nothing is sent to this endpoint at all.
+// Deliberately NOT a real WhatsApp send of any kind: no message to Naveed's own number, no
+// self-chat message from the QR-connected bridge account, no simulated incoming message from
+// the client. It only flags the thread (reusing the existing needs_human column) and shows a
+// plain wa.me link in the CMS so Naveed can start a completely normal WhatsApp conversation
+// himself, from his own phone, same as he would with anyone else.
+const WA_HANDOVER_PROMPT = "Would you like to continue with Naveed on WhatsApp, or do you have any other questions I can help you with?";
+const WA_HANDOVER_SENTINEL = "__WA_HANDOVER__";
+const WA_HANDOVER_CONFIRM = "Sure. Naveed will connect with you shortly on WhatsApp. Please keep your WhatsApp available.";
+
 // Asks Workers AI for a reply, grounded only in loadGroundingContext()'s real data, plus the
 // last few turns of this same thread for continuity. The model is required to end its reply
 // with a HANDOFF marker (stripped before display) saying whether Naveed should personally
@@ -172,12 +190,53 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!text) return json({ error: "Message can't be empty." }, 400, origin);
   if (text.length > MAX_LEN) return json({ error: "Message is too long." }, 400, origin);
 
+  // The visitor's answer to the AI-initiated WhatsApp handover prompt (see WA_HANDOVER_PROMPT
+  // above) -- never typed by the visitor themselves, only ever sent by the "Connect with
+  // Naveed on WhatsApp" button under that exact message (HomeClient.tsx's FloatingWA).
+  const isWaHandoverChoice = text === WA_HANDOVER_SENTINEL;
+
   const insRes = await supaAdmin(env as any, "live_chat_messages", {
     method: "POST",
-    body: JSON.stringify({ visitor_id: visitorId, sender: "visitor", body: text, is_read_by_admin: false, is_read_by_visitor: true }),
+    body: JSON.stringify({ visitor_id: visitorId, sender: "visitor", body: isWaHandoverChoice ? "Connect with Naveed on WhatsApp" : text, is_read_by_admin: false, is_read_by_visitor: true }),
   });
   if (!insRes.ok) return json({ error: "Could not send your message.", detail: await insRes.text() }, 500, origin);
   const [visitorMsg] = (await insRes.json()) as any[];
+
+  // ── AI-initiated WhatsApp handover request. This is a REQUEST, not an automated WhatsApp
+  // send of any kind: no message to Naveed's own number, no self-chat message from the
+  // QR-connected bridge account, no simulated incoming message from the client. It only
+  // flags this thread (reusing the existing needs_human column, same mechanism as any other
+  // handoff) and notifies the CMS. Naveed then opens a completely normal WhatsApp chat
+  // himself from his own phone (the new "Open WhatsApp" wa.me link in the CMS Live Chat
+  // panel). The EXISTING manual Take Over control is untouched and keeps working exactly as
+  // before, independently of this. ────────────────────────────────────────────────────────
+  if (isWaHandoverChoice) {
+    if (visitorMsg?.id) {
+      try {
+        await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ needs_human: true }),
+        });
+      } catch {}
+    }
+    try {
+      await supaAdmin(env as any, "live_chat_messages", {
+        method: "POST",
+        body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: WA_HANDOVER_CONFIRM, is_read_by_admin: true, is_read_by_visitor: false }),
+      });
+    } catch {}
+    try {
+      await notifyAllAdmins(env, {
+        title: "WhatsApp handover requested",
+        body: "A live chat visitor asked to continue on WhatsApp.",
+        url: "/?admin=1",
+      });
+    } catch {}
+    // Deliberately no forwardLiveChatToWhatsApp call here -- per spec, this exact flow must
+    // never message Naveed's own WhatsApp number or create a bridge self-chat message. The
+    // CMS notification above is the only alert for this path.
+    return json({ ok: true, aiReply: WA_HANDOVER_CONFIRM, needsHuman: true }, 200, origin);
+  }
 
   // Has Naveed personally taken over this visitor's thread? (toggled from the CMS Live Chat
   // panel, see api/admin/livechat.ts). If so, skip the AI entirely -- only his own replies
@@ -196,12 +255,25 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     try {
       const ai = await generateAiReply(env, visitorId, text);
       if (ai) {
-        aiReply = ai.reply;
-        needsHuman = ai.needsHuman;
-        await supaAdmin(env as any, "live_chat_messages", {
-          method: "POST",
-          body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
-        });
+        if (ai.needsHuman) {
+          // The AI decided a human may be needed -- but don't flag the thread or notify
+          // Naveed yet. Show the visitor the fixed two-choice prompt instead of the model's
+          // own free-text wording; only clicking "Connect with Naveed on WhatsApp" (handled
+          // above, near the top of this function) actually flags needs_human and notifies
+          // the CMS. "I have another question" is handled entirely client-side -- nothing
+          // reaches this endpoint for that choice, so there's nothing to do here for it.
+          aiReply = WA_HANDOVER_PROMPT;
+          await supaAdmin(env as any, "live_chat_messages", {
+            method: "POST",
+            body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: WA_HANDOVER_PROMPT, is_read_by_admin: true, is_read_by_visitor: false }),
+          });
+        } else {
+          aiReply = ai.reply;
+          await supaAdmin(env as any, "live_chat_messages", {
+            method: "POST",
+            body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
+          });
+        }
       } else {
         // No AI reply at all -- most commonly the free daily Workers AI allowance is used
         // up for today (see AI_FALLBACK_REPLY above). Send the honest holding reply instead

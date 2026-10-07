@@ -1156,6 +1156,20 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   },[open]);
   useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity]);
 
+  // AI-initiated WhatsApp handover (separate from, and fully compatible with, the EXISTING
+  // manual Take Over control in the CMS admin panel -- that one is untouched). When the AI
+  // decides a human may be needed, functions/api/visitor/chat.ts shows this EXACT fixed
+  // question instead of its own free-text reply; these two buttons are the visitor's answer
+  // to it. Clicking "Connect on WhatsApp" sends a sentinel value (never shown to the visitor)
+  // that the backend recognizes and turns into a real handover flag + CMS notification.
+  // Clicking "I have another question" does nothing server-side at all -- it just dismisses
+  // the buttons so the visitor can keep typing normally, exactly as the spec requires.
+  const WA_HANDOVER_PROMPT = "Would you like to continue with Naveed on WhatsApp, or do you have any other questions I can help you with?";
+  const WA_HANDOVER_SENTINEL = "__WA_HANDOVER__";
+  const [handoverDismissedId,setHandoverDismissedId] = useState<string|null>(null);
+  function chooseWhatsAppHandover(){ send(WA_HANDOVER_SENTINEL); }
+  function dismissHandoverPrompt(msgId:string){ setHandoverDismissedId(msgId); }
+
   const QUICK:{label:string;text:string}[] = [
     {label:"How can you help me?", text:"Hi, how can you help me with my project?"},
     {label:"Ask about services", text:"Hi, I'd like to know more about your photography/videography services."},
@@ -1213,9 +1227,17 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
               Hi there 👋 How can I help you today? Pick an option below or type your own message.
             </div>
-            {loaded&&messages.map(m=>(
-              <div key={m.id} style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
-                <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+            {loaded&&messages.map((m,mi)=>(
+              <div key={m.id}>
+                <div style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
+                  <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                </div>
+                {m.sender==="admin"&&m.body===WA_HANDOVER_PROMPT&&mi===messages.length-1&&handoverDismissedId!==m.id&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14,marginTop:-2}}>
+                    <button onClick={chooseWhatsAppHandover} disabled={sending} style={{textAlign:"left",background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer",fontWeight:600}}>📱 Connect with Naveed on WhatsApp</button>
+                    <button onClick={()=>dismissHandoverPrompt(m.id)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer"}}>💬 I have another question</button>
+                  </div>
+                )}
               </div>
             ))}
             {!needsIdentity&&!sending&&messages.length===0&&(
@@ -5965,6 +5987,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             {t.aiPaused&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}}>🙋 YOU'RE HANDLING THIS</span>}
                             {t.needsHuman&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(226,160,63,0.18)",color:"#e2a03f",border:"1px solid #e2a03f"}}>⚠ NEEDS YOU</span>}
                             {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}}>{t.unread} NEW</span>}
+                            {/* Client's OWN WhatsApp number (from signup) -- a plain wa.me deep link, nothing
+                                automated. Opens a normal WhatsApp chat FROM Naveed's real phone TO the client,
+                                same as he'd start any other WhatsApp conversation himself. Never sent through
+                                the QR-connected bridge, never a fake/simulated incoming message. */}
+                            {t.visitor?.whatsapp&&(
+                              <a href={`https://wa.me/${String(t.visitor.whatsapp).replace(/[^\d]/g,"")}`} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} style={{...S.btnSm,textDecoration:"none",background:"rgba(74,222,128,0.14)",color:"#4ade80",border:"1px solid #4ade80"}} title="Open a normal WhatsApp chat with this client from your own phone">
+                                📱 Open WhatsApp
+                              </a>
+                            )}
                             <button onClick={(e)=>{e.stopPropagation();toggleLiveChatTakeover(t.visitorId,!t.aiPaused);}} style={{...S.btnSm,...(t.aiPaused?{background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}:{})}} title={t.aiPaused?"Let the AI auto-reply again for this visitor":"Pause the AI and reply yourself to this visitor"}>
                               {t.aiPaused?"🤖 Resume AI":"🙋 Take over"}
                             </button>

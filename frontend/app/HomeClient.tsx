@@ -3335,6 +3335,19 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setLcSending(false);
   }
 
+  // Take over / resume AI for one visitor's Live Chat thread (visitors.ai_paused, migration
+  // 0015) -- while paused, functions/api/visitor/chat.ts stops generating AI auto-replies for
+  // that visitor so only Naveed's own replies land.
+  async function toggleLiveChatTakeover(visitorId:string,paused:boolean){
+    if(!adminSession) return;
+    try{
+      const res=await fetch("/api/admin/livechat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({visitor_id:visitorId,ai_paused:paused})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to update takeover state");
+      await loadLiveChat();
+    }catch(e:any){ setLcErr(e.message||"Failed to update takeover state"); }
+  }
+
   async function loadComments(){
     if(!adminSession) return;
     setCommentsLoading(true); setCommentsErr("");
@@ -5858,7 +5871,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 const last=sorted[sorted.length-1];
                 const unread=msgs.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length;
                 const needsHuman=msgs.some((m:any)=>m.sender==="visitor"&&m.needs_human&&!m.is_read_by_admin);
-                return{visitorId:vid,visitor:last.visitors,messages:sorted,last,unread,needsHuman};
+                const aiPaused=Boolean(last.visitors?.ai_paused);
+                return{visitorId:vid,visitor:last.visitors,messages:sorted,last,unread,needsHuman,aiPaused};
               }).sort((a,b)=>new Date(b.last.created_at).getTime()-new Date(a.last.created_at).getTime());
               return(
                 <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -5872,8 +5886,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             <div style={{fontSize:12,color:C.MID,marginTop:2}}>{t.last.sender==="admin"?(t.last.is_ai?"AI: ":"You: "):""}{String(t.last.body).slice(0,80)}{t.last.body.length>80?"…":""}</div>
                           </div>
                           <div style={{display:"flex",gap:6,flexShrink:0,alignSelf:"flex-start"}}>
+                            {t.aiPaused&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}}>🙋 YOU'RE HANDLING THIS</span>}
                             {t.needsHuman&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(226,160,63,0.18)",color:"#e2a03f",border:"1px solid #e2a03f"}}>⚠ NEEDS YOU</span>}
                             {t.unread>0&&<span style={{fontSize:10,letterSpacing:1,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}}>{t.unread} NEW</span>}
+                            <button onClick={(e)=>{e.stopPropagation();toggleLiveChatTakeover(t.visitorId,!t.aiPaused);}} style={{...S.btnSm,...(t.aiPaused?{background:"rgba(139,92,246,0.18)",color:C.PL,border:`1px solid ${C.PL}`}:{})}} title={t.aiPaused?"Let the AI auto-reply again for this visitor":"Pause the AI and reply yourself to this visitor"}>
+                              {t.aiPaused?"🤖 Resume AI":"🙋 Take over"}
+                            </button>
                           </div>
                         </div>
                         {open&&(

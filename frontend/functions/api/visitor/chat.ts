@@ -20,6 +20,7 @@
 import { supaAdmin, json, corsHeaders } from "../../_shared/adminAuth";
 import { getVisitorIdFromRequest, type VisitorEnv } from "../../_shared/visitorAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
+import { forwardLiveChatToWhatsApp } from "../../_shared/liveChatWhatsapp";
 
 type Env = VisitorEnv & PushEnv & { SUPABASE_SERVICE_ROLE_KEY: string; AI?: { run(model: string, input: unknown): Promise<any> } };
 const MAX_LEN = 2000;
@@ -145,30 +146,49 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (!insRes.ok) return json({ error: "Could not send your message.", detail: await insRes.text() }, 500, origin);
   const [visitorMsg] = (await insRes.json()) as any[];
 
+  // Has Naveed personally taken over this visitor's thread? (toggled from the CMS Live Chat
+  // panel, see api/admin/livechat.ts). If so, skip the AI entirely -- only his own replies
+  // should land until he resumes it.
+  let aiPaused = false;
+  try {
+    const vRes = await supaAdmin(env as any, `visitors?id=eq.${visitorId}&select=ai_paused&limit=1`);
+    if (vRes.ok) aiPaused = Boolean(((await vRes.json()) as any[])?.[0]?.ai_paused);
+  } catch {}
+
   // Best-effort AI auto-reply -- never lets a hiccup here block the visitor's message from
   // having been saved (that already succeeded above).
   let aiReply: string | null = null;
-  let needsHuman = false;
-  try {
-    const ai = await generateAiReply(env, visitorId, text);
-    if (ai) {
-      aiReply = ai.reply;
-      needsHuman = ai.needsHuman;
-      await supaAdmin(env as any, "live_chat_messages", {
-        method: "POST",
-        body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
-      });
-      if (needsHuman && visitorMsg?.id) {
-        await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ needs_human: true }),
+  let needsHuman = aiPaused;
+  if (!aiPaused) {
+    try {
+      const ai = await generateAiReply(env, visitorId, text);
+      if (ai) {
+        aiReply = ai.reply;
+        needsHuman = ai.needsHuman;
+        await supaAdmin(env as any, "live_chat_messages", {
+          method: "POST",
+          body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
         });
+        if (needsHuman && visitorMsg?.id) {
+          await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ needs_human: true }),
+          });
+        }
+      } else {
+        needsHuman = true; // no AI reply at all -- make sure this still surfaces to Naveed
       }
-    } else {
-      needsHuman = true; // no AI reply at all -- make sure this still surfaces to Naveed
+    } catch {
+      needsHuman = true;
     }
-  } catch {
-    needsHuman = true;
+  } else if (visitorMsg?.id) {
+    // Thread is taken over -- still flag the message so the CMS highlights it the same way.
+    try {
+      await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ needs_human: true }),
+      });
+    } catch {}
   }
 
   try {
@@ -180,6 +200,12 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   } catch {
     // Push is best-effort -- the message itself is already saved either way.
   }
+
+  // Forward to Naveed's own WhatsApp too, so he's notified even away from the CMS/browser --
+  // reuses the existing WhatsApp bridge, see _shared/liveChatWhatsapp.ts.
+  try {
+    await forwardLiveChatToWhatsApp(env, `💬 Live Chat${needsHuman ? " (needs you)" : ""}:\n${text.slice(0, 300)}`);
+  } catch {}
 
   return json({ ok: true, aiReply, needsHuman }, 200, origin);
 };

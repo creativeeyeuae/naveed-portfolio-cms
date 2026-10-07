@@ -1,5 +1,9 @@
 // GET  /api/admin/livechat            -- every visitor's live-chat messages (CMS groups into threads)
 // POST /api/admin/livechat   body: { visitor_id, body } -- reply in one visitor's thread
+// POST /api/admin/livechat   body: { visitor_id, ai_paused: true|false } -- take over / resume
+//      the AI for that one visitor's thread (see visitors.ai_paused, migration 0015).
+//      When true, api/visitor/chat.ts stops generating AI auto-replies for that visitor --
+//      only Naveed's own replies land until he resumes it.
 //
 // Admin side of the on-site Live Chat widget (see api/visitor/chat.ts for the visitor
 // side). Requires a real Supabase Auth admin session (see _shared/adminAuth.ts), same as
@@ -17,7 +21,7 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
 
   const res = await supaAdmin(
     env,
-    `live_chat_messages?select=*,visitors(name,email,whatsapp)&order=created_at.desc&limit=1000`,
+    `live_chat_messages?select=*,visitors(name,email,whatsapp,ai_paused)&order=created_at.desc&limit=1000`,
     { method: "GET" }
   );
   if (!res.ok) return json({ error: "Could not load live chat.", detail: await res.text() }, 500, origin);
@@ -37,8 +41,22 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     return json({ error: "Invalid request." }, 400, origin);
   }
   const visitorId = String(body?.visitor_id || "");
+  if (!visitorId) return json({ error: "Missing recipient." }, 400, origin);
+
+  // Take-over toggle: { visitor_id, ai_paused } with no `body` text just flips the flag --
+  // doesn't send a chat message.
+  if (typeof body?.ai_paused === "boolean") {
+    const updRes = await supaAdmin(env, `visitors?id=eq.${visitorId}`, {
+      method: "PATCH",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ ai_paused: body.ai_paused }),
+    });
+    if (!updRes.ok) return json({ error: "Could not update takeover state.", detail: await updRes.text() }, 500, origin);
+    return json({ ok: true }, 200, origin);
+  }
+
   const text = String(body?.body || "").trim();
-  if (!visitorId || !text) return json({ error: "Missing recipient or message." }, 400, origin);
+  if (!text) return json({ error: "Missing message." }, 400, origin);
 
   const insRes = await supaAdmin(env, "live_chat_messages", {
     method: "POST",

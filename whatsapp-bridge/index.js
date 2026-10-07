@@ -24,6 +24,10 @@ const TARGET = (process.env.BRIDGE_TARGET_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.BRIDGE_SECRET || "";
 const POLL_MS = Number(process.env.POLL_INTERVAL_MS || 4000);
 const AUTH_DIR = path.join(__dirname, "auth_info_baileys");
+// Optional: your WhatsApp number in international format, digits only (e.g. 9715XXXXXXXX).
+// When set, the bridge prints an 8-character PAIRING CODE instead of a QR code --
+// for server screens that can't draw a scannable QR.
+const PAIR_PHONE = String(process.env.PAIR_PHONE || "").replace(/[^\d]/g, "");
 
 if (!TARGET || !SECRET) {
   console.error("Missing BRIDGE_TARGET_URL or BRIDGE_SECRET. Copy .env.example to .env and fill both in, then run again.");
@@ -65,13 +69,28 @@ async function start() {
   });
 
   sock.ev.on("creds.update", saveCreds);
+  let pairingRequested = false; // ask WhatsApp for a pairing code only once per connection attempt
 
   sock.ev.on("connection.update", async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
-      console.log("\n=== Scan this QR code with the WhatsApp phone you're connecting (WhatsApp > Linked Devices > Link a Device) ===\n");
-      qrcodeTerminal.generate(qr, { small: true });
+      if (PAIR_PHONE) {
+        if (!pairingRequested && !sock.authState.creds.registered) {
+          pairingRequested = true;
+          try {
+            const code = await sock.requestPairingCode(PAIR_PHONE);
+            const pretty = code && code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
+            console.log(`\n=== PAIRING CODE: ${pretty} ===`);
+            console.log(`On the phone: WhatsApp > Linked Devices > Link a Device > "Link with phone number instead", then type this code.\n`);
+          } catch (e) {
+            console.error("pairing code request failed:", e.message);
+          }
+        }
+      } else {
+        console.log("\n=== Scan this QR code with the WhatsApp phone you're connecting (WhatsApp > Linked Devices > Link a Device) ===\n");
+        qrcodeTerminal.generate(qr, { small: true });
+      }
       await callWebhook({ type: "connection_update", status: "connecting", qr_code: qr });
     }
 

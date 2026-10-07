@@ -311,6 +311,61 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
     setConnectionDisconnecting(false);
   }
 
+  // ── Broadcasts (migration 0019) -- recipients are always existing conversations (people
+  // who've already exchanged a real message), never a pasted number list; sending is
+  // staggered server-side (see broadcasts/[id]/start.ts) so this can never fire all at once.
+  const BROADCAST_MAX_RECIPIENTS=250;
+  const [broadcasts,setBroadcasts]=useState<any[]|null>(null);
+  const [broadcastsLoading,setBroadcastsLoading]=useState(false);
+  const [broadcastName,setBroadcastName]=useState("");
+  const [broadcastBody,setBroadcastBody]=useState("");
+  const [broadcastRecipientIds,setBroadcastRecipientIds]=useState<string[]>([]);
+  const [broadcastBusy,setBroadcastBusy]=useState(false);
+  async function loadBroadcasts(){
+    if(!adminSession) return;
+    setBroadcastsLoading(true);
+    try{ const res=await fetch("/api/admin/whatsapp/broadcasts",{headers:authHeaders(false)}); const data=await res.json(); if(res.ok) setBroadcasts(data.broadcasts||[]); }catch{}
+    setBroadcastsLoading(false);
+  }
+  function toggleBroadcastRecipient(id:string){
+    setBroadcastRecipientIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+  }
+  async function createBroadcast(){
+    if(!broadcastName.trim()||!broadcastBody.trim()||broadcastRecipientIds.length===0) return;
+    setBroadcastBusy(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/broadcasts",{method:"POST",headers:authHeaders(),body:JSON.stringify({name:broadcastName.trim(),body:broadcastBody.trim(),conversationIds:broadcastRecipientIds})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not create broadcast");
+      setBroadcastName(""); setBroadcastBody(""); setBroadcastRecipientIds([]);
+      await loadBroadcasts();
+    }catch(e:any){ alert(e.message||"Could not create broadcast"); }
+    setBroadcastBusy(false);
+  }
+  async function startBroadcast(id:string){
+    if(!confirm("Start sending? Messages will go out gradually (not all at once) to reduce the risk of this number getting flagged.")) return;
+    setBroadcastBusy(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/broadcasts/${id}/start`,{method:"POST",headers:authHeaders(false)});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not start broadcast");
+      alert(`Sending to ${data.recipients} people, spread out over roughly ${data.eta_minutes} minute(s).`);
+      await loadBroadcasts();
+    }catch(e:any){ alert(e.message||"Could not start broadcast"); }
+    setBroadcastBusy(false);
+  }
+  async function cancelBroadcast(id:string){
+    if(!confirm("Cancel this broadcast? Anything already sent stays sent; everything still waiting will be stopped.")) return;
+    setBroadcastBusy(true);
+    try{
+      const res=await fetch(`/api/admin/whatsapp/broadcasts/${id}/cancel`,{method:"POST",headers:authHeaders(false)});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not cancel broadcast");
+      await loadBroadcasts();
+    }catch(e:any){ alert(e.message||"Could not cancel broadcast"); }
+    setBroadcastBusy(false);
+  }
+
   // Right CRM panel -- same /api/admin/clients/:id family the Client Directory tab uses.
   async function loadCrmDetail(customerId:string){
     if(!adminSession) return;
@@ -367,7 +422,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
     setCrmBusy(false);
   }
 
-  useEffect(()=>{ if(adminSession){ loadConversations(); loadQuickReplies(); loadConnection(); } },[adminSession]);
+  useEffect(()=>{ if(adminSession){ loadConversations(); loadQuickReplies(); loadConnection(); loadBroadcasts(); } },[adminSession]);
 
   // Auto-refresh the Connection status every 4s while it's not yet connected, so a freshly
   // generated QR code (the bridge rotates it roughly every 20-60s until scanned) shows up
@@ -820,7 +875,75 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
           </div>
         )}
 
-        {section==="broadcasts"&&<ComingSoonPanel icon="📣" title="Broadcasts" blurb="Send one message to many contacts at once (e.g. all 'hot' leads, or everyone tagged VIP). The inbox and contact data this would target already exist and are real -- what's missing is a send-to-many endpoint and WhatsApp Business API access to actually deliver at scale." needs={["Bulk-send endpoint","WhatsApp Business API / approved sender"]} />}
+        {/* ── BROADCASTS -- real: migration 0019 + broadcasts.ts/[id]/start.ts/[id]/cancel.ts.
+             Recipients are only ever existing conversations (no arbitrary number list). Starting
+             a broadcast queues one whatsapp_messages row per recipient with a staggered send_after
+             (15-35s apart, see pending.ts) so the existing bridge drip-feeds sends naturally. ────── */}
+        {section==="broadcasts"&&(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap" as const,gap:8}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase" as const}}>Broadcasts</div>
+              <NeedsBackend label="real sends -- staggered 15-35s apart per recipient to reduce ban risk, but still real WhatsApp messages" />
+            </div>
+            <div style={{fontSize:11.5,color:C.MID,marginBottom:16}}>Send one message to many existing conversations at once. Recipients can only be people who've already messaged on WhatsApp -- no pasted number lists. Once started, messages queue with a randomized delay between each send so nothing fires all at once. Max {BROADCAST_MAX_RECIPIENTS} recipients per broadcast.</div>
+
+            <div style={{...CARD_STYLE,padding:16,marginBottom:20,display:"flex",flexDirection:"column" as const,gap:10}}>
+              <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>New Broadcast</div>
+              <input style={S.inp} placeholder='Broadcast name (internal, e.g. "Oct hot leads follow-up")' value={broadcastName} onChange={e=>setBroadcastName(e.target.value)} />
+              <textarea style={{...S.inp,minHeight:90,resize:"vertical" as const,fontFamily:"inherit"}} placeholder="Message to send..." value={broadcastBody} onChange={e=>setBroadcastBody(e.target.value)} />
+              <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginTop:6}}>Recipients ({broadcastRecipientIds.length}/{BROADCAST_MAX_RECIPIENTS})</div>
+              <div style={{maxHeight:220,overflowY:"auto" as const,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:8,display:"flex",flexDirection:"column" as const,gap:2}}>
+                {waContacts.length===0?(
+                  <div style={{color:C.MID,fontSize:12.5,fontStyle:"italic",padding:8}}>No WhatsApp conversations yet to pick recipients from.</div>
+                ):waContacts.map((c:any)=>{
+                  const checked=broadcastRecipientIds.includes(c.id);
+                  const disabled=!checked&&broadcastRecipientIds.length>=BROADCAST_MAX_RECIPIENTS;
+                  return (
+                    <label key={c.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 6px",borderRadius:6,cursor:disabled?"not-allowed":"pointer",opacity:disabled?0.4:1,background:checked?"rgba(139,92,246,0.1)":"transparent"}}>
+                      <input type="checkbox" checked={checked} disabled={disabled} onChange={()=>toggleBroadcastRecipient(c.id)} />
+                      <span style={{fontSize:12.5,color:C.FG,flex:1}}>{c.name}</span>
+                      <span style={{fontSize:11,color:C.MID}}>{c.phone}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",marginTop:4}}>
+                <button style={{...S.btnSm,opacity:(broadcastBusy||!broadcastName.trim()||!broadcastBody.trim()||broadcastRecipientIds.length===0)?0.5:1}} disabled={broadcastBusy||!broadcastName.trim()||!broadcastBody.trim()||broadcastRecipientIds.length===0} onClick={createBroadcast}>{broadcastBusy?"Saving...":"Save as Draft"}</button>
+              </div>
+            </div>
+
+            <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:8}}>Existing Broadcasts</div>
+            {broadcastsLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading...</div>
+            ):!broadcasts||broadcasts.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No broadcasts yet. Create one above.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+                {broadcasts.map((b:any)=>(
+                  <div key={b.id} style={{...CARD_STYLE,padding:14}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap" as const}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:700,color:C.FG,marginBottom:2}}>{b.name}</div>
+                        <div style={{fontSize:11.5,color:C.MID}}>{b.total_recipients||0} recipient{(b.total_recipients||0)===1?"":"s"}</div>
+                      </div>
+                      <StatusPill status={b.status} />
+                    </div>
+                    <div style={{fontSize:12.5,color:C.MID,margin:"8px 0",lineHeight:1.5,whiteSpace:"pre-wrap" as const}}>{b.body}</div>
+                    <div style={{display:"flex",gap:14,fontSize:11,color:C.MID,marginBottom:10,flexWrap:"wrap" as const}}>
+                      <span>✓ Sent: {b.sent_count||0}</span>
+                      <span>⏳ Pending: {b.pending_count||0}</span>
+                      <span style={{color:(b.failed_count||0)>0?"#f87171":C.MID}}>✕ Failed: {b.failed_count||0}</span>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      {b.status==="draft"&&<button style={S.btnSm} disabled={broadcastBusy} onClick={()=>startBroadcast(b.id)}>Start Sending</button>}
+                      {(b.status==="draft"||b.status==="sending")&&<button style={{...S.btnO,padding:"8px 18px",fontSize:10,letterSpacing:2}} disabled={broadcastBusy} onClick={()=>cancelBroadcast(b.id)}>Cancel</button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {section==="campaigns"&&<ComingSoonPanel icon="🚀" title="Campaigns" blurb="Multi-step WhatsApp sequences (like the existing Email Designer's campaigns, but for WhatsApp). The Email Designer's campaign model is a close reference for how this would be built once a campaigns table and send-step endpoint exist for WhatsApp." needs={["whatsapp_campaigns table + endpoints","WhatsApp Business API / approved sender"]} />}
         {section==="automations"&&<ComingSoonPanel icon="🤖" title="Automations" blurb="Rule-based auto-replies and follow-ups (e.g. 'if no reply in 48h, send this quick reply'). Needs a rules engine and a worker that can act without an admin clicking anything." needs={["Automation rules table + endpoints","Background worker / cron"]} />}
         {section==="media"&&<ComingSoonPanel icon="🗂" title="Media Library" blurb="A shared place to upload and reuse images/videos as WhatsApp attachments. No WhatsApp media storage or listing endpoint exists yet, so nothing is uploaded or shown here until one does -- this screen intentionally doesn't show a fake file grid." needs={["WhatsApp media storage bucket","Media list/upload endpoint"]} />}

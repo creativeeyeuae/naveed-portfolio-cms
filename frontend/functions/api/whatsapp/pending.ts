@@ -16,9 +16,13 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const gate = await requireBridge(request, env);
   if (gate !== true) return gate;
 
+  // send_after (migration 0019, for Broadcasts) lets a message sit queued but not yet
+  // eligible to send -- null (every non-broadcast message, unaffected) or already-passed
+  // times are both eligible; a future send_after is held back until its own poll cycle.
+  const nowIso = new Date().toISOString();
   const res = await supaAdmin(
     env,
-    "whatsapp_messages?status=eq.queued&direction=eq.outbound&select=*,whatsapp_conversations(wa_phone)&order=created_at.asc&limit=100",
+    `whatsapp_messages?status=eq.queued&direction=eq.outbound&or=(send_after.is.null,send_after.lte.${nowIso})&select=*,whatsapp_conversations(wa_phone)&order=created_at.asc&limit=100`,
     { method: "GET" }
   );
   if (!res.ok) return json({ error: "Could not load pending messages.", detail: await res.text() }, 500, origin);

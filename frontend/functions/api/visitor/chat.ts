@@ -56,29 +56,46 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
 // (nap_settings) -- services, packages/pricing, location. The model is told to only use
 // this and never invent a number or a service that isn't here.
 async function loadGroundingContext(env: Env): Promise<string> {
+  const lines: string[] = [];
+
   try {
     const res = await supaAdmin(env as any, "site_settings?select=value&key=eq.nap_settings");
-    if (!res.ok) return "";
-    const rows = (await res.json()) as { value?: string }[];
-    const settings = rows?.[0]?.value ? JSON.parse(rows[0].value) : null;
-    if (!settings) return "";
+    if (res.ok) {
+      const rows = (await res.json()) as { value?: string }[];
+      const settings = rows?.[0]?.value ? JSON.parse(rows[0].value) : null;
+      if (settings) {
+        const services: any[] = Array.isArray(settings.services) ? settings.services : [];
+        const packages: any[] = Array.isArray(settings.pricingPackages) ? settings.pricingPackages : [];
+        if (settings.location) lines.push(`Location: ${settings.location} (UAE/GCC and internationally on request)`);
+        if (services.length) {
+          lines.push("Services offered:");
+          for (const s of services) if (s?.title) lines.push(`- ${s.title}${s.desc ? `: ${s.desc}` : ""}`);
+        }
+        if (packages.length) {
+          lines.push("Packages / pricing:");
+          for (const p of packages) if (p?.label) lines.push(`- ${p.label}: ${p.price || "price on request"}${p.priceNote ? ` (${p.priceNote})` : ""}`);
+        }
+      }
+    }
+  } catch {}
 
-    const services: any[] = Array.isArray(settings.services) ? settings.services : [];
-    const packages: any[] = Array.isArray(settings.pricingPackages) ? settings.pricingPackages : [];
-    const lines: string[] = [];
-    if (settings.location) lines.push(`Location: ${settings.location} (UAE/GCC and internationally on request)`);
-    if (services.length) {
-      lines.push("Services offered:");
-      for (const s of services) if (s?.title) lines.push(`- ${s.title}${s.desc ? `: ${s.desc}` : ""}`);
+  // Naveed's own saved Q&A (CMS "Chatbot Q&A" panel, database/migrations/0016_chat_faqs.sql).
+  // These are his exact pre-written answers -- when a visitor asks something covered here,
+  // the model should use this answer rather than guessing or deflecting to a handoff. Loaded
+  // independently of nap_settings above, so FAQs still ground the AI even before Naveed has
+  // filled in services/pricing.
+  try {
+    const faqRes = await supaAdmin(env as any, "chat_faqs?select=question,answer&is_active=eq.true&order=sort_order.asc&limit=200");
+    if (faqRes.ok) {
+      const faqs = (await faqRes.json()) as { question?: string; answer?: string }[];
+      if (faqs.length) {
+        lines.push("Frequently asked questions (Naveed's own answers -- use these exactly when they match):");
+        for (const f of faqs) if (f?.question && f?.answer) lines.push(`Q: ${f.question}\nA: ${f.answer}`);
+      }
     }
-    if (packages.length) {
-      lines.push("Packages / pricing:");
-      for (const p of packages) if (p?.label) lines.push(`- ${p.label}: ${p.price || "price on request"}${p.priceNote ? ` (${p.priceNote})` : ""}`);
-    }
-    return lines.join("\n");
-  } catch {
-    return "";
-  }
+  } catch {}
+
+  return lines.join("\n");
 }
 
 const HANDOFF_YES = "[[HANDOFF:YES]]";

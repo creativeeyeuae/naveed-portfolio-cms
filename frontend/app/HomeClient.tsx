@@ -2334,6 +2334,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [lcOpenVisitorId,setLcOpenVisitorId]=useState<string|null>(null);
   const [lcReplyText,setLcReplyText]=useState("");
   const [lcSending,setLcSending]=useState(false);
+  const [faqList,setFaqList]=useState<any[]|null>(null);
+  const [faqLoading,setFaqLoading]=useState(false);
+  const [faqErr,setFaqErr]=useState("");
+  const [faqNewQ,setFaqNewQ]=useState("");
+  const [faqNewA,setFaqNewA]=useState("");
+  const [faqSaving,setFaqSaving]=useState(false);
+  const [faqEditId,setFaqEditId]=useState<string|null>(null);
+  const [faqEditQ,setFaqEditQ]=useState("");
+  const [faqEditA,setFaqEditA]=useState("");
   // Comments moderation (CMS > Comments) -- same requireAdmin/adminSession pattern as Bookings.
   const [commentsList,setCommentsList]=useState<any[]|null>(null);
   const [commentsLoading,setCommentsLoading]=useState(false);
@@ -3348,6 +3357,63 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setLcErr(e.message||"Failed to update takeover state"); }
   }
 
+  // Chatbot Q&A knowledge base -- Naveed's own pre-written answers for the Live Chat AI
+  // (see functions/api/admin/chat-faqs.ts, database/migrations/0016_chat_faqs.sql).
+  async function loadFaqs(){
+    if(!adminSession) return;
+    setFaqLoading(true); setFaqErr("");
+    try{
+      const res=await fetch("/api/admin/chat-faqs",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to load chatbot Q&A");
+      setFaqList(data.faqs||[]);
+    }catch(e:any){ setFaqErr(e.message||"Failed to load chatbot Q&A"); }
+    setFaqLoading(false);
+  }
+  useEffect(()=>{ if(cmsTab==="chatfaqs"&&adminSession) loadFaqs(); },[cmsTab,adminSession]);
+
+  async function addFaq(){
+    if(!adminSession||!faqNewQ.trim()||!faqNewA.trim()) return;
+    setFaqSaving(true);
+    try{
+      const res=await fetch("/api/admin/chat-faqs",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({question:faqNewQ.trim(),answer:faqNewA.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to save");
+      setFaqNewQ(""); setFaqNewA("");
+      await loadFaqs();
+    }catch(e:any){ setFaqErr(e.message||"Failed to save"); }
+    setFaqSaving(false);
+  }
+
+  async function saveFaqEdit(id:string){
+    if(!adminSession||!faqEditQ.trim()||!faqEditA.trim()) return;
+    setFaqSaving(true);
+    try{
+      const res=await fetch(`/api/admin/chat-faqs/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({question:faqEditQ.trim(),answer:faqEditA.trim()})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Failed to save");
+      setFaqEditId(null);
+      await loadFaqs();
+    }catch(e:any){ setFaqErr(e.message||"Failed to save"); }
+    setFaqSaving(false);
+  }
+
+  async function toggleFaqActive(id:string,isActive:boolean){
+    if(!adminSession) return;
+    try{
+      await fetch(`/api/admin/chat-faqs/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({is_active:isActive})});
+      await loadFaqs();
+    }catch(e:any){ setFaqErr(e.message||"Failed to update"); }
+  }
+
+  async function deleteFaq(id:string){
+    if(!adminSession) return;
+    try{
+      await fetch(`/api/admin/chat-faqs/${id}`,{method:"DELETE",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      await loadFaqs();
+    }catch(e:any){ setFaqErr(e.message||"Failed to delete"); }
+  }
+
   async function loadComments(){
     if(!adminSession) return;
     setCommentsLoading(true); setCommentsErr("");
@@ -4119,6 +4185,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
         <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
         <CmsNavItem icon="💬" label={`Live Chat${lcList&&lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length>0?` · ${lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="livechat"} onClick={()=>setCmsTab("livechat")} />
+        <CmsNavItem icon="🤖" label="Chatbot Q&A" active={cmsTab==="chatfaqs"} onClick={()=>setCmsTab("chatfaqs")} />
         <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
         <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
         <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
@@ -5917,6 +5984,65 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
               );
             })()}
+          </div>
+        )}
+
+        {/* CHATBOT Q&A -- Naveed's own pre-written answers for the Live Chat AI. Every
+            is_active row here is read by functions/api/visitor/chat.ts's loadGroundingContext()
+            and answered from exactly, same as services/pricing (see functions/api/admin/
+            chat-faqs.ts, database/migrations/0016_chat_faqs.sql). */}
+        {cmsTab==="chatfaqs"&&(
+          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Chatbot Q&A</div>
+              <button onClick={loadFaqs} style={S.btnSm}>↻ Refresh</button>
+            </div>
+            <div style={{fontSize:12.5,color:C.MID,marginBottom:20,lineHeight:1.6}}>Type in questions visitors often ask and the exact answer you want given. The Live Chat AI uses these word-for-word when a visitor asks something that matches -- on top of the services/pricing it already knows. Turn one off any time without deleting it.</div>
+            {faqErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{faqErr}</div>}
+            <div style={{...CARD_STYLE,padding:20,marginBottom:20}}>
+              <div style={{fontSize:12,color:C.MID,marginBottom:10,fontWeight:600}}>Add a new question</div>
+              <input style={{...S.inp,width:"100%",marginBottom:10}} placeholder="Question a visitor might ask… e.g. Do you travel outside Dubai?" value={faqNewQ} onChange={e=>setFaqNewQ(e.target.value)} />
+              <textarea style={{...S.inp,width:"100%",minHeight:80,marginBottom:10,resize:"vertical" as const}} placeholder="The exact answer to give…" value={faqNewA} onChange={e=>setFaqNewA(e.target.value)} />
+              <button onClick={addFaq} disabled={faqSaving||!faqNewQ.trim()||!faqNewA.trim()} style={S.btnP}>{faqSaving?"Saving…":"+ Add Q&A"}</button>
+            </div>
+            {faqLoading?(
+              <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+            ):!faqList||faqList.length===0?(
+              <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No saved questions yet -- add your first one above.</div>
+            ):(
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                {faqList.map((f:any)=>{
+                  const editing=faqEditId===f.id;
+                  return(
+                    <div key={f.id} style={{...CARD_STYLE,padding:18,...(f.is_active?{}:{opacity:0.5})}}>
+                      {editing?(
+                        <div>
+                          <input style={{...S.inp,width:"100%",marginBottom:8}} value={faqEditQ} onChange={e=>setFaqEditQ(e.target.value)} />
+                          <textarea style={{...S.inp,width:"100%",minHeight:70,marginBottom:8,resize:"vertical" as const}} value={faqEditA} onChange={e=>setFaqEditA(e.target.value)} />
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>saveFaqEdit(f.id)} disabled={faqSaving} style={S.btnP}>{faqSaving?"Saving…":"Save"}</button>
+                            <button onClick={()=>setFaqEditId(null)} style={S.btnSm}>Cancel</button>
+                          </div>
+                        </div>
+                      ):(
+                        <div>
+                          <div style={{display:"flex",justifyContent:"space-between",gap:12,marginBottom:6}}>
+                            <div style={{fontSize:13.5,color:C.FG,fontWeight:700}}>{f.question}</div>
+                            {!f.is_active&&<span style={{fontSize:10,letterSpacing:1,padding:"3px 8px",borderRadius:20,background:"rgba(255,255,255,0.06)",color:C.MID,border:`1px solid ${C.BORDER}`,flexShrink:0}}>OFF</span>}
+                          </div>
+                          <div style={{fontSize:13,color:C.MID,lineHeight:1.6,marginBottom:12,whiteSpace:"pre-wrap"}}>{f.answer}</div>
+                          <div style={{display:"flex",gap:8}}>
+                            <button onClick={()=>{setFaqEditId(f.id);setFaqEditQ(f.question);setFaqEditA(f.answer);}} style={S.btnSm}>Edit</button>
+                            <button onClick={()=>toggleFaqActive(f.id,!f.is_active)} style={S.btnSm}>{f.is_active?"Turn off":"Turn on"}</button>
+                            <button onClick={()=>deleteFaq(f.id)} style={{...S.btnSm,color:"#e74c3c"}}>Delete</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

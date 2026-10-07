@@ -4,6 +4,7 @@
 // cancelled or completed booking -- those are terminal states, same rule as cancel/complete.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
+import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -26,7 +27,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
   } catch {}
   if (!bookingDate || !bookingTime) return json({ error: "A new date and time are required." }, 400, origin);
 
-  const getRes = await supaAdmin(env, `appointments?id=eq.${appointmentId}&select=*,customers(full_name,email)`, {
+  const getRes = await supaAdmin(env, `appointments?id=eq.${appointmentId}&select=*,customers(full_name,email,whatsapp,phone)`, {
     method: "GET",
   });
   const rows = (await getRes.json()) as any[];
@@ -89,6 +90,18 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
         is_read_by_client: false,
       }),
     });
+
+    // Best-effort: also let the client know on their own WhatsApp. Never blocks the
+    // reschedule itself.
+    try {
+      const cust = appt.customers;
+      await forwardClientWhatsAppAlert(
+        env,
+        cust?.whatsapp || cust?.phone,
+        `📅 Hi ${cust?.full_name || ""}, your booking (${appt.appointment_ref || appointmentId.slice(0, 8)}) has been *rescheduled* to ${bookingDate} at ${bookingTime}.${reason ? ` Note: ${reason}` : ""}`,
+        cust?.full_name
+      );
+    } catch {}
   }
 
   await notifyAllAdmins(env, {

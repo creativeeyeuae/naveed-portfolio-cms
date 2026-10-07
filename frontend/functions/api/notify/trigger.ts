@@ -19,7 +19,7 @@
 // and that failure is swallowed here so it can never break the push notification either.
 import { json, corsHeaders } from "../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
-import { forwardAdminWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
+import { forwardAdminWhatsAppAlert, forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 
 const SUPABASE_URL = "https://ziwaocjrpbrksnepbpxi.supabase.co";
 const RECENT_MS = 15 * 60 * 1000;
@@ -49,6 +49,9 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
 
   let payload: { title: string; body: string; url?: string } | null = null;
   let waText: string | null = null; // set alongside payload for new_booking/new_lead only
+  let clientWaText: string | null = null; // set alongside payload for new_booking only
+  let clientWaPhone: string | null = null;
+  let clientWaName: string | undefined;
 
   try {
     if (type === "new_booking") {
@@ -75,6 +78,19 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
           `📝 Notes: ${row.notes || "-"}\n` +
           `Ref: ${row.appointment_ref}\n\n` +
           `🔗 Open in CMS: https://bynaveedanjum.com/?admin=1`;
+
+        // Also confirm receipt of the booking straight to the CLIENT's own WhatsApp --
+        // same trusted, re-verified data, just a second recipient. Best-effort: if the
+        // client has no WhatsApp/phone on file this is simply skipped below.
+        clientWaPhone = row.customers?.whatsapp || row.customers?.phone || null;
+        clientWaName = row.customers?.full_name;
+        clientWaText =
+          `✅ Hi ${row.customers?.full_name || ""}, we've received your booking!\n\n` +
+          `🎯 Service: ${row.service_name}${row.package_name ? ` (${row.package_name})` : ""}\n` +
+          `📅 Date: ${row.booking_date || "-"}\n` +
+          `🕐 Time: ${row.booking_time || "-"}\n` +
+          `Ref: ${row.appointment_ref}\n\n` +
+          `Naveed will confirm shortly. Thank you for booking with Naveed Anjum! 📸`;
       }
     } else if (type === "receipt_uploaded") {
       const res = await supa(env, `payments?appointment_id=eq.${id}&select=total,uploaded_at,appointments(appointment_ref)`);
@@ -129,6 +145,14 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
   if (waText) {
     try {
       await forwardAdminWhatsAppAlert(env, waText);
+    } catch {}
+  }
+
+  // Third delivery channel, new_booking only: confirm receipt straight to the CLIENT's own
+  // WhatsApp. Same best-effort rule -- never affects the push notification or the response.
+  if (clientWaText && clientWaPhone) {
+    try {
+      await forwardClientWhatsAppAlert(env, clientWaPhone, clientWaText, clientWaName);
     } catch {}
   }
 

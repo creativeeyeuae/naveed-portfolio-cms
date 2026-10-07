@@ -6,6 +6,7 @@
 // server-side and then does the write with the service-role key.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
+import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -92,6 +93,26 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     body: `Payment verified — booking is now confirmed. AED ${payment.total}`,
     url: "/?admin=1",
   });
+
+  // Best-effort: let the client know on their own WhatsApp that their payment was verified
+  // and the booking is confirmed. Never blocks or fails the approval itself.
+  try {
+    const custRes = await supaAdmin(
+      env,
+      `appointments?id=eq.${payment.appointment_id}&select=appointment_ref,booking_date,booking_time,customers(full_name,whatsapp,phone)`,
+      { method: "GET" }
+    );
+    const apptRow = ((await custRes.json()) as any[])?.[0];
+    const cust = apptRow?.customers;
+    if (cust) {
+      await forwardClientWhatsAppAlert(
+        env,
+        cust.whatsapp || cust.phone,
+        `✅ Hi ${cust.full_name || ""}, your payment (AED ${payment.total}) has been verified and your booking ${apptRow?.appointment_ref || ""} is now *confirmed* for ${apptRow?.booking_date || ""} at ${apptRow?.booking_time || ""}.\n\nThank you for booking with Naveed Anjum! 📸`,
+        cust.full_name
+      );
+    }
+  } catch {}
 
   return json({ ok: true }, 200, origin);
 };

@@ -3,6 +3,7 @@
 // Marks a confirmed booking as completed once the shoot/delivery is done. Only valid from
 // "confirmed" -- catches the common mistake of completing a booking that was never paid.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
+import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -15,7 +16,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async (ctx) => {
 
   const appointmentId = params.id as string;
 
-  const getRes = await supaAdmin(env, `appointments?id=eq.${appointmentId}&select=*,customers(full_name)`, {
+  const getRes = await supaAdmin(env, `appointments?id=eq.${appointmentId}&select=*,customers(full_name,whatsapp,phone)`, {
     method: "GET",
   });
   const rows = (await getRes.json()) as any[];
@@ -70,6 +71,18 @@ export const onRequestPost: PagesFunction<AdminEnv> = async (ctx) => {
         is_read_by_client: false,
       }),
     });
+
+    // Best-effort: also let the client know on their own WhatsApp. Never blocks the
+    // completion itself.
+    try {
+      const cust = appt.customers;
+      await forwardClientWhatsAppAlert(
+        env,
+        cust?.whatsapp || cust?.phone,
+        `🎉 Hi ${cust?.full_name || ""}, your booking (${appt.appointment_ref || appointmentId.slice(0, 8)}) is now marked *complete*. Thank you for booking with Naveed Anjum!`,
+        cust?.full_name
+      );
+    } catch {}
   }
 
   return json({ ok: true }, 200, origin);

@@ -5,6 +5,7 @@
 // and can re-upload. Never deletes the booking -- see the audit/status-history rule.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
+import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -77,6 +78,26 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     body: `Reason: ${reason}`,
     url: "/?admin=1",
   });
+
+  // Best-effort: let the client know on their own WhatsApp why their receipt was rejected,
+  // so they can re-upload. Never blocks or fails the rejection itself.
+  try {
+    const custRes = await supaAdmin(
+      env,
+      `appointments?id=eq.${payment.appointment_id}&select=appointment_ref,customers(full_name,whatsapp,phone)`,
+      { method: "GET" }
+    );
+    const apptRow = ((await custRes.json()) as any[])?.[0];
+    const cust = apptRow?.customers;
+    if (cust) {
+      await forwardClientWhatsAppAlert(
+        env,
+        cust.whatsapp || cust.phone,
+        `⚠️ Hi ${cust.full_name || ""}, we couldn't verify the payment receipt for your booking ${apptRow?.appointment_ref || ""}.\n\nReason: ${reason}\n\nPlease reply here or re-upload a clear receipt so we can confirm your booking.`,
+        cust.full_name
+      );
+    }
+  } catch {}
 
   return json({ ok: true }, 200, origin);
 };

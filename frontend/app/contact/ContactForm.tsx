@@ -11,7 +11,7 @@
 // react-hook-form + dead-Worker-API version, which never actually delivered a single lead.
 import { useState } from "react";
 import { PublicSiteInfo, submitContactLead } from "@/lib/cmsData";
-import { COUNTRY_CODES, flagFor } from "@/lib/countryCodes";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 // Split into two separate pickers per Naveed's request: a "Category" chip group (what kind
 // of message this is) and a "Project Type" dropdown (which service, if any, it's about) --
@@ -128,13 +128,13 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
           <select
             className="adv-input"
             aria-label="Country code"
-            style={{ flex: "0 0 170px", minWidth: 0 }}
+            style={{ flex: "1 1 0", minWidth: 0 }}
             value={waIso}
             onChange={(e) => setWaIso(e.target.value)}
           >
             {COUNTRY_CODES.map((c) => (
               <option key={c.iso2} value={c.iso2}>
-                {flagFor(c.iso2)} +{c.dial} {c.name}
+                {c.name} (+{c.dial})
               </option>
             ))}
           </select>

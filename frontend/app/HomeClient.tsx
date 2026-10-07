@@ -10,7 +10,7 @@ import SiteFooter from "@/components/SiteFooter";
 import CinematicShowcase from "@/components/CinematicShowcase";
 import RichTextEditor from "@/components/RichTextEditor";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
-import { COUNTRY_CODES, flagFor } from "@/lib/countryCodes";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -7734,8 +7734,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <input style={S.inp} value={contactForm.name} onChange={e=>setContactForm(f=>({...f,name:e.target.value}))} placeholder={T.formName} />
                 <input style={S.inp} type="email" value={contactForm.email} onChange={e=>setContactForm(f=>({...f,email:e.target.value}))} placeholder={T.formEmail} />
                 <div style={{display:"flex",gap:6}}>
-                  <select style={{...S.inp,flex:"0 0 140px",minWidth:0,padding:"0 4px"}} aria-label="Country code" value={waIso} onChange={e=>setWaIso(e.target.value)}>
-                    {COUNTRY_CODES.map(c=>(<option key={c.iso2} value={c.iso2}>{flagFor(c.iso2)} +{c.dial}</option>))}
+                  <select style={{...S.inp,flex:1,minWidth:0,padding:"0 4px"}} aria-label="Country code" value={waIso} onChange={e=>setWaIso(e.target.value)}>
+                    {COUNTRY_CODES.map(c=>(<option key={c.iso2} value={c.iso2}>{c.name} (+{c.dial})</option>))}
                   </select>
                   <input style={{...S.inp,flex:1}} type="tel" inputMode="tel" value={waDigits} onChange={e=>setWaDigits(e.target.value.replace(/[^\d\s]/g,""))} placeholder="WhatsApp: 50 123 4567" />
                 </div>

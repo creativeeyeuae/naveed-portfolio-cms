@@ -7,8 +7,11 @@
 //
 // Body shapes (one of):
 //   {type:"message_in", from, name?, body?, media_url?, media_type?, wa_message_id?}
-//     -- an inbound WhatsApp message. Upserts the conversation by phone number and inserts
-//     one inbound whatsapp_messages row.
+//     -- an inbound WhatsApp message. Naveed's WhatsApp number is also his normal personal/
+//     business number, so this is NOT a blanket import: only a sender phone that matches an
+//     existing Live Chat visitor's visitors.whatsapp is routed into that visitor's
+//     live_chat_messages thread. Anything else is left in WhatsApp only -- no CMS record, no
+//     visitor ever auto-created. See handleMessageIn/findVisitorByWhatsApp below.
 //   {type:"status_update", message_id?, wa_message_id?, status, error?}
 //     -- a delivery-status callback for a message this CMS previously queued. Pass message_id
 //     (the whatsapp_messages row id, from GET /api/whatsapp/pending) the first time, right after
@@ -82,51 +85,55 @@ async function handleAdminReplyIn(env: Env, body: Record<string, any>, origin: s
   return json({ ok: true, visitor_id: visitor.id }, 200, origin);
 }
 
+// Naveed's WhatsApp number is also his normal personal/business number -- it is NOT a
+// dedicated "website inbox". So an inbound message here must NEVER be assumed to be about the
+// website. Only messages from a phone number that matches an existing Live Chat visitor's own
+// visitors.whatsapp are allowed to touch the CMS at all (routed straight into that visitor's
+// live_chat_messages thread, same as a tagged admin_reply_in reply). Everything else --
+// Naveed's ordinary contacts, family, other businesses -- is left alone in WhatsApp: no
+// whatsapp_conversations row, no whatsapp_messages row, no visitor is ever auto-created from
+// it. This intentionally narrows the general WhatsApp CRM inbox (whatsapp_conversations /
+// whatsapp_messages) built in an earlier session: it will no longer receive new conversations
+// from contacts unrelated to the website Live Chat, by explicit request.
+async function findVisitorByWhatsApp(env: Env, fromPhone: string): Promise<{ id: string } | null> {
+  const digits = fromPhone.replace(/[^\d]/g, "");
+  if (!digits) return null;
+  try {
+    const res = await supaAdmin(env, "visitors?select=id,whatsapp&order=created_at.desc&limit=2000", { method: "GET" });
+    if (!res.ok) return null;
+    const rows = (await res.json()) as { id: string; whatsapp?: string }[];
+    const match = rows.find((v) => v.whatsapp && v.whatsapp.replace(/[^\d]/g, "") === digits);
+    return match ? { id: match.id } : null;
+  } catch {
+    return null; // fail safe: never guess, never import, on any lookup error
+  }
+}
+
 async function handleMessageIn(env: Env, body: Record<string, any>, origin: string | null) {
   const from = String(body.from || "").trim();
   if (!from) return json({ error: "'from' is required." }, 400, origin);
 
-  const existingRes = await supaAdmin(env, `whatsapp_conversations?wa_phone=eq.${encodeURIComponent(from)}&select=id&limit=1`, { method: "GET" });
-  const existing = ((await existingRes.json()) as any[])?.[0];
-  const preview = String(body.body || "").slice(0, 140);
-  let conversationId = existing?.id as string | undefined;
-
-  if (conversationId) {
-    await supaAdmin(env, `whatsapp_conversations?id=eq.${conversationId}`, {
-      method: "PATCH",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ wa_name: body.name || undefined, last_message_at: new Date().toISOString(), last_message_preview: preview, updated_at: new Date().toISOString() }),
-    });
-    // unread_count += 1 via a raw increment isn't expressible through this REST layer without
-    // reading first, so read-then-write here (fine at this volume; no real traffic exists yet).
-    const curRes = await supaAdmin(env, `whatsapp_conversations?id=eq.${conversationId}&select=unread_count`, { method: "GET" });
-    const cur = ((await curRes.json()) as any[])?.[0]?.unread_count ?? 0;
-    await supaAdmin(env, `whatsapp_conversations?id=eq.${conversationId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ unread_count: cur + 1 }) });
-  } else {
-    const createRes = await supaAdmin(env, "whatsapp_conversations", {
-      method: "POST",
-      body: JSON.stringify({ wa_phone: from, wa_name: body.name || null, last_message_at: new Date().toISOString(), last_message_preview: preview, unread_count: 1 }),
-    });
-    const created = ((await createRes.json()) as any[])?.[0];
-    conversationId = created?.id;
+  const visitor = await findVisitorByWhatsApp(env, from);
+  if (!visitor) {
+    // No matching Live Chat visitor -- this is a normal/direct WhatsApp chat, not a website
+    // conversation. Leave it in WhatsApp only; do nothing in the CMS.
+    return json({ ok: true, routed: false }, 200, origin);
   }
 
-  await supaAdmin(env, "whatsapp_messages", {
+  const preview = String(body.body || "").slice(0, 2000);
+  await supaAdmin(env, "live_chat_messages", {
     method: "POST",
     headers: { Prefer: "return=minimal" },
     body: JSON.stringify({
-      conversation_id: conversationId,
-      direction: "inbound",
-      sender: "customer",
-      body: body.body || null,
-      media_url: body.media_url || null,
-      media_type: body.media_type || null,
-      status: "delivered",
-      wa_message_id: body.wa_message_id || null,
+      visitor_id: visitor.id,
+      sender: "visitor",
+      body: preview || (body.media_url ? "[Media message]" : ""),
+      is_read_by_admin: false,
+      is_read_by_visitor: true,
     }),
   });
 
-  return json({ ok: true, conversation_id: conversationId }, 200, origin);
+  return json({ ok: true, routed: true, visitor_id: visitor.id }, 200, origin);
 }
 
 async function handleStatusUpdate(env: Env, body: Record<string, any>, origin: string | null) {

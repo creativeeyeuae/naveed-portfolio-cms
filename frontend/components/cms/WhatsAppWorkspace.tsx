@@ -295,6 +295,21 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
     try{ const res=await fetch("/api/admin/whatsapp/connection",{headers:authHeaders(false)}); const data=await res.json(); if(res.ok) setConnection(data.connection); }catch{}
     setConnectionLoading(false);
   }
+  // Manual disconnect/reconnect (migration 0018) -- logs the bridge out cleanly and the next
+  // auto-connect attempt shows a brand-new QR, same as scanning in for the first time.
+  const [connectionDisconnecting,setConnectionDisconnecting]=useState(false);
+  async function disconnectWhatsApp(){
+    if(!adminSession) return;
+    if(!confirm("Disconnect WhatsApp? You'll need to scan a new QR code to reconnect.")) return;
+    setConnectionDisconnecting(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/disconnect",{method:"POST",headers:authHeaders(false)});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not disconnect");
+      await loadConnection();
+    }catch(e:any){ alert(e.message||"Could not disconnect"); }
+    setConnectionDisconnecting(false);
+  }
 
   // Right CRM panel -- same /api/admin/clients/:id family the Client Directory tab uses.
   async function loadCrmDetail(customerId:string){
@@ -982,7 +997,12 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
           <div style={{...CARD_STYLE,padding:24,maxWidth:560}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>WhatsApp Connection</div>
-              <button onClick={loadConnection} disabled={connectionLoading} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>{connectionLoading?"Refreshing…":"Refresh"}</button>
+              <div style={{display:"flex",gap:8}}>
+                {connection&&connection.status==="connected"&&(
+                  <button onClick={disconnectWhatsApp} disabled={connectionDisconnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#f87171",borderColor:"rgba(248,113,113,0.4)"}}>{connectionDisconnecting?"Disconnecting…":"Disconnect"}</button>
+                )}
+                <button onClick={loadConnection} disabled={connectionLoading} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>{connectionLoading?"Refreshing…":"Refresh"}</button>
+              </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
               <StatusPill status={(connection&&connection.status)||"not_connected"} />

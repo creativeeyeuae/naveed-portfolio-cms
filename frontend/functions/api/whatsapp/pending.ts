@@ -22,5 +22,15 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     { method: "GET" }
   );
   if (!res.ok) return json({ error: "Could not load pending messages.", detail: await res.text() }, 500, origin);
-  return json({ pending: await res.json() }, 200, origin);
+
+  // Piggyback the manual disconnect flag (migration 0018) on this same poll the bridge
+  // already makes every ~4s, instead of adding a second polling loop -- see
+  // api/admin/whatsapp/disconnect.ts for where this gets set to true.
+  let disconnectRequested = false;
+  try {
+    const connRes = await supaAdmin(env, "whatsapp_connection?select=disconnect_requested&limit=1", { method: "GET" });
+    disconnectRequested = !!((await connRes.json()) as any[])?.[0]?.disconnect_requested;
+  } catch {}
+
+  return json({ pending: await res.json(), disconnect_requested: disconnectRequested }, 200, origin);
 };

@@ -167,7 +167,12 @@ async function handleStatusUpdate(env: Env, body: Record<string, any>, origin: s
 async function handleConnectionUpdate(env: Env, body: Record<string, any>, origin: string | null) {
   const rowRes = await supaAdmin(env, "whatsapp_connection?select=id&limit=1", { method: "GET" });
   const row = ((await rowRes.json()) as any[])?.[0];
-  const patch = { status: body.status || "error", phone_number: body.phone_number || null, qr_code: body.qr_code || null, error: body.error || null, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  // Always clear disconnect_requested on any connection_update -- by the time the bridge
+  // reports back in (whether it's the "connecting" right after a manual disconnect, or any
+  // other status), it has already acted on the request, so the flag's job is done. This is
+  // the only place that clears it, keeping api/admin/whatsapp/disconnect.ts as the only place
+  // that sets it.
+  const patch = { status: body.status || "error", phone_number: body.phone_number || null, qr_code: body.qr_code || null, error: body.error || null, disconnect_requested: false, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() };
   if (!row) {
     await supaAdmin(env, "whatsapp_connection", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   } else {

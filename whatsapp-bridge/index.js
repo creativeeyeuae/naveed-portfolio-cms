@@ -15,6 +15,7 @@
 // gets flagged, nothing on bynaveedanjum.com breaks -- only real-time WhatsApp
 // delivery stops; the on-site Live Chat and CMS keep working either way.
 require("dotenv").config();
+const fs = require("fs");
 const path = require("path");
 const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
@@ -50,6 +51,13 @@ const AUTH_DIR = path.join(__dirname, "auth_info_baileys");
 // When set, the bridge prints an 8-character PAIRING CODE instead of a QR code --
 // for server screens that can't draw a scannable QR.
 const PAIR_PHONE = String(process.env.PAIR_PHONE || "").replace(/[^\d]/g, "");
+// Set (by pollAndSend, see below) the moment this bridge itself calls sock.logout() in
+// response to the CMS "Disconnect" button (migration 0018) -- distinguishes a deliberate,
+// requested disconnect from WhatsApp unlinking/banning the number on its own. Only the
+// deliberate case auto-restarts straight into a fresh QR; a real logout still requires
+// someone to notice and re-run this bridge, exactly like before this change, so this can
+// never turn into an automatic reconnect loop.
+let manualDisconnectRequested = false;
 // Naveed's own number -- the bridge's self-chat ("Message yourself") is where Live Chat
 // alerts land (see _shared/liveChatWhatsapp.ts). A message HE sends there is picked up
 // below and relayed to the CMS as an "admin_reply_in" so it can answer a Live Chat visitor
@@ -131,8 +139,19 @@ async function start() {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
       if (loggedOut) {
-        console.log("\n⚠️  Logged out of WhatsApp (unlinked from the phone, or banned). A fresh QR scan is needed to reconnect.\n");
-        await callWebhook({ type: "connection_update", status: "not_connected", error: "Logged out -- needs a fresh QR scan." });
+        if (manualDisconnectRequested) {
+          // This logout was requested from the CMS, not WhatsApp revoking the link --
+          // clear the stale session and go straight back into a fresh QR, no manual
+          // terminal restart needed.
+          manualDisconnectRequested = false;
+          console.log("\n🔄 Disconnected as requested from the CMS. Clearing the old session and generating a new QR...\n");
+          try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) { console.error("could not clear session folder:", e.message); }
+          await callWebhook({ type: "connection_update", status: "connecting", error: null });
+          setTimeout(start, 1000);
+        } else {
+          console.log("\n⚠️  Logged out of WhatsApp (unlinked from the phone, or banned). A fresh QR scan is needed to reconnect.\n");
+          await callWebhook({ type: "connection_update", status: "not_connected", error: "Logged out -- needs a fresh QR scan." });
+        }
       } else {
         console.log("\nConnection dropped, reconnecting in 5s...\n");
         await callWebhook({ type: "connection_update", status: "error", error: "Connection dropped, reconnecting..." });
@@ -183,7 +202,17 @@ async function start() {
     try {
       const res = await fetch(`${TARGET}/api/whatsapp/pending`, { headers: { "X-Bridge-Secret": SECRET } });
       if (!res.ok) return;
-      const { pending } = await res.json();
+      const data = await res.json();
+
+      // Manual disconnect requested from the CMS (migration 0018) -- act on it once, then
+      // let the "close" handler above do the actual reconnect once logout() finishes.
+      if (data.disconnect_requested && !manualDisconnectRequested) {
+        manualDisconnectRequested = true;
+        try { await sock.logout(); } catch (e) { console.error("logout error:", e.message); }
+        return;
+      }
+
+      const { pending } = data;
       for (const row of pending || []) {
         const toPhone = row.whatsapp_conversations?.wa_phone;
         if (!toPhone || !row.body) continue;

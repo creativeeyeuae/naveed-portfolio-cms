@@ -24,7 +24,13 @@ import { forwardLiveChatToWhatsApp } from "../../_shared/liveChatWhatsapp";
 
 type Env = VisitorEnv & PushEnv & { SUPABASE_SERVICE_ROLE_KEY: string; AI?: { run(model: string, input: unknown): Promise<any> } };
 const MAX_LEN = 2000;
-const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct";
+// @cf/meta/llama-3.1-8b-instruct was deprecated by Cloudflare on 2026-05-30 -- every call to
+// it has been throwing since then (confirmed live via `wrangler pages deployment tail`:
+// "5028: @cf/meta/llama-3.1-8b-instruct was deprecated..."), which is why the AI never
+// replied and every message silently fell back to needs_human. The -fast variant is the
+// same model family, not deprecated, and returns the same { response: string } shape, so
+// this is a same-provider drop-in swap -- no prompt/grounding/output-parsing changes needed.
+const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });

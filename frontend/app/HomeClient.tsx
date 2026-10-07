@@ -3796,17 +3796,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   function openProj(p:Project){setSelProj(p);setPage("project");window.scrollTo(0,0);}
   function openBlog(b:BlogPost){setSelBlog(b);setPage("blog-post");window.scrollTo(0,0);}
 
-  // Contact form: opens a WhatsApp handoff immediately (same guaranteed-delivery channel every
-  // other lead-capture on this site already uses -- Hero callback, popup, booking), then also
-  // best-effort saves to Supabase (CMS-viewable under Leads) and, once Naveed has pasted his
-  // own free EmailJS credentials into Settings > Contact, emails him a copy. The WhatsApp open
-  // happens first and synchronously so it stays inside the click's user-gesture window (an
-  // await before window.open() gets it popup-blocked in some browsers).
+  // Contact form: saves the lead to Supabase (CMS-viewable under Leads), triggers the server
+  // to forward it to Naveed on WhatsApp through the bridge (reliable -- no longer depends on
+  // the visitor's own browser opening WhatsApp Web/app), and, once Naveed has pasted his own
+  // free EmailJS credentials into Settings > Contact, emails him a copy too.
   async function submitContact(){
     if(!contactForm.name.trim()||!contactForm.email.trim()||!contactForm.message.trim()) return;
     const entry:ContactLead={id:String(Date.now()),date:new Date().toISOString(),...contactForm};
-    const waMsg=`New website contact form message:\nName: ${entry.name}\nEmail: ${entry.email}\nPhone: ${entry.phone||"-"}\nSubject: ${entry.subject||"-"}\nMessage: ${entry.message}`;
-    window.open(`https://wa.me/${WA}?text=${encodeURIComponent(waMsg)}`,"_blank");
+    // WhatsApp alert now goes out automatically from the server, straight through the
+    // WhatsApp bridge, once this lead is saved (notifyServer below -> /api/notify/trigger's
+    // "new_lead" handling -> _shared/liveChatWhatsapp.ts) -- no longer opens WhatsApp Web in
+    // the visitor's own browser/device.
     setContactSending(true);
     await addContactLead(entry);
     notifyServer("new_lead", entry.id);

@@ -1,11 +1,14 @@
 "use client";
 // The real, working contact form for the standalone /contact route -- ports the exact
 // pipeline app/page.tsx's own submitContact() already uses for the homepage SPA's in-memory
-// Contact page-view: a WhatsApp deep link (window.open) plus a real Supabase write (here via
-// lib/cmsData.ts's submitContactLead(), which mirrors addContactLead()'s read-modify-write
-// against site_settings/"nap_contact_submissions" using the same public anon key the CMS
-// itself uses for unauthenticated writes). Replaces the old, disconnected react-hook-form +
-// dead-Worker-API version, which never actually delivered a single lead.
+// Contact page-view: a real Supabase write (here via lib/cmsData.ts's submitContactLead(),
+// which mirrors addContactLead()'s read-modify-write against
+// site_settings/"nap_contact_submissions" using the same public anon key the CMS itself uses
+// for unauthenticated writes), which then triggers the server to forward the lead to Naveed
+// on WhatsApp through the bridge (see submitContactLead -> /api/notify/trigger's "new_lead"
+// handling) -- no longer a WhatsApp deep link (window.open) that depended on the visitor's own
+// browser/device opening WhatsApp Web or the app. Replaces the old, disconnected
+// react-hook-form + dead-Worker-API version, which never actually delivered a single lead.
 import { useState } from "react";
 import { PublicSiteInfo, submitContactLead } from "@/lib/cmsData";
 
@@ -49,8 +52,9 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
     if (Number(captchaAnswer) !== captchaA + captchaB) { setCaptchaError("That's not quite right -- please try again."); refreshCaptcha(); return; }
     setCaptchaError("");
     const entry = { id: String(Date.now()), date: new Date().toISOString(), ...form };
-    const waMsg = `New website contact form message:\nName: ${entry.name}\nEmail: ${entry.email}\nPhone: ${entry.phone || "-"}\nCategory: ${entry.subject || "-"}\nProject Type: ${entry.projectType || "-"}\nMessage: ${entry.message}`;
-    window.open(`https://wa.me/${site.waNumber}?text=${encodeURIComponent(waMsg)}`, "_blank");
+    // WhatsApp alert now goes out automatically from the server, through the bridge, once
+    // this lead is saved below -- see submitContactLead -> /api/notify/trigger's "new_lead"
+    // handling. No WhatsApp Web deep link is opened here any more.
     setSending(true);
     await submitContactLead(entry);
     setSending(false);
@@ -64,7 +68,7 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
       <div className="adv-form-card" style={{ textAlign: "center" }}>
         <div className="adv-eyebrow" style={{ textAlign: "center" }}>Thank You</div>
         <h3 className="adv-heading" style={{ textAlign: "center" }}>Message Sent</h3>
-        <p className="adv-subtext" style={{ textAlign: "center" }}>Thanks for reaching out -- I&apos;ll get back to you shortly. Your message was also opened in WhatsApp for a faster reply.</p>
+        <p className="adv-subtext" style={{ textAlign: "center" }}>Thanks for reaching out -- I&apos;ll get back to you shortly.</p>
         <button onClick={() => setSent(false)} className="adv-btn-outline">Send Another Message</button>
       </div>
     );

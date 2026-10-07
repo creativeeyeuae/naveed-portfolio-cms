@@ -1144,7 +1144,16 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     try{
       const res = await fetch("/api/visitor/chat");
       const data = await res.json();
-      setMessages(data.messages||[]);
+      const next:{id:string;sender:string;body:string;created_at:string}[] = data.messages||[];
+      const nextLast = next[next.length-1];
+      // Only chime for a reply that's genuinely new since the last poll -- never on the very
+      // first load of an existing thread (lastSeenIdRef starts null), so reopening a chat
+      // with old unread replies stays silent; it only "dings" for something that just arrived.
+      if(lastSeenIdRef.current!==null && nextLast && nextLast.id!==lastSeenIdRef.current && nextLast.sender==="admin"){
+        playChime();
+      }
+      if(nextLast) lastSeenIdRef.current = nextLast.id;
+      setMessages(next);
     }catch{}
     setLoaded(true);
   }
@@ -1169,6 +1178,42 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   const [handoverDismissedId,setHandoverDismissedId] = useState<string|null>(null);
   function chooseWhatsAppHandover(){ send(WA_HANDOVER_SENTINEL); }
   function dismissHandoverPrompt(msgId:string){ setHandoverDismissedId(msgId); }
+
+  // Session expiry: a visitor who's been idle for 5+ minutes sees their chat as "expired"
+  // rather than it silently looking perpetually live. Nothing is deleted or split server-side
+  // -- every message still lands in the SAME thread (visitor_id), so Naveed's CMS/WhatsApp
+  // view keeps the full continuous history exactly as before. This is purely a widget-side
+  // presentation: past messages stay visible above, the composer still works the same way, and
+  // sending a new message immediately clears the "expired" state (the newest message is now
+  // recent) -- effectively starting a fresh conversation without any schema/API change.
+  const LIVE_CHAT_EXPIRE_MS = 5*60*1000; // 5 minutes idle
+  const lastMsg = messages[messages.length-1];
+  const expired = loaded && !!lastMsg && (Date.now()-new Date(lastMsg.created_at).getTime())>LIVE_CHAT_EXPIRE_MS;
+
+  // Pleasant attention-grabbing chime when a new admin/AI reply arrives, so a visitor who's
+  // looked away from the tab actually notices it -- a soft two-note rising tone synthesized
+  // with the Web Audio API (no external sound file to host/load). Only fires for a message
+  // that's genuinely NEW since the last poll, never on the first load of an existing thread
+  // (so reopening a chat with old unread replies stays silent -- it only "dings" live).
+  const lastSeenIdRef = useRef<string|null>(null);
+  function playChime(){
+    try{
+      const Ctx = (window as any).AudioContext||(window as any).webkitAudioContext;
+      if(!Ctx) return;
+      const ctx = new Ctx();
+      const now = ctx.currentTime;
+      [[740,now,0.16],[988,now+0.1,0.22]].forEach(([freq,start,dur]:any)=>{
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.type="sine"; osc.frequency.value=freq;
+        gain.gain.setValueAtTime(0,start);
+        gain.gain.linearRampToValueAtTime(0.22,start+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001,start+dur);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(start); osc.stop(start+dur+0.02);
+      });
+      setTimeout(()=>{ try{ctx.close();}catch{} },500);
+    }catch{}
+  }
 
   const QUICK:{label:string;text:string}[] = [
     {label:"How can you help me?", text:"Hi, how can you help me with my project?"},
@@ -1232,7 +1277,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
                 <div style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
                   <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
                 </div>
-                {m.sender==="admin"&&m.body===WA_HANDOVER_PROMPT&&mi===messages.length-1&&handoverDismissedId!==m.id&&(
+                {m.sender==="admin"&&m.body===WA_HANDOVER_PROMPT&&mi===messages.length-1&&handoverDismissedId!==m.id&&!expired&&(
                   <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14,marginTop:-2}}>
                     <button onClick={chooseWhatsAppHandover} disabled={sending} style={{textAlign:"left",background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer",fontWeight:600}}>📱 Connect with Naveed on WhatsApp</button>
                     <button onClick={()=>dismissHandoverPrompt(m.id)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer"}}>💬 I have another question</button>
@@ -1240,7 +1285,12 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
                 )}
               </div>
             ))}
-            {!needsIdentity&&!sending&&messages.length===0&&(
+            {expired&&(
+              <div style={{textAlign:"center",fontSize:11.5,color:C.MID,margin:"2px 0 14px",padding:"8px 10px",borderTop:`1px dashed ${C.BORDER}`,borderBottom:`1px dashed ${C.BORDER}`}}>
+                This conversation has expired. Send a message below to start a new one.
+              </div>
+            )}
+            {!needsIdentity&&!sending&&(messages.length===0||expired)&&(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:0}}>
                 {QUICK.map((q,i)=>(
                   <button key={i} onClick={()=>send(q.text)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}

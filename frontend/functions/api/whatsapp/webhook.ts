@@ -35,8 +35,52 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   if (body.type === "message_in") return handleMessageIn(env, body, origin);
   if (body.type === "status_update") return handleStatusUpdate(env, body, origin);
   if (body.type === "connection_update") return handleConnectionUpdate(env, body, origin);
+  if (body.type === "admin_reply_in") return handleAdminReplyIn(env, body, origin);
   return json({ error: "Unknown or missing 'type'." }, 400, origin);
 };
+
+// Naveed replied from WhatsApp itself (in the self-chat the bridge uses for Live Chat
+// alerts -- see whatsapp-bridge/index.js's messages.upsert handler) instead of opening the
+// CMS. The reply must start with the short #tag that forwardLiveChatToWhatsApp (see
+// _shared/liveChatWhatsapp.ts) put in the original alert -- strip it off, find the matching
+// visitor by that tag, and post the rest as a normal admin reply in that Live Chat thread,
+// exactly like functions/api/admin/livechat.ts's POST does.
+async function handleAdminReplyIn(env: Env, body: Record<string, any>, origin: string | null) {
+  const raw = String(body.body || "").trim();
+  const match = raw.match(/^#?([a-f0-9]{6})\b[\s:,-]*([\s\S]*)$/i);
+  if (!match) return json({ ok: true, ignored: "no tag" }, 200, origin); // not a tagged reply -- nothing to do
+
+  const [, tag, replyText] = match;
+  if (!replyText.trim()) return json({ ok: true, ignored: "empty reply" }, 200, origin);
+
+  // Visitor ids are UUIDs; the tag is the first 6 hex chars with dashes stripped. The table
+  // is small (every past/present Live Chat visitor), so matching the tag in application code
+  // is simplest and needs no schema change.
+  const visRes = await supaAdmin(env, "visitors?select=id&order=created_at.desc&limit=2000", { method: "GET" });
+  if (!visRes.ok) return json({ error: "Could not look up visitors.", detail: await visRes.text() }, 500, origin);
+  const visitors = (await visRes.json()) as { id: string }[];
+  const visitor = visitors.find((v) => v.id.replace(/-/g, "").slice(0, 6).toLowerCase() === tag.toLowerCase());
+  if (!visitor) return json({ ok: true, ignored: "tag not found" }, 200, origin);
+
+  await supaAdmin(env, "live_chat_messages", {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({
+      visitor_id: visitor.id,
+      sender: "admin",
+      body: replyText.trim(),
+      is_read_by_admin: true,
+      is_read_by_visitor: false,
+    }),
+  });
+  await supaAdmin(env, `live_chat_messages?visitor_id=eq.${visitor.id}&sender=eq.visitor&is_read_by_admin=eq.false`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ is_read_by_admin: true }),
+  });
+
+  return json({ ok: true, visitor_id: visitor.id }, 200, origin);
+}
 
 async function handleMessageIn(env: Env, body: Record<string, any>, origin: string | null) {
   const from = String(body.from || "").trim();

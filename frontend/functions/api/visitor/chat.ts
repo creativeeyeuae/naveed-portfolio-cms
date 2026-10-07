@@ -219,9 +219,11 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   // Forward to Naveed's own WhatsApp too, so he's notified even away from the CMS/browser --
-  // reuses the existing WhatsApp bridge, see _shared/liveChatWhatsapp.ts.
+  // reuses the existing WhatsApp bridge, see _shared/liveChatWhatsapp.ts. Tagged with this
+  // visitor's short code so he can reply straight from WhatsApp and have it land back in
+  // this exact thread (see whatsapp-bridge/index.js + handleAdminReplyIn in webhook.ts).
   try {
-    await forwardLiveChatToWhatsApp(env, `💬 Live Chat${needsHuman ? " (needs you)" : ""}:\n${text.slice(0, 300)}`);
+    await forwardLiveChatToWhatsApp(env, visitorId, `💬 Live Chat${needsHuman ? " (needs you)" : ""}:\n${text.slice(0, 300)}`);
   } catch {}
 
   return json({ ok: true, aiReply, needsHuman }, 200, origin);

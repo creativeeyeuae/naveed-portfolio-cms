@@ -50,6 +50,11 @@ const AUTH_DIR = path.join(__dirname, "auth_info_baileys");
 // When set, the bridge prints an 8-character PAIRING CODE instead of a QR code --
 // for server screens that can't draw a scannable QR.
 const PAIR_PHONE = String(process.env.PAIR_PHONE || "").replace(/[^\d]/g, "");
+// Naveed's own number -- the bridge's self-chat ("Message yourself") is where Live Chat
+// alerts land (see _shared/liveChatWhatsapp.ts). A message HE sends there is picked up
+// below and relayed to the CMS as an "admin_reply_in" so it can answer a Live Chat visitor
+// directly from WhatsApp. Must match ADMIN_WHATSAPP_NUMBER on the CMS side (same default).
+const ADMIN_NUMBER = String(process.env.ADMIN_WHATSAPP_NUMBER || "971581174911").replace(/[^\d]/g, "");
 
 if (!TARGET || !SECRET) {
   console.error("Missing BRIDGE_TARGET_URL or BRIDGE_SECRET. Copy .env.example to .env and fill both in, then run again.");
@@ -139,15 +144,29 @@ async function start() {
   // ── Incoming WhatsApp messages → push into the CMS inbox ──────────────────
   sock.ev.on("messages.upsert", async ({ messages }) => {
     for (const m of messages) {
-      if (!m.message || m.key.fromMe) continue; // ignore our own sent messages here
-      const from = jidToPhone(m.key.remoteJid);
-      if (!from || m.key.remoteJid?.endsWith("@g.us")) continue; // skip group chats for now -- 1:1 only
+      if (!m.message) continue;
+      if (m.key.remoteJid?.endsWith("@g.us")) continue; // skip group chats for now -- 1:1 only
+
       const text =
         m.message.conversation ||
         m.message.extendedTextMessage?.text ||
         m.message.imageMessage?.caption ||
         m.message.videoMessage?.caption ||
         (m.message.imageMessage ? "[Photo]" : m.message.videoMessage ? "[Video]" : m.message.audioMessage ? "[Voice message]" : m.message.documentMessage ? "[Document]" : "[Unsupported message type]");
+
+      if (m.key.fromMe) {
+        // Only the self-chat matters here (Naveed messaging himself) -- that's where Live
+        // Chat alerts land, and a reply there starting with #<tag> answers that visitor
+        // directly. Every other outgoing message (real WhatsApp replies to customers) is
+        // already tracked via pollAndSend's status_update, so it's ignored here.
+        if (ADMIN_NUMBER && jidToPhone(m.key.remoteJid) === ADMIN_NUMBER && text) {
+          await callWebhook({ type: "admin_reply_in", body: text });
+        }
+        continue;
+      }
+
+      const from = jidToPhone(m.key.remoteJid);
+      if (!from) continue;
 
       await callWebhook({
         type: "message_in",

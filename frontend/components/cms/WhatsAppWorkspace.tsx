@@ -16,7 +16,32 @@
 //     Templates & Message Designer (saved to this browser only via localStorage -- no
 //     database table exists for them yet), Broadcasts, Campaigns, Automations, Media Library,
 //     Scheduled, and the message-level delivery-funnel half of Reports.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
+
+// Draws the bridge's raw qr_code string as an actual scannable black/white QR image,
+// the same way web.whatsapp.com does -- replaces having to read it off the VPS console.
+// Re-renders whenever `data` changes (the bridge posts a fresh one roughly every 20-60s
+// until it's scanned, driven by the polling in the Connection section below).
+function WhatsAppQrCode({ data, size = 260 }: { data: string; size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!data || !canvasRef.current) return;
+    setError(null);
+    QRCode.toCanvas(canvasRef.current, data, { width: size, margin: 2 }, (err) => {
+      if (err) setError("Could not draw the QR code image.");
+    });
+  }, [data, size]);
+  return (
+    <div style={{ display: "flex", flexDirection: "column" as const, alignItems: "center", gap: 10 }}>
+      <div style={{ background: "#fff", padding: 16, borderRadius: 8, display: "inline-block" }}>
+        <canvas ref={canvasRef} width={size} height={size} />
+      </div>
+      {error && <div style={{ fontSize: 12, color: "#f87171" }}>{error}</div>}
+    </div>
+  );
+}
 
 // ─── THEME (local copy of HomeClient.tsx's C/S/CARD_STYLE/StatusPill tokens, kept in sync by
 // value so this workspace matches the rest of the CMS pixel-for-pixel, without importing from
@@ -328,6 +353,18 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
   }
 
   useEffect(()=>{ if(adminSession){ loadConversations(); loadQuickReplies(); loadConnection(); } },[adminSession]);
+
+  // Auto-refresh the Connection status every 4s while it's not yet connected, so a freshly
+  // generated QR code (the bridge rotates it roughly every 20-60s until scanned) shows up
+  // here on its own -- exactly like web.whatsapp.com, no manual "Refresh" clicks needed.
+  // Stops polling once connected (or once this tab/section isn't the active one).
+  useEffect(()=>{
+    if(!adminSession) return;
+    if(section!=="settings") return;
+    if(connection&&connection.status==="connected") return;
+    const id=setInterval(()=>{ loadConnection(); },4000);
+    return ()=>clearInterval(id);
+  },[adminSession,section,connection?.status]);
 
   // Templates / Designer: this browser only (localStorage) -- see file header. Guarded in
   // try/catch throughout since this must never break the rest of the workspace if storage is
@@ -952,6 +989,19 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
               <span style={{fontSize:12.5,color:C.MID}}>{connection&&connection.phone_number?`Number: ${connection.phone_number}`:"No WhatsApp number connected yet."}</span>
             </div>
             {connection&&connection.error&&<div style={{fontSize:12,color:"#f87171",marginBottom:16}}>{connection.error}</div>}
+
+            {connection&&connection.status==="connecting"&&connection.qr_code&&(
+              <div style={{marginBottom:20,textAlign:"center" as const}}>
+                <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>
+                  Open WhatsApp on the phone you're connecting &rarr; <strong>Settings &rarr; Linked Devices &rarr; Link a Device</strong> &rarr; scan this:
+                </div>
+                <WhatsAppQrCode data={connection.qr_code} />
+                <div style={{fontSize:11,color:C.MID,marginTop:12}}>
+                  This refreshes on its own every few seconds, same as web.whatsapp.com -- if it looks stale just wait a moment for the next one.
+                </div>
+              </div>
+            )}
+
             <div style={{fontSize:12.5,color:C.MID,lineHeight:1.7}}>
               This page always reads the real connection status from the database, and it always reports <strong>Not Connected</strong> until the future WhatsApp bridge (running on your VPS) reports in for the first time -- nothing here can be switched to "connected" by clicking anything on this page. The database, the API layer, and this whole inbox are ready and waiting for it: once the bridge is installed and scans in through a QR code, it will start pushing real incoming messages into this same inbox and pulling queued outbound messages back out of it -- with no changes needed to this screen.
             </div>

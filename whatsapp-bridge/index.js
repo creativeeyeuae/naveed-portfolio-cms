@@ -53,11 +53,21 @@ const AUTH_DIR = path.join(__dirname, "auth_info_baileys");
 const PAIR_PHONE = String(process.env.PAIR_PHONE || "").replace(/[^\d]/g, "");
 // Set (by pollAndSend, see below) the moment this bridge itself calls sock.logout() in
 // response to the CMS "Disconnect" button (migration 0018) -- distinguishes a deliberate,
-// requested disconnect from WhatsApp unlinking/banning the number on its own. Only the
-// deliberate case auto-restarts straight into a fresh QR; a real logout still requires
-// someone to notice and re-run this bridge, exactly like before this change, so this can
-// never turn into an automatic reconnect loop.
+// requested disconnect from WhatsApp unlinking/banning the number on its own. Both cases now
+// auto-restart into a fresh QR (see the "close" handler and AUTO_RECOVER_LIMIT below) -- this
+// flag just means the deliberate case recovers immediately and never counts against that
+// limit, since it wasn't an unexpected failure.
 let manualDisconnectRequested = false;
+// Auto-recovery counter for a real WhatsApp-side logout (device_removed, ban, etc. -- NOT
+// the manual Disconnect-button path above, which always recovers and never counts here).
+// By explicit request: don't make Naveed VNC in and run commands by hand every time this
+// happens -- clear the dead session and come straight back with a fresh QR in the CMS on
+// its own. Capped at AUTO_RECOVER_LIMIT in a row so a real, persisting problem (e.g. WhatsApp
+// actively banning this number, or something else still linked to it) stops retrying and
+// waits for a human instead of hammering WhatsApp's servers with repeated fresh registrations.
+// Resets to 0 on every successful "open" connection.
+let autoRecoverCount = 0;
+const AUTO_RECOVER_LIMIT = 3;
 // Naveed's own number -- the bridge's self-chat ("Message yourself") is where Live Chat
 // alerts land (see _shared/liveChatWhatsapp.ts). A message HE sends there is picked up
 // below and relayed to the CMS as an "admin_reply_in" so it can answer a Live Chat visitor
@@ -130,6 +140,7 @@ async function start() {
     }
 
     if (connection === "open") {
+      autoRecoverCount = 0; // a real, successful connection clears any past auto-recovery streak
       const phone = jidToPhone(sock.user?.id);
       console.log(`\n✅ Connected to WhatsApp as ${phone}. The CMS Live Chat / WhatsApp tab will now show "Connected".\n`);
       await callWebhook({ type: "connection_update", status: "connected", phone_number: phone });
@@ -148,9 +159,20 @@ async function start() {
           try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) { console.error("could not clear session folder:", e.message); }
           await callWebhook({ type: "connection_update", status: "connecting", error: null });
           setTimeout(start, 1000);
+        } else if (autoRecoverCount < AUTO_RECOVER_LIMIT) {
+          // An unexpected logout (WhatsApp-side, not the CMS button) -- auto-recover into a
+          // fresh QR by default now, so this never needs a manual VNC/terminal visit. Counted
+          // against AUTO_RECOVER_LIMIT so a problem that keeps causing this (e.g. something
+          // else still linked to this number, or an actual ban) doesn't turn into an endless
+          // retry loop hitting WhatsApp's servers -- see the else branch below for that case.
+          autoRecoverCount++;
+          console.log(`\n🔄 Logged out of WhatsApp (unlinked, or a session conflict) -- auto-recovering (attempt ${autoRecoverCount}/${AUTO_RECOVER_LIMIT}): clearing the old session and generating a new QR...\n`);
+          try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) { console.error("could not clear session folder:", e.message); }
+          await callWebhook({ type: "connection_update", status: "connecting", error: null });
+          setTimeout(start, 3000);
         } else {
-          console.log("\n⚠️  Logged out of WhatsApp (unlinked from the phone, or banned). A fresh QR scan is needed to reconnect.\n");
-          await callWebhook({ type: "connection_update", status: "not_connected", error: "Logged out -- needs a fresh QR scan." });
+          console.log(`\n⚠️  Logged out of WhatsApp ${AUTO_RECOVER_LIMIT} times in a row -- stopping auto-recovery so this doesn't hammer WhatsApp's servers. This usually means something else is linked to this same number (another phone/WhatsApp Web/Desktop session), or the number has been banned. Check that, then restart this bridge (pm2 restart wa-bridge) for a fresh QR.\n`);
+          await callWebhook({ type: "connection_update", status: "not_connected", error: `Logged out ${AUTO_RECOVER_LIMIT}x in a row -- stopped auto-recovering. Check for another linked device, then restart the bridge for a fresh QR.` });
         }
       } else {
         console.log("\nConnection dropped, reconnecting in 5s...\n");

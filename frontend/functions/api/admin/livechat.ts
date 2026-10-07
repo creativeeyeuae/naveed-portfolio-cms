@@ -19,12 +19,20 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
 
-  const res = await supaAdmin(
+  let res = await supaAdmin(
     env,
     `live_chat_messages?select=*,visitors(name,email,whatsapp,ai_paused)&order=created_at.desc&limit=1000`,
     { method: "GET" }
   );
-  if (!res.ok) return json({ error: "Could not load live chat.", detail: await res.text() }, 500, origin);
+  if (!res.ok) {
+    // visitors.ai_paused (migration 0015) may not have been run yet in this environment --
+    // never let that take down the whole Live Chat list. Retry without it; the Take Over /
+    // Resume AI button simply won't reflect state until the migration runs.
+    const detail = await res.text();
+    if (!detail.includes("ai_paused")) return json({ error: "Could not load live chat.", detail }, 500, origin);
+    res = await supaAdmin(env, `live_chat_messages?select=*,visitors(name,email,whatsapp)&order=created_at.desc&limit=1000`, { method: "GET" });
+    if (!res.ok) return json({ error: "Could not load live chat.", detail: await res.text() }, 500, origin);
+  }
   const rows = (await res.json()) as any[];
   return json({ messages: rows }, 200, origin);
 };

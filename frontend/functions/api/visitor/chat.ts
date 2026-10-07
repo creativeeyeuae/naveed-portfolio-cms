@@ -256,12 +256,16 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
       const ai = await generateAiReply(env, visitorId, text);
       if (ai) {
         if (ai.needsHuman) {
-          // The AI decided a human may be needed -- but don't flag the thread or notify
-          // Naveed yet. Show the visitor the fixed two-choice prompt instead of the model's
-          // own free-text wording; only clicking "Connect with Naveed on WhatsApp" (handled
-          // above, near the top of this function) actually flags needs_human and notifies
-          // the CMS. "I have another question" is handled entirely client-side -- nothing
-          // reaches this endpoint for that choice, so there's nothing to do here for it.
+          // The AI decided a human may be needed. Show the visitor the fixed two-choice
+          // prompt instead of the model's own free-text wording. This does NOT trigger the
+          // dedicated WhatsApp-handover CMS notification/flow above (that stays opt-in --
+          // only "Connect with Naveed on WhatsApp" does that, handled near the top of this
+          // function), but it DOES flag needs_human here, same as it always did before this
+          // feature existed, so Naveed's existing "Live chat needs you" push + CMS highlight
+          // still fire right away -- a visitor who picks "I have another question" (handled
+          // entirely client-side) or simply abandons the chat is still a visible, flagged
+          // lead, never a silent miss.
+          needsHuman = true;
           aiReply = WA_HANDOVER_PROMPT;
           await supaAdmin(env as any, "live_chat_messages", {
             method: "POST",

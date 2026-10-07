@@ -106,6 +106,16 @@ async function loadGroundingContext(env: Env): Promise<string> {
 
 const HANDOFF_YES = "[[HANDOFF:YES]]";
 const HANDOFF_NO = "[[HANDOFF:NO]]";
+// Shown to the visitor whenever the AI can't produce any reply at all -- most commonly
+// because Cloudflare's free daily Workers AI allowance (10,000 Neurons/day) has been used
+// up for the day, but this also covers any other failure (model deprecated/renamed again, a
+// network blip, a Supabase hiccup, etc). Never leave the visitor staring at silence, and
+// never invent an answer either -- same honest "a person will follow up" tone the model
+// itself already uses when IT decides a human is needed (see HANDOFF_YES above). Nothing is
+// needed to "resume" normal AI replies once the free allowance is back -- Cloudflare resets
+// it automatically every day at 00:00 UTC, so the next visitor message after that just gets
+// a normal AI reply again on its own.
+const AI_FALLBACK_REPLY = "Thanks for your message! I'm stepping in personally and will get back to you very shortly.";
 
 // Asks Workers AI for a reply, grounded only in loadGroundingContext()'s real data, plus the
 // last few turns of this same thread for continuity. The model is required to end its reply
@@ -192,17 +202,48 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
           method: "POST",
           body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
         });
-        if (needsHuman && visitorMsg?.id) {
+      } else {
+        // No AI reply at all -- most commonly the free daily Workers AI allowance is used
+        // up for today (see AI_FALLBACK_REPLY above). Send the honest holding reply instead
+        // of leaving the visitor with silence; this self-corrects automatically once
+        // Cloudflare's free allowance resets, with no further action needed here.
+        needsHuman = true;
+        aiReply = AI_FALLBACK_REPLY;
+        try {
+          await supaAdmin(env as any, "live_chat_messages", {
+            method: "POST",
+            body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: AI_FALLBACK_REPLY, is_read_by_admin: true, is_read_by_visitor: false }),
+          });
+        } catch {}
+      }
+      if (needsHuman && visitorMsg?.id) {
+        try {
           await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
             method: "PATCH",
             body: JSON.stringify({ needs_human: true }),
           });
-        }
-      } else {
-        needsHuman = true; // no AI reply at all -- make sure this still surfaces to Naveed
+        } catch {}
       }
     } catch {
+      // Something failed outside generateAiReply's own error handling (e.g. the Supabase
+      // write itself). Same honest fallback, best-effort -- the visitor's original message
+      // was already safely saved above regardless of anything that happens here.
       needsHuman = true;
+      aiReply = AI_FALLBACK_REPLY;
+      try {
+        await supaAdmin(env as any, "live_chat_messages", {
+          method: "POST",
+          body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: AI_FALLBACK_REPLY, is_read_by_admin: true, is_read_by_visitor: false }),
+        });
+      } catch {}
+      if (visitorMsg?.id) {
+        try {
+          await supaAdmin(env as any, `live_chat_messages?id=eq.${visitorMsg.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({ needs_human: true }),
+          });
+        } catch {}
+      }
     }
   } else if (visitorMsg?.id) {
     // Thread is taken over -- still flag the message so the CMS highlights it the same way.

@@ -3945,6 +3945,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(!booking.name||!booking.email||!booking.date||!booking.time||!bkSelectedPkg||!booking.service){ setBkError("Please complete every required field."); return; }
     if(bkHp.trim()) return; // honeypot tripped -- silently drop, no feedback for bots
     if(Number(bkCaptchaAnswer)!==bkCaptchaA+bkCaptchaB){ setBkError("Please solve the human-check question correctly before continuing."); return; }
+    // Bank transfer now requires the receipt slip attached right here, before the booking is
+    // sent -- not as a separate "come back later" step. Validate it up front so an invalid
+    // file never gets this far (no point creating the appointment row first).
+    if(bkPayMethod==="bank_transfer"){
+      if(!bkReceiptFile){ setBkError("Please attach your bank transfer receipt before confirming."); return; }
+      const invalid = validateReceiptFile(bkReceiptFile);
+      if(invalid){ setBkError(invalid); return; }
+    }
     setBkSubmitting(true);
     const stillTaken = await isSlotTaken(booking.date,booking.time);
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
@@ -3955,13 +3963,24 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       package_id:bkSelectedPkg.id, package_name:bkSelectedPkg.label, price_base:bkBase,
       booking_date:booking.date, booking_time:booking.time, notes:booking.details, method:bkPayMethod,
     });
-    setBkSubmitting(false);
-    if(!created){ setBkError("Payment could not be completed. Please try again."); return; }
+    if(!created){ setBkSubmitting(false); setBkError("Payment could not be completed. Please try again."); return; }
     setBkConfirmed(created);
+    // Attach the receipt (if bank transfer) BEFORE the WhatsApp alert goes out below, so
+    // Naveed's notification/CMS record always reflects whether the slip is already in hand.
+    // If this upload happens to fail, bkReceiptDone simply stays false and the existing
+    // "Booking Received" step (bkStep 7) already shows a retry uploader for exactly that case
+    // -- no new fallback UI needed, the booking itself is never blocked or lost either way.
+    if(bkPayMethod==="bank_transfer"&&bkReceiptFile){
+      const path = await uploadReceiptFile(bkReceiptFile,created.id);
+      if(path){ notifyServer("receipt_uploaded", created.id); setBkReceiptDone(true); }
+      else { setBkReceiptErr("We couldn't upload your receipt automatically -- please try again below."); }
+    }
+    setBkSubmitting(false);
+    // Auto WhatsApp alert goes out from the server through the existing bridge (see
+    // /api/notify/trigger.ts's "new_booking" handling -> _shared/liveChatWhatsapp.ts) --
+    // deliberately no wa.me/WhatsApp Web popup here anymore.
     notifyServer("new_booking", created.id);
     setBkStep(7);
-    // Existing WhatsApp notification stays as a bonus heads-up -- real record of truth is now the database above.
-    try{ const msg=`New paid appointment ${created.ref}\n${bkSelectedPkg.label} (${booking.service})\n${booking.date} ${booking.time}\nAED ${bkTotal} via ${bkPayMethod==="paypal"?"Online Payment":"Bank Transfer"}\n${booking.name} / ${booking.email} / ${booking.phone}`; window.open(`https://wa.me/${WA}?text=${encodeURIComponent(msg)}`,"_blank"); }catch{}
   }
   async function submitReceipt(){
     if(!bkReceiptFile||!bkConfirmed) return;
@@ -7600,7 +7619,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
                 {settings.bankTransferInstructions?.trim()
                   ? settings.bankTransferInstructions
-                  : "Bank transfer details will be sent to your email and WhatsApp right after you submit. Once you've paid, come back and upload your receipt to confirm your booking."}
+                  : "Bank transfer details will be sent to your email and WhatsApp right after you submit. Once you've paid, attach your receipt below before confirming your booking."}
+              </div>
+            )}
+            {bkPayMethod==="bank_transfer"&&(
+              <div style={{maxWidth:480,margin:"0 auto 24px"}}>
+                <label className="adv-label">Upload payment receipt *</label>
+                <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e=>{setBkReceiptFile(e.target.files?.[0]||null);setBkError("");}} style={{marginTop:6,fontSize:12,color:C.MID}} />
+                {bkReceiptFile&&<div style={{fontSize:12,color:C.PL,marginTop:6}}>✓ {bkReceiptFile.name}</div>}
               </div>
             )}
             {bkPayMethod==="paypal"&&(
@@ -7625,7 +7651,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
             <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}>
               <button onClick={()=>setBkStep(5)} className="adv-btn-outline">Back</button>
-              <button onClick={submitAppointment} disabled={bkSubmitting||!bkCaptchaAnswer.trim()} className="adv-btn-primary">{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
+              <button onClick={submitAppointment} disabled={bkSubmitting||!bkCaptchaAnswer.trim()||(bkPayMethod==="bank_transfer"&&!bkReceiptFile)} className="adv-btn-primary">{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
             </div>
           </div>
         )}
@@ -7643,7 +7669,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
               ):(
                 <div style={{maxWidth:420,margin:"24px auto 0"}}>
-                  <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Once you've made the bank transfer, upload your receipt below to confirm your booking.</p>
+                  {/* Your booking is already saved either way -- this only shows up if the
+                      receipt you attached on the previous step couldn't be uploaded
+                      automatically (see bkReceiptErr). Retry here rather than losing the
+                      booking. */}
+                  <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Your booking is saved. We couldn't attach your receipt automatically -- please upload it again below to confirm.</p>
                   <input type="file" accept="image/jpeg,image/png,application/pdf" onChange={e=>setBkReceiptFile(e.target.files?.[0]||null)} style={{marginBottom:12,fontSize:12,color:C.MID}} />
                   {bkReceiptErr&&<div style={{fontSize:12,color:"#ff6b6b",marginBottom:12}}>{bkReceiptErr}</div>}
                   <div><button onClick={submitReceipt} disabled={!bkReceiptFile||bkReceiptUploading} className="adv-btn-primary">{bkReceiptUploading?"Uploading...":"Upload Receipt"}</button></div>

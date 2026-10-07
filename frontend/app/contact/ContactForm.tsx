@@ -128,7 +128,7 @@ export default function ContactForm({ site }: { site: PublicSiteInfo }) {
           <select
             className="adv-input"
             aria-label="Country code"
-            style={{ flex: "0 0 128px", minWidth: 0 }}
+            style={{ flex: "0 0 170px", minWidth: 0 }}
             value={waIso}
             onChange={(e) => setWaIso(e.target.value)}
           >

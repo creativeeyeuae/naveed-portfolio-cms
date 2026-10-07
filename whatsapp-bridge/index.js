@@ -68,6 +68,16 @@ let manualDisconnectRequested = false;
 // Resets to 0 on every successful "open" connection.
 let autoRecoverCount = 0;
 const AUTO_RECOVER_LIMIT = 3;
+// The currently-running pollAndSend timer and socket, kept at module scope so a reconnect
+// (start() calling itself again -- on a transient drop, a manual disconnect, or an
+// auto-recovery) can clean up the PREVIOUS attempt's interval/socket before starting a new
+// one. Without this, every reconnect left its old setInterval(pollAndSend, ...) running
+// forever against a dead socket, plus that old socket's connection.update/messages.upsert
+// listeners still attached -- on repeated harmless network blips this piled up multiple
+// parallel pollers and sockets, which could easily look like the connection randomly
+// "flapping" even though no single drop was actually a real problem.
+let currentPollInterval = null;
+let currentSock = null;
 // Naveed's own number -- the bridge's self-chat ("Message yourself") is where Live Chat
 // alerts land (see _shared/liveChatWhatsapp.ts). A message HE sends there is picked up
 // below and relayed to the CMS as an "admin_reply_in" so it can answer a Live Chat visitor
@@ -103,6 +113,16 @@ function phoneToJid(phone) {
 }
 
 async function start() {
+  // Clean up whatever the PREVIOUS connection attempt left running before starting a new
+  // one -- see currentPollInterval/currentSock above. This runs on every call to start(),
+  // including the very first one (both are still null then, so these are no-ops).
+  if (currentPollInterval) { clearInterval(currentPollInterval); currentPollInterval = null; }
+  if (currentSock) {
+    try { currentSock.ev.removeAllListeners(); } catch (e) { console.error("could not remove old socket listeners:", e.message); }
+    try { currentSock.end?.(new Error("replaced by reconnect")); } catch (e) { console.error("could not close old socket:", e.message); }
+    currentSock = null;
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
@@ -112,6 +132,7 @@ async function start() {
     logger,
     printQRInTerminal: false, // we handle QR ourselves below, for a clearer message
   });
+  currentSock = sock;
 
   sock.ev.on("creds.update", saveCreds);
   let pairingRequested = false; // ask WhatsApp for a pairing code only once per connection attempt
@@ -249,7 +270,7 @@ async function start() {
       console.error("pending-poll error:", e.message);
     }
   }
-  setInterval(pollAndSend, POLL_MS);
+  currentPollInterval = setInterval(pollAndSend, POLL_MS);
 }
 
 start().catch((e) => {

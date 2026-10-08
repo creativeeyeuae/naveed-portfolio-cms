@@ -157,6 +157,12 @@ async function generateAiReply(env: Env, visitorId: string, latestText: string):
 FACTS (the only source of truth -- do not go beyond these):
 ${grounding || "(no services/pricing saved yet -- defer to Naveed for anything specific)"}
 
+When it naturally helps the visitor decide what to do next (for example right after describing services or pricing), end your answer -- before the handoff marker -- with 2 to 3 short next-step options as a numbered list, each on its own line, like:
+1. See our packages & pricing
+2. Book a session
+3. Ask something else
+Keep each option under 6 words and only offer options that are genuinely useful next steps; skip the list entirely for a short factual answer where it wouldn't add anything.
+
 End EVERY reply with exactly one of these two lines, on its own line, nothing after it:
 ${HANDOFF_YES}  <- if Naveed should personally follow up on this
 ${HANDOFF_NO}   <- if your answer above fully covers it`;

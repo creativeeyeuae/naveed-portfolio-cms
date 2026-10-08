@@ -1126,6 +1126,58 @@ function Lightbox({images,index,onClose,onPrev,onNext}:{images:Img[];index:numbe
 // for anyone who wants that -- it's just no longer what tapping the bubble does by default.
 // Used across every page view in this file (10 call sites) with the same {num,msg} props,
 // so this one definition updates the widget everywhere at once.
+
+// Detects a short numbered list ("1. ...\n2. ...\n3. ...") inside a bot/admin chat reply and
+// splits it from any lead-in/trail-off text, so it can be rendered as tappable option rows
+// instead of flat wrapped text. Purely a rendering concern -- it never changes what's stored
+// in the thread, and any reply that doesn't contain at least 2 consecutive numbered lines
+// falls through untouched (renders exactly as plain text, same as before this was added).
+function parseNumberedReply(body:string):{intro:string;items:{n:string;text:string}[];outro:string}|null{
+  const lines = body.split("\n");
+  const re = /^\s*(\d{1,2})[.)]\s+(\S.*)$/;
+  let start=-1, end=-1;
+  const items:{n:string;text:string}[] = [];
+  for(let i=0;i<lines.length;i++){
+    const m = lines[i].match(re);
+    if(m){
+      if(start===-1) start=i;
+      end=i;
+      items.push({n:m[1],text:m[2].trim()});
+    }else if(start!==-1 && lines[i].trim()!==""){
+      break; // list must be contiguous (blank lines inside it are tolerated)
+    }
+  }
+  if(items.length<2) return null;
+  return { intro: lines.slice(0,start).join("\n").trim(), items, outro: lines.slice(end+1).join("\n").trim() };
+}
+
+// Renders a single bot/admin message body. Plain replies render exactly as before (bare text,
+// inherits the bubble's whiteSpace:pre-wrap). A reply containing a numbered list instead renders
+// as a short intro paragraph + a stack of tappable option rows (numbered badge + label) +
+// optional trailing text -- tapping a row sends that option's text as the visitor's next
+// message, same as the existing QUICK quick-reply buttons just below in this component.
+function BotReplyBody({body,onPick,disabled}:{body:string;onPick:(t:string)=>void;disabled:boolean}){
+  const parsed = parseNumberedReply(body);
+  if(!parsed) return <>{body}</>;
+  return (
+    <>
+      {parsed.intro&&<div style={{marginBottom:8}}>{parsed.intro}</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {parsed.items.map((it,idx)=>(
+          <button key={idx} type="button" onClick={()=>onPick(it.text)} disabled={disabled}
+            style={{display:"flex",alignItems:"flex-start",gap:9,textAlign:"left",background:"rgba(255,255,255,0.07)",border:`1px solid ${C.BORDER}`,borderRadius:10,padding:"8px 11px",cursor:disabled?"default":"pointer",color:"#fff",font:"inherit",width:"100%"}}
+            onMouseEnter={e=>{ if(!disabled){(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.16)";} }}
+            onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="rgba(255,255,255,0.07)";}}>
+            <span style={{flexShrink:0,width:20,height:20,borderRadius:"50%",background:C.P,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>{it.n}</span>
+            <span style={{fontSize:13,lineHeight:1.45}}>{it.text}</span>
+          </button>
+        ))}
+      </div>
+      {parsed.outro&&<div style={{marginTop:8}}>{parsed.outro}</div>}
+    </>
+  );
+}
+
 function FloatingWA({num,msg}:{num:string;msg:string}) {
   const [open,setOpen] = useState(false);
   const [text,setText] = useState("");
@@ -1275,7 +1327,9 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             {loaded&&messages.map((m,mi)=>(
               <div key={m.id}>
                 <div style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
-                  <div style={{maxWidth:"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:"9px 13px",fontSize:13,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{m.body}</div>
+                  <div style={{maxWidth:m.sender==="admin"?"90%":"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:m.sender==="admin"?"11px 14px":"9px 13px",fontSize:13.5,lineHeight:1.55,whiteSpace:"pre-wrap"}}>
+                    {m.sender==="admin"?<BotReplyBody body={m.body} onPick={send} disabled={sending}/>:m.body}
+                  </div>
                 </div>
                 {m.sender==="admin"&&m.body===WA_HANDOVER_PROMPT&&mi===messages.length-1&&handoverDismissedId!==m.id&&!expired&&(
                   <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14,marginTop:-2}}>

@@ -62,8 +62,10 @@ const SITE_URL = "https://bynaveedanjum.com";
 const FALLBACK_TITLE = "Photographer & Videographer in Dubai | Naveed Anjum";
 const FALLBACK_DESC =
   "Dubai photographer and videographer with 20+ years' experience — portrait, real estate, corporate, commercial, product and event photography.";
-// Same photo already used as the About-page portrait, at a wider crop for social share cards.
-const OG_IMAGE = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=630&fit=crop&q=80";
+// A proper branded 1200x630 social-share card (public/og-image.jpg) in the site's own
+// "Royal Obsidian + Electric Violet" palette -- replaces the old generic About-page stock
+// portrait that used to show up when this link was shared on WhatsApp/social.
+const OG_IMAGE = "/og-image.jpg";
 
 // Home-screen install support (manifest lives at app/manifest.ts). apple-mobile-web-app-*
 // is Apple-specific -- Safari on iOS ignores the web manifest's own display/icon fields,

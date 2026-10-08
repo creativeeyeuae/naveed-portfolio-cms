@@ -303,14 +303,14 @@ const DEF_SETTINGS: SiteSettings = {
     {label:"Events",headline:"Professional\nCoverage. Powerful\nVisuals.",sub:"Photography and videography for corporate events, exhibitions and conferences.",btn1:"View Events",btn2:"",img:"https://images.unsplash.com/photo-1583012802443-efc6e8b00f5f?w=1600&q=90",page:"work"},
   ],
   aboutName:"Naveed Anjum", aboutTitle:"Photographer · Cinematographer · Creative Director",
-  aboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Founder of Creative Fusion, specializing in interior, real estate, product, lifestyle and campaign photography, plus short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces.",
+  aboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience -- including 10 years based in the UAE -- crafting luxury visual content for high-end clients. Specializing in interior, real estate, product, lifestyle and campaign photography, plus short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces.",
   aboutPhoto:"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
   statsYears:"20+", statsProjects:"500+", statsClients:"200+",
   phone:"+971 581 174 911", email:"info@bynaveedanjum.com", waNumber:"971581174911",
   waMsg:"Hello Naveed, I visited your portfolio and would like to discuss a project.",
   location:"Dubai, UAE", address:"Downtown Dubai, UAE",
   instagram:"https://www.instagram.com/bynaveedanjum/", youtube:"https://www.youtube.com/@ByNaveedAnjum", linkedin:"https://linkedin.com/in/naveedanjumch", tiktok:"",
-  footerCopyright:"© 2026 Naveed Anjum · Creative Fusion · Dubai, UAE",
+  footerCopyright:"© 2026 Naveed Anjum · Dubai, UAE",
   footerLinks:[{label:"Work",page:"work"},{label:"About",page:"about"},{label:"Packages",page:"packages"},{label:"CV",page:"cv"},{label:"Booking",page:"booking"},{label:"Contact",page:"contact"}],
   seoTitle:"Naveed Anjum — Professional Photographer & Videographer Dubai",
   seoDesc:"Professional photographer and videographer in Dubai, UAE. 20+ years experience in portrait, commercial, real estate, events and cinematography.",
@@ -327,7 +327,7 @@ const DEF_SETTINGS: SiteSettings = {
   uiText:{
     navBookBtn:"Book a Project", footerWhatsappBtn:"WhatsApp Us",
     homeAboutSubtitle:"Photographer · Cinematographer · Visual Artist",
-    homeAboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience, crafting luxury visual content for high-end clients. Founder of Creative Fusion.",
+    homeAboutBio:"A Dubai-based photographer and cinematographer with over 20 years of experience, crafting luxury visual content for high-end clients.",
     homeAboutHighlight1:"20+ years of experience, 10 of them based in the UAE",
     homeAboutHighlight2:"Specializing in interior, real estate, product, lifestyle & campaign photography",
     homeAboutHighlight3:"Short-form video content for Instagram & TikTok with brand-consistent storytelling",
@@ -400,10 +400,10 @@ const DEF_SETTINGS: SiteSettings = {
     {id:"cl4",name:"Client Four",logo:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='48'%3E%3Crect width='160' height='48' rx='6' fill='%231a1a2e' stroke='%23A855F7'/%3E%3Ctext x='80' y='29' font-family='Arial,sans-serif' font-size='13' font-weight='700' letter-spacing='1' fill='%23E2D9F3' text-anchor='middle'%3ECLIENT FOUR%3C/text%3E%3C/svg%3E"},
   ] as {id:string;name:string;logo:string}[],
   cvSections:[
-    {title:"Profile",content:"Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Founder of Creative Fusion, a premium photography and cinematography brand. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces."},
+    {title:"Profile",content:"Dubai-based photographer and cinematographer with over 20 years of experience crafting luxury visual content for high-end clients, including 10 years of UAE-based experience. Skilled in interior, real estate, product, lifestyle and campaign photography, and short-form video content for Instagram and TikTok, with a refined eye for composition and brand-consistent visual storytelling across luxury residential and hospitality spaces."},
     {title:"Creative Expertise",content:"Trained graphic artist with a strong grounding in brand development, typography, imaging and grid-based design systems, built through years of designing across print, digital and social platforms. Applies this design foundation to content that drives measurable results using consistent visual identity, strategic composition and platform-native storytelling to increase engagement, build audience trust and generate qualified leads through organic and campaign content."},
     {title:"Media Manager (Contract) — Earthlink Real Estate, Dubai · Jun 2026 – Present",content:"Overseeing media production management and photography, supporting the sales team and real estate agents with marketing content. Creates tailored content for individual agents, conducts on-site photo and video shoots at properties and development offices, and produces visuals for listings, campaigns and client presentations."},
-    {title:"Photographer, Videographer & Brand/Social Media Specialist — Creative Fusion LLC, Dubai · Jan 2024 – Present",content:"Founder and creative lead delivering end-to-end visual and brand solutions: interior, architectural, real estate, event, lifestyle, portrait, product and corporate photography/videography with cinematic storytelling, including luxury residential interiors and hospitality spaces. Directs full production workflows from concept through delivery, designs logos and branding kits, and manages social media strategy and campaigns across Instagram, LinkedIn and Facebook."},
+    {title:"Photographer, Videographer & Brand/Social Media Specialist — Dubai · Jan 2024 – Present",content:"Founder and creative lead delivering end-to-end visual and brand solutions: interior, architectural, real estate, event, lifestyle, portrait, product and corporate photography/videography with cinematic storytelling, including luxury residential interiors and hospitality spaces. Directs full production workflows from concept through delivery, designs logos and branding kits, and manages social media strategy and campaigns across Instagram, LinkedIn and Facebook."},
     {title:"Creative Director (Freelance, Part-Time) — Robus Shelters, Canada (Hybrid) · May 2020 – Present",content:"Providing creative direction on a freelance, part-time basis alongside his primary role, working hybrid with a Canada-based team."},
     {title:"Head of Design Department — Bait Al Nokhada Tents & Fabric Shade LLC, Dubai · May 2016 – May 2024",content:"Led photography, videography, graphic design and visual branding for the company. Supported the sales team by designing proposals, marketing materials and presentations; managed teams and coordinated projects."},
     {title:"Web & Graphic Designer — DigitalSofts, Faisalabad, Pakistan · Jan 2007 – Jun 2016",content:"Delivered web and graphic design work using Adobe Photoshop, Adobe Illustrator and related tools."},
@@ -2436,7 +2436,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [permReqRejectReason,setPermReqRejectReason]=useState("");
   const [permReqApprovedUsage,setPermReqApprovedUsage]=useState("");
   const [permReqCreditRequired,setPermReqCreditRequired]=useState(true);
-  const [permReqCreditText,setPermReqCreditText]=useState("Photography: Naveed Anjum / Creative Fusion LLC");
+  const [permReqCreditText,setPermReqCreditText]=useState("Photography: Naveed Anjum");
   const [rejectReasonText,setRejectReasonText]=useState("");
 
   // Restore an existing session on load, and react to sign-in/out and password-recovery
@@ -3219,7 +3219,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       button:{type:"button",text:"Click here",href:"https://"},
       divider:{type:"divider"},
       spacer:{type:"spacer",height:24},
-      footer:{type:"footer",text:"You're receiving this because you're a valued contact of Creative Fusion."},
+      footer:{type:"footer",text:"You're receiving this because you're a valued contact of Naveed Anjum."},
     };
     setEmailTemplateForm((f:any)=>({...f,blocks:[...(f.blocks||[]),blank[type]]}));
   }
@@ -6246,7 +6246,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             </div>
                           </div>
                         ):(
-                          <div style={{marginTop:14}}><button onClick={()=>{setPermReqOpenId(r.id);setPermReqCreditText("Photography: Naveed Anjum / Creative Fusion LLC");setPermReqCreditRequired(true);}} style={S.btnSm}>Review Request</button></div>
+                          <div style={{marginTop:14}}><button onClick={()=>{setPermReqOpenId(r.id);setPermReqCreditText("Photography: Naveed Anjum");setPermReqCreditRequired(true);}} style={S.btnSm}>Review Request</button></div>
                         )
                       )}
                     </div>

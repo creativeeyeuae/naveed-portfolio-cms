@@ -90,7 +90,7 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     alternates: { canonical: "/" },
     icons: { icon: "/icon", apple: "/apple-touch-icon.png" },
-    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Creative Fusion" },
+    appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Naveed Anjum" },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
     // Google Search Console ownership verification for the bynaveedanjum.com URL-prefix
     // property (separate from the creativefusion.llc agency-site property).
@@ -99,7 +99,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       url: SITE_URL,
-      siteName: "Naveed Anjum — Creative Fusion",
+      siteName: "Naveed Anjum",
       images: [{ url: OG_IMAGE, width: 1200, height: 630, alt: "Naveed Anjum — Photographer & Cinematographer" }],
       locale: "en_US",
       type: "website",
@@ -123,7 +123,7 @@ const structuredData = {
     {
       "@type": "WebSite",
       "@id": `${SITE_URL}/#website`,
-      name: "Naveed Anjum — Creative Fusion",
+      name: "Naveed Anjum",
       url: SITE_URL,
       publisher: { "@id": `${SITE_URL}/#person` },
       inLanguage: "en",
@@ -149,7 +149,7 @@ const structuredData = {
     {
       "@type": "ProfessionalService",
       "@id": `${SITE_URL}/#service`,
-      name: "Naveed Anjum — Creative Fusion",
+      name: "Naveed Anjum",
       url: SITE_URL,
       image: OG_IMAGE,
       telephone: "+971581174911",

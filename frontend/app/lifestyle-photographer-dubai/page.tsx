@@ -10,9 +10,9 @@ import { buildMetadata } from "@/lib/seo";
 // component and buildMetadata() helper as the other 13 pages in this folder, so it's
 // automatically cross-linked (lib/servicePagesData.ts) and automatically included in
 // app/sitemap.ts -- no parallel page system, no new template.
-const TITLE = "Lifestyle Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Lifestyle Photographer in Dubai | Naveed Anjum";
 const DESC =
-  "Lifestyle photographer in Dubai for brands, individuals and families — natural, editorial-style imagery for social media, marketing and personal projects, by Naveed Anjum, Creative Fusion.";
+  "Lifestyle photographer in Dubai for brands, individuals and families — natural, editorial-style imagery for social media, marketing and personal projects, by Naveed Anjum.";
 const KEYWORDS = [
   "lifestyle photographer Dubai",
   "lifestyle photography Dubai",

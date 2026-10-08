@@ -7,9 +7,9 @@ import { buildMetadata } from "@/lib/seo";
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
 // metadata now goes through the shared buildMetadata() helper so this page also gets a
 // real og:image (previously missing).
-const TITLE = "Brand Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Brand Photographer in Dubai | Naveed Anjum";
 const DESC =
-  "Brand and advertising photographer in Dubai — visual content built around your brand identity for campaigns and marketing. Naveed Anjum, Creative Fusion.";
+  "Brand and advertising photographer in Dubai — visual content built around your brand identity for campaigns and marketing. By Naveed Anjum.";
 
 export const metadata: Metadata = buildMetadata({
   path: "/brand-photographer-dubai/",

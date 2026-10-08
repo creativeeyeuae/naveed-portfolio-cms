@@ -7,9 +7,9 @@ import { buildMetadata } from "@/lib/seo";
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
 // metadata now goes through the shared buildMetadata() helper so this page also gets a
 // real og:image (previously missing).
-const TITLE = "Property Videography in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Property Videography in Dubai | Naveed Anjum";
 const DESC =
-  "Property videography in Dubai — walkthrough films and marketing videos for developers, agencies and property owners. Naveed Anjum, Creative Fusion.";
+  "Property videography in Dubai — walkthrough films and marketing videos for developers, agencies and property owners. By Naveed Anjum.";
 
 export const metadata: Metadata = buildMetadata({
   path: "/property-videography-dubai/",

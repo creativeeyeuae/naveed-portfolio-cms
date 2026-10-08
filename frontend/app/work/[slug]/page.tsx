@@ -450,7 +450,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
 
         {/* COPYRIGHT NOTICE */}
         <div style={{ marginTop: 8, paddingTop: 24, borderTop: `1px solid ${C.BORDER}`, fontSize: 12, color: C.MID, lineHeight: 1.7 }}>
-          © {new Date().getFullYear()} Naveed Anjum / Creative Fusion LLC. All images and video on this page are protected by copyright and may not be copied, reproduced or reused without permission. Use the "Picture Permission Request" button on any image above to ask about licensing it.
+          © {new Date().getFullYear()} Naveed Anjum. All images and video on this page are protected by copyright and may not be copied, reproduced or reused without permission. Use the "Picture Permission Request" button on any image above to ask about licensing it.
         </div>
       </div>
 

@@ -12,8 +12,8 @@ export const dynamic = "force-static";
 // Next.js auto-generates /manifest.webmanifest from this file and links it in <head>.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Creative Fusion — Naveed Anjum",
-    short_name: "Creative Fusion",
+    name: "Naveed Anjum",
+    short_name: "Naveed Anjum",
     description:
       "Dubai-based photography & cinematography by Naveed Anjum — portfolio, bookings, and journal.",
     start_url: "/",

@@ -4,7 +4,7 @@ import { getServicePageContent, isServicePageEnabled } from "@/lib/cmsData";
 import { notFound } from "next/navigation";
 import { buildMetadata } from "@/lib/seo";
 
-const TITLE = "Fashion Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Fashion Photographer in Dubai | Naveed Anjum";
 const DESC =
   "Fashion photographer in Dubai for runway shows, designer showcases and editorial fashion coverage — real event work including the Nemara Fashion Show. Naveed Anjum.";
 

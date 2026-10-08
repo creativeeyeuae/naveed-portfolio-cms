@@ -10,7 +10,7 @@ import { buildMetadata } from "@/lib/seo";
 // real og:image (previously missing).
 const TITLE = "Exhibition & Trade Show Videographer Dubai | Naveed Anjum";
 const DESC =
-  "Exhibition and trade show stand videographer in Dubai for exhibiting companies — highlight reels, demos and interviews by Naveed Anjum, Creative Fusion.";
+  "Exhibition and trade show stand videographer in Dubai for exhibiting companies — highlight reels, demos and interviews by Naveed Anjum.";
 
 export const metadata: Metadata = buildMetadata({
   path: "/exhibition-videographer-dubai/",

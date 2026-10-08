@@ -7,7 +7,7 @@ import { buildMetadata } from "@/lib/seo";
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
 // metadata now goes through the shared buildMetadata() helper so this page also gets a
 // real og:image (previously missing).
-const TITLE = "Interior Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Interior Photographer in Dubai | Naveed Anjum";
 const DESC =
   "Interior photographer in Dubai for homes, hospitality, retail and commercial interiors — light, composition and styling captured accurately.";
 

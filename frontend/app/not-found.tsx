@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 // CMS data, since this must render even when nothing else on the page can resolve.
 // noindex is intentional and correct here: a 404 page should never itself be indexed.
 export const metadata: Metadata = {
-  title: "Page Not Found — Creative Fusion | Naveed Anjum",
+  title: "Page Not Found | Naveed Anjum",
   robots: { index: false, follow: true },
 };
 

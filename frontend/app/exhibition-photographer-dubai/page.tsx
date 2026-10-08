@@ -11,7 +11,7 @@ import { buildMetadata } from "@/lib/seo";
 // page also gets a real og:image (previously missing) without duplicating that logic here.
 const TITLE = "Exhibition & Trade Show Photographer Dubai | Naveed Anjum";
 const DESC =
-  "Exhibition and trade show stand photographer in Dubai for exhibiting companies — booth, product and delegate coverage by Naveed Anjum, Creative Fusion.";
+  "Exhibition and trade show stand photographer in Dubai for exhibiting companies — booth, product and delegate coverage by Naveed Anjum.";
 
 export const metadata: Metadata = buildMetadata({
   path: "/exhibition-photographer-dubai/",

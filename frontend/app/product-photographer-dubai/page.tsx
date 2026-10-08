@@ -7,7 +7,7 @@ import { buildMetadata } from "@/lib/seo";
 // Description trimmed to a search-result-friendly length per the SEO Agent audit;
 // metadata now goes through the shared buildMetadata() helper so this page also gets a
 // real og:image (previously missing).
-const TITLE = "Product Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Product Photographer in Dubai | Naveed Anjum";
 const DESC =
   "Product photographer in Dubai for e-commerce and advertising — clean, accurately lit imagery that shows products the way customers expect.";
 

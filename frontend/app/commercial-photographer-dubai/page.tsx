@@ -7,9 +7,9 @@ import { buildMetadata } from "@/lib/seo";
 // Metadata now goes through the shared buildMetadata() helper so this page gets a real
 // og:image (previously missing) per the SEO Agent audit. Title/description were already
 // within range, so only the mechanism changed here, not the copy.
-const TITLE = "Commercial Photographer in Dubai | Naveed Anjum — Creative Fusion";
+const TITLE = "Commercial Photographer in Dubai | Naveed Anjum";
 const DESC =
-  "Commercial photographer in Dubai for brands, businesses and corporate clients — product, editorial and corporate photography by Naveed Anjum, Creative Fusion.";
+  "Commercial photographer in Dubai for brands, businesses and corporate clients — product, editorial and corporate photography by Naveed Anjum.";
 
 export const metadata: Metadata = buildMetadata({
   path: "/commercial-photographer-dubai/",
@@ -40,7 +40,7 @@ export default async function Page() {
     ],
     heroImage: {
       src: "https://ziwaocjrpbrksnepbpxi.supabase.co/storage/v1/object/public/portfolio/cms-uploads/1789124446277-hn5lcb8qp26.jpg",
-      alt: "Commercial and corporate editorial photography by Naveed Anjum, Creative Fusion — Dubai",
+      alt: "Commercial and corporate editorial photography by Naveed Anjum — Dubai",
     },
     intro:
       "Commercial photography for brands, businesses and corporate clients in Dubai — product, editorial and corporate imagery shot to a brand's own standards, for use across marketing, press and digital channels.",

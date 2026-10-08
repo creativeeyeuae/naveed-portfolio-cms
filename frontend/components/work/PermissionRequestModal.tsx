@@ -175,7 +175,7 @@ export default function PermissionRequestModal({
             <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 16, cursor: "pointer" }}>
               <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} style={{ marginTop: 3 }} />
               <span style={{ fontSize: 12, color: "var(--text-muted, #A892C6)", lineHeight: 1.6 }}>
-                I acknowledge this image is copyright Naveed Anjum / Creative Fusion LLC and my request does not grant any rights unless and until it is approved.
+                I acknowledge this image is copyright Naveed Anjum and my request does not grant any rights unless and until it is approved.
               </span>
             </label>
             {error && <div style={{ fontSize: 12, color: "#e74c3c", marginBottom: 12 }}>{error}</div>}

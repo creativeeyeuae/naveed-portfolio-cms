@@ -1,9 +1,9 @@
 // Admin push-notification service worker. Only ever shows notifications this site's own
 // server sent (see functions/_shared/webpush.ts) -- it has no other job.
 self.addEventListener("push", (event) => {
-  let data = { title: "Creative Fusion CMS", body: "You have a new update." };
+  let data = { title: "Naveed Anjum CMS", body: "You have a new update." };
   try { if (event.data) data = event.data.json(); } catch {}
-  const title = data.title || "Creative Fusion CMS";
+  const title = data.title || "Naveed Anjum CMS";
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || "",

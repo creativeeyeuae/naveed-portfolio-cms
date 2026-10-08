@@ -199,7 +199,7 @@ export default async function ServicePage({ data }: { data: ServicePageData }) {
 
       <footer style={{ padding: "32px 24px", borderTop: `1px solid ${BORDER}`, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14, fontSize: 12, color: MID }}>
         <div>
-          © {new Date().getFullYear()} Naveed Anjum — Creative Fusion · Dubai, UAE · {PHONE_DISPLAY}
+          © {new Date().getFullYear()} Naveed Anjum · Dubai, UAE · {PHONE_DISPLAY}
         </div>
         <div style={{ display: "flex", gap: 18 }}>
           <a href="https://www.instagram.com/bynaveedanjum/" target="_blank" rel="noopener noreferrer" style={{ color: MID, textDecoration: "none" }}>Instagram</a>

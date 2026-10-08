@@ -18,7 +18,7 @@ export function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-ink/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link href="/" className="font-serif text-xl tracking-wide">
-          Creative Fusion
+          Naveed Anjum
         </Link>
         <ul className="hidden gap-8 md:flex">
           {links.map((link) => (

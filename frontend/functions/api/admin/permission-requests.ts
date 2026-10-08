@@ -80,7 +80,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   if (action === "approve") {
     update.approved_usage = (body.approvedUsage || "").trim() || null;
     update.credit_required = body.creditRequired === true;
-    update.credit_text = body.creditRequired === true ? (body.creditText || "").trim() || "Photography: Naveed Anjum / Creative Fusion LLC" : null;
+    update.credit_text = body.creditRequired === true ? (body.creditText || "").trim() || "Photography: Naveed Anjum" : null;
     update.rejection_reason = null;
   } else {
     update.rejection_reason = (body.rejectionReason || "").trim();

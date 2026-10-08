@@ -10,8 +10,9 @@
 // just happened, never invent one.
 //
 // For "new_booking" and "new_lead" specifically, this also forwards a WhatsApp message to
-// Naveed (see _shared/liveChatWhatsapp.ts) in addition to the push notification -- same
-// trusted, re-verified data, just a second delivery channel. The website write this call
+// Naveed's dedicated alerts-only number (see _shared/liveChatWhatsapp.ts) in addition to the
+// push notification -- same trusted, re-verified data, just a second delivery channel. The
+// website write this call
 // reports on has already fully succeeded before this function is ever called (the caller
 // fires this fire-and-forget right after its own save, see HomeClient.tsx's notifyServer()
 // and cmsData.ts's submitContactLead()), so a WhatsApp/VPS outage can never affect whether a
@@ -19,7 +20,7 @@
 // and that failure is swallowed here so it can never break the push notification either.
 import { json, corsHeaders } from "../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
-import { forwardAdminWhatsAppAlert, forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
+import { forwardAdminAlertsWhatsApp, forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 
 const SUPABASE_URL = "https://ziwaocjrpbrksnepbpxi.supabase.co";
 const RECENT_MS = 15 * 60 * 1000;
@@ -139,12 +140,13 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
 
   if (!payload) return json({ ok: true, skipped: true }, 200, origin); // nothing real/recent to notify -- not an error
 
-  // Second delivery channel for new_booking/new_lead -- best-effort, never allowed to affect
-  // the push notification below or the response (the website write already fully succeeded
-  // before this endpoint was ever called).
+  // Second delivery channel for new_booking/new_lead -- sent to Naveed's dedicated
+  // alerts-only number (see liveChatWhatsapp.ts), not the main client-facing number.
+  // Best-effort, never allowed to affect the push notification below or the response (the
+  // website write already fully succeeded before this endpoint was ever called).
   if (waText) {
     try {
-      await forwardAdminWhatsAppAlert(env, waText);
+      await forwardAdminAlertsWhatsApp(env, waText);
     } catch {}
   }
 

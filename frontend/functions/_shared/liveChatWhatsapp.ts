@@ -46,10 +46,27 @@ async function queueWhatsAppAlert(env: any, toPhone: string, text: string, displ
   }
 }
 
-// Queue any alert text to Naveed's own WhatsApp. Used directly for things that don't need a
-// reply-back path (e.g. booking alerts), and internally by forwardLiveChatToWhatsApp below.
+// Queue any alert text to Naveed's own WhatsApp, via the self-chat on the ONE connected
+// bridge number. Used where Naveed needs to be able to REPLY straight from WhatsApp (the
+// live-chat handover tag workflow below), since a reply only reaches this system when it's
+// typed from the same account the bridge is logged into.
 export async function forwardAdminWhatsAppAlert(env: any, text: string): Promise<void> {
   await queueWhatsAppAlert(env, adminWhatsAppNumber(env), text, "Site alerts");
+}
+
+// A second, RECEIVE-ONLY number for Naveed's own FYI alerts (new booking, new inquiry) --
+// read from ADMIN_ALERTS_WHATSAPP_NUMBER, falling back to the number he asked these to go
+// to. This is just a normal outbound message sent BY the one connected bridge number TO this
+// number, same as any client message -- it does NOT need its own WhatsApp/bridge connection,
+// no QR scan, no extra ban risk. Naveed can't reply to these from that number and have it do
+// anything (unlike forwardAdminWhatsAppAlert above) -- by design, since he asked for these
+// "only to receive alerts."
+export function adminAlertsWhatsAppNumber(env: any): string {
+  return String(env.ADMIN_ALERTS_WHATSAPP_NUMBER || "971554080875").replace(/[^\d]/g, "");
+}
+
+export async function forwardAdminAlertsWhatsApp(env: any, text: string): Promise<void> {
+  await queueWhatsAppAlert(env, adminAlertsWhatsAppNumber(env), text, "Site alerts");
 }
 
 // Queue a message to a CLIENT's own WhatsApp number (not Naveed's) -- same number/bridge,

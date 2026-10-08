@@ -1189,6 +1189,8 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   const [pendingText,setPendingText] = useState("");
   const [idName,setIdName] = useState(""); const [idEmail,setIdEmail] = useState(""); const [idWa,setIdWa] = useState("");
   const [idBusy,setIdBusy] = useState(false);
+  const [confirmEndChat,setConfirmEndChat] = useState(false);
+  const [endingChat,setEndingChat] = useState(false);
   const listRef = useRef<HTMLDivElement|null>(null);
   const unread = messages.filter(m=>m.sender==="admin").length>0 && messages[messages.length-1]?.sender==="admin";
 
@@ -1305,6 +1307,19 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
       await actuallySend(toSend);
     }catch(e:any){ setErr(e.message||"Could not save your details."); setIdBusy(false); }
   }
+  // "End chat" -- distinct from just closing/minimizing the panel (the existing ✕, which
+  // keeps the same conversation and picks up right where it left off). This clears this
+  // browser's visitor session server-side (api/visitor/end-chat.ts), then resets the widget
+  // to a blank slate so it behaves exactly like a brand-new visitor next time: empty message
+  // list, quick-reply starters, and a fresh name/WhatsApp/email identity ask on the next
+  // message sent. Nothing already saved in the CMS is touched or deleted.
+  async function endChat(){
+    setEndingChat(true);
+    try{ await fetch("/api/visitor/end-chat",{method:"POST"}); }catch{}
+    setMessages([]); setLoaded(true); setNeedsIdentity(false); setPendingText("");
+    setText(""); setErr(""); lastSeenIdRef.current=null;
+    setEndingChat(false); setConfirmEndChat(false);
+  }
   const chatIcon=(size:number,color:string)=>(
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
   );
@@ -1366,15 +1381,29 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             )}
             {err&&<div style={{color:"#e74c3c",fontSize:12,marginTop:10}}>{err}</div>}
           </div>
-          <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
-            <div style={{display:"flex",gap:8}}>
-              <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
-              <button type="submit" disabled={sending||!text.trim()} aria-label="Send message" style={{background:C.P,border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,opacity:sending||!text.trim()?0.6:1}}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
-              </button>
+          {confirmEndChat?(
+            <div style={{display:"flex",flexDirection:"column",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+              <div style={{fontSize:12,color:C.FG,textAlign:"center",lineHeight:1.4}}>End this chat? You'll need to start over (name/WhatsApp/email) next time.</div>
+              <div style={{display:"flex",gap:8}}>
+                <button type="button" onClick={()=>setConfirmEndChat(false)} disabled={endingChat} style={{flex:1,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 0",fontSize:12.5,cursor:"pointer"}}>Cancel</button>
+                <button type="button" onClick={endChat} disabled={endingChat} style={{flex:1,background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"9px 0",fontSize:12.5,cursor:"pointer",fontWeight:600,opacity:endingChat?0.7:1}}>{endingChat?"...":"Yes, end chat"}</button>
+              </div>
             </div>
-            <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.MID,textDecoration:"none",textAlign:"center"}}>Prefer WhatsApp? Chat there instead</a>
-          </form>
+          ):(
+            <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+              <div style={{display:"flex",gap:8}}>
+                <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
+                <button type="submit" disabled={sending||!text.trim()} aria-label="Send message" style={{background:C.P,border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,opacity:sending||!text.trim()?0.6:1}}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+                </button>
+              </div>
+              <div style={{display:"flex",justifyContent:"center",alignItems:"center",gap:8}}>
+                <button type="button" onClick={()=>setConfirmEndChat(true)} style={{background:"none",border:"none",color:C.MID,fontSize:11,textDecoration:"underline",cursor:"pointer",padding:0}}>End chat</button>
+                <span style={{color:C.BORDER,fontSize:11}}>·</span>
+                <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{fontSize:11,color:C.MID,textDecoration:"none"}}>Prefer WhatsApp? Chat there instead</a>
+              </div>
+            </form>
+          )}
         </div>
       )}
       <button aria-label={open?"Close chat":"Open live chat"} onClick={()=>setOpen(o=>!o)}

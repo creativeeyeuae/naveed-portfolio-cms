@@ -95,3 +95,13 @@ export async function getVisitorIdFromRequest(request: Request, env: VisitorEnv)
 export function buildVisitorSetCookie(token: string): string {
   return `${COOKIE_NAME}=${token}; Path=/; Max-Age=${MAX_AGE_SECONDS}; HttpOnly; Secure; SameSite=Lax`;
 }
+
+// Builds the Set-Cookie header that ends a visitor's session browser-side (used by the Live
+// Chat widget's "End chat" action). Same attributes as buildVisitorSetCookie minus the value,
+// with Max-Age=0 telling the browser to delete it immediately. The underlying visitor row and
+// every message already saved stay exactly as they are in the CMS -- this only clears which
+// browser cookie currently points at that visitor, so the next message from this browser (or
+// anyone reopening the widget here) is treated as a brand-new, unidentified visitor.
+export function buildVisitorClearCookie(): string {
+  return `${COOKIE_NAME}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
+}

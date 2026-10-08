@@ -4252,7 +4252,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         }}
       />
       {showInstallBanner&&(
-      <div style={{position:"fixed",left:12,right:12,bottom:12,zIndex:600,background:"rgba(20,13,33,0.98)",border:`1px solid ${C.BORDER}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 30px rgba(0,0,0,0.4)",backdropFilter:"blur(10px)"}}>
+      <div style={{position:"fixed",left:12,right:12,bottom:96,zIndex:600,background:"rgba(20,13,33,0.98)",border:`1px solid ${C.BORDER}`,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"0 8px 30px rgba(0,0,0,0.4)",backdropFilter:"blur(10px)"}}>
         <div style={{width:36,height:36,borderRadius:9,background:"#140D21",display:"flex",alignItems:"center",justifyContent:"center",color:"#A855F7",fontSize:14,fontWeight:700,flexShrink:0}}>NA</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:12.5,color:C.FG,fontWeight:600,marginBottom:2}}>Install this site as an app</div>

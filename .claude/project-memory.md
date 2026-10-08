@@ -2,6 +2,51 @@
 
 Maintained per the local+live-production-engineer workflow. Read this first each session.
 
+## MANDATORY GIT PUSH WORKFLOW — root cause of the recurring "unpushed commit(s)" Stop-hook message (fixed 2026-10-08)
+
+**Read this before doing ANY git push in this project.** The Claude Code container's own
+`git push` to GitHub is structurally broken (proxy returns 403 — not fixable from inside the
+container). The only working push path is a bundle transfer through the user's own Windows
+machine, which this project uses on every push:
+
+1. Commit normally in the cloud clone (`/home/claude/repo`).
+2. `git bundle create <path>.bundle origin/main..HEAD` (names its ref `HEAD`, not `main` —
+   must be fetched on the Windows side with `HEAD:<branch-name>`, never `main:<branch-name>`,
+   or the fetch fails with "couldn't find remote ref main").
+3. Copy the bundle into `/mnt/user-data/outputs/`, then
+   `mcp__remote-devices__device_commit_files` to write it to the user's
+   `C:\Users\creat\Desktop\naveed-portfolio-cms\<name>.bundle`.
+4. Run on the Windows machine, in
+   `C:\Users\creat\Desktop\naveed-portfolio-cms\naveed-portfolio-cms` (PowerShell via
+   `mcp__remote-devices__plugin_desktop-commander_desktop-commander__start_process`):
+   `git fetch ../<bundle>.bundle HEAD:<branch> ; git merge --ff-only <branch> ; git push origin main ; git branch -d <branch>`
+5. Delete the bundle file from the Windows desktop afterward.
+6. **MANDATORY, NEVER SKIP: immediately run `git fetch origin` in `/home/claude/repo` (the
+   cloud clone) as the literal next tool call — before writing any "done"/"pushed" message to
+   the user.**
+
+### Why the Stop hook kept firing "There are N unpushed commit(s)..." after pushes that were
+### later confirmed to be fine
+
+The hook (`~/.claude/stop-hook-git-check.sh`) was never actually wrong/stale — it runs
+`git rev-list origin/<branch>..HEAD --count` in the container's own clone at the literal
+moment a turn ends. Step 6 above only updates GitHub's copy of `main` (via the user's Windows
+machine) — it does **not** update the cloud clone's local `origin/main` tracking ref. That
+only happens when `git fetch origin` is run inside `/home/claude/repo` itself. On the
+occasions the hook fired, the real push to GitHub had already succeeded, but the final
+`git fetch origin` in the cloud clone had not yet been run before the turn's response was
+sent — so from the cloud clone's own point of view (which is exactly what the hook checks) the
+commit genuinely was still "unpushed." Re-fetching always showed it was fine a moment later,
+which is why it looked like a false alarm each time — it wasn't false, it was just a step that
+hadn't happened yet.
+
+**The permanent fix is procedural, not a hook bug to patch:** step 6 is not optional and is
+not a "nice to also do" — it is the step that makes the push actually complete from the
+container's perspective. Never report a push as done, and never let a turn end, between step 5
+and step 6. Do not edit or weaken `~/.claude/stop-hook-git-check.sh` itself to work around
+this — it is a generic safety net (unrelated to this project specifically) and correctly
+reports exactly what it's designed to report.
+
 ## PERSISTENT DESIGN INSTRUCTION — Cinematic Showcase device interaction (Apple-inspired reference)
 
 Added 2026-09-25, by explicit client request ("that should be explicitly included in the

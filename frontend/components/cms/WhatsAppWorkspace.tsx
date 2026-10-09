@@ -49,13 +49,13 @@ function WhatsAppQrCode({ data, size = 260 }: { data: string; size?: number }) {
 const C = { P:"var(--c-p,#8B5CF6)",PL:"var(--c-pl,#E2D9F3)",PD:"var(--c-pd,#A855F7)",GOLD:"var(--c-gold,#8B5CF6)",GOLDL:"var(--c-goldl,#A855F7)",BG:"var(--c-bg,#170F28)",FG:"var(--c-fg,#FFFFFF)",MID:"var(--c-mid,#A892C6)",DARK:"var(--c-dark,#221640)",BORDER:"var(--c-border,#3D2A5E)",
   LT:"var(--c-lt,#F8F6FC)",LTCARD:"var(--c-ltcard,#FFFFFF)",LTBORDER:"var(--c-ltborder,rgba(139,92,246,0.14))",INKMID:"var(--c-inkmid,#6E6480)" };
 const S = {
-  inp:{background:"#1C1330",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
+  inp:{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",color:C.FG,padding:"12px 16px",fontSize:13,width:"100%",outline:"none",boxSizing:"border-box"} as React.CSSProperties,
   btnP:{background:C.P,border:"none",color:C.BG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   btnO:{background:"none",border:"1px solid rgba(255,255,255,0.18)",color:C.FG,padding:"13px 36px",fontSize:13,fontWeight:700,letterSpacing:3,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   btnSm:{background:C.P,border:"none",color:C.BG,padding:"8px 18px",fontSize:10,letterSpacing:2,textTransform:"uppercase" as const,cursor:"pointer",borderRadius:2},
   lbl:{fontSize:11,letterSpacing:3,color:C.MID,textTransform:"uppercase" as const,display:"block" as const,marginBottom:6},
 };
-const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,boxShadow:"0 2px 10px rgba(0,0,0,0.35)"};
+const CARD_STYLE:React.CSSProperties = {background:"rgba(255,255,255,0.045)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,boxShadow:"0 6px 24px rgba(0,0,0,0.18)"};
 const STATUS_PILL_COLORS: Record<string,{bg:string;fg:string}> = {
   open:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"}, connected:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"}, approved:{bg:"rgba(34,197,94,0.16)",fg:"#4ade80"},
   pending:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"}, connecting:{bg:"rgba(245,158,11,0.18)",fg:"#fbbf24"}, draft:{bg:"rgba(148,163,184,0.16)",fg:"#94a3b8"},
@@ -671,7 +671,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                       {insertedNotice&&<div style={{padding:"0 16px",fontSize:11,color:"#4ade80"}}>{insertedNotice}</div>}
                       <div style={{padding:"12px 16px",borderTop:`1px solid ${C.BORDER}`,position:"relative" as const}}>
                         {quickPickerOpen&&(
-                          <div style={{position:"absolute" as const,bottom:"100%",left:16,right:16,maxHeight:220,overflowY:"auto" as const,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:8,marginBottom:6,boxShadow:"0 -4px 14px rgba(0,0,0,0.4)"}}>
+                          <div style={{position:"absolute" as const,bottom:"100%",left:16,right:16,maxHeight:220,overflowY:"auto" as const,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:8,marginBottom:6,boxShadow:"0 -4px 14px rgba(0,0,0,0.4)"}}>
                             {(!quickReplies||quickReplies.length===0)?(
                               <div style={{padding:12,fontSize:12,color:C.MID,fontStyle:"italic"}}>No quick replies yet.</div>
                             ):quickReplies.map((q:any)=>(

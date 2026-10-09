@@ -1180,7 +1180,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
             )}
 
             <div style={{fontSize:12.5,color:C.MID,lineHeight:1.7}}>
-              This page always reads the real connection status from the database, and it always reports <strong>Not Connected</strong> until the future WhatsApp bridge (running on your VPS) reports in for the first time -- nothing here can be switched to "connected" by clicking anything on this page. The database, the API layer, and this whole inbox are ready and waiting for it: once the bridge is installed and scans in through a QR code, it will start pushing real incoming messages into this same inbox and pulling queued outbound messages back out of it -- with no changes needed to this screen.
+              <strong>How it works:</strong> press <strong>Connect (show QR)</strong> once, wait up to 1 minute, then scan the QR with WhatsApp &rarr; Linked Devices &rarr; Link a Device. You only do this once -- it stays connected, even after the server restarts. Press <strong>Cancel</strong> to stop a QR, or <strong>Disconnect</strong> to unlink. If WhatsApp ever logs it out, it waits here for you to press Connect again; it never creates a QR on its own. An unscanned QR expires after 3 minutes.
             </div>
           </div>
         )}

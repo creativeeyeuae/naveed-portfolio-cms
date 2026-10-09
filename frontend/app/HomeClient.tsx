@@ -737,7 +737,7 @@ async function sendEmailNotification(settings:SiteSettings, entry:ContactLead) {
 // Validation + size caps: rejects unsupported files up front (human-readable message, no
 // broken/partial upload) and stops the offline/misconfigured fallback below from ever
 // embedding a truly huge base64 blob into the CMS's saved data.
-const MAX_IMAGE_MB = 12;
+const MAX_IMAGE_MB = 50; // checked on the ORIGINAL file; it's compressed to ~100KB before upload
 const FALLBACK_MAX_MB = 4;
 function validateImageFile(file:File): string|null {
   const okTypes = ["image/jpeg","image/png","image/webp","image/avif","image/gif"];
@@ -745,9 +745,66 @@ function validateImageFile(file:File): string|null {
   if(file.size > MAX_IMAGE_MB*1024*1024) return `"${file.name}" is too large (max ${MAX_IMAGE_MB}MB).`;
   return null;
 }
-async function uploadToStorage(file:File): Promise<string> {
-  const invalid = validateImageFile(file);
+// ─── AUTOMATIC IMAGE COMPRESSION ─────────────────────────────────────────────
+// Every CMS photo upload passes through here first (uploadToStorage below is the single
+// upload path). Target: each saved photo is at most TARGET_IMAGE_KB, at the HIGHEST quality
+// that fits -- quality is found by binary search, never just set low. Long edge capped at
+// MAX_IMAGE_EDGE (plenty for full-screen web display, incl. retina). Only if even quality
+// ~0.55 can't fit is the photo scaled down a little, then the search runs again -- so
+// sharpness is preferred over JPEG/WebP artefacts. Camera orientation is respected; EXIF
+// metadata (GPS etc.) is dropped. WebP where the browser can encode it, JPEG otherwise.
+// GIFs (animation) and files already small enough are left untouched.
+const TARGET_IMAGE_KB = 100;
+const MAX_IMAGE_EDGE = 2048;
+const MIN_QUALITY = 0.55;
+async function compressImage(file:File): Promise<File> {
+  if(file.type==="image/gif") return file;
+  const targetBytes = TARGET_IMAGE_KB*1024;
+  let bitmap: ImageBitmap;
+  try { bitmap = await createImageBitmap(file, { imageOrientation:"from-image" } as any); }
+  catch { return file; } // unknown format -- upload as-is rather than fail
+  const longEdge = Math.max(bitmap.width, bitmap.height);
+  if(file.size <= targetBytes && longEdge <= MAX_IMAGE_EDGE) { bitmap.close?.(); return file; }
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+  if(!ctx) { bitmap.close?.(); return file; }
+  const encode = (type:string, q:number) => new Promise<Blob|null>(res => canvas.toBlob(res, type, q));
+  // WebP gives ~25-35% smaller files at the same visual quality; Safari can't encode it and
+  // silently returns PNG, so detect that and use JPEG there instead.
+  const probe = await encode("image/webp", 0.8);
+  const type = probe && probe.type==="image/webp" ? "image/webp" : "image/jpeg";
+
+  let scale = Math.min(1, MAX_IMAGE_EDGE/longEdge);
+  let best: Blob|null = null;
+  for(let attempt=0; attempt<8; attempt++){
+    const w = Math.max(1, Math.round(bitmap.width*scale)), h = Math.max(1, Math.round(bitmap.height*scale));
+    canvas.width = w; canvas.height = h;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    // Binary-search the highest quality that still fits the target size.
+    let lo = MIN_QUALITY, hi = 0.92, fit: Blob|null = null;
+    const top = await encode(type, hi);
+    if(top && top.size <= targetBytes) fit = top;
+    else {
+      for(let i=0; i<7; i++){
+        const q = (lo+hi)/2; const b = await encode(type, q);
+        if(b && b.size <= targetBytes){ fit = b; lo = q; } else { hi = q; }
+      }
+    }
+    if(fit){ best = fit; break; }
+    scale *= 0.85; // couldn't fit even at MIN_QUALITY -- shrink a little and search again
+  }
+  bitmap.close?.();
+  if(!best) return file;
+  const base = file.name.replace(/\.[^.]+$/, "") || "photo";
+  return new File([best], `${base}.${type==="image/webp"?"webp":"jpg"}`, { type });
+}
+
+async function uploadToStorage(original:File): Promise<string> {
+  const invalid = validateImageFile(original);
   if(invalid) throw new Error(invalid);
+  const file = await compressImage(original);
   // Uses sbData (the always-anon client, same fix as the CMS's other saves further up this
   // file) rather than `sb` -- once a real admin session was added, `sb` started sending every
   // request as that signed-in user instead of the site's public key, and Storage's upload

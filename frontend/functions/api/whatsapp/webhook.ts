@@ -22,6 +22,7 @@
 //     confirming it's connected) so the CMS's Connection page can display it.
 import { supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
 import { requireBridge, type BridgeEnv } from "../../_shared/whatsappBridgeAuth";
+import { forwardAdminWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 
 type Env = BridgeEnv & AdminEnv;
 
@@ -50,10 +51,19 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
 // exactly like functions/api/admin/livechat.ts's POST does.
 async function handleAdminReplyIn(env: Env, body: Record<string, any>, origin: string | null) {
   const raw = String(body.body || "").trim();
-  const match = raw.match(/^#?([a-f0-9]{6})\b[\s:,-]*([\s\S]*)$/i);
-  if (!match) return json({ ok: true, ignored: "no tag" }, 200, origin); // not a tagged reply -- nothing to do
-
-  const [, tag, replyText] = match;
+  const quoted = String(body.quoted || "");
+  // Two ways to say which visitor this reply is for:
+  //  1. Easy way: swipe-right "Reply" on the alert -- the bridge sends the quoted alert, which
+  //     contains "(ref #abc123)". Naveed types only his answer, no code.
+  //  2. Old way still works: start the message with the #tag.
+  // A plain message with neither is NEVER sent to a visitor (it may be a personal note in his
+  // self-chat).
+  let tag = "", replyText = "";
+  const typed = raw.match(/^#([a-f0-9]{6})\b[\s:,-]*([\s\S]*)$/i);
+  const fromQuote = quoted.match(/#([a-f0-9]{6})\b/i);
+  if (typed) { tag = typed[1]; replyText = typed[2]; }
+  else if (fromQuote) { tag = fromQuote[1]; replyText = raw; }
+  else return json({ ok: true, ignored: "no tag" }, 200, origin);
   if (!replyText.trim()) return json({ ok: true, ignored: "empty reply" }, 200, origin);
 
   // Visitor ids are UUIDs; the tag is the first 6 hex chars with dashes stripped. The table
@@ -63,7 +73,10 @@ async function handleAdminReplyIn(env: Env, body: Record<string, any>, origin: s
   if (!visRes.ok) return json({ error: "Could not look up visitors.", detail: await visRes.text() }, 500, origin);
   const visitors = (await visRes.json()) as { id: string }[];
   const visitor = visitors.find((v) => v.id.replace(/-/g, "").slice(0, 6).toLowerCase() === tag.toLowerCase());
-  if (!visitor) return json({ ok: true, ignored: "tag not found" }, 200, origin);
+  if (!visitor) {
+    await forwardAdminWhatsAppAlert(env, "⚠️ Couldn't find that website chat — please reply from the CMS Live Chat.").catch(() => {});
+    return json({ ok: true, ignored: "tag not found" }, 200, origin);
+  }
 
   await supaAdmin(env, "live_chat_messages", {
     method: "POST",
@@ -82,6 +95,8 @@ async function handleAdminReplyIn(env: Env, body: Record<string, any>, origin: s
     body: JSON.stringify({ is_read_by_admin: true }),
   });
 
+  // Short confirmation so Naveed knows it reached the website chat.
+  await forwardAdminWhatsAppAlert(env, `✅ Sent to website chat (ref #${tag}).`).catch(() => {});
   return json({ ok: true, visitor_id: visitor.id }, 200, origin);
 }
 

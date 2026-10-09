@@ -94,6 +94,8 @@ export function visitorWhatsAppTag(visitorId: string): string {
 
 export async function forwardLiveChatToWhatsApp(env: any, visitorId: string, text: string): Promise<void> {
   const tag = visitorWhatsAppTag(visitorId);
-  const full = `${text}\n\n(Reply here starting with #${tag} to answer this visitor directly from WhatsApp.)`;
-  await forwardAdminWhatsAppAlert(env, full.replace(/^(💬[^\n]*)/, `$1 [#${tag}]`));
+  // No code to type: Naveed just swipes right on this alert (WhatsApp "Reply") and types.
+  // The bridge sends the quoted alert along, and the webhook reads the #tag from it.
+  const full = `${text}\n\n↩️ To answer: swipe right on this message and type your reply. (ref #${tag})`;
+  await forwardAdminWhatsAppAlert(env, full);
 }

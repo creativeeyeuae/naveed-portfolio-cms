@@ -20,6 +20,9 @@ const path = require("path");
 const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
 const QRCodeLib = require("qrcode");
+// WhatsApp ids of messages this bridge itself sent (alerts) -- so they're never mistaken
+// for Naveed typing a reply in his self-chat.
+const sentByBridge = new Set();
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 
 // Draw the QR using plain "#" / " " characters only -- no Unicode block glyphs.
@@ -277,8 +280,14 @@ async function start() {
         (m.message.imageMessage ? "[Photo]" : m.message.videoMessage ? "[Video]" : m.message.audioMessage ? "[Voice message]" : m.message.documentMessage ? "[Document]" : "[Unsupported message type]");
 
       if (m.key.fromMe) {
+        // Never echo the bridge's OWN alerts back as if Naveed had typed them.
+        if (sentByBridge.has(m.key.id)) continue;
         if (ADMIN_NUMBER && jidToPhone(m.key.remoteJid) === ADMIN_NUMBER && text) {
-          await callWebhook({ type: "admin_reply_in", body: text });
+          // If Naveed used WhatsApp's "Reply" (swipe right) on an alert, send the quoted alert
+          // text too -- the CMS reads the visitor tag from it, so no code has to be typed.
+          const q = m.message.extendedTextMessage?.contextInfo?.quotedMessage;
+          const quoted = q ? (q.conversation || q.extendedTextMessage?.text || "") : "";
+          await callWebhook({ type: "admin_reply_in", body: text, quoted });
         }
         continue;
       }
@@ -307,6 +316,7 @@ async function pollAndSend(sock) {
     if (!toPhone || !row.body) continue;
     try {
       const sent = await sock.sendMessage(phoneToJid(toPhone), { text: row.body });
+      if (sent?.key?.id) { sentByBridge.add(sent.key.id); if (sentByBridge.size > 500) sentByBridge.delete(sentByBridge.values().next().value); }
       await callWebhook({ type: "status_update", message_id: row.id, wa_message_id: sent?.key?.id, status: "sent" });
     } catch (e) {
       await callWebhook({ type: "status_update", message_id: row.id, status: "failed", error: e.message });

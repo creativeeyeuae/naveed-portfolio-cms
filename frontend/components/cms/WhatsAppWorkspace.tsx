@@ -324,6 +324,18 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
     }catch(e:any){ alert(e.message||"Could not start connecting"); }
     setConnectionConnecting(false);
   }
+  // Cancel a pending Connect / QR (stops showing the QR and the background refresh).
+  async function cancelConnectWhatsApp(){
+    if(!adminSession) return;
+    setConnectionConnecting(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/cancel-connect",{method:"POST",headers:authHeaders(false)});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not cancel");
+      await loadConnection();
+    }catch(e:any){ alert(e.message||"Could not cancel"); }
+    setConnectionConnecting(false);
+  }
 
   // ── Broadcasts (migration 0019) -- recipients are always existing conversations (people
   // who've already exchanged a real message), never a pasted number list; sending is
@@ -1140,7 +1152,10 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                 {connection&&connection.status==="connected"&&(
                   <button onClick={disconnectWhatsApp} disabled={connectionDisconnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#f87171",borderColor:"rgba(248,113,113,0.4)"}}>{connectionDisconnecting?"Disconnecting…":"Disconnect"}</button>
                 )}
-                {(!connection||connection.status==="not_connected"||connection.status==="error"||(connection.status==="connecting"&&!connection.qr_code))&&(
+                {connection&&connection.status==="connecting"&&(
+                  <button onClick={cancelConnectWhatsApp} disabled={connectionConnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#f87171",borderColor:"rgba(248,113,113,0.4)"}}>Cancel</button>
+                )}
+                {(!connection||connection.status==="not_connected"||connection.status==="error")&&(
                   <button onClick={connectWhatsApp} disabled={connectionConnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#4ade80",borderColor:"rgba(74,222,128,0.4)"}}>{connectionConnecting?"Starting…":"Connect (show QR)"}</button>
                 )}
                 <button onClick={loadConnection} disabled={connectionLoading} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>{connectionLoading?"Refreshing…":"Refresh"}</button>

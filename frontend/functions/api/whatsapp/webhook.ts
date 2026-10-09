@@ -165,8 +165,13 @@ async function handleStatusUpdate(env: Env, body: Record<string, any>, origin: s
 }
 
 async function handleConnectionUpdate(env: Env, body: Record<string, any>, origin: string | null) {
-  const rowRes = await supaAdmin(env, "whatsapp_connection?select=id&limit=1", { method: "GET" });
+  const rowRes = await supaAdmin(env, "whatsapp_connection?select=id,status,error&limit=1", { method: "GET" });
   const row = ((await rowRes.json()) as any[])?.[0];
+  // After the CMS "Cancel" button (api/admin/whatsapp/cancel-connect.ts), ignore further QR
+  // updates from a bridge still in its QR stage -- it gives up on its own within 3 minutes.
+  if (row && row.status === "not_connected" && row.error === "Cancelled -- press Connect to try again." && body.status === "connecting") {
+    return json({ ok: true, ignored: "cancelled" }, 200, origin);
+  }
   // Always clear disconnect_requested on any connection_update -- by the time the bridge
   // reports back in (whether it's the "connecting" right after a manual disconnect, or any
   // other status), it has already acted on the request, so the flag's job is done. This is

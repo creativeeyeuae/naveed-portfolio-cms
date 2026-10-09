@@ -310,6 +310,20 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
     }catch(e:any){ alert(e.message||"Could not disconnect"); }
     setConnectionDisconnecting(false);
   }
+  // Manual connect (migration 0020) -- the bridge never shows a QR on its own; this button
+  // asks it to, and the QR appears here within about a minute.
+  const [connectionConnecting,setConnectionConnecting]=useState(false);
+  async function connectWhatsApp(){
+    if(!adminSession) return;
+    setConnectionConnecting(true);
+    try{
+      const res=await fetch("/api/admin/whatsapp/connect",{method:"POST",headers:authHeaders(false)});
+      const data=await res.json().catch(()=>({} as any));
+      if(!res.ok) throw new Error(data.error||"Could not start connecting");
+      await loadConnection();
+    }catch(e:any){ alert(e.message||"Could not start connecting"); }
+    setConnectionConnecting(false);
+  }
 
   // ── Broadcasts (migration 0019) -- recipients are always existing conversations (people
   // who've already exchanged a real message), never a pasted number list; sending is
@@ -431,8 +445,10 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
   useEffect(()=>{
     if(!adminSession) return;
     if(section!=="settings") return;
-    if(connection&&connection.status==="connected") return;
-    const id=setInterval(()=>{ loadConnection(); },4000);
+    // Only auto-refresh while actually waiting for a QR / scan (after pressing Connect).
+    // When connected or idle there's nothing changing, so no background requests at all.
+    if(!connection||(connection.status!=="connecting"&&connection.status!=="disconnecting")) return;
+    const id=setInterval(()=>{ loadConnection(); },5000);
     return ()=>clearInterval(id);
   },[adminSession,section,connection?.status]);
 
@@ -1124,6 +1140,9 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                 {connection&&connection.status==="connected"&&(
                   <button onClick={disconnectWhatsApp} disabled={connectionDisconnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#f87171",borderColor:"rgba(248,113,113,0.4)"}}>{connectionDisconnecting?"Disconnecting…":"Disconnect"}</button>
                 )}
+                {(!connection||connection.status==="not_connected"||connection.status==="error"||(connection.status==="connecting"&&!connection.qr_code))&&(
+                  <button onClick={connectWhatsApp} disabled={connectionConnecting} style={{...S.btnO,padding:"6px 14px",fontSize:11,color:"#4ade80",borderColor:"rgba(74,222,128,0.4)"}}>{connectionConnecting?"Starting…":"Connect (show QR)"}</button>
+                )}
                 <button onClick={loadConnection} disabled={connectionLoading} style={{...S.btnO,padding:"6px 14px",fontSize:11}}>{connectionLoading?"Refreshing…":"Refresh"}</button>
               </div>
             </div>
@@ -1140,7 +1159,7 @@ export default function WhatsAppWorkspace({adminSession,isMobile,customersList,o
                 </div>
                 <WhatsAppQrCode data={connection.qr_code} />
                 <div style={{fontSize:11,color:C.MID,marginTop:12}}>
-                  This refreshes on its own every few seconds, same as web.whatsapp.com -- if it looks stale just wait a moment for the next one.
+                  This refreshes on its own every few seconds. If you don't scan within about 3 minutes it stops -- just press Connect again.
                 </div>
               </div>
             )}

@@ -30,11 +30,16 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   // Piggyback the manual disconnect flag (migration 0018) on this same poll the bridge
   // already makes every ~4s, instead of adding a second polling loop -- see
   // api/admin/whatsapp/disconnect.ts for where this gets set to true.
+  // connect_requested (migration 0020) -- the CMS "Connect" button; an idle, unlinked
+  // bridge only ever shows a QR after this is set.
   let disconnectRequested = false;
+  let connectRequested = false;
   try {
-    const connRes = await supaAdmin(env, "whatsapp_connection?select=disconnect_requested&limit=1", { method: "GET" });
-    disconnectRequested = !!((await connRes.json()) as any[])?.[0]?.disconnect_requested;
+    const connRes = await supaAdmin(env, "whatsapp_connection?select=disconnect_requested,connect_requested&limit=1", { method: "GET" });
+    const c = ((await connRes.json()) as any[])?.[0];
+    disconnectRequested = !!c?.disconnect_requested;
+    connectRequested = !!c?.connect_requested;
   } catch {}
 
-  return json({ pending: await res.json(), disconnect_requested: disconnectRequested }, 200, origin);
+  return json({ pending: await res.json(), disconnect_requested: disconnectRequested, connect_requested: connectRequested }, 200, origin);
 };

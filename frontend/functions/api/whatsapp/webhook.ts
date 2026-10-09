@@ -172,7 +172,7 @@ async function handleConnectionUpdate(env: Env, body: Record<string, any>, origi
   // other status), it has already acted on the request, so the flag's job is done. This is
   // the only place that clears it, keeping api/admin/whatsapp/disconnect.ts as the only place
   // that sets it.
-  const patch = { status: body.status || "error", phone_number: body.phone_number || null, qr_code: body.qr_code || null, error: body.error || null, disconnect_requested: false, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+  const patch = { status: body.status || "error", phone_number: body.phone_number || null, qr_code: body.qr_code || null, error: body.error || null, disconnect_requested: false, connect_requested: false, last_seen_at: new Date().toISOString(), updated_at: new Date().toISOString() };
   if (!row) {
     await supaAdmin(env, "whatsapp_connection", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   } else {

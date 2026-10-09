@@ -1020,7 +1020,7 @@ function StatusPill({status}:{status:string}) {
 // Shared "card" look used everywhere in the redesign: a dark panel a shade lighter
 // than the page background (matches the reference design's card color exactly),
 // with a consistent radius and border -- swap in for the old plain-black blocks
-// (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
+// (background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`, borderRadius:4) and for the old white cards (C.LTCARD)
 // alike, so every tab in the CMS shares one visual language.
 const CARD_STYLE:React.CSSProperties = {background:"rgba(255,255,255,0.045)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,boxShadow:"0 6px 24px rgba(0,0,0,0.18)"};
 
@@ -1141,7 +1141,7 @@ function GalleryTile({img,index,onClick}:{img:Img;index:number;onClick:()=>void}
     setRatio(r); setSpan(s); setLoaded(true);
   }
   return (
-    <div className={`egallery-item eg-span-${span}`} onClick={onClick} style={{aspectRatio:loaded?"auto":ratio,background:C.DARK}}>
+    <div className={`egallery-item eg-span-${span}`} onClick={onClick} style={{aspectRatio:loaded?"auto":ratio,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
       <img src={img.url} alt={img.caption||""} loading={index<2?"eager":"lazy"} decoding="async" onLoad={handleLoad}
         style={{width:"100%",height:loaded?"auto":"100%",objectFit:loaded?undefined:"cover",display:"block"}} />
       {img.caption&&<div className="egallery-caption">{img.caption}</div>}
@@ -1473,7 +1473,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   return(
     <>
       {open&&(
-        <div role="dialog" aria-label="Live chat" style={{position:"fixed",bottom:96,right:24,zIndex:999,width:"min(330px,calc(100vw - 32px))",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:16,boxShadow:"0 20px 60px rgba(0,0,0,0.45)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:"min(480px,70vh)"}}>
+        <div role="dialog" aria-label="Live chat" style={{position:"fixed",bottom:96,right:24,zIndex:999,width:"min(330px,calc(100vw - 32px))",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:16,boxShadow:"0 20px 60px rgba(0,0,0,0.45)",overflow:"hidden",display:"flex",flexDirection:"column",maxHeight:"min(480px,70vh)"}}>
           <div style={{background:`linear-gradient(135deg,${C.P} 0%,${C.PD} 100%)`,padding:"16px 18px",display:"flex",alignItems:"center",gap:10}}>
             <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chatIcon(18,"#fff")}</div>
             <div style={{flex:1,minWidth:0}}>
@@ -1486,7 +1486,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             <button aria-label="Close chat" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.85)",fontSize:18,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
           </div>
           <div ref={listRef} style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
-            <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
+            <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
               Hi there 👋 {BOT_NAME} here. How can I help you today? Pick an option below or type your own message.
             </div>
             {loaded&&messages.map((m,mi)=>(
@@ -1530,7 +1530,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
               </div>
             )}
             {needsIdentity&&(
-              <form onSubmit={submitIdentity} style={{marginTop:6,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
+              <form onSubmit={submitIdentity} style={{marginTop:6,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
                 <div style={{fontSize:12,color:C.MID,marginBottom:2}}>So Naveed can reply to you, please share:</div>
                 <input value={idName} onChange={e=>setIdName(e.target.value)} placeholder="Your name" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
                 <input value={idWa} onChange={e=>setIdWa(e.target.value)} placeholder="WhatsApp number" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
@@ -1539,7 +1539,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
               </form>
             )}
             {!online&&(
-              <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"11px 14px",fontSize:13,color:C.FG,marginTop:8,maxWidth:"92%",lineHeight:1.55}}>
+              <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"11px 14px",fontSize:13,color:C.FG,marginTop:8,maxWidth:"92%",lineHeight:1.55}}>
                 <div style={{fontSize:10.5,color:C.MID,marginBottom:4}}>{BOT_NAME}</div>
                 I'm in quick-answer mode right now ⚡ I can still answer common questions about services, pricing, booking and contact — and pass anything else straight to Naveed. Or reach him directly:
                 <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",marginTop:10,textAlign:"center",background:C.P,color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:600,textDecoration:"none"}}>📱 Message Naveed on WhatsApp</a>
@@ -1556,7 +1556,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
               </div>
             ))}
             {offlinePending&&(
-              <form onSubmit={submitOfflineIdentity} style={{marginTop:10,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
+              <form onSubmit={submitOfflineIdentity} style={{marginTop:10,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
                 <input value={offName} onChange={e=>setOffName(e.target.value)} placeholder="Your name" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
                 <input value={offContact} onChange={e=>setOffContact(e.target.value)} placeholder="WhatsApp number or email" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
                 <button type="submit" style={{...S.btnP,marginTop:4}}>Send to Naveed</button>
@@ -1568,7 +1568,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             {err&&online&&<div style={{color:"#e74c3c",fontSize:12,marginTop:10}}>{err}</div>}
           </div>
           {confirmEndChat?(
-            <div style={{display:"flex",flexDirection:"column",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+            <div style={{display:"flex",flexDirection:"column",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
               <div style={{fontSize:12,color:C.FG,textAlign:"center",lineHeight:1.4}}>End this chat? You'll need to start over (name/WhatsApp/email) next time.</div>
               <div style={{display:"flex",gap:8}}>
                 <button type="button" onClick={()=>setConfirmEndChat(false)} disabled={endingChat} style={{flex:1,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 0",fontSize:12.5,cursor:"pointer"}}>Cancel</button>
@@ -1576,7 +1576,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
               </div>
             </div>
           ):(
-            <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>
+            <form onSubmit={e=>{e.preventDefault();send(text);}} style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
               <div style={{display:"flex",gap:8}}>
                 <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type your message..." style={{flex:1,background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:20,padding:"9px 14px",color:C.FG,fontSize:13,outline:"none"}} />
                 <button type="submit" disabled={sending||!text.trim()} aria-label="Send message" style={{background:C.P,border:"none",borderRadius:"50%",width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0,opacity:sending||!text.trim()?0.6:1}}>
@@ -1720,7 +1720,7 @@ function ConsultPopup({open,onClose,title,text,ctaLabel,waNumber}:{open:boolean;
   }
   return(
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(9,6,14,0.72)",zIndex:998,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div onClick={e=>e.stopPropagation()} style={{position:"relative",width:"100%",maxWidth:420,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"40px 32px",boxShadow:"0 30px 90px rgba(0,0,0,0.5)"}}>
+      <div onClick={e=>e.stopPropagation()} style={{position:"relative",width:"100%",maxWidth:420,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"40px 32px",boxShadow:"0 30px 90px rgba(0,0,0,0.5)"}}>
         <button onClick={onClose} aria-label="Close" style={{position:"absolute",top:14,right:14,background:"none",border:"none",color:C.MID,fontSize:20,cursor:"pointer"}}>✕</button>
         {sent?(
           <div style={{textAlign:"center",padding:"12px 0"}}>
@@ -1974,7 +1974,7 @@ function IntroSplash({siteName,tagline,subtitle,onDone}:{siteName:string;tagline
     setTimeout(onDone,700);
   }
   return (
-    <div onClick={skip} role="button" aria-label="Skip intro" style={{position:"fixed",inset:0,zIndex:9999,background:C.DARK,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",transition:"opacity 0.65s ease, transform 0.7s cubic-bezier(.7,0,.3,1)",opacity:leaving?0:1,transform:leaving?"translateY(-6%)":"translateY(0)"}}>
+    <div onClick={skip} role="button" aria-label="Skip intro" style={{position:"fixed",inset:0,zIndex:9999,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",overflow:"hidden",transition:"opacity 0.65s ease, transform 0.7s cubic-bezier(.7,0,.3,1)",opacity:leaving?0:1,transform:leaving?"translateY(-6%)":"translateY(0)"}}>
       <div aria-hidden style={{position:"absolute",top:"-20%",left:"-10%",width:420,height:420,borderRadius:"50%",background:"radial-gradient(circle,rgba(139,92,246,0.28),transparent 70%)",filter:"blur(60px)"}} />
       <div aria-hidden style={{position:"absolute",bottom:"-25%",right:"-10%",width:460,height:460,borderRadius:"50%",background:"radial-gradient(circle,rgba(168,85,247,0.22),transparent 70%)",filter:"blur(70px)"}} />
       <div style={{position:"relative",textAlign:"center",padding:"0 24px"}}>
@@ -2003,7 +2003,7 @@ function PageBanner({eyebrow,title,description,image}:{eyebrow:string;title:stri
   // tall on every inner page. Top padding kept close to before so the title still clears the
   // fixed nav bar; only the extra empty space below it was trimmed.
   return (
-    <div style={{position:"relative",overflow:"hidden",background:C.DARK,minHeight:"clamp(252px,39.6vh,432px)",display:"flex",alignItems:"center",padding:"120px 40px 36px"}}>
+    <div style={{position:"relative",overflow:"hidden",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,minHeight:"clamp(252px,39.6vh,432px)",display:"flex",alignItems:"center",padding:"120px 40px 36px"}}>
       {image&&<img src={image} alt="" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",opacity:0.6}} />}
       {image&&<div style={{position:"absolute",inset:0,background:"linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)"}} />}
       <div style={{position:"relative",zIndex:1,maxWidth:1400,margin:"0 auto",width:"100%"}}>
@@ -4901,7 +4901,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       );
     }
     const cmsSidebar = (
-      <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
+      <div style={{width:250,minWidth:250,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 18px",marginBottom:6,borderBottom:`1px solid ${C.BORDER}`}}>
           <div style={{width:30,height:30,borderRadius:"50%",background:`linear-gradient(135deg, ${C.P}, ${C.PD})`,boxShadow:"0 0 0 3px rgba(139,92,246,0.15)",flexShrink:0}} />
           <div>
@@ -4981,7 +4981,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       }}>
         {cmsSidebar}
         {isMobile&&mobileNavOpen&&<div onClick={()=>setMobileNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",zIndex:19}} />}
-        <div style={{background:C.DARK,borderBottom:`1px solid ${C.BORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10,gap:12,flexWrap:"wrap" as const,boxShadow:"0 2px 16px rgba(0,0,0,0.3)"}}>
+        <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,borderBottom:`1px solid ${C.BORDER}`,padding:"14px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:10,gap:12,flexWrap:"wrap" as const,boxShadow:"0 2px 16px rgba(0,0,0,0.3)"}}>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             {isMobile&&<button onClick={()=>setMobileNavOpen(v=>!v)} style={{...S.btnO,padding:"8px 12px"}}>☰</button>}
             <span style={{fontSize:15,fontWeight:700,color:C.FG}}>{cmsPageTitle[cmsTab]||cmsPageTitle.settings}</span>
@@ -6168,7 +6168,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           }:null;
           return(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div style={{...CARD_STYLE,width:"100%",maxWidth:720,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:C.DARK}}>
+            <div style={{...CARD_STYLE,width:"100%",maxWidth:720,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <div style={{fontSize:13,fontWeight:700,color:C.FG}}>Import {isCompany?"Companies":"Contacts"} · Step {importStep} of 6</div>
                 <button onClick={importCloseWizard} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>✕ Close</button>
@@ -6270,7 +6270,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             shows the review screen before saving -- scan.ts never auto-saves anything. */}
         {bcOpen&&(
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-            <div style={{...CARD_STYLE,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:C.DARK}}>
+            <div style={{...CARD_STYLE,width:"100%",maxWidth:560,maxHeight:"85vh",overflowY:"auto" as const,padding:24,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <div style={{fontSize:13,fontWeight:700,color:C.FG}}>Scan Business Card</div>
                 <button onClick={bcCloseScanner} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>✕ Close</button>
@@ -6702,7 +6702,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       {emailStarters.map(st=>{
                         const html=renderEmailHtml(st.blocks as any,{first_name:"Sarah",company:"Emaar"});
                         return (
-                          <button key={st.key} onClick={()=>emailStartFromStarter(st.key)} style={{textAlign:"left" as const,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:10,padding:0,cursor:"pointer",overflow:"hidden" as const,color:C.FG}}>
+                          <button key={st.key} onClick={()=>emailStartFromStarter(st.key)} style={{textAlign:"left" as const,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:10,padding:0,cursor:"pointer",overflow:"hidden" as const,color:C.FG}}>
                             <div style={{height:190,overflow:"hidden" as const,background:"#fff",pointerEvents:"none" as const}}>
                               <iframe title={st.name} sandbox="" srcDoc={html} tabIndex={-1} style={{width:660,height:760,border:0,transform:"scale(0.42)",transformOrigin:"top left"}} />
                             </div>
@@ -7283,7 +7283,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
                 <div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${C.BORDER}`}}>
                   <div style={{fontSize:11,letterSpacing:4,color:C.MID,marginBottom:12,textTransform:"uppercase"}}>Contact Form Email Notifications</div>
-                  <div style={{fontSize:12,color:C.MID,lineHeight:1.7,marginBottom:16,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
+                  <div style={{fontSize:12,color:C.MID,lineHeight:1.7,marginBottom:16,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:"14px 16px"}}>
                     Every contact-form submission already opens a WhatsApp message to you immediately -- that part needs no setup. The CMS Leads tab is meant to also list submissions, but a Supabase permission setting is currently blocking that (flagged separately). To get submissions emailed to you too, create a free EmailJS account (200 emails/month, no card needed) -- takes about 2 minutes:<br/><br/>
                     1. Go to emailjs.com → Sign Up (free)<br/>
                     2. Email Services → Add New Service → connect your Gmail ({settings.email})<br/>
@@ -8174,7 +8174,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:20}}>Related Projects</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:3}}>
               {projects.filter(p=>p.id!==selProj.id&&p.categories?.some(c=>selProj.categories?.includes(c))).slice(0,3).map(p=>(
-                <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:C.DARK,textDecoration:"none"}}>
+                <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",cursor:"pointer",aspectRatio:"4/3",overflow:"hidden",position:"relative",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,textDecoration:"none"}}>
                   <img src={p.coverImage||""} alt={p.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.5s, filter 0.5s"}} onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.05)";e.currentTarget.style.filter="grayscale(0)";}} onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.filter="grayscale(1)";}} />
                   <div style={{position:"absolute",bottom:0,left:0,right:0,padding:16,background:"linear-gradient(to top,rgba(9,6,14,0.9),transparent)"}}><div style={{fontSize:13,color:"#fff"}}>{p.title}</div></div>
                 </a>
@@ -8222,7 +8222,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
           {filteredBlog.map(b=>(
-            <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,overflow:"hidden"}}>
+            <div key={b.id} className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:4,overflow:"hidden"}}>
               {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
               <div style={{padding:24}}>
                 <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>
@@ -8334,7 +8334,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           {settings.services.map(sv=>(
             <div key={sv.id} className="pflip" style={{height:380}}>
             <div className="pflip-inner">
-              <div className="pflip-face" style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32}}>
+              <div className="pflip-face" style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:4,padding:32}}>
                 <div style={{width:44,height:44,borderRadius:4,background:"rgba(139,92,246,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,marginBottom:20}}>{sv.icon}</div>
                 <h3 style={{fontSize:19,fontWeight:700,letterSpacing:0.3,margin:"0 0 8px"}}>{sv.title}</h3>
                 <p style={{color:C.MID,fontSize:13,lineHeight:1.7,margin:"0 0 20px"}}>{sv.desc}</p>
@@ -8402,7 +8402,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               {settings.aboutPhoto&&cmsPhotosReady?(
                 <img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",borderRadius:"50%",objectFit:"cover",display:"block",border:`4px solid ${C.BG}`}} />
               ):(
-                <div style={{width:"100%",height:"100%",borderRadius:"50%",background:C.DARK,border:`4px solid ${C.BG}`}} />
+                <div style={{width:"100%",height:"100%",borderRadius:"50%",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`4px solid ${C.BG}`}} />
               )}
             </div>
           </div>
@@ -8750,7 +8750,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             </div>
           </div>
           <div>
-            <div style={{aspectRatio:"3/4",background:C.DARK,overflow:"hidden",borderRadius:4,border:`1px solid ${C.BORDER}`,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
+            <div style={{aspectRatio:"3/4",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,overflow:"hidden",borderRadius:4,border:`1px solid ${C.BORDER}`,boxShadow:"0 8px 28px rgba(0,0,0,0.35)"}}>
               {/* Gated on cmsPhotosReady -- same reason as the CV/Hero/homepage About photo. */}
               {settings.aboutPhoto&&cmsPhotosReady&&<img src={settings.aboutPhoto} alt={settings.aboutName} style={{width:"100%",height:"100%",objectFit:"cover"}} />}
             </div>
@@ -8780,7 +8780,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <h1 style={{fontSize:"clamp(32px,4.5vw,56px)",fontWeight:700,letterSpacing:1,margin:"0 0 48px"}}>Let's Work Together</h1>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:24,marginBottom:48}}>
           {[{label:"WhatsApp",value:settings.phone,href:`https://wa.me/${WA}`},{label:"Email",value:settings.email,href:`mailto:${settings.email}`},{label:"Location",value:settings.location,href:null}].map((c,i)=>(
-            <div key={i} className="tcard" style={{padding:24,borderRadius:4,border:`1px solid ${C.BORDER}`,background:C.DARK}}>
+            <div key={i} className="tcard" style={{padding:24,borderRadius:4,border:`1px solid ${C.BORDER}`,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
               <div style={{fontSize:10,letterSpacing:3,color:C.MID,textTransform:"uppercase",marginBottom:12}}>{c.label}</div>
               {c.href?<a href={c.href} target="_blank" style={{color:C.PL,fontSize:13,textDecoration:"none"}}>{c.value}</a>:<div style={{color:C.PL,fontSize:13}}>{c.value}</div>}
             </div>
@@ -8792,7 +8792,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             no new lead type) for collaboration and media/press partnership requests --
             picking one just sets the Subject field, so it's the same trusted, already-working
             delivery path (WhatsApp handoff + saved lead + email) for every kind of enquiry. */}
-        <div style={{textAlign:"left",background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:6,padding:"36px 32px",marginBottom:48}}>
+        <div style={{textAlign:"left",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:6,padding:"36px 32px",marginBottom:48}}>
           <div style={{...S.tag(),marginBottom:8}}><span style={{width:24,height:1,background:C.PL,display:"inline-block"}} />Send a Message</div>
           {!contactSent&&<div style={{fontSize:12,color:C.MID,marginBottom:20,lineHeight:1.6}}>Project enquiries, collaboration proposals and media/press partnership requests -- this form reaches Naveed directly, whichever one it is.</div>}
           {contactSent?(
@@ -8862,7 +8862,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(360px,1fr))",gap:3}}>
           {filtered.map(p=>(
-            <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:C.DARK,textDecoration:"none"}}
+            <a key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,textDecoration:"none"}}
               onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; }}
               onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; }}>
               {/* B&W-by-default, full color on hover -- same reveal treatment requested from kima.framer.media */}
@@ -8896,7 +8896,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* INTRO STRIP */}
       {settings.homeSections?.intro!==false && (
-      <div style={{background:C.DARK,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
+      <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,padding:"24px 40px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:16}}>
         <div style={{fontSize:16,fontWeight:600,letterSpacing:0.3,color:C.FG,maxWidth:440}}>Photography That Makes Your Business Stand Out.</div>
         <div style={{display:"flex",gap:28}}>
           {[[settings.statsYears,"Years"],[settings.statsProjects,"Projects"],[settings.statsClients,"Clients"]].map(([n,l])=>(
@@ -9030,7 +9030,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     goTo("packages");
                   }} style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:28,padding:"34px 6px",borderTop:i===0?`1px solid ${C.LTBORDER}`:"none",borderBottom:`1px solid ${C.LTBORDER}`,cursor:"pointer"}}>
                     <div style={{display:"flex",alignItems:"center",gap:26,minWidth:0}}>
-                      <span className="svc-num" style={{width:44,height:44,borderRadius:6,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0,boxShadow:"0 6px 16px rgba(20,13,33,0.20)"}}>{String(i+1).padStart(2,"0")}</span>
+                      <span className="svc-num" style={{width:44,height:44,borderRadius:6,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,letterSpacing:0.5,flexShrink:0,boxShadow:"0 6px 16px rgba(20,13,33,0.20)"}}>{String(i+1).padStart(2,"0")}</span>
                       <div style={{minWidth:0}}>
                         <div style={{fontSize:"clamp(19px,2.4vw,28px)",fontWeight:700,letterSpacing:0.3,color:C.DARK,marginBottom:6}}>{sv.title}</div>
                         <div className="svc-desc" style={{fontSize:13,color:C.INKMID,lineHeight:1.7,maxWidth:480}}>{sv.desc}</div>
@@ -9061,7 +9061,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(4,1fr)",gap:3}}>
             {featured.slice(0,1).map(p=>(
               <Reveal key={p.id} style={{gridColumn:isMobile?"1/2":"1/3"}}>
-              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:C.DARK,textDecoration:"none"}}
+              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"16/9",background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.06)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.7s cubic-bezier(.16,.84,.44,1), filter 0.7s"}} />
@@ -9077,7 +9077,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             ))}
             {featured.slice(1,3).map((p,idx)=>(
               <Reveal key={p.id} delay={0.1+idx*0.08} style={!isMobile ? {gridColumn:"span 2"} : undefined}>
-              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:isMobile?"4/3":(idx===0?"16/9":"4/3"),background:C.DARK,textDecoration:"none"}}
+              <Link href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:isMobile?"4/3":(idx===0?"16/9":"4/3"),background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,textDecoration:"none"}}
                 onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                 onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                 <img src={p.coverImage||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
@@ -9098,7 +9098,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   const subLen=featured.length-3;
                   const lastOdd=!isMobile&&i===subLen-1&&subLen%2===1;
                   return (
-                  <Link key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",gridColumn:lastOdd?"span 2":undefined,background:C.DARK,textDecoration:"none"}}
+                  <Link key={p.id} href={`/work/${p.slug}`} style={{display:"block",position:"relative",cursor:"pointer",overflow:"hidden",aspectRatio:"4/3",gridColumn:lastOdd?"span 2":undefined,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,textDecoration:"none"}}
                     onMouseEnter={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1.07)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(0)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="1"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(0)"; }}
                     onMouseLeave={e=>{ (e.currentTarget.querySelector("img") as HTMLElement).style.transform="scale(1)"; (e.currentTarget.querySelector("img") as HTMLElement).style.filter="grayscale(1)"; (e.currentTarget.querySelector(".ov") as HTMLElement).style.opacity="0"; (e.currentTarget.querySelector(".ov-cap") as HTMLElement).style.transform="translateY(14px)"; }}>
                     <img src={p.coverImage||""} alt={p.title} loading="lazy" className={PROTECTED_IMG_CLASS} {...protectedImgProps} style={{width:"100%",height:"100%",objectFit:"cover",filter:"grayscale(1)",transition:"transform 0.6s cubic-bezier(.16,.84,.44,1), filter 0.6s"}} />
@@ -9186,7 +9186,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <div className="snap-section" style={{background:C.LT,padding:"0 40px 130px",position:"relative"}}>
           <Reveal style={{maxWidth:720,margin:"0 auto",position:"relative"}}>
             <div style={{background:C.LTCARD,border:`1px solid ${C.LTBORDER}`,borderRadius:6,padding:"56px 48px",textAlign:"center",boxShadow:"0 24px 60px rgba(20,13,33,0.08)"}}>
-              <div style={{width:44,height:44,borderRadius:4,background:C.DARK,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
+              <div style={{width:44,height:44,borderRadius:4,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,color:C.P,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:700,margin:"0 auto 28px"}}>"</div>
               <div style={{...S.tag(true),marginBottom:24,color:C.P}}><span style={{width:24,height:1,background:C.P,display:"inline-block"}} />{settings.uiText.homeTestimonialsEyebrow}<span style={{width:24,height:1,background:C.P,display:"inline-block"}} /></div>
               <p key={testiIdx} className="testi-fade" style={{fontSize:"clamp(18px,2.2vw,26px)",fontWeight:500,fontStyle:"italic",color:C.DARK,lineHeight:1.6,margin:"0 0 28px"}}>{featuredTesti[testiIdx % featuredTesti.length].quote}</p>
               <div key={"n"+testiIdx} className="testi-fade" style={{marginBottom:featuredTesti.length>1?28:0}}>
@@ -9205,7 +9205,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
       {/* BLOG PREVIEW -- also gated on pageEnabled.blog, same reasoning as Featured Work above. */}
       {settings.homeSections?.journal!==false && settings.pageEnabled.blog!==false && blog.length>0&&(
-        <div style={{background:C.DARK,padding:"60px 40px"}}>
+        <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,padding:"60px 40px"}}>
           <div style={{maxWidth:1200,margin:"0 auto"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:36}}>
               <div>
@@ -9217,7 +9217,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:24}}>
               {blog.slice(0,2).map((b,idx)=>(
                 <Reveal key={b.id} delay={idx*0.1}>
-                <div className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:4,overflow:"hidden",border:`1px solid ${C.BORDER}`,background:C.DARK}}>
+                <div className="tcard" onClick={()=>openBlog(b)} style={{cursor:"pointer",borderRadius:4,overflow:"hidden",border:`1px solid ${C.BORDER}`,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
                   {b.coverImage&&<div style={{aspectRatio:"16/9",overflow:"hidden"}}><img src={b.coverImage} alt={b.title} loading="lazy" style={{width:"100%",height:"100%",objectFit:"cover",transition:"transform 0.5s cubic-bezier(.16,.84,.44,1)"}} onMouseEnter={e=>(e.currentTarget.style.transform="scale(1.04)")} onMouseLeave={e=>(e.currentTarget.style.transform="scale(1)")} /></div>}
                   <div style={{padding:24}}>
                     <div style={{fontSize:10,letterSpacing:3,color:C.PL,textTransform:"uppercase",marginBottom:8}}>{b.category} · {b.date}</div>

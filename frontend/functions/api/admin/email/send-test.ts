@@ -6,6 +6,7 @@
 // confusing failure -- it never silently pretends to have sent anything.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { renderTemplate, substituteVariables, type EmailBlock } from "../../../_shared/emailRender";
+import { resendPayload } from "../../../_shared/emailDeliver";
 
 type Env = AdminEnv & { RESEND_API_KEY?: string; EMAIL_FROM?: string };
 
@@ -37,7 +38,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const sendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: env.EMAIL_FROM, to: [toEmail], subject, html }),
+    body: JSON.stringify(resendPayload(env as any, toEmail, subject, html)),
   });
   if (!sendRes.ok) return json({ error: "Resend rejected the send.", detail: await sendRes.text() }, 502, origin);
 

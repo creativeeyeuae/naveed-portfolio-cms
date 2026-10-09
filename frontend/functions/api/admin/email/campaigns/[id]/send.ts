@@ -8,8 +8,9 @@
 // oversight, and is called out to the user rather than silently skipped.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../../_shared/adminAuth";
 import { renderTemplate, substituteVariables, varsForCustomer, type EmailBlock } from "../../../../../_shared/emailRender";
+import { resendPayload } from "../../../../../_shared/emailDeliver";
 
-type Env = AdminEnv & { RESEND_API_KEY?: string; EMAIL_FROM?: string };
+type Env = AdminEnv & { RESEND_API_KEY?: string; EMAIL_FROM?: string; EMAIL_FROM_NAME?: string; EMAIL_REPLY_TO?: string };
 const MAX_RECIPIENTS = 300;
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
@@ -82,7 +83,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
       const sendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env.EMAIL_FROM, to: [c.email], subject, html }),
+        body: JSON.stringify(resendPayload(env, c.email, subject, html)),
       });
       if (sendRes.ok) {
         await logMessage(env, campaignId, c.id, c.email, "sent", null);
@@ -147,7 +148,7 @@ async function sendToOutreach(env: Env, campaign: any, template: any, campaignId
       const sendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: env.EMAIL_FROM, to: [email], subject, html }),
+        body: JSON.stringify(resendPayload(env, email, subject, html)),
       });
       if (sendRes.ok) { await logMessage(env, campaignId, null, email, "sent", null); sent++; }
       else { await logMessage(env, campaignId, null, email, "failed", (await sendRes.text()).slice(0, 500)); failed++; }

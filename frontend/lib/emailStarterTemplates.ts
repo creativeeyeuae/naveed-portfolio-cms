@@ -74,11 +74,11 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
       description: "Hero header, services and portfolio — a polished first email to brands and agencies.",
       blocks: [
         light({ preheader: "Photography & film for brands across the UAE." }),
-        hero(0, "Visuals that elevate\nyour brand", "Photography & cinematography for brands across the UAE", "View Portfolio"),
+        hero(0, "Visuals that elevate\nyour brand", "Photography · Videography · Social Media & Graphics", "View Portfolio"),
         { type: "text", html: "Dear {{first_name}},", size: 16, padY: 26 },
         { type: "text", html: `I'm ${b.name}, a Dubai-based photographer and cinematographer with 20+ years of experience creating premium visual content for leading brands, developers and hospitality groups.\n\nI'd love to help {{company}} tell its story through images and film that look as good as your brand deserves.`, size: 15 },
         { type: "heading", text: "What I create for brands", size: 20, bold: true },
-        { type: "text", html: "• Corporate & executive portraits\n• Brand films and social media content\n• Events, launches and conferences\n• Real estate, interiors and hospitality", size: 15 },
+        { type: "text", html: "<b>Photography</b> — corporate & executive portraits, real estate & interiors, hospitality, product & food, fashion & lifestyle, events and conferences\n\n<b>Videography</b> — brand films, commercials, corporate videos, event highlights, property tours and aerial / drone footage\n\n<b>Social media & graphics</b> — Reels, TikTok & short-form content, social media creatives, campaign visuals and graphic design", size: 15 },
         { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Recent work", cap2: "Brand campaign", link1: b.workUrl, link2: b.workUrl },
         portfolioBtn("Explore My Work"),
         { type: "text", html: "Would you be open to a short call next week?", size: 15, align: "center" },
@@ -93,7 +93,7 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
       blocks: [
         light({ preheader: "Thank you for connecting — here's a little about my work." }),
         hero(1, "Lovely to meet you,\n{{first_name}}", "Thank you for connecting", "", b.workUrl, { height: 280 }),
-        { type: "text", html: "It was a pleasure meeting you. As promised, here's a little about what I do.\n\nFor more than 20 years I've been creating photography and films for brands, events and people — always with a premium, cinematic finish.", size: 15, padY: 24 },
+        { type: "text", html: "It was a pleasure meeting you. As promised, here's a little about what I do.\n\nFor more than 20 years I've been creating photography, video, social media content and graphics for brands, events and people — always with a premium, cinematic finish.", size: 15, padY: 24 },
         { type: "gallery", img1: workImg(2), img2: workImg(3), link1: b.workUrl, link2: b.workUrl },
         portfolioBtn(),
         { type: "text", html: "Whenever you need visuals for {{company}}, I'm just a message away.", size: 15, align: "center" },

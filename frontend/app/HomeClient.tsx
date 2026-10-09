@@ -12,6 +12,7 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
+import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -1258,7 +1259,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   // "offline": grey dot in the header + one friendly notice with a WhatsApp fallback link
   // (wa.me opens WhatsApp directly, so it works even when the site's own services are down).
   // The very next successful poll flips it back and shows a one-line "back online" note.
-  const BOT_NAME = "Creative Bot";
+  const BOT_NAME = "CreativeBot";
   const [online,setOnline] = useState(true);
   const [backOnline,setBackOnline] = useState(false);
   const [waConnected,setWaConnected] = useState(true); // Naveed's WhatsApp bridge status, from GET /api/visitor/chat
@@ -1268,6 +1269,44 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     if(!ok){ wasOfflineRef.current = true; setBackOnline(false); }
     else if(wasOfflineRef.current){ wasOfflineRef.current = false; setBackOnline(true); setErr(""); }
   }
+  // ── Offline mode: CreativeBot keeps answering from the database directly ────
+  // (lib/creativeBotOffline.ts). Common questions are answered from FAQs/services/packages/
+  // contact; anything else is saved to the offline inbox (shown in the CMS Live Chat panel)
+  // after asking once for a name + WhatsApp/email, remembered in this browser.
+  const [offlineMsgs,setOfflineMsgs] = useState<{id:string;sender:"visitor"|"bot";body:string}[]>([]);
+  const offlineKbRef = useRef<OfflineEntry[]|null>(null);
+  const [offlinePending,setOfflinePending] = useState("");
+  const [offName,setOffName] = useState(""); const [offContact,setOffContact] = useState("");
+  const pushOffline = (sender:"visitor"|"bot", body:string) =>
+    setOfflineMsgs(prev=>[...prev,{id:`${Date.now()}-${Math.random().toString(36).slice(2)}`,sender,body}]);
+  function readOfflineIdentity():{name:string;contact:string}|null{
+    try{ const v=JSON.parse(localStorage.getItem("creativebot_identity")||"null"); return v&&v.name&&v.contact?v:null; }catch{ return null; }
+  }
+  async function storeOfflineMessage(body:string, who:{name:string;contact:string}){
+    const ok = await saveOfflineMessage(sbData, { name:who.name, contact:who.contact, body });
+    pushOffline("bot", ok
+      ? `Thanks ${who.name.split(" ")[0]}! I've passed your message to Naveed — he'll get back to you on ${who.contact} as soon as possible. 🙏`
+      : "I couldn't save that right now, sorry! Please tap \"Message Naveed on WhatsApp\" above and he'll reply there.");
+  }
+  async function offlineSend(t:string){
+    setText(""); pushOffline("visitor", t);
+    if(!offlineKbRef.current) offlineKbRef.current = await loadOfflineKnowledge(sbData);
+    const answer = answerOffline(t, offlineKbRef.current||[]);
+    if(answer){ pushOffline("bot", answer+"\n\nAnything else I can help with?"); return; }
+    const who = readOfflineIdentity();
+    if(who){ await storeOfflineMessage(t, who); return; }
+    setOfflinePending(t);
+    pushOffline("bot", "That one's best answered by Naveed himself. Share your name and WhatsApp number (or email) below and I'll pass your message straight to him.");
+  }
+  async function submitOfflineIdentity(e:React.FormEvent){
+    e.preventDefault();
+    if(!offName.trim()||offContact.trim().length<3) return;
+    const who = { name:offName.trim(), contact:offContact.trim() };
+    try{ localStorage.setItem("creativebot_identity", JSON.stringify(who)); }catch{}
+    const body = offlinePending; setOfflinePending("");
+    await storeOfflineMessage(body, who);
+  }
+
   // Safe JSON read: an error page (HTML) or empty body returns null instead of throwing a
   // parse error that would otherwise end up shown to the visitor.
   async function readJson(res:Response):Promise<any|null>{
@@ -1306,7 +1345,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     const t=setInterval(loadThread,6000);
     return ()=>clearInterval(t);
   },[open]);
-  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity]);
+  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity,offlineMsgs,offlinePending,online]);
 
   // AI-initiated WhatsApp handover (separate from, and fully compatible with, the EXISTING
   // manual Take Over control in the CMS admin panel -- that one is untouched). When the AI
@@ -1371,20 +1410,22 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
       const res = await fetch("/api/visitor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:t})});
       const data = await readJson(res);
       if(res.status===401&&data?.needsIdentity){ setNeedsIdentity(true); setPendingText(t); setSending(false); return; }
-      if(isServiceDown(res,data)){ markOnline(false); setSending(false); return; }
+      if(isServiceDown(res,data)){ markOnline(false); setSending(false); offlineSend(t); return; }
       if(!res.ok) throw new Error(data?.error||"Sorry, that message didn't go through. Please try again.");
       markOnline(true);
       setText("");
       await loadThread();
     }catch(e:any){
       // A thrown fetch (network down) is "offline", not an error message for the visitor.
-      if(e instanceof TypeError){ markOnline(false); } else { setErr(e.message||"Sorry, that message didn't go through. Please try again."); }
+      if(e instanceof TypeError){ markOnline(false); setSending(false); offlineSend(t); return; }
+      setErr(e.message||"Sorry, that message didn't go through. Please try again.");
     }
     setSending(false);
   }
   function send(t:string){
     const final=(t||"").trim();
     if(!final||sending) return;
+    if(!online){ offlineSend(final); return; } // Cloudflare unreachable -- answer from the database directly
     actuallySend(final);
   }
   async function submitIdentity(e:React.FormEvent){
@@ -1431,7 +1472,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
               <div style={{color:"#fff",fontSize:14,fontWeight:700,lineHeight:1.2}}>{BOT_NAME}</div>
               <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}>
                 <span style={{width:7,height:7,borderRadius:"50%",background:online?"#4ADE80":"#9CA3AF",display:"inline-block",boxShadow:online?"0 0 0 2px rgba(74,222,128,0.25)":"none"}} />
-                {online?"Online · here to help":"Offline right now"}
+                {online?"Online · here to help":"Quick-answer mode"}
               </div>
             </div>
             <button aria-label="Close chat" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.85)",fontSize:18,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
@@ -1492,9 +1533,26 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             {!online&&(
               <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"11px 14px",fontSize:13,color:C.FG,marginTop:8,maxWidth:"92%",lineHeight:1.55}}>
                 <div style={{fontSize:10.5,color:C.MID,marginBottom:4}}>{BOT_NAME}</div>
-                {BOT_NAME} is offline at the moment 🙏 Anything you typed is still in the box below — please try again in a little while, or reach Naveed directly on WhatsApp:
+                I'm in quick-answer mode right now ⚡ I can still answer common questions about services, pricing, booking and contact — and pass anything else straight to Naveed. Or reach him directly:
                 <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",marginTop:10,textAlign:"center",background:C.P,color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:600,textDecoration:"none"}}>📱 Message Naveed on WhatsApp</a>
               </div>
+            )}
+            {offlineMsgs.map(m=>(
+              <div key={m.id}>
+                {m.sender==="bot"&&<div style={{fontSize:10.5,color:C.MID,margin:"10px 0 4px 4px"}}>{BOT_NAME}</div>}
+                <div style={{display:"flex",justifyContent:m.sender==="bot"?"flex-start":"flex-end",marginTop:m.sender==="bot"?0:10}}>
+                  <div style={{maxWidth:m.sender==="bot"?"90%":"82%",background:m.sender==="bot"?C.DARK:C.P,border:m.sender==="bot"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="bot"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:m.sender==="bot"?"11px 14px":"9px 13px",fontSize:13.5,lineHeight:1.55,whiteSpace:"pre-wrap"}}>
+                    {m.body}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {offlinePending&&(
+              <form onSubmit={submitOfflineIdentity} style={{marginTop:10,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
+                <input value={offName} onChange={e=>setOffName(e.target.value)} placeholder="Your name" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
+                <input value={offContact} onChange={e=>setOffContact(e.target.value)} placeholder="WhatsApp number or email" style={{background:C.BG,border:`1px solid ${C.BORDER}`,borderRadius:8,padding:"8px 12px",color:C.FG,fontSize:13,outline:"none"}} />
+                <button type="submit" style={{...S.btnP,marginTop:4}}>Send to Naveed</button>
+              </form>
             )}
             {online&&backOnline&&(
               <div style={{textAlign:"center",fontSize:11.5,color:C.MID,margin:"8px 0 4px"}}>✅ {BOT_NAME} is back online — I'm with you again!</div>
@@ -3607,7 +3665,26 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setLcErr(e.message||"Failed to load live chat"); }
     setLcLoading(false);
   }
-  useEffect(()=>{ if(cmsTab==="livechat"&&adminSession) loadLiveChat(); },[cmsTab,adminSession]);
+  useEffect(()=>{ if(cmsTab==="livechat"&&adminSession){ loadLiveChat(); loadOfflineChat(); } },[cmsTab,adminSession]);
+
+  // Messages CreativeBot saved while in quick-answer (offline) mode -- see
+  // functions/api/admin/livechat-offline.ts and lib/creativeBotOffline.ts.
+  const [offlineChat,setOfflineChat] = useState<{id:string;name:string;contact:string;body:string;page:string|null;handled:boolean;created_at:string}[]>([]);
+  async function loadOfflineChat(){
+    if(!adminSession) return;
+    try{
+      const res=await fetch("/api/admin/livechat-offline",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json().catch(()=>({} as any));
+      if(res.ok) setOfflineChat(data.messages||[]);
+    }catch{}
+  }
+  async function setOfflineHandled(id:string,handled:boolean){
+    if(!adminSession) return;
+    setOfflineChat(prev=>prev.map(m=>m.id===id?{...m,handled}:m));
+    try{
+      await fetch("/api/admin/livechat-offline",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({id,handled})});
+    }catch{}
+  }
   // Refresh the unread-count badge in the CMS nav regardless of which tab is open, same
   // pattern as Client Messages' unread badge above.
   useEffect(()=>{ if(adminSession) loadLiveChat(); },[adminSession]);
@@ -6223,8 +6300,35 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Live Chat</div>
-              <button onClick={loadLiveChat} style={S.btnSm}>↻ Refresh</button>
+              <button onClick={()=>{loadLiveChat();loadOfflineChat();}} style={S.btnSm}>↻ Refresh</button>
             </div>
+            {offlineChat.length>0&&(
+              <div style={{marginBottom:28,border:`1px solid ${C.BORDER}`,borderRadius:6,padding:16,background:"rgba(139,92,246,0.05)"}}>
+                <div style={{fontSize:11,letterSpacing:2,color:C.MID,textTransform:"uppercase",marginBottom:4}}>
+                  Left while CreativeBot was in quick-answer mode ({offlineChat.filter(m=>!m.handled).length} new)
+                </div>
+                <div style={{fontSize:12,color:C.MID,marginBottom:12}}>The site's AI was unavailable, so CreativeBot saved these for you. Reply using the contact each visitor left.</div>
+                {offlineChat.map(m=>{
+                  const digits=m.contact.replace(/[^\d]/g,"");
+                  const isEmail=m.contact.includes("@");
+                  return(
+                    <div key={m.id} style={{borderTop:`1px solid ${C.BORDER}`,padding:"12px 0",opacity:m.handled?0.55:1}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",fontSize:12.5}}>
+                        <strong style={{color:C.FG}}>{m.name} · <span style={{fontWeight:400,color:C.MID}}>{m.contact}</span></strong>
+                        <span style={{color:C.MID,fontSize:11}}>{new Date(m.created_at).toLocaleString()}{m.page?` · ${m.page}`:""}</span>
+                      </div>
+                      <div style={{fontSize:13,color:C.FG,margin:"6px 0 8px",whiteSpace:"pre-wrap"}}>{m.body}</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                        {isEmail
+                          ? <a href={`mailto:${m.contact}`} style={{...S.btnSm,textDecoration:"none"}}>✉️ Reply by email</a>
+                          : digits.length>=7 && <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer" style={{...S.btnSm,textDecoration:"none"}}>💬 Reply on WhatsApp</a>}
+                        <button onClick={()=>setOfflineHandled(m.id,!m.handled)} style={{...S.btnSm,background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG}}>{m.handled?"Mark as new":"✓ Mark handled"}</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             {lcErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{lcErr}</div>}
             {lcLoading?(
               <div style={{color:C.MID,fontSize:13}}>Loading…</div>

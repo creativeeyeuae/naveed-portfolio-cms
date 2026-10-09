@@ -21,6 +21,7 @@ import { supaAdmin, json, corsHeaders } from "../../_shared/adminAuth";
 import { getVisitorIdFromRequest, type VisitorEnv } from "../../_shared/visitorAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
 import { forwardLiveChatToWhatsApp } from "../../_shared/liveChatWhatsapp";
+import { buildSiteKnowledge } from "../../_shared/siteKnowledge";
 
 type Env = VisitorEnv & PushEnv & { SUPABASE_SERVICE_ROLE_KEY: string; AI?: { run(model: string, input: unknown): Promise<any> } };
 const MAX_LEN = 2000;
@@ -72,50 +73,10 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   return json({ messages: rows, whatsapp }, 200, origin);
 };
 
-// Builds the AI's grounding context from whatever is ACTUALLY saved in the CMS right now
-// (nap_settings) -- services, packages/pricing, location. The model is told to only use
-// this and never invent a number or a service that isn't here.
+// CreativeBot's facts: the whole site's current CMS content (FAQs, about, contact, services,
+// packages, service pages, projects, blog, testimonials) -- see _shared/siteKnowledge.ts.
 async function loadGroundingContext(env: Env): Promise<string> {
-  const lines: string[] = [];
-
-  try {
-    const res = await supaAdmin(env as any, "site_settings?select=value&key=eq.nap_settings");
-    if (res.ok) {
-      const rows = (await res.json()) as { value?: string }[];
-      const settings = rows?.[0]?.value ? JSON.parse(rows[0].value) : null;
-      if (settings) {
-        const services: any[] = Array.isArray(settings.services) ? settings.services : [];
-        const packages: any[] = Array.isArray(settings.pricingPackages) ? settings.pricingPackages : [];
-        if (settings.location) lines.push(`Location: ${settings.location} (UAE/GCC and internationally on request)`);
-        if (services.length) {
-          lines.push("Services offered:");
-          for (const s of services) if (s?.title) lines.push(`- ${s.title}${s.desc ? `: ${s.desc}` : ""}`);
-        }
-        if (packages.length) {
-          lines.push("Packages / pricing:");
-          for (const p of packages) if (p?.label) lines.push(`- ${p.label}: ${p.price || "price on request"}${p.priceNote ? ` (${p.priceNote})` : ""}`);
-        }
-      }
-    }
-  } catch {}
-
-  // Naveed's own saved Q&A (CMS "Chatbot Q&A" panel, database/migrations/0016_chat_faqs.sql).
-  // These are his exact pre-written answers -- when a visitor asks something covered here,
-  // the model should use this answer rather than guessing or deflecting to a handoff. Loaded
-  // independently of nap_settings above, so FAQs still ground the AI even before Naveed has
-  // filled in services/pricing.
-  try {
-    const faqRes = await supaAdmin(env as any, "chat_faqs?select=question,answer&is_active=eq.true&order=sort_order.asc&limit=200");
-    if (faqRes.ok) {
-      const faqs = (await faqRes.json()) as { question?: string; answer?: string }[];
-      if (faqs.length) {
-        lines.push("Frequently asked questions (Naveed's own answers -- use these exactly when they match):");
-        for (const f of faqs) if (f?.question && f?.answer) lines.push(`Q: ${f.question}\nA: ${f.answer}`);
-      }
-    }
-  } catch {}
-
-  return lines.join("\n");
+  return buildSiteKnowledge(env as any);
 }
 
 const HANDOFF_YES = "[[HANDOFF:YES]]";
@@ -149,6 +110,15 @@ const WA_HANDOVER_PROMPT = "Would you like to continue with Naveed on WhatsApp, 
 const WA_HANDOVER_SENTINEL = "__WA_HANDOVER__";
 const WA_HANDOVER_CONFIRM = "Sure. Naveed will connect with you shortly on WhatsApp. Please keep your WhatsApp available.";
 
+// The bodies of this visitor's most recent bot (sender=admin) messages, newest first.
+async function recentBotMessages(env: Env, visitorId: string, limit: number): Promise<string[]> {
+  try {
+    const r = await supaAdmin(env as any, `live_chat_messages?visitor_id=eq.${visitorId}&sender=eq.admin&select=body&order=created_at.desc&limit=${limit}`);
+    if (!r.ok) return [];
+    return ((await r.json()) as any[]).map((m) => String(m.body || ""));
+  } catch { return []; }
+}
+
 // Asks Workers AI for a reply, grounded only in loadGroundingContext()'s real data, plus the
 // last few turns of this same thread for continuity. The model is required to end its reply
 // with a HANDOFF marker (stripped before display) saying whether Naveed should personally
@@ -166,7 +136,11 @@ async function generateAiReply(env: Env, visitorId: string, latestText: string):
     if (histRes.ok) history = ((await histRes.json()) as any[]).reverse();
   } catch {}
 
-  const system = `You are a helpful assistant answering on-site live chat for Naveed Anjum, a professional photographer and cinematographer in Dubai. Be warm, brief (2-4 sentences), and only use the facts below -- never invent a price, date, or service that isn't listed. If the visitor asks something specific you can't confidently answer from these facts (an exact quote for their situation, checking a specific date's availability, a complaint, or they ask to speak to a real person), say Naveed will personally follow up shortly, and still end with the handoff marker below.
+  const system = `You are CreativeBot, the friendly assistant answering on-site live chat for Naveed Anjum, a professional photographer and cinematographer in Dubai. Be warm, brief (2-4 sentences), and only use the facts below -- never invent a price, date, or service that isn't listed. Always actually answer what the visitor asked as far as the facts allow; never reply with only a redirect.
+If the visitor wants to book a session, help them: ask (one or two at a time) what kind of shoot it is, the date, and the location, so Naveed has everything when he follows up.
+If the visitor asks something specific you can't confidently answer from these facts (an exact quote for their situation, checking a specific date's availability, a complaint, or they ask to speak to a real person), say Naveed will personally follow up shortly, and still end with the handoff marker below.
+Never ask the visitor whether they want to continue on WhatsApp -- the chat window offers that separately.
+When a portfolio project, service page, packages page or journal post in the facts is relevant (e.g. the visitor asks for examples of interior or event work), share its link exactly as written in the facts -- never make up a link.
 
 FACTS (the only source of truth -- do not go beyond these):
 ${grounding || "(no services/pricing saved yet -- defer to Naveed for anything specific)"}
@@ -183,7 +157,9 @@ ${HANDOFF_NO}   <- if your answer above fully covers it`;
 
   const messages = [
     { role: "system", content: system },
-    ...history.filter((m) => m.id).map((m: any) => ({ role: m.sender === "admin" ? "assistant" : "user", content: String(m.body || "").replace(HANDOFF_YES, "").replace(HANDOFF_NO, "").trim() })),
+    // The fixed WhatsApp question isn't part of the real conversation -- leaving it in the
+    // history made the model copy it instead of answering.
+    ...history.filter((m) => m.id && m.body !== WA_HANDOVER_PROMPT).map((m: any) => ({ role: m.sender === "admin" ? "assistant" : "user", content: String(m.body || "").replace(HANDOFF_YES, "").replace(HANDOFF_NO, "").trim() })),
     { role: "user", content: latestText },
   ];
 
@@ -275,22 +251,27 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     try {
       const ai = await generateAiReply(env, visitorId, text);
       if (ai) {
+        // Always show CreativeBot's real answer first -- it used to be replaced entirely by the
+        // fixed WhatsApp question whenever the AI wanted a human, so the visitor's actual
+        // question (e.g. "I'd like to book a session") never got answered. The WhatsApp
+        // question is now offered AFTER the answer, and only once per conversation stretch:
+        // if it was already offered in the last few bot messages (and the visitor chose to
+        // keep chatting), CreativeBot just keeps helping instead of repeating it.
+        const recentBot = await recentBotMessages(env, visitorId, 6);
+        const alreadyOffered = recentBot.some((b) => b === WA_HANDOVER_PROMPT);
         if (ai.needsHuman) {
-          // The AI decided a human may be needed. Show the visitor the fixed two-choice
-          // prompt instead of the model's own free-text wording. This does NOT trigger the
-          // dedicated WhatsApp-handover CMS notification/flow above (that stays opt-in --
-          // only "Connect with Naveed on WhatsApp" does that, handled near the top of this
-          // function), but it DOES flag needs_human here, same as it always did before this
-          // feature existed, so Naveed's existing "Live chat needs you" push + CMS highlight
-          // still fire right away -- a visitor who picks "I have another question" (handled
-          // entirely client-side) or simply abandons the chat is still a visible, flagged
-          // lead, never a silent miss.
           needsHuman = true;
-          aiReply = WA_HANDOVER_PROMPT;
+          aiReply = ai.reply;
           await supaAdmin(env as any, "live_chat_messages", {
             method: "POST",
-            body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: WA_HANDOVER_PROMPT, is_read_by_admin: true, is_read_by_visitor: false }),
+            body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: ai.reply, is_read_by_admin: true, is_read_by_visitor: false }),
           });
+          if (!alreadyOffered) {
+            await supaAdmin(env as any, "live_chat_messages", {
+              method: "POST",
+              body: JSON.stringify({ visitor_id: visitorId, sender: "admin", is_ai: true, body: WA_HANDOVER_PROMPT, is_read_by_admin: true, is_read_by_visitor: false }),
+            });
+          }
         } else {
           aiReply = ai.reply;
           await supaAdmin(env as any, "live_chat_messages", {

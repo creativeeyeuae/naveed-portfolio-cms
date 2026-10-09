@@ -20,6 +20,7 @@ const path = require("path");
 const pino = require("pino");
 const qrcodeTerminal = require("qrcode-terminal");
 const QRCodeLib = require("qrcode");
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 
 // Draw the QR using plain "#" / " " characters only -- no Unicode block glyphs.
 // Some server/VNC console fonts can't render the Unicode half-block characters

@@ -19,9 +19,25 @@ export function adminWhatsAppNumber(env: any): string {
 // bridge's pollAndSend picks up and sends via the ONE connected number (971581174911). Both
 // forwardAdminWhatsAppAlert (below) and forwardClientWhatsAppAlert just call this with a
 // different destination phone -- no second WhatsApp number/bridge involved.
-async function queueWhatsAppAlert(env: any, toPhone: string, text: string, displayName?: string): Promise<void> {
-  const phone = String(toPhone || "").replace(/[^\d]/g, "");
-  if (!phone) return;
+// WhatsApp needs the full international number with NO leading 0/00/+ -- e.g. 971501234567.
+// Clients usually type local UAE formats ("050 123 4567", "0501234567", "501234567") which
+// WhatsApp silently drops (no such account), so convert those before queuing. Numbers that
+// already carry a country code are left as they are.
+export function toWhatsAppNumber(raw: string | null | undefined, defaultCountry = "971"): string {
+  let d = String(raw || "").trim().replace(/[^\d+]/g, "");
+  if (!d) return "";
+  if (d.startsWith("+")) return d.slice(1).replace(/\D/g, "");
+  d = d.replace(/\D/g, "");
+  if (d.startsWith("00")) return d.slice(2);
+  if (d.startsWith(defaultCountry)) return d;
+  if (d.startsWith("0") && d.length >= 9 && d.length <= 10) return defaultCountry + d.slice(1); // 050xxxxxxx / 04xxxxxxx
+  if (d.length === 9 && /^[5]/.test(d)) return defaultCountry + d; // 50xxxxxxx
+  return d;
+}
+
+async function queueWhatsAppAlert(env: any, toPhone: string, text: string, displayName?: string): Promise<string> {
+  const phone = toWhatsAppNumber(toPhone);
+  if (!phone || phone.length < 8) return "";
   try {
     const existingRes = await supaAdmin(env, `whatsapp_conversations?wa_phone=eq.${phone}&select=id&limit=1`, { method: "GET" });
     let conversationId: string | undefined = ((await existingRes.json()) as any[])?.[0]?.id;
@@ -33,16 +49,18 @@ async function queueWhatsAppAlert(env: any, toPhone: string, text: string, displ
       });
       conversationId = ((await createRes.json()) as any[])?.[0]?.id;
     }
-    if (!conversationId) return;
+    if (!conversationId) return "";
 
-    await supaAdmin(env, "whatsapp_messages", {
+    const msgRes = await supaAdmin(env, "whatsapp_messages", {
       method: "POST",
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ conversation_id: conversationId, direction: "outbound", sender: "system", body: text, status: "queued" }),
     });
+    return msgRes.ok ? phone : ""; // the exact number it was queued to (shown in the CMS)
   } catch {
     // Best-effort -- forwarding to WhatsApp never blocks whatever triggered it, which is
     // already saved/handled by the time this is called.
+    return "";
   }
 }
 
@@ -79,9 +97,9 @@ export async function forwardClientWhatsAppAlert(
   clientPhone: string | undefined | null,
   text: string,
   clientName?: string
-): Promise<void> {
-  if (!clientPhone) return;
-  await queueWhatsAppAlert(env, clientPhone, text, clientName);
+): Promise<string> {
+  if (!clientPhone) return "";
+  return await queueWhatsAppAlert(env, clientPhone, text, clientName); // "" = not queued
 }
 
 // Short, stable tag for a visitor -- included in the WhatsApp alert so Naveed can reply

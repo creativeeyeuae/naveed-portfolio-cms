@@ -4211,9 +4211,21 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   // Result shown right on the booking card (not only at the top of the page).
   function bookingNotifyText(action:string,data:any){
-    const e=data?.notified?.email;
+    const e=data?.notified?.email, w=data?.notified?.whatsapp;
     const emailTxt=e==="sent"?"email sent ✓":e==="no_email"?"no email on file":e==="not_configured"?"email not set up yet":e==="failed"?"email failed":"";
-    return `${action} — client notified by WhatsApp${emailTxt?` · ${emailTxt}`:""}.`;
+    const waTxt=typeof w==="string"&&w.startsWith("+")?`WhatsApp sent to ${w} ✓`:w==="skipped"||w===""?"no valid WhatsApp number on file":w==="invalid"?"WhatsApp number invalid":"WhatsApp sent";
+    return `${action} — ${waTxt}${emailTxt?` · ${emailTxt}`:""}. Check delivery in CMS → WhatsApp.`;
+  }
+  async function resendBookingNotice(appointmentId:string){
+    if(!adminSession) return;
+    setBookingActionBusy(appointmentId); setBookingNotice(null);
+    try{
+      const res=await fetch(`/api/admin/bookings/${appointmentId}/notify`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error(data.error||"Could not resend");
+      setBookingNotice({id:appointmentId,ok:!!data?.notified?.whatsapp||data?.notified?.email==="sent",text:bookingNotifyText("Notification re-sent",data)+(data?.notified?.whatsapp?"":` (phone on file: "${data.raw_phone||"none"}")`)});
+    }catch(e:any){ setBookingNotice({id:appointmentId,ok:false,text:e.message||"Could not resend"}); }
+    setBookingActionBusy(null);
   }
   async function cancelBooking(appointmentId:string){
     if(!adminSession) return;
@@ -5329,6 +5341,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             <div style={{marginTop:10,fontSize:12,padding:"9px 12px",borderRadius:6,background:bookingNotice.ok?"rgba(46,204,113,0.1)":"#2a1010",border:`1px solid ${bookingNotice.ok?"rgba(46,204,113,0.35)":"#4a2020"}`,color:bookingNotice.ok?"#4ade80":"#e74c3c",display:"flex",justifyContent:"space-between",gap:10}}>
                               <span>{bookingNotice.ok?"✓ ":"⚠ "}{bookingNotice.text}</span>
                               <button onClick={()=>setBookingNotice(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer"}}>✕</button>
+                            </div>
+                          )}
+                          {["confirmed","cancelled","completed","payment_rejected"].includes(b.status)&&(
+                            <div style={{marginTop:8}}>
+                              <button onClick={()=>resendBookingNotice(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnSm,fontSize:10.5}}>{bookingActionBusy===b.id?"Sending…":"↻ Resend WhatsApp + Email to client"}</button>
                             </div>
                           )}
                           {!["cancelled","completed"].includes(b.status)&&(

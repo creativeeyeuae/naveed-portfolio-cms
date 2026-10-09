@@ -81,8 +81,8 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     const phone = cust?.whatsapp || cust?.phone;
     if (phone) {
       try {
-        await forwardClientWhatsAppAlert(env, phone, `✅ Hi ${cust?.full_name || ""}, your booking *${ref}* is *confirmed* for ${appt.booking_date || ""} at ${appt.booking_time || ""}.${paid ? "\n\nPayment received — thank you!" : ""}\n\nLooking forward to working with you! 📸 — Naveed Anjum`, cust?.full_name);
-        whatsapp = "queued";
+        const used = await forwardClientWhatsAppAlert(env, phone, `✅ Hi ${cust?.full_name || ""}, your booking *${ref}* is *confirmed* for ${appt.booking_date || ""} at ${appt.booking_time || ""}.${paid ? "\n\nPayment received — thank you!" : ""}\n\nLooking forward to working with you! 📸 — Naveed Anjum`, cust?.full_name);
+        whatsapp = used ? `+${used}` : "invalid";
       } catch { whatsapp = "failed"; }
     }
   }

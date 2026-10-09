@@ -315,7 +315,18 @@ async function pollAndSend(sock) {
     const toPhone = row.whatsapp_conversations?.wa_phone;
     if (!toPhone || !row.body) continue;
     try {
-      const sent = await sock.sendMessage(phoneToJid(toPhone), { text: row.body });
+      // Make sure the number really has WhatsApp first -- otherwise WhatsApp silently drops
+      // the message and nobody ever knows. Report a clear failure the CMS can show instead.
+      let target = phoneToJid(toPhone);
+      try {
+        const [check] = (await sock.onWhatsApp(target)) || [];
+        if (!check || !check.exists) {
+          await callWebhook({ type: "status_update", message_id: row.id, status: "failed", error: `+${toPhone} is not on WhatsApp (check the number / country code).` });
+          continue;
+        }
+        if (check.jid) target = check.jid;
+      } catch (e) { /* lookup failed -- still try to send */ }
+      const sent = await sock.sendMessage(target, { text: row.body });
       if (sent?.key?.id) { sentByBridge.add(sent.key.id); if (sentByBridge.size > 500) sentByBridge.delete(sentByBridge.values().next().value); }
       await callWebhook({ type: "status_update", message_id: row.id, wa_message_id: sent?.key?.id, status: "sent" });
     } catch (e) {

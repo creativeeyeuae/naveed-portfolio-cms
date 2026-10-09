@@ -2591,7 +2591,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bcBusy,setBcBusy]=useState(false);
   const [bcErr,setBcErr]=useState("");
   const [bcReviewOpen,setBcReviewOpen]=useState(false);
-  const BC_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",whatsapp:"",website:"",linkedin:"",company_name:"",company_website:"",address:"",city:"",country:"",notes:""};
+  const BC_EMPTY={first_name:"",last_name:"",job_title:"",email:"",phone:"",office:"",whatsapp:"",website:"",linkedin:"",company_name:"",company_website:"",address:"",city:"",country:"",notes:""};
+  // Extra details found on a card beyond the main fields (fax, 2nd email, Instagram...) --
+  // auto-added as their own label/value rows; the admin can also add more by hand.
+  const [bcExtras,setBcExtras]=useState<{label:string;value:string}[]>([]);
   const [bcForm,setBcForm]=useState<any>(BC_EMPTY);
   const [bcDuplicateFound,setBcDuplicateFound]=useState<any>(null);
   // Part 3: a softer "possible match" (name+company, no exact email/phone/whatsapp) from
@@ -3284,7 +3287,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(bcVideoRef.current) bcVideoRef.current.srcObject=null;
   }
   function bcOpenScanner(){
-    setBcOpen(true); setBcImageDataUrl(""); setBcForm(BC_EMPTY); setBcReviewOpen(false);
+    setBcOpen(true); setBcImageDataUrl(""); setBcForm(BC_EMPTY); setBcExtras([]); setBcReviewOpen(false);
     setBcErr(""); setBcDuplicateFound(null); setBcPossibleMatch(null); setBcTagName("");
     setBcReviewState(""); setBcDetectedLanguage(""); setBcScanId(null);
     setBcCamStep("choose"); setBcCamError(""); setBcCapturedDataUrl("");
@@ -3329,6 +3332,45 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     const c=document.createElement("canvas"); c.width=Math.round(sw*scale); c.height=Math.round(sh*scale);
     c.getContext("2d")!.drawImage(video,sx,sy,sw,sh,0,0,c.width,c.height);
     return c.toDataURL("image/jpeg",0.92);
+  }
+  // Sort everything read from a card (AI or QR) into the main review fields -- Name, Company,
+  // Mobile, WhatsApp, Office, Email, Website, Address -- and auto-add anything else as an
+  // extra row. Only fills fields that are still empty; empty values are never added.
+  function bcApplyFields(all:Record<string,any>){
+    const v=(k:string)=>typeof all?.[k]==="string"?all[k].trim():"";
+    const digits=(s:string)=>s.replace(/[^\d+]/g,"").replace(/^\+/,"");
+    const isMobileNo=(s:string)=>/^(?:00971|971|0)?5\d{8}$/.test(digits(s)); // UAE mobiles: 05x / +9715x
+    const isLandlineUae=(s:string)=>/^(?:00971|971|0)?[2-4679]\d{7}$/.test(digits(s));
+    const same=(a:string,b:string)=>!!a&&!!b&&digits(a).slice(-9)===digits(b).slice(-9);
+    let mobile="", mobile2="", office="";
+    const numbers:[string,"m"|"o"|"u"][]=[];
+    if(v("mobile")) numbers.push([v("mobile"),"m"]);
+    if(v("phone")) numbers.push([v("phone"),all.__fromQr?"u":"o"]);
+    for(const [num,hint] of numbers){
+      const mob=isMobileNo(num)||(hint==="m"&&!isLandlineUae(num))||(hint==="u"&&!isLandlineUae(num)&&!mobile);
+      if(mob){ if(!mobile) mobile=num; else if(!same(mobile,num)&&!mobile2) mobile2=num; }
+      else if(!office) office=num;
+      else if(!same(office,num)&&!mobile2) mobile2=num;
+    }
+    const whatsapp=v("whatsapp")||mobile;
+    const main:Record<string,string>={
+      first_name:v("first_name"), last_name:v("last_name"), job_title:v("job_title"),
+      company_name:v("company_name"), company_website:v("company_website"),
+      phone:mobile, whatsapp, office, email:v("email"), website:v("website")||v("company_website"),
+      address:v("address"), city:v("city"), country:v("country"), linkedin:v("linkedin"),
+    };
+    if(!main.first_name&&v("full_name")){ const p=v("full_name").split(/\s+/); main.first_name=p[0]; if(!main.last_name&&p.length>1) main.last_name=p.slice(1).join(" "); }
+    setBcForm((f:any)=>{ const n={...f}; for(const [k,val] of Object.entries(main)) if(val&&!String(n[k]||"").trim()) n[k]=val; return n; });
+    const LABELS:Record<string,string>={secondary_email:"Email 2",fax:"Fax",instagram:"Instagram",facebook:"Facebook",twitter:"X / Twitter"};
+    const SKIP=new Set(["full_name","first_name","last_name","job_title","company_name","company_website","phone","mobile","whatsapp","email","website","address","city","country","linkedin","notes","__fromQr"]);
+    const extras:{label:string;value:string}[]=[];
+    if(mobile2) extras.push({label:"Phone 2",value:mobile2});
+    if(v("whatsapp")&&mobile&&!same(v("whatsapp"),mobile)&&!extras.some(e=>same(e.value,mobile))) extras.push({label:"Mobile 2",value:mobile});
+    for(const [k,val] of Object.entries(all||{})){
+      if(SKIP.has(k)||typeof val!=="string"||!val.trim()) continue;
+      extras.push({label:LABELS[k]||k.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()),value:val.trim()});
+    }
+    if(extras.length) setBcExtras(prev=>{ const out=[...prev]; for(const e of extras) if(!out.some(o=>o.label===e.label||o.value===e.value)) out.push(e); return out; });
   }
   // Parse a contact QR (vCard / MECARD) into the review form's fields. English only.
   function bcParseQr(text:string):Record<string,string>|null{
@@ -3396,7 +3438,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       if(fields){
         st.done=true; setBcLiveHint("QR contact found ✓");
         const img=bcCropFrame(video); bcStopCamera();
-        setBcImageDataUrl(img); setBcForm((f:any)=>({...f,...fields})); setBcReviewState("needs_review"); setBcDetectedLanguage("en");
+        setBcImageDataUrl(img); bcApplyFields({...fields,__fromQr:"1"}); setBcReviewState("needs_review"); setBcDetectedLanguage("en");
         setBcCamStep("choose"); setBcReviewOpen(true);
         return;
       }
@@ -3492,10 +3534,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           if(res.ok&&data.extracted){
             // Merge extracted fields, then fold any suggested extra info (mobile, fax, social
             // links, etc.) into notes without clobbering anything the admin already typed.
-            setBcForm((f:any)=>({
-              ...f,...data.extracted,
-              notes:data.notes_suggestion?(f.notes?`${f.notes}\n${data.notes_suggestion}`:data.notes_suggestion):f.notes,
-            }));
+            bcApplyFields(data.all||data.extracted);
             setBcReviewState(data.review_state||"");
             setBcDetectedLanguage(data.detected_language||"");
           } else if(!res.ok){
@@ -3518,12 +3557,27 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // Belt-and-suspenders: also stop any live camera stream if the whole CMS unmounts
   // while the scanner happens to be open.
   useEffect(()=>{ return ()=>{ bcStopCamera(); }; },[]);
+  // Only non-empty fields are sent. Office number + any extra rows (fax, 2nd email, socials,
+  // custom fields) are stored as tidy "Label: value" lines in the contact's notes -- empty
+  // rows are skipped entirely, nothing blank is ever saved.
+  function bcCleanPayload(){
+    const out:Record<string,any>={};
+    for(const [k,val] of Object.entries(bcForm)){ if(k==="office"||k==="notes") continue; const s=String(val??"").trim(); if(s) out[k]=s; }
+    const lines:string[]=[];
+    if(String(bcForm.office||"").trim()) lines.push(`Office: ${String(bcForm.office).trim()}`);
+    for(const e of bcExtras){ const l=e.label.trim(), v=e.value.trim(); if(v) lines.push(`${l||"Other"}: ${v}`); }
+    const typed=String(bcForm.notes||"").trim();
+    const notes=[...lines,typed].filter(Boolean).join("\n");
+    if(notes) out.notes=notes;
+    if(bcImageDataUrl) out.card_image_url=bcImageDataUrl;
+    return out;
+  }
   async function bcSave(force?:boolean){
     if(!adminSession) return;
     if(!bcForm.first_name.trim()&&!bcForm.last_name.trim()){ alert("Name is required."); return; }
     setBcBusy(true);
     try{
-      const res=await fetch("/api/admin/business-cards/save",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({data:{...bcForm,card_image_url:bcImageDataUrl||null},tag_name:bcTagName.trim()||undefined,force:!!force,scan_id:bcScanId||undefined})});
+      const res=await fetch("/api/admin/business-cards/save",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({data:bcCleanPayload(),tag_name:bcTagName.trim()||undefined,force:!!force,scan_id:bcScanId||undefined})});
       const data=await res.json();
       if(res.status===409&&!force){ setBcDuplicateFound(data.duplicate); setBcBusy(false); return; }
       // A possible_match is a non-blocking suggestion (no contact created yet) -- it is NOT
@@ -6037,22 +6091,49 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </div>
                     )}
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
-                    <input style={S.inp} placeholder="First name" value={bcForm.first_name} onChange={e=>setBcForm((f:any)=>({...f,first_name:e.target.value}))} />
-                    <input style={S.inp} placeholder="Last name" value={bcForm.last_name} onChange={e=>setBcForm((f:any)=>({...f,last_name:e.target.value}))} />
-                    <input style={S.inp} placeholder="Job title" value={bcForm.job_title} onChange={e=>setBcForm((f:any)=>({...f,job_title:e.target.value}))} />
-                    <input style={S.inp} placeholder="Company" value={bcForm.company_name} onChange={e=>setBcForm((f:any)=>({...f,company_name:e.target.value}))} />
-                    <input style={S.inp} placeholder="Company website" value={bcForm.company_website} onChange={e=>setBcForm((f:any)=>({...f,company_website:e.target.value}))} />
-                    <input style={S.inp} placeholder="Phone" value={bcForm.phone} onChange={e=>setBcForm((f:any)=>({...f,phone:e.target.value}))} />
-                    <input style={S.inp} placeholder="WhatsApp" value={bcForm.whatsapp} onChange={e=>setBcForm((f:any)=>({...f,whatsapp:e.target.value}))} />
-                    <input style={S.inp} placeholder="Email" value={bcForm.email} onChange={e=>setBcForm((f:any)=>({...f,email:e.target.value}))} />
-                    <input style={S.inp} placeholder="Website" value={bcForm.website} onChange={e=>setBcForm((f:any)=>({...f,website:e.target.value}))} />
-                    <input style={S.inp} placeholder="LinkedIn" value={bcForm.linkedin} onChange={e=>setBcForm((f:any)=>({...f,linkedin:e.target.value}))} />
-                    <input style={S.inp} placeholder="Address" value={bcForm.address} onChange={e=>setBcForm((f:any)=>({...f,address:e.target.value}))} />
-                    <input style={S.inp} placeholder="City" value={bcForm.city} onChange={e=>setBcForm((f:any)=>({...f,city:e.target.value}))} />
-                    <input style={S.inp} placeholder="Country" value={bcForm.country} onChange={e=>setBcForm((f:any)=>({...f,country:e.target.value}))} />
-                  </div>
-                  <textarea style={{...S.inp,width:"100%",marginBottom:12,minHeight:60,resize:"vertical" as const,fontFamily:"inherit"}} placeholder="Notes (e.g. mobile, fax, social links picked up from the card)" value={bcForm.notes} onChange={e=>setBcForm((f:any)=>({...f,notes:e.target.value}))} />
+                  {(()=>{
+                    const field=(key:string,label:string,ph?:string,full?:boolean)=>(
+                      <label key={key} style={{display:"flex",flexDirection:"column" as const,gap:4,gridColumn:full&&!isMobile?"1 / -1":undefined}}>
+                        <span style={{fontSize:10,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>{label}</span>
+                        <input style={S.inp} placeholder={ph||label} value={bcForm[key]||""} onChange={e=>setBcForm((f:any)=>({...f,[key]:e.target.value}))} />
+                      </label>
+                    );
+                    // Secondary fields only appear when the card actually had them (or once typed).
+                    const optional:[string,string][]=[["job_title","Job title"],["linkedin","LinkedIn"],["city","City"],["country","Country"],["company_website","Company website"]];
+                    const shownOptional=optional.filter(([k])=>String(bcForm[k]||"")!=="");
+                    return (
+                      <>
+                        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                          {field("first_name","First name")}
+                          {field("last_name","Last name")}
+                          {field("company_name","Company",undefined,true)}
+                          {field("phone","Mobile","+971 5x xxx xxxx")}
+                          {field("whatsapp","WhatsApp","+971 5x xxx xxxx")}
+                          {field("office","Office","+971 4 xxx xxxx")}
+                          {field("email","Email")}
+                          {field("website","Website",undefined,true)}
+                          {field("address","Address",undefined,true)}
+                          {shownOptional.map(([k,l])=>field(k,l))}
+                        </div>
+                        {bcExtras.length>0&&<div style={{fontSize:10,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,margin:"4px 0 8px"}}>More details found on the card</div>}
+                        {bcExtras.map((ex,i)=>(
+                          <div key={i} style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                            <input style={{...S.inp,width:isMobile?"38%":"30%"}} placeholder="Label (e.g. Fax)" value={ex.label} onChange={e=>setBcExtras(a=>a.map((x,j)=>j===i?{...x,label:e.target.value}:x))} />
+                            <input style={{...S.inp,flex:1}} placeholder="Value" value={ex.value} onChange={e=>setBcExtras(a=>a.map((x,j)=>j===i?{...x,value:e.target.value}:x))} />
+                            <button onClick={()=>setBcExtras(a=>a.filter((_,j)=>j!==i))} title="Remove" style={{...S.btnO,padding:"8px 11px",fontSize:12,background:"transparent"}}>✕</button>
+                          </div>
+                        ))}
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginBottom:12}}>
+                          <button onClick={()=>setBcExtras(a=>[...a,{label:"",value:""}])} style={{...S.btnO,padding:"7px 12px",fontSize:10,background:"transparent"}}>+ Add field</button>
+                          {optional.filter(([k])=>String(bcForm[k]||"")==="").map(([k,l])=>(
+                            <button key={k} onClick={()=>setBcForm((f:any)=>({...f,[k]:" "}))} style={{...S.btnO,padding:"7px 12px",fontSize:10,background:"transparent"}}>+ {l}</button>
+                          ))}
+                        </div>
+                        <textarea style={{...S.inp,width:"100%",marginBottom:12,minHeight:50,resize:"vertical" as const,fontFamily:"inherit"}} placeholder="Notes (optional)" value={bcForm.notes} onChange={e=>setBcForm((f:any)=>({...f,notes:e.target.value}))} />
+                        <div style={{fontSize:10.5,color:C.MID,marginBottom:10}}>Empty fields are not saved.</div>
+                      </>
+                    );
+                  })()}
                   <input style={{...S.inp,width:"100%",marginBottom:12}} placeholder="Tag (optional, e.g. Exhibition, Event)" value={bcTagName} onChange={e=>setBcTagName(e.target.value)} />
                   {bcDuplicateFound&&(
                     <div style={{marginBottom:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>

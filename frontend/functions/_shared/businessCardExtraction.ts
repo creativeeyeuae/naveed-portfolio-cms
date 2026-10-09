@@ -51,6 +51,7 @@ Rules:
 - ENGLISH ONLY. The card may also have Arabic text: ignore all Arabic completely. Never output Arabic characters.
 - Only include information actually printed on the card. Omit keys that are not present. Never guess.
 - Copy text exactly (spelling, capitalisation). Phone numbers with + and country code as printed.
+- Put a mobile/cell number in "mobile", an office/landline/tel number in "phone", a fax number in "fax". If a number is marked WhatsApp, put it in "whatsapp".
 - Split the person's name into first_name and last_name. If no country is printed but a UAE emirate is, set country to "United Arab Emirates".`;
 
 function dataUrlToBytes(dataUrl: string): Uint8Array {
@@ -128,7 +129,6 @@ function finalize(e: ExtractedFields): ExtractedFields {
     if (!e.first_name) e.first_name = parts[0];
     if (!e.last_name && parts.length > 1) e.last_name = parts.slice(1).join(" ");
   }
-  if (!e.phone && e.mobile) e.phone = e.mobile;
   if (e.email) e.email = e.email.toLowerCase().replace(/\s/g, "");
   if (!e.company_website && e.website) e.company_website = e.website;
   return e;

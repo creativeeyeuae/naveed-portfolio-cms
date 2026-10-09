@@ -109,6 +109,8 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     {
       extracted: forForm, // only fields bcForm actually has inputs for -- bcHandleFile's
       // existing merge (setBcForm(f => ({...f, ...data.extracted}))) keeps working unchanged
+      all: result.extracted, // every non-empty field read (mobile/office/fax/socials...) -- the
+      // review form classifies these into its main fields + auto-added extra rows
       notes_suggestion: notesSuggestion || undefined, // anything extra (mobile, fax, social
       // links, etc.) folded into a suggested notes line instead of being silently dropped
       review_state: result.review_state,

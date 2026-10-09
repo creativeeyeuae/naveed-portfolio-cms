@@ -13,6 +13,9 @@ import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
+// Same renderer the server uses to send -- the designer preview is exactly what recipients get.
+import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
+import { EMAIL_STARTERS } from "@/lib/emailStarterTemplates";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -2636,6 +2639,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [emailTemplateForm,setEmailTemplateForm]=useState<any>(EMAIL_TEMPLATE_EMPTY);
   const [emailBusy,setEmailBusy]=useState(false);
   const [emailPreviewWidth,setEmailPreviewWidth]=useState<"desktop"|"mobile">("desktop");
+  const [emailStartersOpen,setEmailStartersOpen]=useState(false);
+  const [emailImportOpen,setEmailImportOpen]=useState(false);
+  const [emailImportHtml,setEmailImportHtml]=useState("");
+  const [emailDesignOpen,setEmailDesignOpen]=useState(true);
+  const [emailPreviewH,setEmailPreviewH]=useState(600);
   const [emailTestTo,setEmailTestTo]=useState("");
   const [emailTestBusy,setEmailTestBusy]=useState(false);
   const [emailTestMsg,setEmailTestMsg]=useState("");
@@ -3677,15 +3685,46 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   function emailAddBlock(type:string){
     const blank:Record<string,any>={
+      logo:{type:"logo",src:"",alt:"Logo",width:160,align:"center"},
       heading:{type:"heading",text:"Heading"},
       text:{type:"text",html:"Write something…"},
       image:{type:"image",src:"",alt:"",link:""},
       button:{type:"button",text:"Click here",href:"https://"},
       divider:{type:"divider"},
       spacer:{type:"spacer",height:24},
+      social:{type:"social",instagram:"",facebook:"",youtube:"",linkedin:"",tiktok:"",whatsapp:"",website:"https://bynaveedanjum.com"},
+      html:{type:"html",html:"<p>Custom HTML</p>"},
       footer:{type:"footer",text:"You're receiving this because you're a valued contact of Naveed Anjum."},
     };
     setEmailTemplateForm((f:any)=>({...f,blocks:[...(f.blocks||[]),blank[type]]}));
+  }
+  // Global design settings live in one {type:"settings"} block (kept first).
+  function emailSetSettings(patch:any){
+    setEmailTemplateForm((f:any)=>{
+      const blocks=[...(f.blocks||[])];
+      const i=blocks.findIndex((b:any)=>b?.type==="settings");
+      if(i>=0) blocks[i]={...blocks[i],...patch}; else blocks.unshift({type:"settings",...patch});
+      return {...f,blocks};
+    });
+  }
+  // Start a NEW template from a professional starter design (fully editable afterwards).
+  function emailStartFromStarter(key:string){
+    const st=EMAIL_STARTERS.find(s=>s.key===key); if(!st) return;
+    setEmailTemplateForm({name:st.name,subject:st.subject,blocks:JSON.parse(JSON.stringify(st.blocks))});
+    setEmailTemplateEditId("new"); setEmailTestMsg(""); setEmailStartersOpen(false);
+  }
+  // Import a complete email designed elsewhere (Mailchimp, Stripo, Canva, BEE, Unlayer...).
+  function emailStartFromHtml(){
+    const html=emailImportHtml.trim();
+    if(!html){ alert("Paste the HTML code first."); return; }
+    if(!/<[a-z][\s\S]*>/i.test(html)){ alert("That doesn't look like HTML code."); return; }
+    const title=(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]||"").trim();
+    setEmailTemplateForm({name:title||"Imported template",subject:title||"",blocks:[{type:"rawhtml",html}]});
+    setEmailTemplateEditId("new"); setEmailTestMsg(""); setEmailImportOpen(false); setEmailImportHtml("");
+  }
+  async function emailImportHtmlFile(file:File){
+    if(file.size>2*1024*1024){ alert("That file is too large (max 2 MB)."); return; }
+    setEmailImportHtml(await file.text());
   }
   function emailUpdateBlock(idx:number,patch:any){
     setEmailTemplateForm((f:any)=>{
@@ -4733,17 +4772,59 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // Email Designer preview -- a client-side approximation of functions/_shared/emailRender.ts's
     // blockToHtml, close enough to judge layout while editing. The real send always goes through
     // that shared server-side renderer (and its sanitizer), never through this preview.
-    function emailBlockPreview(b:any){
-      switch(b.type){
-        case "heading": return <div style={{padding:"18px 22px 6px",fontFamily:"Georgia,serif",fontSize:19,color:"#140D21"}}>{b.text}</div>;
-        case "text": return <div style={{padding:"6px 22px",fontSize:12.5,lineHeight:1.7,color:"#3a3245",whiteSpace:"pre-wrap" as const}}>{b.html}</div>;
-        case "image": return b.src?(<div style={{padding:"6px 22px"}}><img src={b.src} alt={b.alt||""} style={{display:"block",width:"100%",borderRadius:4}} /></div>):(<div style={{padding:"6px 22px",fontSize:11,color:"#9a92a8",fontStyle:"italic"}}>(no image URL yet)</div>);
-        case "button": return <div style={{padding:"14px 22px",textAlign:"center" as const}}><span style={{display:"inline-block",background:"#8B5CF6",color:"#fff",fontSize:12.5,fontWeight:600,padding:"11px 26px",borderRadius:6}}>{b.text}</span></div>;
-        case "divider": return <div style={{padding:"0 22px"}}><div style={{borderTop:"1px solid #e6e1ee"}} /></div>;
-        case "spacer": return <div style={{height:Math.max(4,Math.min(120,Number(b.height)||24))}} />;
-        case "footer": return <div style={{padding:"18px 22px 22px",fontSize:10,lineHeight:1.6,color:"#9a92a8",whiteSpace:"pre-wrap" as const}}>{b.text}</div>;
-        default: return null;
-      }
+    // Small colour picker + hex box (type="color" needs #rrggbb; the text box accepts anything).
+    function emailColor(label:string,value:string|undefined,onChange:(v:string)=>void,placeholder?:string){
+      const hex=/^#[0-9a-f]{6}$/i.test(value||"")?value!:(/^#[0-9a-f]{3}$/i.test(value||"")?"#"+value!.slice(1).split("").map(c=>c+c).join(""):"#ffffff");
+      return (
+        <label style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:10.5,color:C.MID}}>
+          {label}
+          <input type="color" value={hex} onChange={e=>onChange(e.target.value)} style={{width:26,height:24,padding:0,border:`1px solid ${C.BORDER}`,background:"transparent",cursor:"pointer"}} />
+          <input value={value||""} placeholder={placeholder||"auto"} onChange={e=>onChange(e.target.value)} style={{...S.inp,width:78,padding:"4px 6px",fontSize:11}} />
+        </label>
+      );
+    }
+    // Per-block styling toolbar: alignment, colours, size, font, bold -- only what fits the block.
+    function emailStyleRow(b:any,idx:number){
+      const t=b.type;
+      const hasAlign=["heading","text","logo","image","button","social","footer"].includes(t);
+      const hasColor=["heading","text","footer"].includes(t);
+      const hasSize=["heading","text","button","footer"].includes(t);
+      const hasFont=["heading","text","button","footer"].includes(t);
+      const hasBold=["heading","text"].includes(t);
+      const small={...S.btnO,padding:"3px 8px",fontSize:11,minWidth:28};
+      return (
+        <div style={{display:"flex",flexWrap:"wrap" as const,gap:8,alignItems:"center",marginTop:8,paddingTop:8,borderTop:`1px dashed ${C.BORDER}`}}>
+          {hasAlign&&(
+            <div style={{display:"inline-flex",gap:2}}>
+              {(["left","center","right"] as const).map(a=>(
+                <button key={a} title={`Align ${a}`} onClick={()=>emailUpdateBlock(idx,{align:a})} style={{...small,background:(b.align||(["button","social","logo"].includes(t)?"center":"left"))===a?C.P:"transparent",color:"#fff"}}>{a==="left"?"⯇":a==="center"?"≡":"⯈"}</button>
+              ))}
+            </div>
+          )}
+          {hasBold&&<button title="Bold" onClick={()=>emailUpdateBlock(idx,{bold:!b.bold})} style={{...small,fontWeight:700,background:b.bold?C.P:"transparent",color:"#fff"}}>B</button>}
+          {hasSize&&(
+            <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10.5,color:C.MID}}>Size
+              <input type="number" min={9} max={60} value={b.size||""} placeholder="auto" onChange={e=>emailUpdateBlock(idx,{size:Number(e.target.value)||undefined})} style={{...S.inp,width:58,padding:"4px 6px",fontSize:11}} />
+            </label>
+          )}
+          {hasFont&&(
+            <select value={b.font||""} onChange={e=>emailUpdateBlock(idx,{font:e.target.value||undefined})} style={{...S.inp,width:"auto",padding:"4px 6px",fontSize:11}}>
+              <option value="">Font: default</option>
+              {EMAIL_FONTS.map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
+            </select>
+          )}
+          {hasColor&&emailColor("Text",b.color,v=>emailUpdateBlock(idx,{color:v||undefined}))}
+          {t==="button"&&emailColor("Button",b.btnColor,v=>emailUpdateBlock(idx,{btnColor:v||undefined}))}
+          {t==="button"&&emailColor("Label",b.btnTextColor,v=>emailUpdateBlock(idx,{btnTextColor:v||undefined}))}
+          {t==="divider"&&emailColor("Line",b.lineColor,v=>emailUpdateBlock(idx,{lineColor:v||undefined}))}
+          {emailColor("Background",b.bg,v=>emailUpdateBlock(idx,{bg:v||undefined}),"none")}
+          {["heading","text","footer","logo","image","button","social","html","divider"].includes(t)&&(
+            <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10.5,color:C.MID}}>Spacing
+              <input type="number" min={0} max={80} value={b.padY??""} placeholder="auto" onChange={e=>emailUpdateBlock(idx,{padY:e.target.value===""?undefined:Number(e.target.value)})} style={{...S.inp,width:58,padding:"4px 6px",fontSize:11}} />
+            </label>
+          )}
+        </div>
+      );
     }
     const cmsSidebar = (
       <div style={{width:250,minWidth:250,background:C.DARK,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
@@ -6249,7 +6330,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {emailSubTab==="templates"&&(emailTemplateEditId?(
               <div>
                 <button onClick={()=>{setEmailTemplateEditId(null);setEmailTemplateForm(EMAIL_TEMPLATE_EMPTY);setEmailTestMsg("");}} style={{...S.btnO,marginBottom:16}}>← Back to templates</button>
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 360px",gap:20}}>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 460px",gap:20}}>
                   <div>
                     <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap" as const}}>
                       <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Template name" value={emailTemplateForm.name} onChange={e=>setEmailTemplateForm((f:any)=>({...f,name:e.target.value}))} />
@@ -6257,44 +6338,124 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     </div>
                     <div style={{fontSize:10.5,color:C.MID,marginBottom:14}}>Personalize with: {EMAIL_VARIABLES.map(([k])=>`{{${k}}}`).join("  ")}</div>
 
-                    <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
-                      {(emailTemplateForm.blocks||[]).map((b:any,idx:number)=>(
-                        <div key={idx} style={{...CARD_STYLE,padding:12}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                            <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>{b.type}</span>
-                            <div style={{display:"flex",gap:6}}>
-                              <button onClick={()=>emailMoveBlock(idx,-1)} disabled={idx===0} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↑</button>
-                              <button onClick={()=>emailMoveBlock(idx,1)} disabled={idx===emailTemplateForm.blocks.length-1} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↓</button>
-                              <button onClick={()=>emailRemoveBlock(idx)} style={{...S.btnO,padding:"4px 9px",fontSize:11,color:"#e74c3c"}}>✕</button>
+                    {(()=>{
+                      const blocks:any[]=emailTemplateForm.blocks||[];
+                      const raw=blocks.find((b:any)=>b?.type==="rawhtml");
+                      if(raw){
+                        const ri=blocks.indexOf(raw);
+                        return (
+                          <div style={{...CARD_STYLE,padding:14}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexWrap:"wrap" as const,gap:8}}>
+                              <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>Imported HTML email</span>
+                              <button onClick={()=>{ if(confirm("Switch to the visual designer? The imported HTML will be removed from this template.")) setEmailTemplateForm((f:any)=>({...f,blocks:[]})); }} style={{...S.btnO,padding:"4px 10px",fontSize:10.5}}>Use visual designer instead</button>
                             </div>
+                            <div style={{fontSize:11,color:C.MID,marginBottom:8,lineHeight:1.5}}>Edit the code directly — the preview updates live. Use {"{{first_name}}"}, {"{{company}}"} etc. for personalization. Scripts are removed automatically when sending.</div>
+                            <textarea value={raw.html} onChange={e=>emailUpdateBlock(ri,{html:e.target.value})} spellCheck={false} style={{...S.inp,width:"100%",minHeight:420,fontFamily:"monospace",fontSize:11.5,lineHeight:1.5,resize:"vertical" as const}} />
                           </div>
-                          {b.type==="heading"&&<input style={S.inp} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Heading text" />}
-                          {b.type==="text"&&<textarea style={{...S.inp,minHeight:70}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="Body text" />}
-                          {b.type==="footer"&&<textarea style={{...S.inp,minHeight:50}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Footer text" />}
-                          {b.type==="image"&&(
-                            <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
-                              <input style={S.inp} value={b.src} onChange={e=>emailUpdateBlock(idx,{src:e.target.value})} placeholder="Image URL (upload it in Media Library, then paste the URL here)" />
-                              <input style={S.inp} value={b.alt||""} onChange={e=>emailUpdateBlock(idx,{alt:e.target.value})} placeholder="Alt text" />
-                              <input style={S.inp} value={b.link||""} onChange={e=>emailUpdateBlock(idx,{link:e.target.value})} placeholder="Link URL (optional)" />
-                            </div>
-                          )}
-                          {b.type==="button"&&(
-                            <div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}>
-                              <input style={{...S.inp,flex:1,minWidth:140}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Button text" />
-                              <input style={{...S.inp,flex:1,minWidth:140}} value={b.href} onChange={e=>emailUpdateBlock(idx,{href:e.target.value})} placeholder="Button link URL" />
-                            </div>
-                          )}
-                          {b.type==="spacer"&&<input type="number" style={{...S.inp,width:120}} value={b.height||24} onChange={e=>emailUpdateBlock(idx,{height:Number(e.target.value)||24})} placeholder="Height (px)" />}
-                          {b.type==="divider"&&<div style={{fontSize:11,color:C.MID,fontStyle:"italic"}}>A horizontal divider line.</div>}
-                        </div>
-                      ))}
-                    </div>
+                        );
+                      }
+                      const st=getEmailSettings(blocks as any);
+                      const fontSel=(value:string,onChange:(v:string)=>void)=>(
+                        <select value={value} onChange={e=>onChange(e.target.value)} style={{...S.inp,width:"auto",padding:"5px 8px",fontSize:11.5}}>
+                          {EMAIL_FONTS.map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
+                        </select>
+                      );
+                      const LABELS:Record<string,string>={logo:"Logo",heading:"Heading",text:"Paragraph",image:"Image",button:"Button",divider:"Divider",spacer:"Spacer",social:"Social icons",html:"Custom HTML",footer:"Footer"};
+                      return (
+                        <>
+                          {/* ── Global design ─────────────────────────────────────── */}
+                          <div style={{...CARD_STYLE,padding:14,marginBottom:12}}>
+                            <button onClick={()=>setEmailDesignOpen(o=>!o)} style={{background:"none",border:"none",color:C.FG,cursor:"pointer",padding:0,display:"flex",justifyContent:"space-between",width:"100%",alignItems:"center"}}>
+                              <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>🎨 Design — colours, fonts & layout</span>
+                              <span style={{fontSize:12,color:C.MID}}>{emailDesignOpen?"▲":"▼"}</span>
+                            </button>
+                            {emailDesignOpen&&(
+                              <div style={{display:"flex",flexWrap:"wrap" as const,gap:"10px 16px",marginTop:12,alignItems:"center"}}>
+                                {emailColor("Page background",st.bodyBg,v=>emailSetSettings({bodyBg:v}))}
+                                {emailColor("Email background",st.cardBg,v=>emailSetSettings({cardBg:v}))}
+                                {emailColor("Heading colour",st.headingColor,v=>emailSetSettings({headingColor:v}))}
+                                {emailColor("Text colour",st.textColor,v=>emailSetSettings({textColor:v}))}
+                                {emailColor("Brand / button",st.accent,v=>emailSetSettings({accent:v}))}
+                                <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Heading font {fontSel(st.headingFont,v=>emailSetSettings({headingFont:v}))}</label>
+                                <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Text font {fontSel(st.font,v=>emailSetSettings({font:v}))}</label>
+                                <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Width
+                                  <select value={st.width} onChange={e=>emailSetSettings({width:Number(e.target.value)})} style={{...S.inp,width:"auto",padding:"5px 8px",fontSize:11.5}}>
+                                    {[520,560,600,640,700].map(w=><option key={w} value={w}>{w}px{w===600?" (standard)":""}</option>)}
+                                  </select>
+                                </label>
+                                <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Rounded corners
+                                  <input type="range" min={0} max={30} value={st.radius} onChange={e=>emailSetSettings({radius:Number(e.target.value)})} />
+                                  <span>{st.radius}px</span>
+                                </label>
+                                <input style={{...S.inp,flex:"1 1 100%",fontSize:12}} placeholder="Inbox preview text (the grey line shown after the subject in Gmail/Outlook)" value={st.preheader||""} onChange={e=>emailSetSettings({preheader:e.target.value})} />
+                              </div>
+                            )}
+                          </div>
 
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:14}}>
-                      {["heading","text","image","button","divider","spacer","footer"].map(t=>(
-                        <button key={t} onClick={()=>emailAddBlock(t)} style={{...S.btnO,padding:"6px 12px",fontSize:10.5,textTransform:"capitalize" as const}}>+ {t}</button>
-                      ))}
-                    </div>
+                          {/* ── Blocks ────────────────────────────────────────────── */}
+                          <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+                            {blocks.map((b:any,idx:number)=>{
+                              if(!b||b.type==="settings") return null;
+                              return (
+                                <div key={idx} style={{...CARD_STYLE,padding:12}}>
+                                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                                    <span style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID}}>{LABELS[b.type]||b.type}</span>
+                                    <div style={{display:"flex",gap:6}}>
+                                      <button title="Duplicate" onClick={()=>setEmailTemplateForm((f:any)=>{ const bl=[...(f.blocks||[])]; bl.splice(idx+1,0,JSON.parse(JSON.stringify(bl[idx]))); return {...f,blocks:bl}; })} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>⧉</button>
+                                      <button onClick={()=>emailMoveBlock(idx,-1)} disabled={idx===0} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↑</button>
+                                      <button onClick={()=>emailMoveBlock(idx,1)} disabled={idx===blocks.length-1} style={{...S.btnO,padding:"4px 9px",fontSize:11}}>↓</button>
+                                      <button onClick={()=>emailRemoveBlock(idx)} style={{...S.btnO,padding:"4px 9px",fontSize:11,color:"#e74c3c"}}>✕</button>
+                                    </div>
+                                  </div>
+                                  {b.type==="heading"&&<input style={S.inp} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Heading text" />}
+                                  {b.type==="text"&&<textarea style={{...S.inp,minHeight:80}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="Paragraph text — press Enter for a new line. <b>bold</b> and <a href='…'>links</a> work too." />}
+                                  {b.type==="footer"&&<textarea style={{...S.inp,minHeight:50}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Footer text" />}
+                                  {b.type==="html"&&<textarea spellCheck={false} style={{...S.inp,minHeight:100,fontFamily:"monospace",fontSize:11.5}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="<table>…</table> — any HTML snippet" />}
+                                  {(b.type==="image"||b.type==="logo")&&(
+                                    <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+                                      <input style={S.inp} value={b.src} onChange={e=>emailUpdateBlock(idx,{src:e.target.value})} placeholder={b.type==="logo"?"Logo image URL (PNG with transparent background works best — upload in Media Library, paste URL)":"Image URL (upload it in Media Library, then paste the URL here)"} />
+                                      <div style={{display:"flex",gap:6,flexWrap:"wrap" as const}}>
+                                        <input style={{...S.inp,flex:1,minWidth:120}} value={b.alt||""} onChange={e=>emailUpdateBlock(idx,{alt:e.target.value})} placeholder="Alt text" />
+                                        <input style={{...S.inp,flex:1,minWidth:120}} value={b.link||""} onChange={e=>emailUpdateBlock(idx,{link:e.target.value})} placeholder="Link URL (optional)" />
+                                        <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10.5,color:C.MID}}>Width
+                                          <input type="number" min={40} max={700} value={b.width||""} placeholder={b.type==="logo"?"160":"full"} onChange={e=>emailUpdateBlock(idx,{width:Number(e.target.value)||undefined})} style={{...S.inp,width:70,padding:"6px"}} />px
+                                        </label>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {b.type==="button"&&(
+                                    <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,alignItems:"center"}}>
+                                      <input style={{...S.inp,flex:1,minWidth:140}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Button text" />
+                                      <input style={{...S.inp,flex:1,minWidth:140}} value={b.href} onChange={e=>emailUpdateBlock(idx,{href:e.target.value})} placeholder="Button link URL" />
+                                      <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10.5,color:C.MID}}>Corners
+                                        <input type="number" min={0} max={40} value={b.radius??""} placeholder="6" onChange={e=>emailUpdateBlock(idx,{radius:e.target.value===""?undefined:Number(e.target.value)})} style={{...S.inp,width:58,padding:"6px"}} />
+                                      </label>
+                                    </div>
+                                  )}
+                                  {b.type==="social"&&(
+                                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6}}>
+                                      {[["instagram","Instagram URL"],["facebook","Facebook URL"],["youtube","YouTube URL"],["linkedin","LinkedIn URL"],["tiktok","TikTok URL"],["whatsapp","WhatsApp number or link"],["website","Website URL"]].map(([k,ph])=>(
+                                        <input key={k} style={S.inp} value={b[k]||""} onChange={e=>emailUpdateBlock(idx,{[k]:e.target.value})} placeholder={ph} />
+                                      ))}
+                                      <div style={{fontSize:10.5,color:C.MID,gridColumn:"1 / -1"}}>Only filled-in links show as icons.</div>
+                                    </div>
+                                  )}
+                                  {b.type==="spacer"&&<label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:11,color:C.MID}}>Height <input type="number" style={{...S.inp,width:90}} value={b.height||24} onChange={e=>emailUpdateBlock(idx,{height:Number(e.target.value)||24})} /> px</label>}
+                                  {b.type==="divider"&&<div style={{fontSize:11,color:C.MID,fontStyle:"italic"}}>A horizontal divider line.</div>}
+                                  {emailStyleRow(b,idx)}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:14}}>
+                            {["logo","heading","text","image","button","divider","spacer","social","html","footer"].map(t=>(
+                              <button key={t} onClick={()=>emailAddBlock(t)} style={{...S.btnO,padding:"6px 12px",fontSize:10.5}}>+ {LABELS[t]}</button>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
 
                     <div style={{marginTop:20}}>
                       <button onClick={emailSaveTemplate} disabled={emailBusy} style={S.btnP}>Save Template</button>
@@ -6319,20 +6480,69 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                         <button onClick={()=>setEmailPreviewWidth("mobile")} style={{...S.btnO,padding:"4px 10px",fontSize:10.5,background:emailPreviewWidth==="mobile"?C.P:undefined,color:emailPreviewWidth==="mobile"?"#fff":undefined}}>Mobile</button>
                       </div>
                     </div>
-                    <div style={{background:"#f4f1f9",borderRadius:10,padding:16}}>
-                      <div style={{background:"#fff",borderRadius:8,overflow:"hidden" as const,maxWidth:emailPreviewWidth==="mobile"?300:420,margin:"0 auto"}}>
-                        {(emailTemplateForm.blocks||[]).map((b:any,idx:number)=>(<div key={idx}>{emailBlockPreview(b)}</div>))}
-                        {(!emailTemplateForm.blocks||emailTemplateForm.blocks.length===0)&&<div style={{padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>}
-                      </div>
-                    </div>
+                    {/* Real preview: the exact HTML the server sends (same renderer), in a sandboxed
+                        iframe (no scripts) scaled to fit -- 600px desktop / 375px phone width. */}
+                    {(()=>{
+                      const blocks=emailTemplateForm.blocks||[];
+                      if(!blocks.filter((b:any)=>b?.type!=="settings").length) return <div style={{background:"#f4f1f9",borderRadius:10,padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>;
+                      const html=renderEmailHtml(blocks,{first_name:"Sarah",last_name:"Khan",company:"Emaar",job_title:"Marketing Director"});
+                      const frameW=emailPreviewWidth==="mobile"?375:660;
+                      const boxW=isMobile?320:440;
+                      const scale=Math.min(1,boxW/frameW);
+                      return (
+                        <div style={{width:boxW,maxWidth:"100%",height:Math.round(emailPreviewH*scale),overflow:"hidden" as const,borderRadius:10,border:`1px solid ${C.BORDER}`,background:"#fff",margin:"0 auto"}}>
+                          <iframe title="Email preview" sandbox="allow-same-origin" srcDoc={html}
+                            onLoad={e=>{ try{ const d=(e.target as HTMLIFrameElement).contentDocument; if(d) setEmailPreviewH(Math.max(300,Math.min(6000,d.documentElement.scrollHeight))); }catch{} }}
+                            style={{width:frameW,height:emailPreviewH,border:0,transform:`scale(${scale})`,transformOrigin:"top left",display:"block"}} />
+                        </div>
+                      );
+                    })()}
+                    <div style={{fontSize:10.5,color:C.MID,marginTop:8,textAlign:"center" as const}}>Preview uses sample data (Sarah · Emaar). This is exactly what's sent.</div>
                   </div>
                 </div>
               </div>
             ):(
               <div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}>
-                  <button onClick={emailNewTemplate} style={S.btnP}>+ New Template</button>
+                <div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap" as const,marginBottom:14}}>
+                  <button onClick={()=>{setEmailStartersOpen(o=>!o);setEmailImportOpen(false);}} style={emailStartersOpen?S.btnP:S.btnO}>✨ Start from a Design</button>
+                  <button onClick={()=>{setEmailImportOpen(o=>!o);setEmailStartersOpen(false);}} style={emailImportOpen?S.btnP:S.btnO}>&lt;/&gt; Import HTML</button>
+                  <button onClick={emailNewTemplate} style={S.btnP}>+ Blank Template</button>
                 </div>
+                {emailStartersOpen&&(
+                  <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
+                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:12}}>Professional designs — pick one, then edit anything</div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:12}}>
+                      {EMAIL_STARTERS.map(st=>{
+                        const html=renderEmailHtml(st.blocks as any,{first_name:"Sarah",company:"Emaar"});
+                        return (
+                          <button key={st.key} onClick={()=>emailStartFromStarter(st.key)} style={{textAlign:"left" as const,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:10,padding:0,cursor:"pointer",overflow:"hidden" as const,color:C.FG}}>
+                            <div style={{height:190,overflow:"hidden" as const,background:"#fff",pointerEvents:"none" as const}}>
+                              <iframe title={st.name} sandbox="" srcDoc={html} tabIndex={-1} style={{width:660,height:760,border:0,transform:"scale(0.42)",transformOrigin:"top left"}} />
+                            </div>
+                            <div style={{padding:"10px 12px"}}>
+                              <div style={{fontSize:12.5,fontWeight:700,marginBottom:3}}>{st.name}</div>
+                              <div style={{fontSize:11,color:C.MID,lineHeight:1.4}}>{st.description}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {emailImportOpen&&(
+                  <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
+                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:6}}>Import an email designed somewhere else</div>
+                    <div style={{fontSize:11.5,color:C.MID,marginBottom:10,lineHeight:1.5}}>Copy the full HTML code from Mailchimp, Stripo, BEE, Unlayer, Canva or any email builder and paste it below — or upload the .html file. Personalize with {"{{first_name}}"}, {"{{company}}"} etc. Scripts are removed automatically for safety.</div>
+                    <textarea value={emailImportHtml} onChange={e=>setEmailImportHtml(e.target.value)} placeholder="<!doctype html> <html> … paste the email HTML here …" style={{...S.inp,width:"100%",minHeight:180,fontFamily:"monospace",fontSize:11.5,resize:"vertical" as const}} />
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap" as const,marginTop:10,alignItems:"center"}}>
+                      <button onClick={emailStartFromHtml} style={S.btnP}>Use This HTML</button>
+                      <label style={{...S.btnO,cursor:"pointer",display:"inline-flex",alignItems:"center"}}>📄 Upload .html file
+                        <input type="file" accept=".html,.htm,text/html" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0]; e.target.value=""; if(f) emailImportHtmlFile(f);}} />
+                      </label>
+                      {emailImportHtml&&<span style={{fontSize:11,color:C.MID}}>{(emailImportHtml.length/1024).toFixed(1)} KB pasted</span>}
+                    </div>
+                  </div>
+                )}
                 {emailTemplatesLoading?(
                   <div style={{color:C.MID,fontSize:13}}>Loading…</div>
                 ):!emailTemplates||emailTemplates.length===0?(

@@ -5,6 +5,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
+import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -21,7 +22,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     const body = (await request.json()) as { reason?: string };
     reason = (body.reason || "").trim();
   } catch {}
-  if (!reason) return json({ error: "A cancellation reason is required." }, 400, origin);
+  if (!reason) reason = "Cancelled by the studio";
 
   const getRes = await supaAdmin(env, `appointments?id=eq.${appointmentId}&select=*,customers(full_name,whatsapp,phone)`, {
     method: "GET",
@@ -96,5 +97,9 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     url: "/?admin=1",
   });
 
-  return json({ ok: true }, 200, origin);
+  // Automatic client email (saved Email Designer template if present, else built-in design).
+
+  const emailed = await emailBookingUpdate(env, appointmentId, "cancelled", { reason });
+
+  return json({ ok: true , notified: { email: emailed } }, 200, origin);
 };

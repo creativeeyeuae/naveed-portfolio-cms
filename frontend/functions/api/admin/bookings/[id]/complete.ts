@@ -4,6 +4,7 @@
 // "confirmed" -- catches the common mistake of completing a booking that was never paid.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
+import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -85,5 +86,9 @@ export const onRequestPost: PagesFunction<AdminEnv> = async (ctx) => {
     } catch {}
   }
 
-  return json({ ok: true }, 200, origin);
+  // Automatic client email (saved Email Designer template if present, else built-in design).
+
+  const emailed = await emailBookingUpdate(env, appointmentId, "completed");
+
+  return json({ ok: true , notified: { email: emailed } }, 200, origin);
 };

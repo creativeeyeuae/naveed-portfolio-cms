@@ -6,6 +6,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
+import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -99,5 +100,9 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     }
   } catch {}
 
-  return json({ ok: true }, 200, origin);
+  // Automatic client email (saved Email Designer template if present, else built-in design).
+
+  const emailed = await emailBookingUpdate(env, payment.appointment_id, "payment_rejected", { reason });
+
+  return json({ ok: true , notified: { email: emailed } }, 200, origin);
 };

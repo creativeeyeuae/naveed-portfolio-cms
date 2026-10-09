@@ -2490,6 +2490,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [rescheduleDate,setRescheduleDate]=useState("");
   const [rescheduleTime,setRescheduleTime]=useState("");
   const [cancelReasonFor,setCancelReasonFor]=useState<string|null>(null);
+  // Manual verification (Confirm Booking) + per-booking result message.
+  const [confirmFor,setConfirmFor]=useState<string|null>(null);
+  const [confirmMarkPaid,setConfirmMarkPaid]=useState(true);
+  const [confirmNote,setConfirmNote]=useState("");
+  const [bookingNotice,setBookingNotice]=useState<{id:string;ok:boolean;text:string}|null>(null);
   const [cancelReasonText,setCancelReasonText]=useState("");
   // Calendar (CMS > Calendar) -- pure frontend, reuses bookingsList (no new endpoint).
   const [calMonth,setCalMonth]=useState(()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1);});
@@ -2679,7 +2684,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [emailCampaignDetail,setEmailCampaignDetail]=useState<any>(null);
   const [emailCampaignBusy,setEmailCampaignBusy]=useState(false);
   const [emailTagsList,setEmailTagsList]=useState<any[]|null>(null);
-  const EMAIL_VARIABLES:[string,string][]=[["first_name","First name"],["last_name","Last name"],["company","Company"],["job_title","Job title"]];
+  const EMAIL_VARIABLES:[string,string][]=[["first_name","First name"],["last_name","Last name"],["company","Company"],["job_title","Job title"],["booking_ref","Booking ref"],["booking_date","Booking date"],["booking_time","Booking time"],["service_name","Service"],["package_name","Package"],["total","Total"],["reason","Reason"]];
 
   // WhatsApp (CMS > WhatsApp) -- the full inbox/conversation/quick-reply/connection UI and its
   // state now live in components/cms/WhatsAppWorkspace.tsx (see that file's header for why it
@@ -4199,20 +4204,41 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Reschedule failed");
       setRescheduleFor(null); setRescheduleDate(""); setRescheduleTime("");
+      setBookingNotice({id:appointmentId,ok:true,text:bookingNotifyText("Booking rescheduled",data)});
       await loadBookings();
-    }catch(e:any){ setBookingsErr(e.message||"Reschedule failed"); }
+    }catch(e:any){ setBookingNotice({id:appointmentId,ok:false,text:e.message||"Reschedule failed"}); }
     setBookingActionBusy(null);
   }
+  // Result shown right on the booking card (not only at the top of the page).
+  function bookingNotifyText(action:string,data:any){
+    const e=data?.notified?.email;
+    const emailTxt=e==="sent"?"email sent ✓":e==="no_email"?"no email on file":e==="not_configured"?"email not set up yet":e==="failed"?"email failed":"";
+    return `${action} — client notified by WhatsApp${emailTxt?` · ${emailTxt}`:""}.`;
+  }
   async function cancelBooking(appointmentId:string){
-    if(!adminSession||!cancelReasonText.trim()) return;
-    setBookingActionBusy(appointmentId);
+    if(!adminSession) return;
+    setBookingActionBusy(appointmentId); setBookingNotice(null);
     try{
       const res=await fetch(`/api/admin/bookings/${appointmentId}/cancel`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({reason:cancelReasonText.trim()})});
-      const data=await res.json();
+      const data=await res.json().catch(()=>({}));
       if(!res.ok) throw new Error(data.error||"Cancel failed");
       setCancelReasonFor(null); setCancelReasonText("");
+      setBookingNotice({id:appointmentId,ok:true,text:bookingNotifyText("Booking cancelled",data)});
       await loadBookings();
-    }catch(e:any){ setBookingsErr(e.message||"Cancel failed"); }
+    }catch(e:any){ setBookingNotice({id:appointmentId,ok:false,text:e.message||"Cancel failed"}); }
+    setBookingActionBusy(null);
+  }
+  async function confirmBooking(appointmentId:string){
+    if(!adminSession) return;
+    setBookingActionBusy(appointmentId); setBookingNotice(null);
+    try{
+      const res=await fetch(`/api/admin/bookings/${appointmentId}/confirm`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({mark_paid:confirmMarkPaid,note:confirmNote.trim()})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok) throw new Error(data.error||"Confirm failed");
+      setConfirmFor(null); setConfirmNote(""); setConfirmMarkPaid(true);
+      setBookingNotice({id:appointmentId,ok:true,text:bookingNotifyText(data.paid?"Booking confirmed & payment recorded":"Booking confirmed",data)});
+      await loadBookings();
+    }catch(e:any){ setBookingNotice({id:appointmentId,ok:false,text:e.message||"Confirm failed"}); }
     setBookingActionBusy(null);
   }
   async function completeBooking(appointmentId:string){
@@ -4222,8 +4248,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const res=await fetch(`/api/admin/bookings/${appointmentId}/complete`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Mark complete failed");
+      setBookingNotice({id:appointmentId,ok:true,text:bookingNotifyText("Booking completed",data)});
       await loadBookings();
-    }catch(e:any){ setBookingsErr(e.message||"Mark complete failed"); }
+    }catch(e:any){ setBookingNotice({id:appointmentId,ok:false,text:e.message||"Mark complete failed"}); }
     setBookingActionBusy(null);
   }
   // No new backend endpoint: reuses the existing client-messages system. HomeClient.tsx's own
@@ -5298,6 +5325,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               </div>
                             )
                           )}
+                          {bookingNotice&&bookingNotice.id===b.id&&(
+                            <div style={{marginTop:10,fontSize:12,padding:"9px 12px",borderRadius:6,background:bookingNotice.ok?"rgba(46,204,113,0.1)":"#2a1010",border:`1px solid ${bookingNotice.ok?"rgba(46,204,113,0.35)":"#4a2020"}`,color:bookingNotice.ok?"#4ade80":"#e74c3c",display:"flex",justifyContent:"space-between",gap:10}}>
+                              <span>{bookingNotice.ok?"✓ ":"⚠ "}{bookingNotice.text}</span>
+                              <button onClick={()=>setBookingNotice(null)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer"}}>✕</button>
+                            </div>
+                          )}
                           {!["cancelled","completed"].includes(b.status)&&(
                             <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:10,paddingTop:10,borderTop:`1px solid ${C.BORDER}`}}>
                               {rescheduleFor===b.id?(
@@ -5307,14 +5340,39 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                   <button onClick={()=>rescheduleBooking(b.id)} disabled={bookingActionBusy===b.id||!rescheduleDate||!rescheduleTime} style={S.btnP}>Confirm New Date</button>
                                   <button onClick={()=>{setRescheduleFor(null);setRescheduleDate("");setRescheduleTime("");}} style={S.btnSm}>Cancel</button>
                                 </div>
+                              ):confirmFor===b.id?(
+                                <div style={{display:"flex",flexDirection:"column" as const,gap:8,width:"100%"}}>
+                                  <div style={{fontSize:12,color:C.FG,fontWeight:600}}>Verify & confirm this booking</div>
+                                  {payment&&payment.status!=="paid"&&(
+                                    <label style={{display:"flex",alignItems:"center",gap:8,fontSize:12.5,color:C.FG,cursor:"pointer"}}>
+                                      <input type="checkbox" checked={confirmMarkPaid} onChange={e=>setConfirmMarkPaid(e.target.checked)} />
+                                      Payment received (AED {Number(payment.total||b.total).toLocaleString()}) — mark as paid
+                                    </label>
+                                  )}
+                                  <input style={S.inp} placeholder="Internal note (optional — e.g. paid cash, confirmed by phone)" value={confirmNote} onChange={e=>setConfirmNote(e.target.value)} />
+                                  <div style={{fontSize:11,color:C.MID}}>The client automatically gets a confirmation on WhatsApp and by email.</div>
+                                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                                    <button onClick={()=>confirmBooking(b.id)} disabled={bookingActionBusy===b.id} style={S.btnP}>{bookingActionBusy===b.id?"Confirming…":"✓ Confirm & Notify Client"}</button>
+                                    <button onClick={()=>{setConfirmFor(null);setConfirmNote("");}} style={S.btnSm}>Back</button>
+                                  </div>
+                                </div>
                               ):cancelReasonFor===b.id?(
-                                <div style={{display:"flex",gap:8,flexWrap:"wrap",width:"100%"}}>
-                                  <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Cancellation reason (shown to client)" value={cancelReasonText} onChange={e=>setCancelReasonText(e.target.value)} />
-                                  <button onClick={()=>cancelBooking(b.id)} disabled={bookingActionBusy===b.id||!cancelReasonText.trim()} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Confirm Cancel</button>
-                                  <button onClick={()=>{setCancelReasonFor(null);setCancelReasonText("");}} style={S.btnSm}>Back</button>
+                                <div style={{display:"flex",flexDirection:"column" as const,gap:8,width:"100%"}}>
+                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                    {["Client requested cancellation","Date no longer available","Payment not received","Weather / venue issue"].map(r=>(
+                                      <button key={r} onClick={()=>setCancelReasonText(r)} style={{...S.btnSm,background:cancelReasonText===r?"rgba(231,76,60,0.15)":undefined}}>{r}</button>
+                                    ))}
+                                  </div>
+                                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                                    <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Reason shown to the client (optional)" value={cancelReasonText} onChange={e=>setCancelReasonText(e.target.value)} />
+                                    <button onClick={()=>cancelBooking(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>{bookingActionBusy===b.id?"Cancelling…":"Confirm Cancel & Notify Client"}</button>
+                                    <button onClick={()=>{setCancelReasonFor(null);setCancelReasonText("");}} style={S.btnSm}>Back</button>
+                                  </div>
                                 </div>
                               ):(
                                 <>
+                                  {b.status!=="confirmed"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");setCancelReasonFor(null);setRescheduleFor(null);}} disabled={bookingActionBusy===b.id} style={{...S.btnP,padding:"8px 16px",fontSize:11}}>✓ Confirm Booking</button>}
+                                  {b.status==="confirmed"&&payment&&payment.status!=="paid"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");}} disabled={bookingActionBusy===b.id} style={S.btnSm}>Mark as Paid</button>}
                                   <button onClick={()=>{setRescheduleFor(b.id);setRescheduleDate(b.booking_date||"");setRescheduleTime(b.booking_time||"");}} disabled={bookingActionBusy===b.id} style={S.btnSm}>Reschedule</button>
                                   {b.status==="confirmed"&&<button onClick={()=>completeBooking(b.id)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Mark Complete</button>}
                                   {payment&&payment.method==="bank_transfer"&&payment.status!=="paid"&&<button onClick={()=>requestNewReceipt(b.id,b.customer_id,b.appointment_ref)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Request New Receipt</button>}

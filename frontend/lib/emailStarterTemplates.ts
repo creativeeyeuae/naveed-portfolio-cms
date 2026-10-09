@@ -130,13 +130,13 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
       ],
     },
     {
-      key: "booking", name: "Booking Confirmation", subject: "Confirmed: your shoot with {{first_name}}",
+      key: "booking", name: "Booking Confirmation", subject: "Your booking is confirmed — {{booking_ref}}",
       description: "Confirms date, time, location and next steps after the deposit.",
       blocks: [
         light({ preheader: "Your date is confirmed — all the details inside." }),
         hero(4, "You're booked!", "✓ Your date is confirmed", "", b.workUrl, { height: 260 }),
         { type: "text", html: "Hi {{first_name}}, thank you — your booking is confirmed. Here are the details:", size: 15, padY: 24 },
-        { type: "html", html: `<table width="100%" cellpadding="12" cellspacing="0" style="border:1px solid #e6e1ee;border-radius:8px;font-size:14px;font-family:Arial,sans-serif;"><tr><td style="color:#8f84a6;">Date</td><td align="right"><b>Day, 00 Month 2026</b></td></tr><tr><td style="color:#8f84a6;">Time</td><td align="right"><b>10:00 AM</b></td></tr><tr><td style="color:#8f84a6;">Location</td><td align="right"><b>Venue, Dubai</b></td></tr><tr><td style="color:#8f84a6;">Package</td><td align="right"><b>Package name</b></td></tr></table>` },
+        { type: "html", html: `<table width="100%" cellpadding="12" cellspacing="0" style="border:1px solid #e6e1ee;border-radius:8px;font-size:14px;font-family:Arial,sans-serif;"><tr><td style="color:#8f84a6;">Booking</td><td align="right"><b>{{booking_ref}}</b></td></tr><tr><td style="color:#8f84a6;">Service</td><td align="right"><b>{{service_name}} — {{package_name}}</b></td></tr><tr><td style="color:#8f84a6;">Date</td><td align="right"><b>{{booking_date}}</b></td></tr><tr><td style="color:#8f84a6;">Time</td><td align="right"><b>{{booking_time}}</b></td></tr><tr><td style="color:#8f84a6;">Total</td><td align="right"><b>{{total}}</b></td></tr></table>` },
         { type: "text", html: "I'll send a short preparation guide a few days before the shoot. If anything changes, just reply to this email.", size: 15 },
         { type: "button", text: "Message me on WhatsApp", href: wa, btnColor: "#25D366" },
         signature(),

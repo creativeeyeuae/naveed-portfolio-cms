@@ -2650,7 +2650,16 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [emailCampaigns,setEmailCampaigns]=useState<any[]|null>(null);
   const [emailCampaignsLoading,setEmailCampaignsLoading]=useState(false);
   const [emailCampaignAddOpen,setEmailCampaignAddOpen]=useState(false);
-  const EMAIL_CAMPAIGN_EMPTY={name:"",category:"relationship",template_id:"",audienceType:"all" as "all"|"tag"|"contact",tag_id:"",customer_id:""};
+  const EMAIL_CAMPAIGN_EMPTY={name:"",category:"relationship",template_id:"",audienceType:"outreach_tag" as string,tag_id:"",customer_id:""};
+  const [emailOutreachTags,setEmailOutreachTags]=useState<any[]|null>(null);
+  async function loadEmailOutreachTags(){
+    if(!adminSession) return;
+    try{
+      const res=await fetch("/api/admin/outreach-tags",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const data=await res.json(); if(res.ok) setEmailOutreachTags(data.tags||[]);
+    }catch{}
+  }
+  useEffect(()=>{ if(emailCampaignAddOpen&&!emailOutreachTags) loadEmailOutreachTags(); },[emailCampaignAddOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [emailCampaignForm,setEmailCampaignForm]=useState<any>(EMAIL_CAMPAIGN_EMPTY);
   const [emailCampaignOpenId,setEmailCampaignOpenId]=useState<string|null>(null);
   const [emailCampaignDetail,setEmailCampaignDetail]=useState<any>(null);
@@ -3782,11 +3791,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(!adminSession) return;
     if(!emailCampaignForm.name.trim()){ alert("Campaign name is required."); return; }
     if(!emailCampaignForm.template_id){ alert("Pick a template."); return; }
-    if(emailCampaignForm.audienceType==="tag"&&!emailCampaignForm.tag_id){ alert("Pick a tag."); return; }
+    if((emailCampaignForm.audienceType==="tag"||emailCampaignForm.audienceType==="outreach_tag")&&!emailCampaignForm.tag_id){ alert("Pick a tag."); return; }
     if(emailCampaignForm.audienceType==="contact"&&!emailCampaignForm.customer_id){ alert("Pick a contact."); return; }
     setEmailCampaignBusy(true);
     try{
-      const audience=emailCampaignForm.audienceType==="tag"?{type:"tag",tag_id:emailCampaignForm.tag_id}
+      const audience=emailCampaignForm.audienceType==="outreach_tag"?{type:"outreach_tag",tag_id:emailCampaignForm.tag_id}
+        :emailCampaignForm.audienceType==="outreach_all"?{type:"outreach_all"}
+        :emailCampaignForm.audienceType==="tag"?{type:"tag",tag_id:emailCampaignForm.tag_id}
         :emailCampaignForm.audienceType==="contact"?{type:"contact",customer_id:emailCampaignForm.customer_id}
         :{type:"all"};
       const res=await fetch("/api/admin/email/campaigns",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({name:emailCampaignForm.name.trim(),category:emailCampaignForm.category,template_id:emailCampaignForm.template_id,audience})});
@@ -6614,11 +6625,23 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       </select>
                     </div>
                     <div style={{display:"flex",gap:10,flexWrap:"wrap" as const,alignItems:"center"}}>
-                      <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.audienceType} onChange={e=>{const v=e.target.value; setEmailCampaignForm((f:any)=>({...f,audienceType:v})); if(v==="tag") loadEmailTagsList(); if(v==="contact"&&!clientDirList) loadClientDir();}}>
-                        <option value="all">All contacts</option>
-                        <option value="tag">Contacts with a tag</option>
-                        <option value="contact">A single contact</option>
+                      <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.audienceType} onChange={e=>{const v=e.target.value; setEmailCampaignForm((f:any)=>({...f,audienceType:v,tag_id:""})); if(v==="tag") loadEmailTagsList(); if(v==="outreach_tag") loadEmailOutreachTags(); if(v==="contact"&&!clientDirList) loadClientDir();}}>
+                        <optgroup label="Contacts (business cards & Excel imports)">
+                          <option value="outreach_tag">Contacts with a tag (e.g. an Excel import)</option>
+                          <option value="outreach_all">All contacts</option>
+                        </optgroup>
+                        <optgroup label="Customers (CRM — consent required)">
+                          <option value="all">All customers</option>
+                          <option value="tag">Customers with a tag</option>
+                          <option value="contact">A single customer</option>
+                        </optgroup>
                       </select>
+                      {emailCampaignForm.audienceType==="outreach_tag"&&(
+                        <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.tag_id} onChange={e=>setEmailCampaignForm((f:any)=>({...f,tag_id:e.target.value}))}>
+                          <option value="">Select a tag…</option>
+                          {(emailOutreachTags||[]).map((tg:any)=>(<option key={tg.id} value={tg.id}>{tg.name}</option>))}
+                        </select>
+                      )}
                       {emailCampaignForm.audienceType==="tag"&&(
                         <select style={{...S.inp,flex:1,minWidth:160}} value={emailCampaignForm.tag_id} onChange={e=>setEmailCampaignForm((f:any)=>({...f,tag_id:e.target.value}))}>
                           <option value="">Select a tag…</option>

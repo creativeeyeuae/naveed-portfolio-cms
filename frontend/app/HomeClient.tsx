@@ -6557,10 +6557,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       if(!blocks.filter((b:any)=>b?.type!=="settings").length) return <div style={{background:"#f4f1f9",borderRadius:10,padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>;
                       const html=renderEmailHtml(blocks,{first_name:"Sarah",last_name:"Khan",company:"Emaar",job_title:"Marketing Director"});
                       const frameW=emailPreviewWidth==="mobile"?375:660;
-                      const boxW=isMobile?320:440;
-                      const scale=Math.min(1,boxW/frameW);
+                      const maxW=isMobile?320:440;
+                      const scale=Math.min(1,maxW/frameW);
+                      const boxW=Math.round(frameW*scale); // box exactly as wide as the scaled email -- no empty strip
                       return (
-                        <div style={{width:boxW,maxWidth:"100%",height:Math.round(emailPreviewH*scale),overflow:"hidden" as const,borderRadius:10,border:`1px solid ${C.BORDER}`,background:"#fff",margin:"0 auto"}}>
+                        <div style={{width:boxW,maxWidth:"100%",height:Math.round(emailPreviewH*scale),overflow:"hidden" as const,borderRadius:10,border:`1px solid ${C.BORDER}`,background:getEmailSettings(blocks as any).bodyBg,margin:"0 auto"}}>
                           <iframe title="Email preview" sandbox="allow-same-origin" srcDoc={html}
                             onLoad={e=>{ try{ const d=(e.target as HTMLIFrameElement).contentDocument; if(d) setEmailPreviewH(Math.max(300,Math.min(6000,d.documentElement.scrollHeight))); }catch{} }}
                             style={{width:frameW,height:emailPreviewH,border:0,transform:`scale(${scale})`,transformOrigin:"top left",display:"block"}} />

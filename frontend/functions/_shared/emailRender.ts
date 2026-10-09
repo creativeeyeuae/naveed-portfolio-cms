@@ -224,8 +224,8 @@ function blockToHtml(b: any, s: typeof DEFAULT_SETTINGS): string {
       const img = b.image ? safeUrl(b.image) : "";
       const tFont = fontStack(b.titleFont || b.font, headFont);
       const btn = b.btnText ? `<a href="${safeUrl(b.btnHref)}" style="display:inline-block;margin-top:22px;background:${safeColor(b.btnColor, s.accent)};color:${safeColor(b.btnTextColor, "#ffffff")};text-decoration:none;font-family:${bodyFont};font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:13px 30px;border-radius:${b.radius !== undefined ? num(b.radius, 0, 40, 4) : 4}px;">${escapeHtml(b.btnText)}</a>` : "";
-      return `<tr><td ${img ? `background="${img}"` : ""} bgcolor="${ov}" valign="middle" style="background-color:${ov};${img ? `background-image:url('${img}');background-size:cover;background-position:center;` : ""}padding:0;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td height="${h}" valign="middle" align="${hAlign}" style="height:${h}px;background:${rgba};padding:36px 40px;text-align:${hAlign};">
+      return `<tr><td class="hero-bg" ${img ? `background="${img}"` : ""} bgcolor="${ov}" valign="middle" style="background-color:${ov};${img ? `background-image:url('${img}');background-size:cover;background-position:center;` : ""}padding:0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td class="hero-in" height="${h}" valign="middle" align="${hAlign}" style="height:${h}px;background:${rgba};padding:36px 40px;text-align:${hAlign};">
 ${b.eyebrow ? `<div style="font-family:${bodyFont};font-size:11px;letter-spacing:4px;text-transform:uppercase;color:${safeColor(b.color, "#ffffff")};opacity:0.85;margin-bottom:12px;">${escapeHtml(b.eyebrow)}</div>` : ""}
 <div style="font-family:${tFont};font-size:${num(b.size, 18, 56, 34)}px;line-height:1.2;font-weight:700;color:${safeColor(b.color, "#ffffff")};">${sanitizeHtml(textToHtml(b.title || ""))}</div>
 ${b.subtitle ? `<div style="font-family:${bodyFont};font-size:15px;line-height:1.6;color:${safeColor(b.color, "#ffffff")};opacity:0.9;margin-top:12px;">${sanitizeHtml(textToHtml(b.subtitle))}</div>` : ""}
@@ -241,7 +241,7 @@ ${btn}
       if (b.website) items.push(`<a href="${safeUrl(b.website)}" style="${lnk}">${escapeHtml(String(b.website).replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a>`);
       if (!items.length && !b.address) return "";
       const cAlign = b.align || "center";
-      return `<tr><td align="${cAlign}" style="${pad(16, 16)}${bg}text-align:${cAlign};font-family:${bodyFont};font-size:${num(b.size, 10, 18, 13)}px;line-height:1.9;color:${safeColor(b.color, s.textColor)};">${items.join(`&nbsp;&nbsp;<span style="opacity:.4;">|</span>&nbsp;&nbsp;`)}${b.address ? `<br><span style="opacity:.75;">${escapeHtml(b.address)}</span>` : ""}</td></tr>`;
+      return `<tr><td align="${cAlign}" style="${pad(16, 16)}${bg}text-align:${cAlign};font-family:${bodyFont};font-size:${num(b.size, 10, 18, 13)}px;line-height:1.9;color:${safeColor(b.color, s.textColor)};">${items.map((x) => `<span style="white-space:nowrap;">${x}</span>`).join(` <span style="opacity:.4;">&nbsp;|&nbsp;</span> `)}${b.address ? `<br><span style="opacity:.75;">${escapeHtml(b.address)}</span>` : ""}</td></tr>`;
     }
     case "gallery": {
       // Equal-size photo tiles (cover-cropped via background image, so portrait and landscape
@@ -301,10 +301,10 @@ export function renderTemplate(blocks: EmailBlock[], vars: Record<string, string
   const pre = s.preheader ? `<div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(s.preheader)}</div>` : "";
   const doc = `<!doctype html>
 <html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />${fontLink}
-<style>@media (max-width:620px){.card{width:100%!important;border-radius:0!important}td{padding-left:18px!important;padding-right:18px!important}}</style></head>
+<style>@media (max-width:620px){.card{width:100%!important;border-radius:0!important}td{padding-left:18px!important;padding-right:18px!important}td.hero-bg{padding:0!important}table.outer{padding:0!important}td.wrap{padding:0!important}td.hero-in{height:auto!important;padding:56px 24px!important}}</style></head>
 <body style="margin:0;padding:0;background:${s.bodyBg};">${pre}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${s.bodyBg};padding:32px 12px;">
-<tr><td align="center">
+<table role="presentation" class="outer" width="100%" cellpadding="0" cellspacing="0" style="background:${s.bodyBg};padding:32px 12px;">
+<tr><td class="wrap" align="center">
 <table role="presentation" class="card" width="${s.width}" cellpadding="0" cellspacing="0" style="max-width:${s.width}px;width:100%;background:${s.cardBg};border-radius:${s.radius}px;overflow:hidden;">
 ${rows}
 </table>

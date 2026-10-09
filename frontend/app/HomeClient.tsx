@@ -2612,6 +2612,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bcCapturedDataUrl,setBcCapturedDataUrl]=useState("");
   const bcVideoRef=useRef<HTMLVideoElement>(null);
   const bcStreamRef=useRef<MediaStream|null>(null);
+  // Smart live scanner: QR detection + auto-capture when the card is steady and sharp.
+  const [bcLiveHint,setBcLiveHint]=useState("");
+  const bcLoopRef=useRef<number|null>(null);
+  const bcAutoRef=useRef<{prev:Float32Array|null;steadySince:number;done:boolean;qrUrl:string}>({prev:null,steadySince:0,done:false,qrUrl:""});
 
   // Saved segments (Companies/Contacts > Segments) -- functions/api/admin/outreach-segments.ts.
   const [segmentsList,setSegmentsList]=useState<any[]|null>(null);
@@ -3275,6 +3279,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // Business Card Scanner -- functions/api/admin/business-cards/{scan,save}.ts. Scan never
   // auto-saves; it only ever fills the review form below for the admin to check and submit.
   function bcStopCamera(){
+    if(bcLoopRef.current!==null){ clearTimeout(bcLoopRef.current); bcLoopRef.current=null; }
     if(bcStreamRef.current){ bcStreamRef.current.getTracks().forEach(t=>t.stop()); bcStreamRef.current=null; }
     if(bcVideoRef.current) bcVideoRef.current.srcObject=null;
   }
@@ -3292,24 +3297,147 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       return;
     }
     try{
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
+      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080}},audio:false});
       bcStreamRef.current=stream;
+      // Continuous autofocus where the phone supports it (sharper text for reading).
+      try{ const tr:any=stream.getVideoTracks()[0]; const caps:any=tr.getCapabilities?.(); if(caps?.focusMode?.includes?.("continuous")) await tr.applyConstraints({advanced:[{focusMode:"continuous"}]}); }catch{}
+      bcAutoRef.current={prev:null,steadySince:0,done:false,qrUrl:""};
+      setBcLiveHint("Place the card inside the frame");
       setBcCamStep("live");
+      bcLoopRef.current=window.setTimeout(bcScanTick,700);
       // Attach once the <video> is mounted (callback ref also handles this); retry briefly as a safety net.
       [0,150,500].forEach(ms=>setTimeout(()=>{ const v=bcVideoRef.current; if(v&&bcStreamRef.current===stream&&v.srcObject!==stream){ v.srcObject=stream; v.play().catch(()=>{}); } },ms));
     }catch(e:any){
       setBcCamError(e&&e.name==="NotAllowedError"?"Camera permission was denied. Allow camera access, or use Upload Photo instead.":"Could not open the camera. Use Upload Photo instead.");
     }
   }
+  // The on-screen frame is a standard business-card rectangle (85.6 x 54 mm => 1.586:1),
+  // 88% of the preview width, centred. The video is shown uncropped (objectFit contain), so
+  // the same percentages map 1:1 onto real video pixels.
+  const BC_FRAME_W=0.88, BC_CARD_RATIO=1.586;
+  function bcFrameRect(vw:number,vh:number){
+    let fw=vw*BC_FRAME_W, fh=fw/BC_CARD_RATIO;
+    if(fh>vh*0.92){ fh=vh*0.92; fw=fh*BC_CARD_RATIO; }
+    return {x:(vw-fw)/2,y:(vh-fh)/2,w:fw,h:fh};
+  }
+  // Crop the frame area (with a small margin so card edges aren't clipped) at full resolution.
+  function bcCropFrame(video:HTMLVideoElement,maxEdge=1600):string{
+    const vw=video.videoWidth, vh=video.videoHeight, r=bcFrameRect(vw,vh);
+    const mx=r.w*0.04, my=r.h*0.04;
+    const sx=Math.max(0,r.x-mx), sy=Math.max(0,r.y-my), sw=Math.min(vw-sx,r.w+2*mx), sh=Math.min(vh-sy,r.h+2*my);
+    const scale=Math.min(1,maxEdge/Math.max(sw,sh));
+    const c=document.createElement("canvas"); c.width=Math.round(sw*scale); c.height=Math.round(sh*scale);
+    c.getContext("2d")!.drawImage(video,sx,sy,sw,sh,0,0,c.width,c.height);
+    return c.toDataURL("image/jpeg",0.92);
+  }
+  // Parse a contact QR (vCard / MECARD) into the review form's fields. English only.
+  function bcParseQr(text:string):Record<string,string>|null{
+    const t=text.trim(); const out:Record<string,string>={};
+    const noAr=(s:string)=>s.replace(/[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/g," ").replace(/\s{2,}/g," ").trim();
+    if(/^BEGIN:VCARD/i.test(t)){
+      const lines=t.replace(/\r?\n[ \t]/g,"").split(/\r?\n/);
+      for(const ln of lines){
+        const i=ln.indexOf(":"); if(i<0) continue;
+        const key=ln.slice(0,i).toUpperCase(), val=noAr(ln.slice(i+1).replace(/\\,/g,",").replace(/\\;/g,";"));
+        if(!val) continue;
+        if(key.startsWith("N")&&!key.startsWith("NOTE")&&!key.startsWith("NICK")){ const [last,first]=val.split(";"); if(first&&!out.first_name) out.first_name=first.trim(); if(last&&!out.last_name) out.last_name=last.trim(); }
+        else if(key.startsWith("FN")&&!out.first_name){ const p=val.split(/\s+/); out.first_name=p[0]; if(p.length>1) out.last_name=p.slice(1).join(" "); }
+        else if(key.startsWith("ORG")&&!out.company_name) out.company_name=val.split(";")[0];
+        else if(key.startsWith("TITLE")&&!out.job_title) out.job_title=val;
+        else if(key.startsWith("EMAIL")&&!out.email) out.email=val.toLowerCase();
+        else if(key.startsWith("TEL")){ if(!out.phone) out.phone=val; else if(!out.whatsapp&&/CELL|MOBILE/.test(key)) out.whatsapp=val; }
+        else if(key.startsWith("URL")){ if(/linkedin\./i.test(val)) out.linkedin=val; else if(!out.website) out.website=val; }
+        else if(key.startsWith("ADR")&&!out.address){ const a=val.split(";").map(s=>s.trim()).filter(Boolean); out.address=a.join(", "); const p=val.split(";"); if(p[3]) out.city=p[3].trim(); if(p[6]) out.country=p[6].trim(); }
+      }
+    } else if(/^MECARD:/i.test(t)){
+      for(const part of t.slice(7).split(/(?<!\\);/)){
+        const i=part.indexOf(":"); if(i<0) continue;
+        const k=part.slice(0,i).toUpperCase(), v=noAr(part.slice(i+1));
+        if(!v) continue;
+        if(k==="N"){ const [last,first]=v.split(","); if(first){ out.first_name=first.trim(); out.last_name=(last||"").trim(); } else { const p=v.split(/\s+/); out.first_name=p[0]; if(p.length>1) out.last_name=p.slice(1).join(" "); } }
+        else if(k==="TEL"&&!out.phone) out.phone=v;
+        else if(k==="EMAIL"&&!out.email) out.email=v.toLowerCase();
+        else if(k==="URL"&&!out.website) out.website=v;
+        else if(k==="ORG") out.company_name=v;
+        else if(k==="ADR") out.address=v;
+      }
+    } else return null;
+    Object.keys(out).forEach(k=>{ if(!out[k]) delete out[k]; });
+    return Object.keys(out).length?out:null;
+  }
+  async function bcDetectQr(src:HTMLCanvasElement):Promise<string|null>{
+    try{
+      const BD=(window as any).BarcodeDetector;
+      if(BD){ const d=new BD({formats:["qr_code"]}); const r=await d.detect(src); if(r&&r[0]?.rawValue) return r[0].rawValue; return null; }
+    }catch{}
+    try{
+      const jsQR=(await import("jsqr")).default;
+      const ctx=src.getContext("2d")!; const img=ctx.getImageData(0,0,src.width,src.height);
+      const r=jsQR(img.data,img.width,img.height,{inversionAttempts:"dontInvert"});
+      return r?.data||null;
+    }catch{ return null; }
+  }
+  // One tick of the live scanner (~3x per second): QR check + steadiness/sharpness check.
+  async function bcScanTick(){
+    bcLoopRef.current=null;
+    const video=bcVideoRef.current, st=bcAutoRef.current;
+    if(!bcStreamRef.current||st.done) return;
+    const next=()=>{ if(bcStreamRef.current&&!bcAutoRef.current.done) bcLoopRef.current=window.setTimeout(bcScanTick,320); };
+    if(!video||!video.videoWidth){ next(); return; }
+    const r=bcFrameRect(video.videoWidth,video.videoHeight);
+    // QR: look at the frame area at decent resolution.
+    const qc=document.createElement("canvas"); const qs=Math.min(1,900/r.w);
+    qc.width=Math.round(r.w*qs); qc.height=Math.round(r.h*qs);
+    (qc.getContext("2d",{willReadFrequently:true} as any) as CanvasRenderingContext2D).drawImage(video,r.x,r.y,r.w,r.h,0,0,qc.width,qc.height);
+    const qr=await bcDetectQr(qc);
+    if(!bcStreamRef.current||bcAutoRef.current.done) return;
+    if(qr){
+      const fields=bcParseQr(qr);
+      if(fields){
+        st.done=true; setBcLiveHint("QR contact found ✓");
+        const img=bcCropFrame(video); bcStopCamera();
+        setBcImageDataUrl(img); setBcForm((f:any)=>({...f,...fields})); setBcReviewState("needs_review"); setBcDetectedLanguage("en");
+        setBcCamStep("choose"); setBcReviewOpen(true);
+        return;
+      }
+      if(/^https?:\/\//i.test(qr)&&!st.qrUrl){ st.qrUrl=qr; setBcLiveHint("QR link found ✓ — hold steady to read the card"); }
+    }
+    // Steadiness + sharpness on a tiny grayscale copy.
+    const W=96,H=Math.round(96/BC_CARD_RATIO);
+    const sc=document.createElement("canvas"); sc.width=W; sc.height=H;
+    const sctx=sc.getContext("2d",{willReadFrequently:true} as any) as CanvasRenderingContext2D; sctx.drawImage(video,r.x,r.y,r.w,r.h,0,0,W,H);
+    const d=sctx.getImageData(0,0,W,H).data; const g=new Float32Array(W*H);
+    let mean=0; for(let i=0;i<W*H;i++){ g[i]=0.299*d[i*4]+0.587*d[i*4+1]+0.114*d[i*4+2]; mean+=g[i]; } mean/=W*H;
+    let vari=0, edge=0; for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ const i=y*W+x; vari+=(g[i]-mean)**2; const lap=4*g[i]-g[i-1]-g[i+1]-g[i-W]-g[i+W]; edge+=lap*lap; }
+    vari/=W*H; edge/=W*H;
+    let diff=999; if(st.prev){ diff=0; for(let i=0;i<W*H;i++) diff+=Math.abs(g[i]-st.prev[i]); diff/=W*H; }
+    st.prev=g;
+    const hasContent=vari>150&&edge>60; // something with text/contrast is in the frame
+    const steady=diff<6;
+    const now=Date.now();
+    if(!hasContent){ st.steadySince=0; if(!st.qrUrl) setBcLiveHint("Place the card inside the frame"); }
+    else if(!steady){ st.steadySince=0; setBcLiveHint("Hold steady…"); }
+    else{
+      if(!st.steadySince) st.steadySince=now;
+      setBcLiveHint("Reading in a moment — keep still");
+      if(now-st.steadySince>1100){ st.done=true; bcAutoCapture(); return; }
+    }
+    next();
+  }
+  function bcAutoCapture(){
+    const video=bcVideoRef.current; if(!video||!video.videoWidth) return;
+    const url=bcCropFrame(video), qrUrl=bcAutoRef.current.qrUrl;
+    bcStopCamera(); setBcCamStep("choose"); setBcLiveHint("");
+    fetch(url).then(r=>r.blob()).then(async blob=>{
+      await bcHandleFile(new File([blob],"business-card.jpg",{type:"image/jpeg"}));
+      if(qrUrl) setBcForm((f:any)=>({...f,website:f.website||qrUrl}));
+    }).catch(()=>setBcErr("Could not use that photo. Please try again."));
+  }
   function bcCapturePhoto(){
     const video=bcVideoRef.current;
     if(!video||!video.videoWidth) return;
-    const canvas=document.createElement("canvas");
-    canvas.width=video.videoWidth; canvas.height=video.videoHeight;
-    const ctx=canvas.getContext("2d");
-    if(!ctx) return;
-    ctx.drawImage(video,0,0,canvas.width,canvas.height);
-    setBcCapturedDataUrl(canvas.toDataURL("image/jpeg",0.92));
+    bcAutoRef.current.done=true;
+    setBcCapturedDataUrl(bcCropFrame(video));
     bcStopCamera();
     setBcCamStep("captured");
   }
@@ -5865,10 +5993,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {bcCamStep==="live"&&(
                     <div>
                       <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",marginBottom:14}}>
-                        <video ref={(el)=>{ bcVideoRef.current=el; if(el&&bcStreamRef.current&&el.srcObject!==bcStreamRef.current){ el.srcObject=bcStreamRef.current; el.play().catch(()=>{}); } }} autoPlay muted playsInline style={{width:"100%",display:"block",maxHeight:380,objectFit:"cover" as const}} />
-                        <div style={{position:"absolute",inset:"12%",border:"2px dashed rgba(255,255,255,0.6)",borderRadius:10,pointerEvents:"none" as const}} />
+                        <video ref={(el)=>{ bcVideoRef.current=el; if(el&&bcStreamRef.current&&el.srcObject!==bcStreamRef.current){ el.srcObject=bcStreamRef.current; el.play().catch(()=>{}); } }} autoPlay muted playsInline style={{width:"100%",height:"auto",display:"block",objectFit:"contain" as const}} />
+                        {/* Card-shaped frame (1.586:1), 88% wide, centred -- matches bcFrameRect exactly. */}
+                        <div style={{position:"absolute",left:"6%",width:"88%",top:"50%",transform:"translateY(-50%)",aspectRatio:"1.586",maxHeight:"92%",borderRadius:12,boxShadow:"0 0 0 9999px rgba(0,0,0,0.55)",border:"2px solid rgba(255,255,255,0.9)",pointerEvents:"none" as const}}>
+                          {[["top","left"],["top","right"],["bottom","left"],["bottom","right"]].map(([v,h])=>(
+                            <span key={v+h} style={{position:"absolute",[v]:-3,[h]:-3,width:26,height:26,borderColor:"var(--c-p,#8B5CF6)",borderStyle:"solid",borderWidth:0,[`border${v==="top"?"Top":"Bottom"}Width`]:4,[`border${h==="left"?"Left":"Right"}Width`]:4,borderRadius:4} as any} />
+                          ))}
+                        </div>
+                        <div style={{position:"absolute",left:0,right:0,bottom:10,textAlign:"center" as const,pointerEvents:"none" as const}}>
+                          <span style={{background:"rgba(0,0,0,0.65)",color:"#fff",fontSize:12,padding:"6px 12px",borderRadius:20}}>{bcLiveHint||"Place the card inside the frame"}</span>
+                        </div>
                       </div>
-                      <div style={{fontSize:11.5,color:C.MID,marginBottom:14}}>Position the card inside the frame, then capture.</div>
+                      <div style={{fontSize:11.5,color:C.MID,marginBottom:14}}>Fit the card inside the frame and hold still — it reads automatically. QR codes on the card are read instantly. Only the English side is used.</div>
                       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
                         <button onClick={bcCapturePhoto} style={S.btnP}>⬤ Capture</button>
                         <button onClick={bcCancelCamera} style={{...S.btnO,background:"transparent"}}>Cancel</button>

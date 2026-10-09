@@ -5281,7 +5281,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
                   <div><div style={{fontSize:24,fontWeight:700,color:C.FG}}>Bookings &amp; Payments</div><div style={{fontSize:13,color:C.MID,marginTop:4}}>Every booking, payment and client message in one place. Clients are notified automatically on WhatsApp + email.</div></div>
                   <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                    <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
+                    <button onClick={loadBookings} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>↻ Refresh</button>
                   </div>
                 </div>
                 {bookingsList&&bookingsList.length>0&&(()=>{
@@ -5368,13 +5368,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                             rejectReasonFor===payment.id?(
                               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                                 <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Reason (shown to client)" value={rejectReasonText} onChange={e=>setRejectReasonText(e.target.value)} />
-                                <button onClick={()=>rejectPayment(payment.id)} disabled={bookingActionBusy===payment.id||!rejectReasonText.trim()} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Confirm Reject</button>
-                                <button onClick={()=>{setRejectReasonFor(null);setRejectReasonText("");}} style={S.btnSm}>Cancel</button>
+                                <button onClick={()=>rejectPayment(payment.id)} disabled={bookingActionBusy===payment.id||!rejectReasonText.trim()} style={{...S.btnO,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",borderColor:"rgba(231,76,60,0.6)",color:"#f87171",marginLeft:"auto"}}>Confirm Reject</button>
+                                <button onClick={()=>{setRejectReasonFor(null);setRejectReasonText("");}} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Cancel</button>
                               </div>
                             ):(
                               <div style={{display:"flex",gap:8}}>
-                                <button onClick={()=>approvePayment(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnP,opacity:bookingActionBusy===payment.id?0.6:1}}>✓ Approve Payment</button>
-                                <button onClick={()=>setRejectReasonFor(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>✕ Reject</button>
+                                <button onClick={()=>approvePayment(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnP,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"#22c55e",color:"#fff",opacity:bookingActionBusy===payment.id?0.6:1}}>✓ Approve Payment</button>
+                                <button onClick={()=>setRejectReasonFor(payment.id)} disabled={bookingActionBusy===payment.id} style={{...S.btnO,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",borderColor:"rgba(231,76,60,0.6)",color:"#f87171",marginLeft:"auto"}}>✕ Reject</button>
                               </div>
                             )
                           )}
@@ -5395,8 +5395,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 <div style={{display:"flex",gap:8,flexWrap:"wrap",width:"100%",alignItems:"center"}}>
                                   <input type="date" style={{...S.inp,width:150}} value={rescheduleDate} onChange={e=>setRescheduleDate(e.target.value)} />
                                   <input type="time" style={{...S.inp,width:120}} value={rescheduleTime} onChange={e=>setRescheduleTime(e.target.value)} />
-                                  <button onClick={()=>rescheduleBooking(b.id)} disabled={bookingActionBusy===b.id||!rescheduleDate||!rescheduleTime} style={S.btnP}>Confirm New Date</button>
-                                  <button onClick={()=>{setRescheduleFor(null);setRescheduleDate("");setRescheduleTime("");}} style={S.btnSm}>Cancel</button>
+                                  <button onClick={()=>rescheduleBooking(b.id)} disabled={bookingActionBusy===b.id||!rescheduleDate||!rescheduleTime} style={{...S.btnP,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px"}}>Confirm New Date</button>
+                                  <button onClick={()=>{setRescheduleFor(null);setRescheduleDate("");setRescheduleTime("");}} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Cancel</button>
                                 </div>
                               ):confirmFor===b.id?(
                                 <div style={{display:"flex",flexDirection:"column" as const,gap:8,width:"100%"}}>
@@ -5410,8 +5410,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                   <input style={S.inp} placeholder="Internal note (optional — e.g. paid cash, confirmed by phone)" value={confirmNote} onChange={e=>setConfirmNote(e.target.value)} />
                                   <div style={{fontSize:11,color:C.MID}}>The client automatically gets a confirmation on WhatsApp and by email.</div>
                                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                                    <button onClick={()=>confirmBooking(b.id)} disabled={bookingActionBusy===b.id} style={S.btnP}>{bookingActionBusy===b.id?"Confirming…":"✓ Confirm & Notify Client"}</button>
-                                    <button onClick={()=>{setConfirmFor(null);setConfirmNote("");}} style={S.btnSm}>Back</button>
+                                    <button onClick={()=>confirmBooking(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnP,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px"}}>{bookingActionBusy===b.id?"Confirming…":"✓ Confirm & Notify Client"}</button>
+                                    <button onClick={()=>{setConfirmFor(null);setConfirmNote("");}} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Back</button>
                                   </div>
                                 </div>
                               ):cancelReasonFor===b.id?(
@@ -5423,18 +5423,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                   </div>
                                   <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                                     <input style={{...S.inp,flex:1,minWidth:200}} placeholder="Reason shown to the client (optional)" value={cancelReasonText} onChange={e=>setCancelReasonText(e.target.value)} />
-                                    <button onClick={()=>cancelBooking(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>{bookingActionBusy===b.id?"Cancelling…":"Confirm Cancel & Notify Client"}</button>
-                                    <button onClick={()=>{setCancelReasonFor(null);setCancelReasonText("");}} style={S.btnSm}>Back</button>
+                                    <button onClick={()=>cancelBooking(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnO,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",borderColor:"rgba(231,76,60,0.6)",color:"#f87171",marginLeft:"auto"}}>{bookingActionBusy===b.id?"Cancelling…":"Confirm Cancel & Notify Client"}</button>
+                                    <button onClick={()=>{setCancelReasonFor(null);setCancelReasonText("");}} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Back</button>
                                   </div>
                                 </div>
                               ):(
                                 <>
-                                  {b.status!=="confirmed"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");setCancelReasonFor(null);setRescheduleFor(null);}} disabled={bookingActionBusy===b.id} style={{...S.btnP,padding:"8px 16px",fontSize:11}}>✓ Confirm Booking</button>}
-                                  {b.status==="confirmed"&&payment&&payment.status!=="paid"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");}} disabled={bookingActionBusy===b.id} style={S.btnSm}>Mark as Paid</button>}
-                                  <button onClick={()=>{setRescheduleFor(b.id);setRescheduleDate(b.booking_date||"");setRescheduleTime(b.booking_time||"");}} disabled={bookingActionBusy===b.id} style={S.btnSm}>Reschedule</button>
-                                  {b.status==="confirmed"&&<button onClick={()=>completeBooking(b.id)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Mark Complete</button>}
-                                  {payment&&payment.method==="bank_transfer"&&payment.status!=="paid"&&<button onClick={()=>requestNewReceipt(b.id,b.customer_id,b.appointment_ref)} disabled={bookingActionBusy===b.id} style={S.btnSm}>Request New Receipt</button>}
-                                  <button onClick={()=>{setCancelReasonFor(b.id);setCancelReasonText("");}} disabled={bookingActionBusy===b.id} style={{...S.btnO,borderColor:"#e74c3c",color:"#e74c3c"}}>Cancel Booking</button>
+                                  {b.status!=="confirmed"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");setCancelReasonFor(null);setRescheduleFor(null);}} disabled={bookingActionBusy===b.id} style={{...S.btnP,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px"}}>✓ Confirm Booking</button>}
+                                  {b.status==="confirmed"&&payment&&payment.status!=="paid"&&<button onClick={()=>{setConfirmFor(b.id);setConfirmMarkPaid(true);setConfirmNote("");}} disabled={bookingActionBusy===b.id} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Mark as Paid</button>}
+                                  <button onClick={()=>{setRescheduleFor(b.id);setRescheduleDate(b.booking_date||"");setRescheduleTime(b.booking_time||"");}} disabled={bookingActionBusy===b.id} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Reschedule</button>
+                                  {b.status==="confirmed"&&<button onClick={()=>completeBooking(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Mark Complete</button>}
+                                  {payment&&payment.method==="bank_transfer"&&payment.status!=="paid"&&<button onClick={()=>requestNewReceipt(b.id,b.customer_id,b.appointment_ref)} disabled={bookingActionBusy===b.id} style={{...S.btnSm,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",background:"rgba(255,255,255,0.08)",color:C.FG,border:"1px solid rgba(255,255,255,0.14)"}}>Request New Receipt</button>}
+                                  <button onClick={()=>{setCancelReasonFor(b.id);setCancelReasonText("");}} disabled={bookingActionBusy===b.id} style={{...S.btnO,textTransform:"none" as const,letterSpacing:0.2,fontSize:13,fontWeight:600,borderRadius:8,padding:"10px 16px",borderColor:"rgba(231,76,60,0.6)",color:"#f87171",marginLeft:"auto"}}>Cancel Booking</button>
                                 </>
                               )}
                             </div>

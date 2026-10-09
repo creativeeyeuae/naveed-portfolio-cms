@@ -3295,7 +3295,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false});
       bcStreamRef.current=stream;
       setBcCamStep("live");
-      setTimeout(()=>{ if(bcVideoRef.current){ bcVideoRef.current.srcObject=stream; bcVideoRef.current.play().catch(()=>{}); } },0);
+      // Attach once the <video> is mounted (callback ref also handles this); retry briefly as a safety net.
+      [0,150,500].forEach(ms=>setTimeout(()=>{ const v=bcVideoRef.current; if(v&&bcStreamRef.current===stream&&v.srcObject!==stream){ v.srcObject=stream; v.play().catch(()=>{}); } },ms));
     }catch(e:any){
       setBcCamError(e&&e.name==="NotAllowedError"?"Camera permission was denied. Allow camera access, or use Upload Photo instead.":"Could not open the camera. Use Upload Photo instead.");
     }
@@ -5864,7 +5865,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {bcCamStep==="live"&&(
                     <div>
                       <div style={{position:"relative",width:"100%",borderRadius:8,overflow:"hidden",background:"#000",marginBottom:14}}>
-                        <video ref={bcVideoRef} autoPlay muted playsInline style={{width:"100%",display:"block",maxHeight:380,objectFit:"cover" as const}} />
+                        <video ref={(el)=>{ bcVideoRef.current=el; if(el&&bcStreamRef.current&&el.srcObject!==bcStreamRef.current){ el.srcObject=bcStreamRef.current; el.play().catch(()=>{}); } }} autoPlay muted playsInline style={{width:"100%",display:"block",maxHeight:380,objectFit:"cover" as const}} />
                         <div style={{position:"absolute",inset:"12%",border:"2px dashed rgba(255,255,255,0.6)",borderRadius:10,pointerEvents:"none" as const}} />
                       </div>
                       <div style={{fontSize:11.5,color:C.MID,marginBottom:14}}>Position the card inside the frame, then capture.</div>

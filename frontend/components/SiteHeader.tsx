@@ -216,37 +216,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
             {staticVisibleLinks.map((l) => (
               <Fragment key={l.key}>
                 <Link href={STATIC_HREF[l.key]} style={{ fontSize: 11, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s", borderBottom: pathname === STATIC_HREF[l.key] ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2 }}>{t[l.textKey]}</Link>
-                {/* "Photography" dropdown -- inserted right after Work, before About. Links
-                    into the standalone SEO service pages (app/<slug>/page.tsx), which have
-                    no CMS pageEnabled toggle and so sit outside staticVisibleLinks entirely. */}
-                {l.key === "work" && (
-                  <div
-                    onMouseEnter={() => setPhotoDropdownOpen(true)}
-                    onMouseLeave={() => setPhotoDropdownOpen(false)}
-                    style={{ position: "relative" }}
-                  >
-                    <Link
-                      href="/photography"
-                      onClick={() => setPhotoDropdownOpen(false)}
-                      style={{ fontSize: 11, letterSpacing: 3, color: onPhotographyPage ? "var(--c-pl,#E2D9F3)" : "var(--c-mid,#A892C6)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer", transition: "color 0.2s", borderBottom: onPhotographyPage ? "1px solid var(--c-pl,#E2D9F3)" : "1px solid transparent", paddingBottom: 2, display: "inline-flex", alignItems: "center", gap: 4 }}
-                    >
-                      Photography <span
-                        style={{ fontSize: 9 }}
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPhotoDropdownOpen((v) => !v); }}
-                      >▾</span>
-                    </Link>
-                    {photoDropdownOpen && (
-                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: 14, minWidth: 220, background: "rgba(34,22,64,0.98)", border: "1px solid var(--c-border,#3D2A5E)", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", boxShadow: "0 20px 40px rgba(0,0,0,0.4)" }}>
-                        {PHOTOGRAPHY_SUBNAV.map((s) => (
-                          <Link key={s.slug} href={`/${s.slug}`} onClick={() => setPhotoDropdownOpen(false)} style={{ fontSize: 12, letterSpacing: 0.5, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.82)", textTransform: "none", textDecoration: "none", padding: "9px 12px", borderRadius: 4, whiteSpace: "nowrap" }}>
-                            {s.label}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Fragment>
+                </Fragment>
             ))}
             <Link href={STATIC_HREF.booking} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#170F28)", padding: "9px 20px", fontSize: 10, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
           </div>
@@ -266,17 +236,7 @@ export default function SiteHeader({ site, spa }: { site: PublicSiteInfo; spa?: 
                 {staticVisibleLinks.map((l) => (
                   <Fragment key={l.key}>
                     <Link href={STATIC_HREF[l.key]} onClick={onCloseMobileNav} style={{ fontSize: 15, letterSpacing: 3, color: pathname === STATIC_HREF[l.key] ? "var(--c-pl,#E2D9F3)" : "var(--c-fg,#FFFFFF)", textTransform: "uppercase", textDecoration: "none", cursor: "pointer" }}>{t[l.textKey]}</Link>
-                    {/* Mobile has no hover dropdown -- the Photography sub-links are just
-                        flattened inline right after Work, same content as the desktop menu. */}
-                    {l.key === "work" && (
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "4px 0 6px" }}>
-                        <span style={{ fontSize: 10, letterSpacing: 3, color: "var(--c-mid,#A892C6)", textTransform: "uppercase" }}>Photography</span>
-                        {PHOTOGRAPHY_SUBNAV.map((s) => (
-                          <Link key={s.slug} href={`/${s.slug}`} onClick={onCloseMobileNav} style={{ fontSize: 13, color: pathname === `/${s.slug}` ? "var(--c-pl,#E2D9F3)" : "rgba(255,255,255,0.75)", textDecoration: "none", cursor: "pointer" }}>{s.label}</Link>
-                        ))}
-                      </div>
-                    )}
-                  </Fragment>
+                    </Fragment>
                 ))}
                 <Link href={STATIC_HREF.booking} onClick={onCloseMobileNav} style={{ background: "var(--c-p,#8B5CF6)", color: "var(--c-bg,#170F28)", padding: "13px 32px", fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: "uppercase", cursor: "pointer", borderRadius: 2, textDecoration: "none" }}>{bookBtnLabel}</Link>
               </>

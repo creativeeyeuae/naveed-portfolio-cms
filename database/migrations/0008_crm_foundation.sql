@@ -13,8 +13,15 @@
 --     it does today -- a customer created by the public booking flow just
 --     has these columns as null until a CRM record enriches them.
 --   - Creates NEW tables only: crm_tags, customer_tags, crm_notes,
---     crm_meetings, crm_tasks, communication_preferences, consent_events,
---     crm_audit_log, business_cards.
+--     crm_meetings, crm_tasks, communication_preferences, consent_events.
+--     (An earlier draft of this migration also defined a `business_cards`
+--     table here, written before the real Business Card Scanner existed.
+--     The scanner that actually shipped uses `business_card_scans`
+--     (migration 0012) + `outreach_contacts` (migration 0011) instead --
+--     see 0011's own header. Nothing in this codebase ever referenced
+--     `business_cards`, so its definition was removed from this file
+--     before execution, per the Part 4 migration-safety review, to avoid
+--     two competing business-card schemas ever existing side by side.)
 --   - Every new table has Row Level Security turned ON with ZERO policies
 --     attached -- the exact same deny-all-by-default pattern already used
 --     for client_messages (migration 0006). Nothing is reachable by the
@@ -139,23 +146,6 @@ create table if not exists public.consent_events (
 create index if not exists idx_consent_events_customer on public.consent_events(customer_id, created_at);
 
 -- ----------------------------------------------------------------------------
--- BUSINESS CARDS -- Phase 2 (scanner) writes here; the table exists now so
--- Phase 2 needs no second migration. image_url points at the existing Media
--- Library's storage, not a new upload system. raw_extracted keeps exactly
--- what the AI read off the card BEFORE any human edit, for audit purposes --
--- the confirmed/edited values live on the linked `customers` row itself.
--- ----------------------------------------------------------------------------
-create table if not exists public.business_cards (
-  id              uuid primary key default gen_random_uuid(),
-  customer_id     uuid references public.customers(id) on delete set null,
-  image_url       text not null,
-  raw_extracted   jsonb,
-  scanned_by      text,
-  created_at      timestamptz not null default now()
-);
-create index if not exists idx_business_cards_customer on public.business_cards(customer_id);
-
--- ----------------------------------------------------------------------------
 -- AUDIT LOG -- this project already has a live `audit_log` table (actor,
 -- action, entity_type, entity_id, details -- see payments/[id]/approve.ts
 -- for the existing convention), so CRM actions are written there too via
@@ -175,7 +165,6 @@ alter table public.crm_meetings enable row level security;
 alter table public.crm_tasks enable row level security;
 alter table public.communication_preferences enable row level security;
 alter table public.consent_events enable row level security;
-alter table public.business_cards enable row level security;
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- END OF MIGRATION 0008

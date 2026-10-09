@@ -21,6 +21,7 @@
 import { json, corsHeaders } from "../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
 import { forwardAdminAlertsWhatsApp, forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
+import { emailBookingUpdate } from "../../_shared/bookingNotify";
 
 const SUPABASE_URL = "https://ziwaocjrpbrksnepbpxi.supabase.co";
 const RECENT_MS = 15 * 60 * 1000;
@@ -156,6 +157,11 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
     try {
       await forwardClientWhatsAppAlert(env, clientWaPhone, clientWaText, clientWaName);
     } catch {}
+  }
+
+  // Fourth channel, new_booking only: "booking received" email to the client.
+  if (type === "new_booking") {
+    try { await emailBookingUpdate(env, id, "received"); } catch {}
   }
 
   await notifyAllAdmins(env, payload);

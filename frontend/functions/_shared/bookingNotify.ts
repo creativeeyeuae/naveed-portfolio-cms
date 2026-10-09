@@ -16,10 +16,11 @@ import { renderTemplate, substituteVariables } from "./emailRender";
 import { resendPayload } from "./emailDeliver";
 import { forwardClientWhatsAppAlert } from "./liveChatWhatsapp";
 
-export type BookingEvent = "confirmed" | "payment_rejected" | "cancelled" | "rescheduled" | "completed";
+export type BookingEvent = "received" | "confirmed" | "payment_rejected" | "cancelled" | "rescheduled" | "completed";
 export type EmailOutcome = "sent" | "no_email" | "not_configured" | "failed";
 
 const TEMPLATE_NAMES: Record<BookingEvent, string[]> = {
+  received: ["Booking Received", "Booking Request Received"],
   confirmed: ["Booking Confirmation", "Booking Confirmed"],
   payment_rejected: ["Payment Issue", "Payment Rejected"],
   cancelled: ["Booking Cancelled", "Booking Cancellation"],
@@ -28,6 +29,7 @@ const TEMPLATE_NAMES: Record<BookingEvent, string[]> = {
 };
 
 const COPY: Record<BookingEvent, { subject: string; badge: string; title: string; intro: string; color: string }> = {
+  received: { subject: "We received your booking — {{booking_ref}}", badge: "BOOKING RECEIVED", title: "Thank you, {{first_name}}!", intro: "Your booking request has been received. I will review it and confirm shortly. Here are the details:", color: "#8B5CF6" },
   confirmed: { subject: "Your booking is confirmed — {{booking_ref}}", badge: "✓ BOOKING CONFIRMED", title: "See you soon, {{first_name}}!", intro: "Thank you — your booking is confirmed and your date is reserved. Here are the details:", color: "#2e9e5b" },
   payment_rejected: { subject: "Action needed for your booking {{booking_ref}}", badge: "PAYMENT NEEDS ATTENTION", title: "Hi {{first_name}}, a quick update", intro: "We couldn't verify your payment yet. Reason: {{reason}}\n\nPlease upload a new receipt from your client page, or reply to this email and I'll help.", color: "#c27c0e" },
   cancelled: { subject: "Your booking {{booking_ref}} has been cancelled", badge: "BOOKING CANCELLED", title: "Hi {{first_name}},", intro: "Your booking has been cancelled. Reason: {{reason}}\n\nIf this is unexpected or you'd like to book a new date, simply reply to this email.", color: "#c0392b" },

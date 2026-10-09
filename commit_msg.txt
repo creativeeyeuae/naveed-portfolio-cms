@@ -1,0 +1,21 @@
+Add WhatsApp QR bridge server (connects your real WhatsApp to the CMS)
+
+- New whatsapp-bridge/ Node.js project (run on your own server, not
+  Cloudflare) that scans a QR code to link your real WhatsApp number,
+  then relays messages both ways through the existing, already-built
+  webhook/pending endpoints -- no changes needed on the CMS inbox UI.
+- Extended the webhook's status_update to match a queued message by its
+  own CMS row id (not just a real WhatsApp id it doesn't have yet), so
+  the bridge can report "sent" the moment it actually sends.
+- Generated a private WHATSAPP_BRIDGE_SECRET and saved it as a Cloudflare
+  Pages secret so the bridge and the CMS can authenticate each other.
+- .gitignore: the bridge's WhatsApp session folder (auth_info_baileys) is
+  excluded -- that folder IS the logged-in session and must never be
+  committed, same handling as any other credential in this project.
+
+Note: this uses an unofficial WhatsApp connection method (Baileys), which
+carries a real risk of the number being flagged/banned by WhatsApp. This
+was explained and explicitly accepted before building it.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01SuDdD7uGfGaFYXsztK9zs5

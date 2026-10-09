@@ -1022,7 +1022,7 @@ function StatusPill({status}:{status:string}) {
 // with a consistent radius and border -- swap in for the old plain-black blocks
 // (background:C.DARK, borderRadius:4) and for the old white cards (C.LTCARD)
 // alike, so every tab in the CMS shares one visual language.
-const CARD_STYLE:React.CSSProperties = {background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:14,boxShadow:"0 4px 24px rgba(0,0,0,0.4), 0 0 32px rgba(139,92,246,0.06)"};
+const CARD_STYLE:React.CSSProperties = {background:"rgba(255,255,255,0.045)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,boxShadow:"0 6px 24px rgba(0,0,0,0.18)"};
 
 // ─── COVER IMAGE CROPPER ─────────────────────────────────────────────────────
 // The same project cover image shows in three different-shaped slots on the live
@@ -2497,6 +2497,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [cancelReasonFor,setCancelReasonFor]=useState<string|null>(null);
   // Manual verification (Confirm Booking) + per-booking result message.
   const [confirmFor,setConfirmFor]=useState<string|null>(null);
+  const [bkFilter,setBkFilter]=useState<string>("all");
+  const [bkSearch,setBkSearch]=useState<string>("");
   const [confirmMarkPaid,setConfirmMarkPaid]=useState(true);
   const [confirmNote,setConfirmNote]=useState("");
   const [bookingNotice,setBookingNotice]=useState<{id:string;ok:boolean;text:string}|null>(null);
@@ -5274,26 +5276,37 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             reached, the single CMS login above has already established a real Supabase Auth
             session (adminSession) -- that's the credential these calls send, never the PIN. */}
         {cmsTab==="bookings"&&(
-          <div style={{maxWidth:900,margin:"48px auto",padding:"0 24px"}}>
+          <div style={{maxWidth:1180,margin:"32px auto",padding:isMobile?"0 14px":"0 28px"}}>
             <>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-                  <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Bookings &amp; Payments</div>
+                  <div><div style={{fontSize:24,fontWeight:700,color:C.FG}}>Bookings &amp; Payments</div><div style={{fontSize:13,color:C.MID,marginTop:4}}>Every booking, payment and client message in one place. Clients are notified automatically on WhatsApp + email.</div></div>
                   <div style={{display:"flex",gap:10,alignItems:"center"}}>
                     <button onClick={loadBookings} style={S.btnSm}>↻ Refresh</button>
                   </div>
                 </div>
                 {bookingsList&&bookingsList.length>0&&(()=>{
                   const upcoming=bookingsList.filter((b:any)=>["pending","confirmed"].includes(b.status)).length;
-                  const awaitingReceipt=bookingsList.filter((b:any)=>(b.payments||[]).some((p:any)=>p.status==="under_review")).length;
+                  const toVerify=bookingsList.filter((b:any)=>b.status==="pending"||(b.payments||[]).some((p:any)=>p.status==="under_review")).length;
                   const completed=bookingsList.filter((b:any)=>b.status==="completed").length;
+                  const paidTotal=bookingsList.reduce((t:number,b:any)=>t+((b.payments||[]).some((p:any)=>p.status==="paid")?Number(b.total||0):0),0);
+                  const tile=(v:any,l:string,col:string)=>(<div style={{...CARD_STYLE,padding:"18px 20px",borderLeft:`4px solid ${col}`}}><div style={{fontSize:28,fontWeight:700,color:C.FG,lineHeight:1}}>{v}</div><div style={{fontSize:12,color:C.MID,marginTop:8,fontWeight:600}}>{l}</div></div>);
                   return(
-                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
-                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:C.FG}}>{upcoming}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Upcoming</div></div>
-                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:"#fbbf24"}}>{awaitingReceipt}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Awaiting Receipt Review</div></div>
-                      <div style={{...CARD_STYLE,padding:16}}><div style={{fontSize:22,fontWeight:700,color:"#4ade80"}}>{completed}</div><div style={{fontSize:10.5,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Completed</div></div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:14,margin:"22px 0"}}>
+                      {tile(upcoming,"Upcoming bookings","#8B5CF6")}
+                      {tile(toVerify,"Need your action","#fbbf24")}
+                      {tile(completed,"Completed","#4ade80")}
+                      {tile("AED "+paidTotal.toLocaleString(),"Paid revenue","#38bdf8")}
                     </div>
                   );
                 })()}
+                {bookingsList&&bookingsList.length>0&&(
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:18}}>
+                    {[["all","All"],["action","Need action"],["upcoming","Upcoming"],["completed","Completed"],["cancelled","Cancelled"]].map(([k,l])=>(
+                      <button key={k} onClick={()=>setBkFilter(k)} style={{padding:"8px 16px",borderRadius:20,fontSize:12.5,fontWeight:600,cursor:"pointer",border:`1px solid ${bkFilter===k?C.P:"rgba(255,255,255,0.14)"}`,background:bkFilter===k?C.P:"transparent",color:bkFilter===k?"#fff":C.FG}}>{l}</button>
+                    ))}
+                    <input value={bkSearch} onChange={e=>setBkSearch(e.target.value)} placeholder="Search name, ref, phone, email…" style={{...S.inp,flex:1,minWidth:200,maxWidth:340,marginLeft:"auto",borderRadius:20,padding:"9px 16px"}} />
+                  </div>
+                )}
                 {bookingsErr&&<div style={{color:"#e74c3c",fontSize:12,marginBottom:16,background:"#2a1010",border:"1px solid #4a2020",borderRadius:4,padding:"10px 14px"}}>{bookingsErr}</div>}
                 {bookingsLoading?(
                   <div style={{color:C.MID,fontSize:13}}>Loading…</div>
@@ -5301,30 +5314,53 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No bookings yet.</div>
                 ):(
                   <div style={{display:"flex",flexDirection:"column",gap:14}}>
-                    {bookingsList.map((b:any)=>{
+                    {bookingsList.filter((b:any)=>{
+                      const pays=b.payments||[];
+                      if(bkFilter==="action"&&!(b.status==="pending"||pays.some((p:any)=>p.status==="under_review"))) return false;
+                      if(bkFilter==="upcoming"&&!["pending","confirmed"].includes(b.status)) return false;
+                      if(bkFilter==="completed"&&b.status!=="completed") return false;
+                      if(bkFilter==="cancelled"&&!["cancelled","payment_rejected"].includes(b.status)) return false;
+                      const q=bkSearch.trim().toLowerCase();
+                      if(q){const c=b.customers||{};const hay=[b.appointment_ref,b.service_name,b.package_name,c.full_name,c.email,c.phone,c.whatsapp].join(" ").toLowerCase();if(!hay.includes(q)) return false;}
+                      return true;
+                    }).map((b:any)=>{
                       const payment=(b.payments||[])[0];
                       const cust=b.customers;
                       const canDecide=payment&&payment.status==="under_review"&&payment.receipt_path;
                       return(
-                        <div key={b.id} style={{...CARD_STYLE,padding:20}}>
-                          <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:10}}>
+                        <div key={b.id} style={{...CARD_STYLE,padding:isMobile?16:22}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:16}}>
                             <div>
-                              <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{b.appointment_ref} <span style={{color:C.MID,fontWeight:400}}>· {b.service_name} — {b.package_name}</span></div>
-                              <div style={{fontSize:12,color:C.MID,marginTop:2}}>{cust?.full_name} · {cust?.email}{cust?.phone&&` · ${cust.phone}`}</div>
+                              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                                <span style={{fontSize:17,fontWeight:700,color:C.FG}}>{cust?.full_name||"Client"}</span>
+                                <StatusPill status={b.status} />
+                              </div>
+                              <div style={{fontSize:12.5,color:C.MID,marginTop:4}}>Ref <b style={{color:C.FG,letterSpacing:0.5}}>{b.appointment_ref}</b></div>
                             </div>
-                            <div style={{display:"flex",alignItems:"center",gap:8}}>
-                              {b.customer_id&&<button onClick={()=>openClientInDirectory(b.customer_id)} style={{...S.btnO,padding:"4px 10px",fontSize:10}}>View Client →</button>}
-                              <StatusPill status={b.status} />
-                            </div>
+                            {b.customer_id&&<button onClick={()=>openClientInDirectory(b.customer_id)} style={{padding:"8px 14px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",border:"1px solid rgba(255,255,255,0.16)",background:"transparent",color:C.FG}}>View Client →</button>}
                           </div>
-                          <div style={{fontSize:12,color:C.MID,marginBottom:10}}>{b.booking_date} · {b.booking_time} &nbsp;·&nbsp; AED {Number(b.total).toLocaleString()} total ({Number(b.price_base).toLocaleString()} + {Number(b.transaction_fee).toLocaleString()} fee)</div>
+                          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:14}}>
+                            {[
+                              ["📅 Date & time",`${b.booking_date||"-"}${b.booking_time?" · "+String(b.booking_time).slice(0,5):""}`],
+                              ["🎬 Service",`${b.service_name||"-"}${b.package_name?" — "+b.package_name:""}`],
+                              ["💰 Total",`AED ${Number(b.total||0).toLocaleString()}`],
+                              ["📞 Contact",`${cust?.whatsapp||cust?.phone||"-"}`],
+                            ].map(([l,v])=>(
+                              <div key={l} style={{background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:10,padding:"10px 12px",minWidth:0}}>
+                                <div style={{fontSize:11,color:C.MID,fontWeight:600}}>{l}</div>
+                                <div style={{fontSize:13.5,color:C.FG,marginTop:4,fontWeight:600,overflowWrap:"anywhere"}}>{v}</div>
+                              </div>
+                            ))}
+                          </div>
+                          {cust?.email&&<div style={{fontSize:12.5,color:C.MID,marginBottom:10}}>✉️ {cust.email} &nbsp;·&nbsp; AED {Number(b.price_base||0).toLocaleString()} + {Number(b.transaction_fee||0).toLocaleString()} fee</div>}
                           {payment&&(
-                            <div style={{fontSize:12,color:C.MID,marginBottom:12,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-                              <span>Payment: {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"} · </span><StatusPill status={payment.status} />
+                            <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",padding:"10px 12px",borderRadius:10,marginBottom:12,background:payment.status==="paid"?"rgba(34,197,94,0.08)":"rgba(245,158,11,0.08)",border:`1px solid ${payment.status==="paid"?"rgba(34,197,94,0.25)":"rgba(245,158,11,0.25)"}`}}>
+                              <span style={{fontSize:13,color:C.FG,fontWeight:600}}>Payment · {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"}</span>
+                              <StatusPill status={payment.status} />
                               {payment.receipt_signed_url?(
-                                <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>View Receipt →</a>
+                                <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL,fontSize:13,fontWeight:600}}>View Receipt →</a>
                               ):payment.method==="bank_transfer"&&payment.status!=="paid"&&payment.status!=="approved"&&payment.status!=="verified"?(
-                                <span style={{color:C.MID}}>Waiting for client's receipt</span>
+                                <span style={{color:C.MID,fontSize:12.5}}>Waiting for client's receipt</span>
                               ):null}
                             </div>
                           )}
@@ -5350,7 +5386,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           )}
                           {["confirmed","cancelled","completed","payment_rejected"].includes(b.status)&&(
                             <div style={{marginTop:8}}>
-                              <button onClick={()=>resendBookingNotice(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnSm,fontSize:10.5}}>{bookingActionBusy===b.id?"Sending…":"↻ Resend WhatsApp + Email to client"}</button>
+                              <button onClick={()=>resendBookingNotice(b.id)} disabled={bookingActionBusy===b.id} style={{...S.btnSm,fontSize:11.5,letterSpacing:0.5,textTransform:"none",borderRadius:8,padding:"9px 14px",background:"transparent",border:"1px solid rgba(255,255,255,0.18)",color:C.FG}}>{bookingActionBusy===b.id?"Sending…":"↻ Resend WhatsApp + Email to client"}</button>
                             </div>
                           )}
                           {!["cancelled","completed"].includes(b.status)&&(

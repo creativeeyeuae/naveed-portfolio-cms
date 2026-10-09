@@ -2618,7 +2618,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // Smart live scanner: QR detection + auto-capture when the card is steady and sharp.
   const [bcLiveHint,setBcLiveHint]=useState("");
   const bcLoopRef=useRef<number|null>(null);
-  const bcAutoRef=useRef<{prev:Float32Array|null;steadySince:number;done:boolean;qrUrl:string}>({prev:null,steadySince:0,done:false,qrUrl:""});
+  const bcAutoRef=useRef<{prev:Float32Array|null;steadySince:number;done:boolean;qrUrl:string;qrFields:Record<string,string>|null;qrAt:number}>({prev:null,steadySince:0,done:false,qrUrl:"",qrFields:null,qrAt:0});
 
   // Saved segments (Companies/Contacts > Segments) -- functions/api/admin/outreach-segments.ts.
   const [segmentsList,setSegmentsList]=useState<any[]|null>(null);
@@ -3304,7 +3304,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       bcStreamRef.current=stream;
       // Continuous autofocus where the phone supports it (sharper text for reading).
       try{ const tr:any=stream.getVideoTracks()[0]; const caps:any=tr.getCapabilities?.(); if(caps?.focusMode?.includes?.("continuous")) await tr.applyConstraints({advanced:[{focusMode:"continuous"}]}); }catch{}
-      bcAutoRef.current={prev:null,steadySince:0,done:false,qrUrl:""};
+      bcAutoRef.current={prev:null,steadySince:0,done:false,qrUrl:"",qrFields:null,qrAt:0};
       setBcLiveHint("Place the card inside the frame");
       setBcCamStep("live");
       bcLoopRef.current=window.setTimeout(bcScanTick,700);
@@ -3431,19 +3431,19 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     const qc=document.createElement("canvas"); const qs=Math.min(1,900/r.w);
     qc.width=Math.round(r.w*qs); qc.height=Math.round(r.h*qs);
     (qc.getContext("2d",{willReadFrequently:true} as any) as CanvasRenderingContext2D).drawImage(video,r.x,r.y,r.w,r.h,0,0,qc.width,qc.height);
-    const qr=await bcDetectQr(qc);
+    // QR and card text are read TOGETHER: a found QR is remembered (not a shortcut that skips
+    // the card), then the card itself is captured and read by AI; the review form gets both,
+    // with QR values winning (they're exact) and the card filling every gap.
+    const qr=(st.qrFields||st.qrUrl)?null:await bcDetectQr(qc);
     if(!bcStreamRef.current||bcAutoRef.current.done) return;
     if(qr){
       const fields=bcParseQr(qr);
-      if(fields){
-        st.done=true; setBcLiveHint("QR contact found ✓");
-        const img=bcCropFrame(video); bcStopCamera();
-        setBcImageDataUrl(img); bcApplyFields({...fields,__fromQr:"1"}); setBcReviewState("needs_review"); setBcDetectedLanguage("en");
-        setBcCamStep("choose"); setBcReviewOpen(true);
-        return;
-      }
-      if(/^https?:\/\//i.test(qr)&&!st.qrUrl){ st.qrUrl=qr; setBcLiveHint("QR link found ✓ — hold steady to read the card"); }
+      if(fields){ st.qrFields=fields; st.qrAt=Date.now(); }
+      else if(/^https?:\/\//i.test(qr)){ st.qrUrl=qr; st.qrAt=Date.now(); }
     }
+    const qrBadge=st.qrFields?"QR contact read ✓ · ":st.qrUrl?"QR link read ✓ · ":"";
+    // If the QR is read but the card never looks "steady" (e.g. glossy card), don't wait forever.
+    if(st.qrAt&&Date.now()-st.qrAt>3500){ st.done=true; setBcLiveHint(qrBadge+"reading card…"); bcAutoCapture(); return; }
     // Steadiness + sharpness on a tiny grayscale copy.
     const W=96,H=Math.round(96/BC_CARD_RATIO);
     const sc=document.createElement("canvas"); sc.width=W; sc.height=H;
@@ -3457,23 +3457,29 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     const hasContent=vari>150&&edge>60; // something with text/contrast is in the frame
     const steady=diff<6;
     const now=Date.now();
-    if(!hasContent){ st.steadySince=0; if(!st.qrUrl) setBcLiveHint("Place the card inside the frame"); }
-    else if(!steady){ st.steadySince=0; setBcLiveHint("Hold steady…"); }
+    if(!hasContent){ st.steadySince=0; setBcLiveHint(qrBadge+"Place the card inside the frame"); }
+    else if(!steady){ st.steadySince=0; setBcLiveHint(qrBadge+"Hold steady…"); }
     else{
       if(!st.steadySince) st.steadySince=now;
-      setBcLiveHint("Reading in a moment — keep still");
+      setBcLiveHint(qrBadge+"Reading in a moment — keep still");
       if(now-st.steadySince>1100){ st.done=true; bcAutoCapture(); return; }
     }
     next();
   }
   function bcAutoCapture(){
     const video=bcVideoRef.current; if(!video||!video.videoWidth) return;
-    const url=bcCropFrame(video), qrUrl=bcAutoRef.current.qrUrl;
+    const url=bcCropFrame(video);
     bcStopCamera(); setBcCamStep("choose"); setBcLiveHint("");
-    fetch(url).then(r=>r.blob()).then(async blob=>{
-      await bcHandleFile(new File([blob],"business-card.jpg",{type:"image/jpeg"}));
-      if(qrUrl) setBcForm((f:any)=>({...f,website:f.website||qrUrl}));
-    }).catch(()=>setBcErr("Could not use that photo. Please try again."));
+    bcRunWithQr(url);
+  }
+  // Apply the remembered QR first (exact values win), then let the AI reading of the card
+  // photo fill every remaining empty field -- bcApplyFields only ever fills empty fields.
+  function bcRunWithQr(dataUrl:string){
+    const {qrFields,qrUrl}=bcAutoRef.current;
+    if(qrFields) bcApplyFields({...qrFields,__fromQr:"1"});
+    if(qrUrl) setBcForm((f:any)=>({...f,website:f.website||qrUrl}));
+    fetch(dataUrl).then(r=>r.blob()).then(blob=>bcHandleFile(new File([blob],"business-card.jpg",{type:"image/jpeg"})))
+      .catch(()=>setBcErr("Could not use that photo. Please try again."));
   }
   function bcCapturePhoto(){
     const video=bcVideoRef.current;
@@ -3547,12 +3553,26 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setBcErr(e.message||"Could not read that image."); }
     setBcReviewOpen(true); setBcBusy(false);
   }
+  // Gallery photos get the same QR + card reading as the live camera.
+  async function bcHandleGallery(file:File){
+    setBcErr(""); setBcBusy(true);
+    bcAutoRef.current={prev:null,steadySince:0,done:true,qrUrl:"",qrFields:null,qrAt:0};
+    try{
+      if(!file.type.startsWith("image/")&&!/\.(heic|heif)$/i.test(file.name)) throw new Error("Please choose a photo (JPEG, PNG, or similar).");
+      const dataUrl=await bcNormalizeImage(file);
+      try{
+        const img=await new Promise<HTMLImageElement>((ok,bad)=>{ const el=new Image(); el.onload=()=>ok(el); el.onerror=bad; el.src=dataUrl; });
+        const c=document.createElement("canvas"); c.width=img.naturalWidth; c.height=img.naturalHeight;
+        (c.getContext("2d",{willReadFrequently:true} as any) as CanvasRenderingContext2D).drawImage(img,0,0);
+        const qr=await bcDetectQr(c);
+        if(qr){ const f=bcParseQr(qr); if(f) bcAutoRef.current.qrFields=f; else if(/^https?:\/\//i.test(qr)) bcAutoRef.current.qrUrl=qr; }
+      }catch{}
+      bcRunWithQr(dataUrl);
+    }catch(e:any){ setBcErr(e.message||"Could not read that image."); setBcBusy(false); setBcReviewOpen(true); }
+  }
   function bcUseCapturedPhoto(){
     if(!bcCapturedDataUrl) return;
-    fetch(bcCapturedDataUrl).then(r=>r.blob()).then(blob=>{
-      const file=new File([blob],"business-card.jpg",{type:"image/jpeg"});
-      bcHandleFile(file);
-    }).catch(()=>setBcErr("Could not use that photo. Please try again."));
+    bcRunWithQr(bcCapturedDataUrl);
   }
   // Belt-and-suspenders: also stop any live camera stream if the whole CMS unmounts
   // while the scanner happens to be open.
@@ -6034,13 +6054,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div>
                   {bcCamStep==="choose"&&(
                     <div>
-                      <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Scan a business card with the camera, or upload a photo.</div>
+                      <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Scan a card live — the card text and any QR code on it are read together.</div>
                       {bcCamError&&<div style={{color:"#e0c060",fontSize:12,marginBottom:14,background:"#2a2010",border:"1px solid #4a3a20",borderRadius:4,padding:"10px 14px"}}>{bcCamError}</div>}
-                      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
-                        <button onClick={bcStartCamera} style={S.btnP}>📷 Open Camera</button>
+                      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+                        <button onClick={bcStartCamera} style={S.btnP}>📷 Scan Card</button>
+                        {/* Gallery-only: a hidden input (no "capture"), opened by a plain button, so the
+                            phone's own camera -- which has no frame / QR reading -- isn't the obvious path. */}
+                        <label style={{...S.btnO,background:"transparent",cursor:"pointer",display:"inline-flex",alignItems:"center"}}>
+                          🖼 Choose from Gallery
+                          <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" onChange={e=>{const f=e.target.files?.[0]; e.target.value=""; if(f) bcHandleGallery(f);}} style={{display:"none"}} />
+                        </label>
                       </div>
-                      <div style={{fontSize:11,color:C.MID,marginBottom:8}}>Or upload a photo instead:</div>
-                      <input type="file" accept="image/*" onChange={e=>{const f=e.target.files?.[0]; if(f) bcHandleFile(f);}} style={{color:C.FG,fontSize:12.5}} />
                       {bcBusy&&<div style={{color:C.MID,fontSize:12,marginTop:12}}>Reading…</div>}
                     </div>
                   )}

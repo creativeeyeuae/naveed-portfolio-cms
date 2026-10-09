@@ -22,6 +22,9 @@ import { json, corsHeaders } from "../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../_shared/webpush";
 import { forwardAdminAlertsWhatsApp, forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 import { emailBookingUpdate } from "../../_shared/bookingNotify";
+import { resendPayload } from "../../_shared/emailDeliver";
+
+const ADMIN_INBOX = "booking@bynaveedanjum.com";
 
 const SUPABASE_URL = "https://ziwaocjrpbrksnepbpxi.supabase.co";
 const RECENT_MS = 15 * 60 * 1000;
@@ -156,6 +159,20 @@ export const onRequestPost: PagesFunction<PushEnv> = async ({ request, env }) =>
   if (clientWaText && clientWaPhone) {
     try {
       await forwardClientWhatsAppAlert(env, clientWaPhone, clientWaText, clientWaName);
+    } catch {}
+  }
+
+  // Email copy of the alert to Naveed's own inbox (new booking / new inquiry), so nothing is
+  // missed even if WhatsApp is offline. Best-effort.
+  if (waText && (env as any).RESEND_API_KEY) {
+    try {
+      const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const html = `<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.6;color:#222"><h2 style="margin:0 0 12px">${esc(payload.title)}</h2><div style="white-space:pre-wrap">${esc(waText)}</div></div>`;
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${(env as any).RESEND_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify(resendPayload(env, ADMIN_INBOX, `${payload.title} — ${payload.body}`, html)),
+      });
     } catch {}
   }
 

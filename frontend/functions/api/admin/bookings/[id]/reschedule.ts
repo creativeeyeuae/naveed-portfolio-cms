@@ -5,7 +5,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
-import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
+import { emailBookingUpdate, whatsappBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -15,6 +15,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
   const origin = request.headers.get("Origin");
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
+  let waTo = "";
 
   const appointmentId = params.id as string;
   let bookingDate = "";
@@ -96,12 +97,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     // reschedule itself.
     try {
       const cust = appt.customers;
-      await forwardClientWhatsAppAlert(
-        env,
-        cust?.whatsapp || cust?.phone,
-        `📅 Hi ${cust?.full_name || ""}, your booking (${appt.appointment_ref || appointmentId.slice(0, 8)}) has been *rescheduled* to ${bookingDate} at ${bookingTime}.${reason ? ` Note: ${reason}` : ""}`,
-        cust?.full_name
-      );
+      waTo = await whatsappBookingUpdate(env, appointmentId, "rescheduled");
     } catch {}
   }
 
@@ -115,5 +111,5 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
 
   const emailed = await emailBookingUpdate(env, appointmentId, "rescheduled");
 
-  return json({ ok: true , notified: { email: emailed } }, 200, origin);
+  return json({ ok: true , notified: { email: emailed, whatsapp: waTo } }, 200, origin);
 };

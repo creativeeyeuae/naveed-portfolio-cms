@@ -151,6 +151,7 @@ type SiteSettings = {
   statsYears:string; statsProjects:string; statsClients:string;
   phone:string; email:string; waNumber:string; waMsg:string; location:string; address:string;
   instagram:string; youtube:string; linkedin:string; tiktok:string;
+  waTplConfirmed?:string; waTplCancelled?:string; waTplRescheduled?:string; waTplCompleted?:string; // client WhatsApp booking messages
   footerCopyright:string; footerLinks:{label:string;page:string}[];
   seoTitle:string; seoDesc:string; googlePlaceId:string; googleReviewsEnabled:boolean;
   videoSectionEnabled:boolean; videoSectionUrl:string; videoSectionTitle:string; videoSectionSubtitle:string; // Full-width video section, between About and Services
@@ -312,6 +313,10 @@ const DEF_SETTINGS: SiteSettings = {
   statsYears:"20+", statsProjects:"500+", statsClients:"200+",
   phone:"+971 581 174 911", email:"info@bynaveedanjum.com", waNumber:"971581174911",
   waMsg:"Hello Naveed, I visited your portfolio and would like to discuss a project.",
+  waTplConfirmed:"✅ *Booking Confirmed*\n\nHi {name},\nThank you — your booking is confirmed!\n\n📌 Booking: {ref}\n📸 Service: {service}\n📦 Package: {package}\n📅 Date: {date}\n⏰ Time: {time}\n💳 Total: {total}\n\nIf you have any questions, just reply here.\n— Naveed Anjum",
+  waTplCancelled:"❌ *Booking Cancelled*\n\nHi {name},\nYour booking {ref} ({service}, {date} at {time}) has been cancelled.\nReason: {reason}\n\nReply here if you'd like to book a new date.\n— Naveed Anjum",
+  waTplRescheduled:"🔄 *Booking Rescheduled*\n\nHi {name},\nYour booking {ref} has a new date:\n\n📸 Service: {service}\n📅 Date: {date}\n⏰ Time: {time}\n\nSee you then!\n— Naveed Anjum",
+  waTplCompleted:"🎉 Hi {name}, thank you for choosing me for your {service} ({ref})! It was a pleasure working with you. A short review would mean a lot: https://bynaveedanjum.com\n— Naveed Anjum",
   location:"Dubai, UAE", address:"Downtown Dubai, UAE",
   instagram:"https://www.instagram.com/bynaveedanjum/", youtube:"https://www.youtube.com/@ByNaveedAnjum", linkedin:"https://linkedin.com/in/naveedanjumch", tiktok:"",
   footerCopyright:"© 2026 Naveed Anjum · Dubai, UAE",
@@ -4213,7 +4218,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   function bookingNotifyText(action:string,data:any){
     const e=data?.notified?.email, w=data?.notified?.whatsapp;
     const emailTxt=e==="sent"?"email sent ✓":e==="no_email"?"no email on file":e==="not_configured"?"email not set up yet":e==="failed"?"email failed":"";
-    const waTxt=typeof w==="string"&&w.startsWith("+")?`WhatsApp sent to ${w} ✓`:w==="skipped"||w===""?"no valid WhatsApp number on file":w==="invalid"?"WhatsApp number invalid":"WhatsApp sent";
+    const waTxt=typeof w==="string"&&w.startsWith("+")?`WhatsApp sent to ${w} ✓`:w==="skipped"||w===""||w==="no_phone"?"no WhatsApp/phone number on file":w==="invalid"?"WhatsApp number invalid":"WhatsApp sent";
     return `${action} — ${waTxt}${emailTxt?` · ${emailTxt}`:""}. Check delivery in CMS → WhatsApp.`;
   }
   async function resendBookingNotice(appointmentId:string){
@@ -7208,6 +7213,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div><label style={S.lbl}>Full Address (shown in footer with map)</label><input style={S.inp} value={settingsDraft.address} onChange={e=>updateSD({address:e.target.value})} placeholder="e.g. Downtown Dubai, UAE" /></div>
                 </div>
                 <div style={{marginTop:16}}><label style={S.lbl}>WhatsApp Default Message</label><textarea style={{...S.inp,height:70,resize:"vertical" as const}} value={settingsDraft.waMsg} onChange={e=>updateSD({waMsg:e.target.value})} /></div>
+                <div style={{marginTop:22,padding:16,border:`1px solid ${C.BORDER}`,borderRadius:8}}>
+                  <div style={{fontSize:12,fontWeight:700,color:C.FG,marginBottom:4}}>📱 Automatic WhatsApp messages to clients (bookings)</div>
+                  <div style={{fontSize:11,color:C.MID,marginBottom:12,lineHeight:1.6}}>Sent automatically when you confirm, cancel, reschedule or complete a booking. Placeholders are filled with the real booking details: <b>{"{name}"} {"{ref}"} {"{service}"} {"{package}"} {"{date}"} {"{time}"} {"{total}"} {"{reason}"}</b>. Use *text* for bold on WhatsApp.</div>
+                  {([["waTplConfirmed","When booking is confirmed / payment verified"],["waTplCancelled","When booking is cancelled"],["waTplRescheduled","When booking is rescheduled"],["waTplCompleted","When booking is completed"]] as [keyof SiteSettings,string][]).map(([k,label])=>(
+                    <div key={k} style={{marginBottom:12}}>
+                      <label style={S.lbl}>{label}</label>
+                      <textarea style={{...S.inp,height:120,resize:"vertical" as const,fontFamily:"inherit"}} value={(settingsDraft as any)[k]||(DEF_SETTINGS as any)[k]||""} onChange={e=>updateSD({[k]:e.target.value} as any)} />
+                      <button onClick={()=>updateSD({[k]:(DEF_SETTINGS as any)[k]} as any)} style={{...S.btnSm,marginTop:4,fontSize:10}}>Reset to default</button>
+                    </div>
+                  ))}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
                   <div><label style={S.lbl}>Instagram URL</label><input style={S.inp} value={settingsDraft.instagram} onChange={e=>updateSD({instagram:e.target.value})} /></div>
                   <div><label style={S.lbl}>YouTube URL</label><input style={S.inp} value={settingsDraft.youtube} onChange={e=>updateSD({youtube:e.target.value})} /></div>

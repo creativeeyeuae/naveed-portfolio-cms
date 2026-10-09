@@ -14,6 +14,7 @@
 import { supaAdmin } from "./adminAuth";
 import { renderTemplate, substituteVariables } from "./emailRender";
 import { resendPayload } from "./emailDeliver";
+import { forwardClientWhatsAppAlert } from "./liveChatWhatsapp";
 
 export type BookingEvent = "confirmed" | "payment_rejected" | "cancelled" | "rescheduled" | "completed";
 export type EmailOutcome = "sent" | "no_email" | "not_configured" | "failed";
@@ -33,6 +34,53 @@ const COPY: Record<BookingEvent, { subject: string; badge: string; title: string
   rescheduled: { subject: "New date for your booking {{booking_ref}}", badge: "BOOKING RESCHEDULED", title: "Your new date, {{first_name}}", intro: "Your booking has been moved. Here are the updated details:", color: "#8B5CF6" },
   completed: { subject: "Thank you, {{first_name}}!", badge: "THANK YOU", title: "It was a pleasure, {{first_name}}", intro: "Thank you for choosing me for your project. Your final images and films will be delivered as agreed. If you enjoyed the experience, a short review would mean a lot.", color: "#8B5CF6" },
 };
+
+// ── WhatsApp: the client message for a booking event, using Naveed's own wording from
+// CMS > Settings (waTplConfirmed / waTplCancelled / waTplRescheduled / waTplCompleted) with
+// {name} {ref} {service} {package} {date} {time} {total} {reason} filled in.
+const WA_DEFAULTS: Record<string, string> = {
+  confirmed: "✅ *Booking Confirmed*\n\nHi {name},\nThank you — your booking is confirmed!\n\n📌 Booking: {ref}\n📸 Service: {service}\n📦 Package: {package}\n📅 Date: {date}\n⏰ Time: {time}\n💳 Total: {total}\n\nIf you have any questions, just reply here.\n— Naveed Anjum",
+  cancelled: "❌ *Booking Cancelled*\n\nHi {name},\nYour booking {ref} ({service}, {date} at {time}) has been cancelled.\nReason: {reason}\n\nReply here if you'd like to book a new date.\n— Naveed Anjum",
+  rescheduled: "🔄 *Booking Rescheduled*\n\nHi {name},\nYour booking {ref} has a new date:\n\n📸 Service: {service}\n📅 Date: {date}\n⏰ Time: {time}\n\nSee you then!\n— Naveed Anjum",
+  completed: "🎉 Hi {name}, thank you for choosing me for your {service} ({ref})! It was a pleasure working with you. A short review would mean a lot: https://bynaveedanjum.com\n— Naveed Anjum",
+  payment_rejected: "⚠️ Hi {name}, we couldn't verify the payment for booking {ref} yet.\nReason: {reason}\n\nPlease upload a new receipt from your client page or reply here.\n— Naveed Anjum",
+};
+const WA_SETTING_KEY: Record<string, string> = { confirmed: "waTplConfirmed", cancelled: "waTplCancelled", rescheduled: "waTplRescheduled", completed: "waTplCompleted" };
+
+/** Queues the client's WhatsApp for a booking event. Returns "+9715…" (queued to), "no_phone" or "invalid". Never throws. */
+export async function whatsappBookingUpdate(env: any, appointmentId: string, event: BookingEvent, extra: { reason?: string; paid?: boolean } = {}): Promise<string> {
+  try {
+    const aRes = await supaAdmin(env, `appointments?id=eq.${encodeURIComponent(appointmentId)}&select=*,customers(full_name,whatsapp,phone)`, { method: "GET" });
+    const appt = aRes.ok ? ((await aRes.json()) as any[])?.[0] : null;
+    if (!appt) return "invalid";
+    const phone = appt.customers?.whatsapp || appt.customers?.phone;
+    if (!phone) return "no_phone";
+    let tpl = WA_DEFAULTS[event];
+    try {
+      const sRes = await supaAdmin(env, "site_settings?key=eq.nap_settings&select=value&limit=1", { method: "GET" });
+      const v = sRes.ok ? ((await sRes.json()) as any[])?.[0]?.value : null;
+      const site = typeof v === "string" ? JSON.parse(v) : v || {};
+      const custom = WA_SETTING_KEY[event] ? String(site[WA_SETTING_KEY[event]] || "").trim() : "";
+      if (custom) tpl = custom;
+    } catch {}
+    const map: Record<string, string> = {
+      name: String(appt.customers?.full_name || "").trim() || "there",
+      ref: appt.appointment_ref || appointmentId.slice(0, 8).toUpperCase(),
+      service: appt.service_name || "your shoot",
+      package: appt.package_name || "-",
+      date: fmtDate(appt.booking_date),
+      time: appt.booking_time || "",
+      total: appt.total != null ? `AED ${Number(appt.total).toLocaleString("en-US")}` : "",
+      reason: extra.reason || appt.admin_notes || "-",
+    };
+    let text = tpl.replace(/\{(name|ref|service|package|date|time|total|reason)\}/g, (_m, k) => map[k] || "");
+    if (event === "confirmed" && extra.paid) text += "\n\n💳 Payment received — thank you!";
+    const used = await forwardClientWhatsAppAlert(env, phone, text, map.name);
+    return used ? `+${used}` : "invalid";
+  } catch {
+    return "invalid";
+  }
+}
 
 function fmtDate(d: string): string {
   if (!d) return "";

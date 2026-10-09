@@ -4,7 +4,7 @@
 // Returns the exact international number it was queued to, so the admin can see it.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
-import { emailBookingUpdate, type BookingEvent } from "../../../../_shared/bookingNotify";
+import { emailBookingUpdate, whatsappBookingUpdate, type BookingEvent } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -34,7 +34,8 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env, par
   const plan = byStatus[appt.status];
   if (!plan) return json({ error: `Nothing to send for a booking that is "${appt.status}". Confirm it first.` }, 409, origin);
 
-  const phoneUsed = await forwardClientWhatsAppAlert(env, cust.whatsapp || cust.phone, plan.text, name).catch(() => "");
+  const waRes = await whatsappBookingUpdate(env, id, plan.event);
+  const phoneUsed = waRes.startsWith("+") ? waRes.slice(1) : "";
   const email = await emailBookingUpdate(env, id, plan.event);
 
   await supaAdmin(env, "audit_log", {

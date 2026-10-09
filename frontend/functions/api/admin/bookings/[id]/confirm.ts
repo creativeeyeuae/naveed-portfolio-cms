@@ -7,7 +7,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
-import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
+import { emailBookingUpdate, whatsappBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -78,13 +78,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
       headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ customer_id: appt.customer_id, sender: "admin", sender_name: admin.email, body: `✅ Your booking (${ref}) is confirmed for ${appt.booking_date || ""} at ${appt.booking_time || ""}.${paid ? " Payment received — thank you!" : ""}`, is_read_by_admin: true, is_read_by_client: false }),
     }).catch(() => {});
-    const phone = cust?.whatsapp || cust?.phone;
-    if (phone) {
-      try {
-        const used = await forwardClientWhatsAppAlert(env, phone, `✅ Hi ${cust?.full_name || ""}, your booking *${ref}* is *confirmed* for ${appt.booking_date || ""} at ${appt.booking_time || ""}.${paid ? "\n\nPayment received — thank you!" : ""}\n\nLooking forward to working with you! 📸 — Naveed Anjum`, cust?.full_name);
-        whatsapp = used ? `+${used}` : "invalid";
-      } catch { whatsapp = "failed"; }
-    }
+    whatsapp = await whatsappBookingUpdate(env, appointmentId, "confirmed", { paid });
   }
   const email = await emailBookingUpdate(env, appointmentId, "confirmed");
 

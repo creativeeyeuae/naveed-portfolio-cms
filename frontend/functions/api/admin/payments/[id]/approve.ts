@@ -7,7 +7,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../../_shared/adminAuth";
 import { notifyAllAdmins, type PushEnv } from "../../../../_shared/webpush";
 import { forwardClientWhatsAppAlert } from "../../../../_shared/liveChatWhatsapp";
-import { emailBookingUpdate } from "../../../../_shared/bookingNotify";
+import { emailBookingUpdate, whatsappBookingUpdate } from "../../../../_shared/bookingNotify";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -17,6 +17,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
   const origin = request.headers.get("Origin");
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
+  let waTo = "";
 
   const paymentId = params.id as string;
   const nowIso = new Date().toISOString();
@@ -106,12 +107,7 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
     const apptRow = ((await custRes.json()) as any[])?.[0];
     const cust = apptRow?.customers;
     if (cust) {
-      await forwardClientWhatsAppAlert(
-        env,
-        cust.whatsapp || cust.phone,
-        `✅ Hi ${cust.full_name || ""}, your payment (AED ${payment.total}) has been verified and your booking ${apptRow?.appointment_ref || ""} is now *confirmed* for ${apptRow?.booking_date || ""} at ${apptRow?.booking_time || ""}.\n\nThank you for booking with Naveed Anjum! 📸`,
-        cust.full_name
-      );
+      waTo = await whatsappBookingUpdate(env, payment.appointment_id, "confirmed", { paid: true });
     }
   } catch {}
 
@@ -119,5 +115,5 @@ export const onRequestPost: PagesFunction<AdminEnv & PushEnv> = async (ctx) => {
 
   const emailed = await emailBookingUpdate(env, payment.appointment_id, "confirmed");
 
-  return json({ ok: true , notified: { email: emailed } }, 200, origin);
+  return json({ ok: true , notified: { email: emailed, whatsapp: waTo } }, 200, origin);
 };

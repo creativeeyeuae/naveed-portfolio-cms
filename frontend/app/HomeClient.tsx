@@ -5323,7 +5323,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               <span>Payment: {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"} · </span><StatusPill status={payment.status} />
                               {payment.receipt_signed_url?(
                                 <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL}}>View Receipt →</a>
-                              ):payment.method==="bank_transfer"?(
+                              ):payment.method==="bank_transfer"&&payment.status!=="paid"&&payment.status!=="approved"&&payment.status!=="verified"?(
                                 <span style={{color:C.MID}}>Waiting for client's receipt</span>
                               ):null}
                             </div>

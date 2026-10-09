@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient as _createSupabaseClient } from "@supabase/supabase-js";
@@ -15,7 +15,7 @@ import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
-import { EMAIL_STARTERS } from "@/lib/emailStarterTemplates";
+import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 type Img = { url: string; orientation: string; caption?: string };
@@ -2661,6 +2661,20 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   useEffect(()=>{ if(emailCampaignAddOpen&&!emailOutreachTags) loadEmailOutreachTags(); },[emailCampaignAddOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const [emailCampaignForm,setEmailCampaignForm]=useState<any>(EMAIL_CAMPAIGN_EMPTY);
+  // Starter designs filled with the REAL website details (socials, contact, hero + project photos).
+  const emailStarters=useMemo(()=>{
+    const ok=(u:any)=>typeof u==="string"&&/^https:\/\//i.test(u);
+    const heroImages=(settings.heroSlides||[]).map((h:any)=>h?.img).filter(ok);
+    const workImages=(projects||[]).map((pr:any)=>pr?.coverImage).filter(ok).slice(0,12);
+    const site="https://bynaveedanjum.com";
+    return buildEmailStarters({
+      name:settings.aboutName||"Naveed Anjum",
+      site, workUrl:site+"/work", contactUrl:site+"/contact",
+      phone:settings.phone||"", email:settings.email||"", waNumber:settings.waNumber||"", address:settings.address||settings.location||"",
+      instagram:settings.instagram||"", youtube:settings.youtube||"", linkedin:settings.linkedin||"", tiktok:settings.tiktok||"",
+      heroImages, workImages,
+    });
+  },[settings,projects]);
   const [emailCampaignOpenId,setEmailCampaignOpenId]=useState<string|null>(null);
   const [emailCampaignDetail,setEmailCampaignDetail]=useState<any>(null);
   const [emailCampaignBusy,setEmailCampaignBusy]=useState(false);
@@ -3694,6 +3708,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   function emailAddBlock(type:string){
     const blank:Record<string,any>={
+      hero:{type:"hero",image:(settings.heroSlides||[]).map((h:any)=>h?.img).find((u:any)=>typeof u==="string"&&/^https:/i.test(u))||"",eyebrow:(settings.aboutName||"Naveed Anjum").toUpperCase(),title:"Your headline here",subtitle:"A short supporting line",btnText:"View Portfolio",btnHref:"https://bynaveedanjum.com/work",overlay:"#0f0a1a",overlayOpacity:0.55,height:320},
+      contact:{type:"contact",phone:settings.phone||"",email:settings.email||"",website:"https://bynaveedanjum.com",address:settings.address||settings.location||""},
+      gallery:{type:"gallery",img1:"",img2:"",cap1:"",cap2:"",link1:"",link2:""},
       logo:{type:"logo",src:"",alt:"Logo",width:160,align:"center"},
       heading:{type:"heading",text:"Heading"},
       text:{type:"text",html:"Write something…"},
@@ -3701,7 +3718,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       button:{type:"button",text:"Click here",href:"https://"},
       divider:{type:"divider"},
       spacer:{type:"spacer",height:24},
-      social:{type:"social",instagram:"",facebook:"",youtube:"",linkedin:"",tiktok:"",whatsapp:"",website:"https://bynaveedanjum.com"},
+      social:{type:"social",instagram:settings.instagram||"",facebook:"",youtube:settings.youtube||"",linkedin:settings.linkedin||"",tiktok:settings.tiktok||"",whatsapp:"",website:"https://bynaveedanjum.com"},
       html:{type:"html",html:"<p>Custom HTML</p>"},
       footer:{type:"footer",text:"You're receiving this because you're a valued contact of Naveed Anjum."},
     };
@@ -3718,7 +3735,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   }
   // Start a NEW template from a professional starter design (fully editable afterwards).
   function emailStartFromStarter(key:string){
-    const st=EMAIL_STARTERS.find(s=>s.key===key); if(!st) return;
+    const st=emailStarters.find(s=>s.key===key); if(!st) return;
     setEmailTemplateForm({name:st.name,subject:st.subject,blocks:JSON.parse(JSON.stringify(st.blocks))});
     setEmailTemplateEditId("new"); setEmailTestMsg(""); setEmailStartersOpen(false);
   }
@@ -6371,7 +6388,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           {EMAIL_FONTS.map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
                         </select>
                       );
-                      const LABELS:Record<string,string>={logo:"Logo",heading:"Heading",text:"Paragraph",image:"Image",button:"Button",divider:"Divider",spacer:"Spacer",social:"Social icons",html:"Custom HTML",footer:"Footer"};
+                      const LABELS:Record<string,string>={hero:"Hero header (photo)",contact:"Contact bar",gallery:"Two photos",logo:"Logo",heading:"Heading",text:"Paragraph",image:"Image",button:"Button",divider:"Divider",spacer:"Spacer",social:"Social icons",html:"Custom HTML",footer:"Footer"};
                       return (
                         <>
                           {/* ── Global design ─────────────────────────────────────── */}
@@ -6443,6 +6460,48 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                       </label>
                                     </div>
                                   )}
+                                  {b.type==="hero"&&(
+                                    <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+                                      <input style={S.inp} value={b.image||""} onChange={e=>emailUpdateBlock(idx,{image:e.target.value})} placeholder="Background photo URL (from Media Library or your project images)" />
+                                      {(()=>{ const pics=Array.from(new Set([...(settings.heroSlides||[]).map((h:any)=>h?.img),...(projects||[]).map((pr:any)=>pr?.coverImage)].filter((u:any)=>typeof u==="string"&&/^https:/i.test(u)))).slice(0,12) as string[]; return pics.length?(
+                                        <div style={{display:"flex",gap:6,overflowX:"auto" as const,paddingBottom:4}}>
+                                          {pics.map(u=>(<button key={u} title="Use this photo" onClick={()=>emailUpdateBlock(idx,{image:u})} style={{flex:"0 0 auto",width:70,height:46,padding:0,border:b.image===u?`2px solid ${C.P}`:`1px solid ${C.BORDER}`,borderRadius:4,background:`url('${u}') center/cover`,cursor:"pointer"}} />))}
+                                        </div>):null; })()}
+                                      <div style={{display:"flex",gap:6,flexWrap:"wrap" as const}}>
+                                        <input style={{...S.inp,flex:1,minWidth:120}} value={b.eyebrow||""} onChange={e=>emailUpdateBlock(idx,{eyebrow:e.target.value})} placeholder="Small top line (e.g. NAVEED ANJUM)" />
+                                        <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:10.5,color:C.MID}}>Height <input type="number" min={180} max={520} value={b.height||""} placeholder="320" onChange={e=>emailUpdateBlock(idx,{height:Number(e.target.value)||undefined})} style={{...S.inp,width:70,padding:"6px"}} /></label>
+                                      </div>
+                                      <textarea style={{...S.inp,minHeight:50}} value={b.title||""} onChange={e=>emailUpdateBlock(idx,{title:e.target.value})} placeholder="Big title (Enter = new line)" />
+                                      <input style={S.inp} value={b.subtitle||""} onChange={e=>emailUpdateBlock(idx,{subtitle:e.target.value})} placeholder="Subtitle (optional)" />
+                                      <div style={{display:"flex",gap:6,flexWrap:"wrap" as const}}>
+                                        <input style={{...S.inp,flex:1,minWidth:120}} value={b.btnText||""} onChange={e=>emailUpdateBlock(idx,{btnText:e.target.value})} placeholder="Button text (optional)" />
+                                        <input style={{...S.inp,flex:1,minWidth:120}} value={b.btnHref||""} onChange={e=>emailUpdateBlock(idx,{btnHref:e.target.value})} placeholder="Button link" />
+                                      </div>
+                                      <div style={{display:"flex",gap:12,flexWrap:"wrap" as const,alignItems:"center"}}>
+                                        {emailColor("Overlay",b.overlay,v=>emailUpdateBlock(idx,{overlay:v||undefined}))}
+                                        <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Darkness
+                                          <input type="range" min={0} max={90} value={Math.round((b.overlayOpacity??0.55)*100)} onChange={e=>emailUpdateBlock(idx,{overlayOpacity:Number(e.target.value)/100})} />
+                                          <span>{Math.round((b.overlayOpacity??0.55)*100)}%</span>
+                                        </label>
+                                        {emailColor("Button",b.btnColor,v=>emailUpdateBlock(idx,{btnColor:v||undefined}))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  {b.type==="contact"&&(
+                                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6}}>
+                                      {[["phone","Phone"],["whatsapp","WhatsApp number"],["email","Email"],["website","Website"],["address","Address"]].map(([k,ph])=>(
+                                        <input key={k} style={S.inp} value={b[k]||""} onChange={e=>emailUpdateBlock(idx,{[k]:e.target.value})} placeholder={ph} />
+                                      ))}
+                                      <button onClick={()=>emailUpdateBlock(idx,{phone:settings.phone||"",email:settings.email||"",website:"https://bynaveedanjum.com",address:settings.address||settings.location||""})} style={{...S.btnO,padding:"6px 10px",fontSize:10.5}}>↻ Fill from website</button>
+                                    </div>
+                                  )}
+                                  {b.type==="gallery"&&(
+                                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6}}>
+                                      {[["img1","Photo 1 URL"],["img2","Photo 2 URL"],["cap1","Caption 1 (optional)"],["cap2","Caption 2 (optional)"],["link1","Link 1 (optional)"],["link2","Link 2 (optional)"]].map(([k,ph])=>(
+                                        <input key={k} style={S.inp} value={b[k]||""} onChange={e=>emailUpdateBlock(idx,{[k]:e.target.value})} placeholder={ph} />
+                                      ))}
+                                    </div>
+                                  )}
                                   {b.type==="social"&&(
                                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:6}}>
                                       {[["instagram","Instagram URL"],["facebook","Facebook URL"],["youtube","YouTube URL"],["linkedin","LinkedIn URL"],["tiktok","TikTok URL"],["whatsapp","WhatsApp number or link"],["website","Website URL"]].map(([k,ph])=>(
@@ -6460,7 +6519,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           </div>
 
                           <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:14}}>
-                            {["logo","heading","text","image","button","divider","spacer","social","html","footer"].map(t=>(
+                            {["hero","logo","heading","text","image","gallery","button","divider","spacer","social","contact","html","footer"].map(t=>(
                               <button key={t} onClick={()=>emailAddBlock(t)} style={{...S.btnO,padding:"6px 12px",fontSize:10.5}}>+ {LABELS[t]}</button>
                             ))}
                           </div>
@@ -6523,7 +6582,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
                     <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:12}}>Professional designs — pick one, then edit anything</div>
                     <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:12}}>
-                      {EMAIL_STARTERS.map(st=>{
+                      {emailStarters.map(st=>{
                         const html=renderEmailHtml(st.blocks as any,{first_name:"Sarah",company:"Emaar"});
                         return (
                           <button key={st.key} onClick={()=>emailStartFromStarter(st.key)} style={{textAlign:"left" as const,background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:10,padding:0,cursor:"pointer",overflow:"hidden" as const,color:C.FG}}>

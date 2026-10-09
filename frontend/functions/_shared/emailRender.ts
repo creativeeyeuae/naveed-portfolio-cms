@@ -44,6 +44,12 @@ export type EmailBlock =
   | ({ type: "social"; instagram?: string; facebook?: string; youtube?: string; linkedin?: string; tiktok?: string; website?: string; whatsapp?: string } & BlockStyle)
   | ({ type: "html"; html: string } & BlockStyle)
   | ({ type: "footer"; text: string } & BlockStyle)
+  // Website-style hero: full-width background photo + dark overlay + title/subtitle/button.
+  | ({ type: "hero"; image: string; eyebrow?: string; title: string; subtitle?: string; btnText?: string; btnHref?: string; overlay?: string; overlayOpacity?: number; height?: number; titleFont?: string } & BlockStyle)
+  // Contact bar: phone / email / website / address in one tidy row.
+  | ({ type: "contact"; phone?: string; email?: string; website?: string; address?: string; whatsapp?: string } & BlockStyle)
+  // Two photos side by side (stacks on phones), optional captions + links.
+  | ({ type: "gallery"; img1: string; img2: string; cap1?: string; cap2?: string; link1?: string; link2?: string } & BlockStyle)
   | { type: "rawhtml"; html: string };
 
 // Email-safe font stacks. Google fonts load in Apple Mail / iOS / many webmail clients and fall
@@ -121,14 +127,22 @@ function safeUrl(u: string | undefined): string {
   const v = String(u || "").trim();
   return /^(https?:|mailto:|tel:|#|\{\{)/i.test(v) || /^data:image\//i.test(v) ? escapeHtml(v) : "#";
 }
+function hexToRgba(hex: string, alpha: number): string {
+  const m = hex.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) return `rgba(15,10,26,${alpha})`;
+  let h = m[1];
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${alpha})`;
+}
 function num(n: unknown, min: number, max: number, def: number): number {
   const x = Number(n);
   return Number.isFinite(x) && x > 0 ? Math.max(min, Math.min(max, x)) : def;
 }
-// Plain text typed in the CMS: keep line breaks. Text that already contains tags is used as HTML.
+// Text typed in the CMS: keep line breaks -- even with inline tags like <b> or <a> in it. Only
+// text that is real block-level HTML (paragraphs, tables, lists...) is left exactly as written.
 function textToHtml(s: string): string {
   const t = String(s || "");
-  return /<[a-z][\s\S]*>/i.test(t) ? t : t.replace(/\r?\n/g, "<br>");
+  return /<(p|div|table|tr|td|ul|ol|li|br|h[1-6])[\s>/]/i.test(t) ? t : t.replace(/\r?\n/g, "<br>");
 }
 
 const VAR_RE = /\{\{\s*([a-z_]+)\s*\}\}/gi;
@@ -198,6 +212,53 @@ function blockToHtml(b: any, s: typeof DEFAULT_SETTINGS): string {
     }
     case "html":
       return `<tr><td style="${pad(8, 8)}${bg}font-family:${bodyFont};color:${s.textColor};">${sanitizeHtml(b.html || "")}</td></tr>`;
+    case "hero": {
+      // Background image via both the `background` attribute and CSS (widest client support);
+      // the overlay is a semi-transparent layer inside, so text stays readable on any photo.
+      // Clients that block background images (some Outlook versions) show the solid fallback colour.
+      const ov = safeColor(b.overlay, "#0f0a1a");
+      const op = b.overlayOpacity !== undefined ? Math.max(0, Math.min(0.95, Number(b.overlayOpacity))) : 0.55;
+      const rgba = hexToRgba(ov, op);
+      const h = num(b.height, 180, 520, 340);
+      const hAlign = b.align || "center";
+      const img = b.image ? safeUrl(b.image) : "";
+      const tFont = fontStack(b.titleFont || b.font, headFont);
+      const btn = b.btnText ? `<a href="${safeUrl(b.btnHref)}" style="display:inline-block;margin-top:22px;background:${safeColor(b.btnColor, s.accent)};color:${safeColor(b.btnTextColor, "#ffffff")};text-decoration:none;font-family:${bodyFont};font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:13px 30px;border-radius:${b.radius !== undefined ? num(b.radius, 0, 40, 4) : 4}px;">${escapeHtml(b.btnText)}</a>` : "";
+      return `<tr><td ${img ? `background="${img}"` : ""} bgcolor="${ov}" valign="middle" style="background-color:${ov};${img ? `background-image:url('${img}');background-size:cover;background-position:center;` : ""}padding:0;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td height="${h}" valign="middle" align="${hAlign}" style="height:${h}px;background:${rgba};padding:36px 40px;text-align:${hAlign};">
+${b.eyebrow ? `<div style="font-family:${bodyFont};font-size:11px;letter-spacing:4px;text-transform:uppercase;color:${safeColor(b.color, "#ffffff")};opacity:0.85;margin-bottom:12px;">${escapeHtml(b.eyebrow)}</div>` : ""}
+<div style="font-family:${tFont};font-size:${num(b.size, 18, 56, 34)}px;line-height:1.2;font-weight:700;color:${safeColor(b.color, "#ffffff")};">${sanitizeHtml(textToHtml(b.title || ""))}</div>
+${b.subtitle ? `<div style="font-family:${bodyFont};font-size:15px;line-height:1.6;color:${safeColor(b.color, "#ffffff")};opacity:0.9;margin-top:12px;">${sanitizeHtml(textToHtml(b.subtitle))}</div>` : ""}
+${btn}
+</td></tr></table></td></tr>`;
+    }
+    case "contact": {
+      const items: string[] = [];
+      const lnk = `color:${safeColor(b.color, s.textColor)};text-decoration:none;`;
+      if (b.phone) items.push(`<a href="tel:${escapeHtml(String(b.phone).replace(/[^\d+]/g, ""))}" style="${lnk}">&#9742;&nbsp;${escapeHtml(b.phone)}</a>`);
+      if (b.whatsapp) items.push(`<a href="https://wa.me/${escapeHtml(String(b.whatsapp).replace(/[^\d]/g, ""))}" style="${lnk}">WhatsApp</a>`);
+      if (b.email) items.push(`<a href="mailto:${escapeHtml(b.email)}" style="${lnk}">&#9993;&nbsp;${escapeHtml(b.email)}</a>`);
+      if (b.website) items.push(`<a href="${safeUrl(b.website)}" style="${lnk}">${escapeHtml(String(b.website).replace(/^https?:\/\//, "").replace(/\/$/, ""))}</a>`);
+      if (!items.length && !b.address) return "";
+      const cAlign = b.align || "center";
+      return `<tr><td align="${cAlign}" style="${pad(16, 16)}${bg}text-align:${cAlign};font-family:${bodyFont};font-size:${num(b.size, 10, 18, 13)}px;line-height:1.9;color:${safeColor(b.color, s.textColor)};">${items.join(`&nbsp;&nbsp;<span style="opacity:.4;">|</span>&nbsp;&nbsp;`)}${b.address ? `<br><span style="opacity:.75;">${escapeHtml(b.address)}</span>` : ""}</td></tr>`;
+    }
+    case "gallery": {
+      // Equal-size photo tiles (cover-cropped via background image, so portrait and landscape
+      // photos line up neatly); two side by side, stacking on phones.
+      const tileW = Math.floor((s.width - 56 - 24) / 2);
+      const cell = (src: string, cap?: string, link?: string) => {
+        if (!src) return "";
+        const u = safeUrl(src);
+        const tile = `<div style="width:100%;height:190px;background-color:#e9e5f0;background-image:url('${u}');background-size:cover;background-position:center;border-radius:6px;font-size:0;line-height:0;">&nbsp;</div>`;
+        const wrapped = link ? `<a href="${safeUrl(link)}" style="text-decoration:none;display:block;">${tile}</a>` : tile;
+        const capHtml = cap ? `<div style="font-family:${bodyFont};font-size:12px;line-height:1.4;color:${safeColor(b.color, s.textColor)};padding-top:8px;text-align:left;">${escapeHtml(cap)}</div>` : "";
+        return `<div style="display:inline-block;width:100%;max-width:${tileW}px;vertical-align:top;margin:0 6px 14px;">${wrapped}${capHtml}</div>`;
+      };
+      const both = cell(b.img1, b.cap1, b.link1) + cell(b.img2, b.cap2, b.link2);
+      if (!both) return "";
+      return `<tr><td align="center" style="${pad(8, 8)}${bg}text-align:center;font-size:0;">${both}</td></tr>`;
+    }
     case "footer":
       return `<tr><td align="${align}" style="${pad(24, 28)}${bg}text-align:${align};font-family:${fontStack(b.font, bodyFont)};font-size:${num(b.size, 9, 16, 11)}px;line-height:1.6;color:${safeColor(b.color, "#9a92a8")};">${sanitizeHtml(textToHtml(b.text || ""))}</td></tr>`;
     default:

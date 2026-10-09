@@ -35,15 +35,29 @@ const AI_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast";
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
 
+// Whether Naveed's WhatsApp bridge is currently connected -- lets the chat widget show the
+// "continue on WhatsApp" handover only when it can actually reach him (otherwise it offers a
+// direct wa.me link instead). Read from the same single whatsapp_connection row the CMS uses;
+// any failure reads as "not connected" so the visitor is never promised something that can't
+// happen.
+async function whatsappConnected(env: any): Promise<boolean> {
+  try {
+    const r = await supaAdmin(env, "whatsapp_connection?select=status&limit=1", { method: "GET" });
+    if (!r.ok) return false;
+    return ((await r.json()) as any[])?.[0]?.status === "connected";
+  } catch { return false; }
+}
+
 export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
   const origin = request.headers.get("Origin");
+  const whatsapp = await whatsappConnected(env);
   const visitorId = await getVisitorIdFromRequest(request, env);
-  if (!visitorId) return json({ messages: [] }, 200, origin);
+  if (!visitorId) return json({ messages: [], whatsapp }, 200, origin);
 
   const res = await supaAdmin(env as any, `live_chat_messages?visitor_id=eq.${visitorId}&order=created_at.asc&limit=500`, {
     method: "GET",
   });
-  if (!res.ok) return json({ messages: [] }, 200, origin);
+  if (!res.ok) return json({ messages: [], whatsapp }, 200, origin);
   const rows = (await res.json()) as any[];
 
   // Mark admin's replies as read now that the visitor has fetched the thread.
@@ -55,7 +69,7 @@ export const onRequestGet: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 
-  return json({ messages: rows }, 200, origin);
+  return json({ messages: rows, whatsapp }, 200, origin);
 };
 
 // Builds the AI's grounding context from whatever is ACTUALLY saved in the CMS right now

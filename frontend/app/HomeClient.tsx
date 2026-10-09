@@ -1251,10 +1251,42 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   const listRef = useRef<HTMLDivElement|null>(null);
   const unread = messages.filter(m=>m.sender==="admin").length>0 && messages[messages.length-1]?.sender==="admin";
 
+  // ── Creative Bot online/offline ──────────────────────────────────────────
+  // Visitors must NEVER see raw technical errors ("Unexpected token <", "JSON", HTTP codes).
+  // Any failure to reach the chat service -- Cloudflare's daily request limit, a network
+  // drop, a server error, an HTML error page instead of JSON -- just flips the bot to
+  // "offline": grey dot in the header + one friendly notice with a WhatsApp fallback link
+  // (wa.me opens WhatsApp directly, so it works even when the site's own services are down).
+  // The very next successful poll flips it back and shows a one-line "back online" note.
+  const BOT_NAME = "Creative Bot";
+  const [online,setOnline] = useState(true);
+  const [backOnline,setBackOnline] = useState(false);
+  const [waConnected,setWaConnected] = useState(true); // Naveed's WhatsApp bridge status, from GET /api/visitor/chat
+  const wasOfflineRef = useRef(false);
+  function markOnline(ok:boolean){
+    setOnline(ok);
+    if(!ok){ wasOfflineRef.current = true; setBackOnline(false); }
+    else if(wasOfflineRef.current){ wasOfflineRef.current = false; setBackOnline(true); setErr(""); }
+  }
+  // Safe JSON read: an error page (HTML) or empty body returns null instead of throwing a
+  // parse error that would otherwise end up shown to the visitor.
+  async function readJson(res:Response):Promise<any|null>{
+    try{ return await res.json(); }catch{ return null; }
+  }
+  // Only a genuine, readable validation message from our own API (4xx with JSON {error})
+  // is worth showing as-is; everything else is treated as "service unavailable".
+  function isServiceDown(res:Response|null, data:any):boolean{
+    if(!res||!data) return true;
+    return res.status>=500 || res.status===429 || res.status===403;
+  }
+
   async function loadThread(){
     try{
       const res = await fetch("/api/visitor/chat");
-      const data = await res.json();
+      const data = await readJson(res);
+      if(isServiceDown(res,data)){ markOnline(false); setLoaded(true); return; }
+      markOnline(true);
+      setWaConnected(data.whatsapp!==false);
       const next:{id:string;sender:string;body:string;created_at:string}[] = data.messages||[];
       const nextLast = next[next.length-1];
       // Only chime for a reply that's genuinely new since the last poll -- never on the very
@@ -1265,7 +1297,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
       }
       if(nextLast) lastSeenIdRef.current = nextLast.id;
       setMessages(next);
-    }catch{}
+    }catch{ markOnline(false); }
     setLoaded(true);
   }
   useEffect(()=>{
@@ -1337,12 +1369,17 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     setSending(true); setErr("");
     try{
       const res = await fetch("/api/visitor/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:t})});
-      const data = await res.json();
+      const data = await readJson(res);
       if(res.status===401&&data?.needsIdentity){ setNeedsIdentity(true); setPendingText(t); setSending(false); return; }
-      if(!res.ok) throw new Error(data?.error||"Could not send your message.");
+      if(isServiceDown(res,data)){ markOnline(false); setSending(false); return; }
+      if(!res.ok) throw new Error(data?.error||"Sorry, that message didn't go through. Please try again.");
+      markOnline(true);
       setText("");
       await loadThread();
-    }catch(e:any){ setErr(e.message||"Could not send your message."); }
+    }catch(e:any){
+      // A thrown fetch (network down) is "offline", not an error message for the visitor.
+      if(e instanceof TypeError){ markOnline(false); } else { setErr(e.message||"Sorry, that message didn't go through. Please try again."); }
+    }
     setSending(false);
   }
   function send(t:string){
@@ -1356,13 +1393,17 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     setIdBusy(true); setErr("");
     try{
       const res = await fetch("/api/visitor/identify",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:idName.trim(),email:idEmail.trim(),whatsapp:idWa.trim()})});
-      const data = await res.json();
-      if(!res.ok) throw new Error(data?.error||"Could not save your details.");
+      const data = await readJson(res);
+      if(isServiceDown(res,data)){ markOnline(false); setIdBusy(false); return; }
+      if(!res.ok) throw new Error(data?.error||"Please check your details and try again.");
       setNeedsIdentity(false);
       const toSend=pendingText; setPendingText("");
       setIdBusy(false);
       await actuallySend(toSend);
-    }catch(e:any){ setErr(e.message||"Could not save your details."); setIdBusy(false); }
+    }catch(e:any){
+      if(e instanceof TypeError){ markOnline(false); } else { setErr(e.message||"Please check your details and try again."); }
+      setIdBusy(false);
+    }
   }
   // "End chat" -- distinct from just closing/minimizing the panel (the existing ✕, which
   // keeps the same conversation and picks up right where it left off). This clears this
@@ -1387,17 +1428,23 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
           <div style={{background:`linear-gradient(135deg,${C.P} 0%,${C.PD} 100%)`,padding:"16px 18px",display:"flex",alignItems:"center",gap:10}}>
             <div style={{width:36,height:36,borderRadius:"50%",background:"rgba(255,255,255,0.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{chatIcon(18,"#fff")}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{color:"#fff",fontSize:14,fontWeight:700,lineHeight:1.2}}>Live Chat</div>
-              <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}><span style={{width:6,height:6,borderRadius:"50%",background:"#4ADE80",display:"inline-block"}} />Naveed usually replies within a few hours</div>
+              <div style={{color:"#fff",fontSize:14,fontWeight:700,lineHeight:1.2}}>{BOT_NAME}</div>
+              <div style={{color:"rgba(255,255,255,0.78)",fontSize:11,display:"flex",alignItems:"center",gap:5}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:online?"#4ADE80":"#9CA3AF",display:"inline-block",boxShadow:online?"0 0 0 2px rgba(74,222,128,0.25)":"none"}} />
+                {online?"Online · here to help":"Offline right now"}
+              </div>
             </div>
             <button aria-label="Close chat" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.85)",fontSize:18,cursor:"pointer",lineHeight:1,padding:4}}>✕</button>
           </div>
           <div ref={listRef} style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
             <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
-              Hi there 👋 How can I help you today? Pick an option below or type your own message.
+              Hi there 👋 {BOT_NAME} here. How can I help you today? Pick an option below or type your own message.
             </div>
             {loaded&&messages.map((m,mi)=>(
               <div key={m.id}>
+                {m.sender==="admin"&&(mi===0||messages[mi-1].sender!=="admin")&&(
+                  <div style={{fontSize:10.5,color:C.MID,margin:"0 0 4px 4px",letterSpacing:0.3}}>{BOT_NAME}</div>
+                )}
                 <div style={{display:"flex",justifyContent:m.sender==="admin"?"flex-start":"flex-end",marginBottom:10}}>
                   <div style={{maxWidth:m.sender==="admin"?"90%":"82%",background:m.sender==="admin"?C.DARK:C.P,border:m.sender==="admin"?`1px solid ${C.BORDER}`:"none",color:"#fff",borderRadius:m.sender==="admin"?"4px 14px 14px 14px":"14px 4px 14px 14px",padding:m.sender==="admin"?"11px 14px":"9px 13px",fontSize:13.5,lineHeight:1.55,whiteSpace:"pre-wrap"}}>
                     {m.sender==="admin"?<BotReplyBody body={m.body} onPick={send} disabled={sending}/>:m.body}
@@ -1405,7 +1452,13 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
                 </div>
                 {m.sender==="admin"&&m.body===WA_HANDOVER_PROMPT&&mi===messages.length-1&&handoverDismissedId!==m.id&&!expired&&(
                   <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14,marginTop:-2}}>
-                    <button onClick={chooseWhatsAppHandover} disabled={sending} style={{textAlign:"left",background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer",fontWeight:600}}>📱 Connect with Naveed on WhatsApp</button>
+                    {waConnected?(
+                      <button onClick={chooseWhatsAppHandover} disabled={sending} style={{textAlign:"left",background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer",fontWeight:600}}>📱 Connect with Naveed on WhatsApp</button>
+                    ):(
+                      // Bridge offline: the automatic handover can't reach Naveed right now, so
+                      // open WhatsApp directly instead (works regardless of the bridge).
+                      <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{textAlign:"left",background:C.P,color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:600,textDecoration:"none"}}>📱 Message Naveed on WhatsApp</a>
+                    )}
                     <button onClick={()=>dismissHandoverPrompt(m.id)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 12px",fontSize:12.5,cursor:"pointer"}}>💬 I have another question</button>
                   </div>
                 )}
@@ -1436,7 +1489,17 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
                 <button type="submit" disabled={idBusy} style={{...S.btnP,marginTop:4}}>{idBusy?"...":"Start chatting"}</button>
               </form>
             )}
-            {err&&<div style={{color:"#e74c3c",fontSize:12,marginTop:10}}>{err}</div>}
+            {!online&&(
+              <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"11px 14px",fontSize:13,color:C.FG,marginTop:8,maxWidth:"92%",lineHeight:1.55}}>
+                <div style={{fontSize:10.5,color:C.MID,marginBottom:4}}>{BOT_NAME}</div>
+                {BOT_NAME} is offline at the moment 🙏 Anything you typed is still in the box below — please try again in a little while, or reach Naveed directly on WhatsApp:
+                <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",marginTop:10,textAlign:"center",background:C.P,color:"#fff",borderRadius:10,padding:"9px 12px",fontSize:12.5,fontWeight:600,textDecoration:"none"}}>📱 Message Naveed on WhatsApp</a>
+              </div>
+            )}
+            {online&&backOnline&&(
+              <div style={{textAlign:"center",fontSize:11.5,color:C.MID,margin:"8px 0 4px"}}>✅ {BOT_NAME} is back online — I'm with you again!</div>
+            )}
+            {err&&online&&<div style={{color:"#e74c3c",fontSize:12,marginTop:10}}>{err}</div>}
           </div>
           {confirmEndChat?(
             <div style={{display:"flex",flexDirection:"column",gap:8,padding:"12px 14px",borderTop:`1px solid ${C.BORDER}`,background:C.DARK}}>

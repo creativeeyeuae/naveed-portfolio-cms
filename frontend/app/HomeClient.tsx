@@ -14,6 +14,7 @@ import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
+import EmailCompose from "@/components/cms/EmailCompose";
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
@@ -2940,7 +2941,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // Email Designer (CMS > Email Designer) -- see functions/api/admin/email/{templates,campaigns}.ts
   // and functions/_shared/emailRender.ts. The preview below is a client-side approximation of
   // that same shared renderer -- it never sends anything, so it's fine if it's only visually close.
-  const [emailSubTab,setEmailSubTab]=useState<"templates"|"campaigns">("templates");
+  const [emailSubTab,setEmailSubTab]=useState<"templates"|"campaigns"|"sent">("templates");
+  const [gmCompose,setGmCompose]=useState<{tpl?:string;to?:any[]}|null>(null);
+  const [gmQ,setGmQ]=useState("");
+  const [gmSent,setGmSent]=useState<any[]|null>(null);
+  const [gmToast,setGmToast]=useState("");
+  const [gmRail,setGmRail]=useState(false);
   const [emailTemplates,setEmailTemplates]=useState<any[]|null>(null);
   const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
   const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
@@ -4172,7 +4178,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ alert(e.message||"Could not delete campaign"); }
     setEmailCampaignBusy(false);
   }
-  useEffect(()=>{ if(cmsTab==="email"&&adminSession){ loadEmailTemplates(); loadEmailCampaigns(); } },[cmsTab,adminSession]);
+  useEffect(()=>{ if(cmsTab==="email"&&adminSession){ loadEmailTemplates(); loadEmailCampaigns(); loadGmSent(); if(!clientDirList) loadClientDir(); } },[cmsTab,adminSession]);
+  async function loadGmSent(){ if(!adminSession) return; try{ const r=await fetch("/api/admin/email/send-one",{headers:{Authorization:`Bearer ${adminSession.access_token}`}}); const j=await r.json(); if(r.ok) setGmSent(j.sent||[]); }catch{} }
 
   // WhatsApp's own loaders/handlers (loadWaConversations, waSendMessage, quick replies,
   // connection, etc.) now live inside components/cms/WhatsAppWorkspace.tsx -- see the comment
@@ -6796,14 +6803,35 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             Templates and campaigns are two independent lists under one tab; creating a template
             or a draft campaign never sends anything on its own -- only "Send Now" does. */}
         {cmsTab==="email"&&(
-          <div style={{maxWidth:1040,margin:"48px auto",padding:"0 24px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap" as const,gap:12}}>
-              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase" as const}}>Email Designer</div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>setEmailSubTab("templates")} style={emailSubTab==="templates"?S.btnP:S.btnO}>Templates</button>
-                <button onClick={()=>setEmailSubTab("campaigns")} style={emailSubTab==="campaigns"?S.btnP:S.btnO}>Campaigns</button>
-              </div>
+          <div className="gm">
+            <style>{".gm{--gm-bg:#F6F8FC;--gm-surf:#fff;--gm-ink:#1F1F1F;--gm-mid:#5F6368;--gm-line:#E5E7EB;--gm-acc:#7C3AED;--gm-acc2:#EDE7FE;--gm-hov:#F2F0F9;font-family:'Google Sans',Manrope,Roboto,system-ui,sans-serif;background:var(--gm-bg);color:var(--gm-ink);min-height:calc(100vh - 60px);border-radius:16px;margin:16px;overflow:hidden}\n.gm-top{display:flex;align-items:center;gap:14px;padding:10px 16px;height:64px;box-sizing:border-box}\n.gm-burger{width:44px;height:44px;border-radius:50%;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--gm-mid)}.gm-burger:hover{background:#E8EAED}\n.gm-logo{display:flex;align-items:center;gap:8px;font-size:21px;color:var(--gm-mid);min-width:150px}.gm-logo b{display:inline-flex;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#8B5CF6,#EC4899);color:#fff;align-items:center;justify-content:center;font-size:17px}\n.gm-search{flex:1;max-width:720px;display:flex;align-items:center;gap:10px;background:#E9EEF6;border-radius:28px;height:48px;padding:0 18px;color:var(--gm-mid)}.gm-search:focus-within{background:#fff;box-shadow:0 1px 3px rgba(60,64,67,.3)}\n.gm-search input{border:none;outline:none;background:transparent;font:inherit;font-size:16px;flex:1;color:var(--gm-ink)}\n.gm-me{margin-left:auto;width:40px;height:40px;border-radius:50%;background:#7C3AED;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700}\n.gm-body{display:grid;grid-template-columns:256px 1fr;gap:0;padding:0 16px 16px 0}\n.gm-rail{padding:8px 12px 8px 8px}\n.gm-composebtn{display:flex;align-items:center;gap:14px;height:56px;padding:0 24px 0 18px;border:none;border-radius:16px;background:#C2E7FF;background:var(--gm-acc2);color:#3B0764;font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);margin:0 0 16px 4px;transition:box-shadow .15s}.gm-composebtn:hover{box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15)}\n.gm-nav{display:flex;align-items:center;gap:16px;width:100%;height:36px;padding:0 12px 0 24px;border:none;border-radius:0 18px 18px 0;background:transparent;font:inherit;font-size:14px;color:var(--gm-ink);cursor:pointer;text-align:left}.gm-nav:hover{background:#E8EAED}.gm-nav.on{background:#E9DDFD;font-weight:700;color:#3B0764}.gm-nav span:last-child{margin-left:auto;font-size:12.5px}\n.gm-main{background:var(--gm-surf);border-radius:16px;min-height:70vh;overflow:hidden;color:var(--gm-ink)}\n.gm-toolbar{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--gm-line);min-height:48px;flex-wrap:wrap}\n.gm-tbtn{border:1px solid var(--gm-line);background:#fff;border-radius:18px;padding:7px 14px;font:inherit;font-size:13px;color:var(--gm-ink);cursor:pointer}.gm-tbtn:hover{background:var(--gm-hov)}.gm-tbtn.pri{background:var(--gm-acc);color:#fff;border-color:var(--gm-acc)}\n.gm-row{display:grid;grid-template-columns:72px 200px 1fr auto;align-items:center;gap:14px;padding:0 16px;min-height:72px;border-bottom:1px solid #F1F3F4;cursor:pointer;font-size:14px}.gm-row:hover{box-shadow:inset 1px 0 0 #dadce0,inset -1px 0 0 #dadce0,0 1px 2px 0 rgba(60,64,67,.3),0 1px 3px 1px rgba(60,64,67,.15);position:relative;z-index:1}\n.gm-thumb{width:64px;height:52px;border-radius:8px;overflow:hidden;background:#F1F3F4;border:1px solid var(--gm-line);position:relative}.gm-thumb iframe{width:640px;height:520px;border:0;transform:scale(.1);transform-origin:0 0;pointer-events:none}\n.gm-row .who{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gm-row .sn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--gm-mid)}.gm-row .sn b{color:var(--gm-ink)}\n.gm-acts{display:flex;gap:6px;align-items:center}.gm-acts .when{font-size:12.5px;color:var(--gm-mid);min-width:64px;text-align:right}\n.gm-pill{font-size:11px;font-weight:700;border-radius:12px;padding:3px 9px}\n.gm-empty{padding:60px 24px;text-align:center;color:var(--gm-mid)}\n.gm-inner{padding:20px 24px;color:var(--gm-ink)}\n.gm-fab{display:none}\n.gm-toast{position:fixed;left:24px;bottom:24px;background:#323232;color:#fff;padding:14px 20px;border-radius:8px;font-size:14px;z-index:300;box-shadow:0 3px 8px rgba(0,0,0,.3)}\n.gm-compose{position:fixed;right:24px;bottom:0;width:560px;max-width:calc(100vw - 32px);height:620px;max-height:calc(100vh - 80px);background:#fff;color:#1F1F1F;border-radius:12px 12px 0 0;box-shadow:0 8px 10px 1px rgba(0,0,0,.14),0 3px 14px 2px rgba(0,0,0,.12),0 5px 5px -3px rgba(0,0,0,.2);display:flex;flex-direction:column;z-index:250;font-family:'Google Sans',Manrope,Roboto,system-ui,sans-serif;overflow:hidden}\n.gm-compose.gm-min{height:44px;width:300px}.gm-compose.gm-max{right:50%;bottom:50%;transform:translate(50%,50%);width:min(1100px,94vw);height:88vh;border-radius:12px}\n.gm-c-head{display:flex;justify-content:space-between;align-items:center;background:#F2F6FC;padding:0 8px 0 16px;height:44px;font-size:14px;font-weight:600;cursor:default;flex-shrink:0}.gm-c-head span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.gm-c-head button{width:30px;height:30px;border:none;background:transparent;border-radius:50%;cursor:pointer;color:#444;font-size:14px}.gm-c-head button:hover{background:#E1E5EA}\n.gm-c-row{display:flex;align-items:center;gap:10px;margin:0 16px;border-bottom:1px solid #F1F3F4;min-height:42px;padding:4px 0;flex-shrink:0}\n.gm-c-lbl{color:#5F6368;font-size:14px;min-width:62px}\n.gm-c-in{border:none;outline:none;font:inherit;font-size:14px;background:transparent;color:#1F1F1F;min-width:120px;flex:1;height:32px}\n.gm-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #DADCE0;border-radius:16px;padding:2px 4px 2px 2px;font-size:13px}.gm-chip b{width:22px;height:22px;border-radius:50%;background:#7C3AED;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px}.gm-chip button{border:none;background:transparent;cursor:pointer;font-size:15px;color:#5F6368;width:20px;height:20px;border-radius:50%}.gm-chip button:hover{background:#F1F3F4}\n.gm-sugg{position:absolute;top:100%;left:0;right:0;background:#fff;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.18);z-index:5;padding:6px 0;max-height:260px;overflow:auto}.gm-sugg button{display:flex;gap:12px;align-items:center;width:100%;padding:8px 14px;border:none;background:transparent;font:inherit;text-align:left;cursor:pointer;color:#1F1F1F}.gm-sugg button:hover{background:#F1F3F4}.gm-sugg small{color:#5F6368}\n.gm-av{width:32px;height:32px;border-radius:50%;background:#7C3AED;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}\n.gm-c-body{flex:1;min-height:0;background:#F6F8FC;margin:10px 16px;border-radius:8px;overflow:hidden;border:1px solid #F1F3F4}.gm-c-body iframe{width:100%;height:100%;border:0;background:#fff}\n.gm-c-foot{display:flex;align-items:center;gap:12px;padding:10px 16px 14px;flex-shrink:0}\n.gm-send{background:#0B57D0;background:var(--gm-acc,#7C3AED);color:#fff;border:none;border-radius:18px;height:36px;padding:0 26px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.gm-send:hover{box-shadow:0 1px 3px rgba(0,0,0,.3)}.gm-send:disabled{opacity:.6}\n.gm-ico{border:none;background:transparent;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px}.gm-ico:hover{background:#F1F3F4}\n@media(max-width:900px){.gm{margin:0;border-radius:0}.gm-body{grid-template-columns:1fr;padding:0}.gm-rail{display:none;position:fixed;inset:0 25% 0 0;background:#fff;z-index:220;box-shadow:0 0 24px rgba(0,0,0,.3);padding-top:16px}.gm-rail.open{display:block}.gm-logo span{display:none}.gm-logo{min-width:0}.gm-main{border-radius:0}\n.gm-row{grid-template-columns:44px 1fr;grid-template-rows:auto auto;gap:2px 12px;padding:12px 16px;min-height:0}.gm-row .gm-thumb{grid-row:1 / span 2;width:44px;height:44px;border-radius:50%}.gm-row .sn{grid-column:2}.gm-acts{grid-column:2}.gm-acts .when{order:-1;text-align:left;margin-right:auto}\n.gm-fab{display:flex;position:fixed;right:16px;bottom:20px;z-index:200;align-items:center;gap:10px;height:56px;padding:0 20px;border:none;border-radius:16px;background:var(--gm-acc2);color:#3B0764;font:inherit;font-weight:700;box-shadow:0 3px 8px rgba(0,0,0,.25)}\n.gm-compose,.gm-compose.gm-max{inset:0;width:100%;max-width:none;height:100%;max-height:none;border-radius:0;transform:none}.gm-compose.gm-min{inset:auto 0 0 0;height:44px}.gm-hide-m{display:none}.gm-search{height:44px}}"}</style>
+            <div className="gm-top">
+              <button className="gm-burger" aria-label="Menu" onClick={()=>setGmRail(v=>!v)}>☰</button>
+              <div className="gm-logo"><b>✉</b><span>Mail</span></div>
+              <label className="gm-search"><span aria-hidden>🔍</span><input value={gmQ} onChange={e=>setGmQ(e.target.value)} placeholder={emailSubTab==="sent"?"Search sent mail":emailSubTab==="campaigns"?"Search campaigns":"Search templates"} aria-label="Search" />{gmQ&&<button onClick={()=>setGmQ("")} style={{border:"none",background:"transparent",cursor:"pointer",fontSize:16,color:"#5F6368"}}>✕</button>}</label>
+              <div className="gm-me" title={adminSession?.user?.email||""}>{String(adminSession?.user?.email||"N")[0].toUpperCase()}</div>
             </div>
+            <div className="gm-body">
+              <aside className={`gm-rail${gmRail?" open":""}`} onClick={()=>setGmRail(false)}>
+                <button className="gm-composebtn" onClick={()=>setGmCompose({})}><span style={{fontSize:20}}>✏️</span>Compose</button>
+                {([["templates","🗂️","Templates",(emailTemplates||[]).length],["sent","📤","Sent",(gmSent||[]).length],["campaigns","📣","Campaigns",(emailCampaigns||[]).length]] as const).map(([k,ic,l,n])=>(
+                  <button key={k} className={`gm-nav${emailSubTab===k?" on":""}`} onClick={()=>{setEmailSubTab(k as any);setEmailTemplateEditId(null);setEmailCampaignOpenId(null);setGmQ("");}}><span>{ic}</span><span>{l}</span><span>{n||""}</span></button>
+                ))}
+                <div style={{fontSize:12,color:"#5F6368",padding:"18px 24px 6px",lineHeight:1.5}}>Sending as<br/><b style={{color:"#1F1F1F"}}>booking@bynaveedanjum.com</b></div>
+              </aside>
+              <main className="gm-main" style={emailSubTab==="campaigns"||emailTemplateEditId?{background:C.BG,color:C.FG}:undefined}>
+              <div className="gm-inner" style={{padding:emailSubTab==="templates"&&!emailTemplateEditId?0:undefined}}>
+            {emailSubTab==="sent"&&(<div style={{margin:"-20px -24px"}}>
+              <div className="gm-toolbar"><button className="gm-tbtn" onClick={loadGmSent}>↻ Refresh</button><span style={{fontSize:12.5,color:"#5F6368",marginLeft:"auto"}}>{(gmSent||[]).length} sent</span></div>
+              {!gmSent?<div className="gm-empty">Loading…</div>:!gmSent.length?<div className="gm-empty"><div style={{fontSize:40}}>📭</div>Nothing sent yet — click <b>Compose</b> to send a template.</div>:
+                gmSent.filter((s:any)=>!gmQ||JSON.stringify(s.details||{}).toLowerCase().includes(gmQ.toLowerCase())).map((s:any)=>{const d=s.details||{};const t=(emailTemplates||[]).find((x:any)=>x.id===s.entity_id);return(
+                  <div key={s.id} className="gm-row" onClick={()=>t&&setGmCompose({tpl:t.id,to:[{email:d.to_email,name:d.to_name||""}]})} title="Send again">
+                    <div className="gm-thumb" style={{display:"flex",alignItems:"center",justifyContent:"center",background:"#7C3AED",color:"#fff",fontWeight:700,borderRadius:"50%",width:40,height:40,border:"none"}}>{String(d.to_name||d.to_email||"?")[0].toUpperCase()}</div>
+                    <div className="who">To: {d.to_name||d.to_email}</div>
+                    <div className="sn"><b>{d.subject||"(no subject)"}</b> — {d.template_name||""} · {d.to_email}</div>
+                    <div className="gm-acts">{d.ok===false&&<span className="gm-pill" style={{background:"#FDE8E8",color:"#B91C1C"}}>Failed</span>}<span className="when">{new Date(s.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</span></div>
+                  </div>);})}
+            </div>)}
 
             {emailSubTab==="templates"&&(emailTemplateEditId?(
               <div>
@@ -7024,11 +7052,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
             ):(
               <div>
-                <div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap" as const,marginBottom:14}}>
-                  <button onClick={()=>{setEmailStartersOpen(o=>!o);setEmailImportOpen(false);}} style={emailStartersOpen?S.btnP:S.btnO}>✨ Start from a Design</button>
-                  <button onClick={()=>{setEmailImportOpen(o=>!o);setEmailStartersOpen(false);}} style={emailImportOpen?S.btnP:S.btnO}>&lt;/&gt; Import HTML</button>
-                  <button onClick={emailNewTemplate} style={S.btnP}>+ Blank Template</button>
+                <div className="gm-toolbar">
+                  <button className="gm-tbtn" onClick={loadEmailTemplates}>↻</button>
+                  <button onClick={()=>{setEmailStartersOpen(o=>!o);setEmailImportOpen(false);}} className={`gm-tbtn${emailStartersOpen?" pri":""}`}>✨ Start from a design</button>
+                  <button onClick={()=>{setEmailImportOpen(o=>!o);setEmailStartersOpen(false);}} className={`gm-tbtn${emailImportOpen?" pri":""}`}>&lt;/&gt; Import HTML</button>
+                  <button onClick={emailNewTemplate} className="gm-tbtn pri">+ New template</button>
+                  <span style={{fontSize:12.5,color:"#5F6368",marginLeft:"auto"}}>{(emailTemplates||[]).length} templates</span>
                 </div>
+                <div style={{padding:emailStartersOpen||emailImportOpen?"16px 16px 0":0}}>
                 {emailStartersOpen&&(
                   <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
                     <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase" as const,color:C.MID,marginBottom:12}}>Professional designs — pick one, then edit anything</div>
@@ -7064,21 +7095,23 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     </div>
                   </div>
                 )}
-                {emailTemplatesLoading?(
-                  <div style={{color:C.MID,fontSize:13}}>Loading…</div>
+                </div>
+                {emailTemplatesLoading&&!emailTemplates?(
+                  <div className="gm-empty">Loading…</div>
                 ):!emailTemplates||emailTemplates.length===0?(
-                  <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No templates yet. Create your first one.</div>
+                  <div className="gm-empty"><div style={{fontSize:40}}>🗂️</div>No templates yet — start from a design above.</div>
                 ):(
-                  <div style={{display:"flex",flexDirection:"column" as const,gap:8}}>
-                    {emailTemplates.map((t:any)=>(
-                      <div key={t.id} style={{...CARD_STYLE,padding:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap" as const}}>
-                        <div>
-                          <div style={{fontSize:13,color:C.FG,fontWeight:600}}>{t.name}</div>
-                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{t.subject||"(no subject)"} · {(t.blocks||[]).length} block{(t.blocks||[]).length===1?"":"s"}</div>
-                        </div>
-                        <div style={{display:"flex",gap:8}}>
-                          <button onClick={()=>emailOpenTemplate(t)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}}>Edit</button>
-                          <button onClick={()=>emailDeleteTemplate(t.id)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5,color:"#e74c3c"}}>Delete</button>
+                  <div>
+                    {emailTemplates.filter((t:any)=>!gmQ||`${t.name} ${t.subject}`.toLowerCase().includes(gmQ.toLowerCase())).map((t:any)=>(
+                      <div key={t.id} className="gm-row" onClick={()=>emailOpenTemplate(t)}>
+                        <div className="gm-thumb"><iframe title="" sandbox="" tabIndex={-1} srcDoc={renderEmailHtml((t.blocks||[]) as any,{first_name:"Sarah"})} /></div>
+                        <div className="who">{t.name}</div>
+                        <div className="sn"><b>{t.subject||"(no subject)"}</b> — {(t.blocks||[]).length} sections · click to edit</div>
+                        <div className="gm-acts" onClick={e=>e.stopPropagation()}>
+                          <button className="gm-tbtn pri" onClick={()=>setGmCompose({tpl:t.id})}>➤ Send</button>
+                          <button className="gm-tbtn" onClick={()=>emailOpenTemplate(t)}>Edit</button>
+                          <button className="gm-tbtn" style={{color:"#B91C1C"}} onClick={()=>emailDeleteTemplate(t.id)} aria-label="Delete">🗑</button>
+                          <span className="when">{t.updated_at||t.created_at?new Date(t.updated_at||t.created_at).toLocaleDateString("en-GB",{day:"numeric",month:"short"}):""}</span>
                         </div>
                       </div>
                     ))}
@@ -7190,6 +7223,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 )}
               </div>
             ))}
+              </div>
+              </main>
+            </div>
+            <button className="gm-fab" onClick={()=>setGmCompose({})}>✏️ Compose</button>
+            {gmCompose&&adminSession&&<EmailCompose token={adminSession.access_token} templates={emailTemplates||[]} clients={clientDirList||[]} initialTemplateId={gmCompose.tpl} initialTo={gmCompose.to} onClose={()=>setGmCompose(null)} onSent={(m)=>{setGmCompose(null);setGmToast(m);loadGmSent();setTimeout(()=>setGmToast(""),4000);}} />}
+            {gmToast&&<div className="gm-toast">{gmToast}</div>}
           </div>
         )}
 

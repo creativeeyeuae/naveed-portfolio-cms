@@ -7,6 +7,7 @@
 //   - date must be real and within the next 2 years; slot must be free
 //   - customer is found/created via the existing find_or_create_customer RPC
 import { json, corsHeaders, supaAdmin } from "../../_shared/adminAuth";
+import { checkCoupon, useCoupon } from "../../_shared/coupons";
 
 const TX_FEE_RATE = 0.04;
 const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -51,7 +52,18 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const pkg = (site.pricingPackages || []).find((p: any) => String(p.id) === packageId);
   const base = pkg ? parseFloat(String(pkg.price || "0").replace(/[^0-9.]/g, "")) : NaN;
   if (!pkg || !Number.isFinite(base) || base <= 0) return json({ error: "That package is no longer available. Please refresh and choose again." }, 400, origin);
-  const fee = round(base * TX_FEE_RATE), total = round(base + fee);
+  // Optional coupon -- validated and counted here, never trusted from the browser.
+  let discount = 0, couponNote = "";
+  let couponRow: any = null;
+  if (String(b.coupon || "").trim()) {
+    const cr = await checkCoupon(env, b.coupon, base);
+    if ("error" in cr) return json({ error: cr.error, couponError: true }, 400, origin);
+    discount = cr.discount; couponRow = cr.coupon;
+    couponNote = `[Coupon ${cr.code}: ${cr.label} = -AED ${discount} (package AED ${base})]`;
+  }
+  const net = round(Math.max(0, base - discount));
+  if (net <= 0) return json({ error: "This code cannot be used for this package." }, 400, origin);
+  const fee = round(net * TX_FEE_RATE), total = round(net + fee);
 
   const slot = await rpc(env, "is_slot_taken", { p_date: date, p_time: time });
   if (slot.ok && slot.data === true) return json({ error: "This time slot is no longer available. Please select another time.", slotTaken: true }, 409, origin);
@@ -60,21 +72,22 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const customerId = typeof cust.data === "string" ? cust.data : null;
   if (!customerId) return json({ error: "Something went wrong saving your details. Please try again." }, 500, origin);
 
+  if (couponRow && !(await useCoupon(env, couponRow))) return json({ error: "This code has just been used up. Please remove it and try again.", couponError: true }, 409, origin);
   const id = crypto.randomUUID();
   const ref = "CF-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
   const aRes = await supaAdmin(env, "appointments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: base, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + "[Client accepted cancellation terms v1 on " + new Date().toISOString() + ": 72h+ free / 72-24h 50% / <24h no refund]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
+    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: net, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + (couponNote ? couponNote + "\n" : "") + "[Client accepted cancellation terms v1 on " + new Date().toISOString() + ": 72h+ free / 72-24h 50% / <24h no refund]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
   });
   if (!aRes.ok) return json({ error: "Your booking could not be saved. Please try again.", detail: (await aRes.text()).slice(0, 300) }, 500, origin);
 
   const pRes = await supaAdmin(env, "payments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ appointment_id: id, method: method === "cash" ? "bank_transfer" : method, base_amount: base, transaction_fee: fee, total, currency: "AED", status: "under_review", provider: method === "cash" ? "cash" : method === "bank_transfer" ? "bank" : "paypal" }),
+    body: JSON.stringify({ appointment_id: id, method: method === "cash" ? "bank_transfer" : method, base_amount: net, transaction_fee: fee, total, currency: "AED", status: "under_review", provider: method === "cash" ? "cash" : method === "bank_transfer" ? "bank" : "paypal" }),
   });
   if (!pRes.ok) {
     await supaAdmin(env, `appointments?id=eq.${id}`, { method: "DELETE" }).catch(() => {});
     return json({ error: "Your booking could not be saved. Please try again.", detail: (await pRes.text()).slice(0, 300) }, 500, origin);
   }
-  return json({ id, ref, total, base, fee }, 200, origin);
+  return json({ id, ref, total, base: net, fee, discount }, 200, origin);
 };

@@ -641,16 +641,74 @@ type NewAppointmentInput = {
 function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
   try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
 }
-async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean}): Promise<{id:string;ref:string}|null> {
+async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean;coupon?:string}): Promise<{id:string;ref:string}|null> {
   // Created on the SERVER (/api/bookings/create): price, fee, total, slot and date are all
   // validated there with the live CMS packages -- the browser never writes booking rows.
   try {
     const r = await fetch("/api/bookings/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
     const j = await r.json().catch(()=>({}));
-    if(!r.ok||!j.id){ (globalThis as any).__bkErr = j.error||"Please try again."; (globalThis as any).__bkSlot = !!j.slotTaken; return null; }
+    if(!r.ok||!j.id){ (globalThis as any).__bkErr = j.error||"Please try again."; (globalThis as any).__bkSlot = !!j.slotTaken; (globalThis as any).__bkCouponErr = !!j.couponError; return null; }
     return {id:j.id,ref:j.ref};
   } catch { (globalThis as any).__bkErr="Network problem. Please check your connection and try again."; return null; }
 }
+// ─── COUPONS (CMS) ────────────────────────────────────────────────────────────
+function CouponsAdmin({token}:{token:string}){
+  const [list,setList]=useState<any[]|null>(null);
+  const [err,setErr]=useState(""); const [ok,setOk]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [f,setF]=useState({kind:"percent",value:"10",quantity:"1",prefix:"",code:"",max_uses:"1",min_amount:"",expires_at:"",note:""});
+  const H={Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
+  const load=async()=>{ setErr(""); try{ const r=await fetch("/api/admin/coupons",{headers:H}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setList(j.coupons); }catch(e:any){ setErr(e.message||"Could not load coupons."); setList([]); } };
+  useEffect(()=>{ load(); },[]);
+  const gen=async()=>{ setBusy(true); setErr(""); setOk(""); try{ const r=await fetch("/api/admin/coupons",{method:"POST",headers:H,body:JSON.stringify(f)}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setOk(`✓ Created ${j.coupons.length} code${j.coupons.length>1?"s":""}: ${j.coupons.slice(0,5).map((c:any)=>c.code).join(", ")}${j.coupons.length>5?"…":""}`); setF({...f,code:""}); load(); }catch(e:any){ setErr(e.message||"Failed."); } setBusy(false); };
+  const toggle=async(c:any)=>{ await fetch("/api/admin/coupons",{method:"PATCH",headers:H,body:JSON.stringify({id:c.id,active:!c.active})}); load(); };
+  const del=async(c:any)=>{ if(!window.confirm(`Delete code ${c.code}?`)) return; await fetch(`/api/admin/coupons?id=${c.id}`,{method:"DELETE",headers:H}); load(); };
+  const copy=(t:string)=>{ try{ navigator.clipboard.writeText(t); setOk(`✓ Copied ${t}`); }catch{} };
+  const inp:React.CSSProperties={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",color:"#fff",padding:"10px 12px",fontSize:13.5,borderRadius:8,width:"100%",boxSizing:"border-box"};
+  const lbl:React.CSSProperties={fontSize:12,color:"#c4b5fd",fontWeight:600,display:"block",marginBottom:6};
+  const card:React.CSSProperties={background:"rgba(255,255,255,0.045)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:20};
+  const status=(c:any)=>!c.active?["Paused","#94a3b8"]:c.expires_at&&new Date(c.expires_at)<new Date()?["Expired","#f87171"]:c.max_uses&&c.used_count>=c.max_uses?["Used up","#fbbf24"]:["Active","#4ade80"];
+  return(<div style={{maxWidth:1180,margin:"32px auto",padding:"0 24px"}}>
+    <div style={{fontSize:24,fontWeight:700,color:"#fff"}}>Coupons & Discounts</div>
+    <div style={{fontSize:13,color:"#a892c6",marginTop:4,marginBottom:20}}>Create discount codes for clients. They enter the code on the booking page before paying — the discount is checked and applied on the server.</div>
+    <div style={{...card,marginBottom:20}}>
+      <div style={{fontWeight:700,color:"#fff",marginBottom:14}}>Generate codes</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14}}>
+        <div><label style={lbl}>Discount type</label><select style={inp} value={f.kind} onChange={e=>setF({...f,kind:e.target.value})}><option value="percent">Percent (%)</option><option value="fixed">Fixed amount (AED)</option></select></div>
+        <div><label style={lbl}>{f.kind==="percent"?"Percent off":"AED off"}</label><input style={inp} inputMode="decimal" value={f.value} onChange={e=>setF({...f,value:e.target.value.replace(/[^0-9.]/g,"")})} /></div>
+        <div><label style={lbl}>How many codes</label><input style={inp} inputMode="numeric" value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value.replace(/\D/g,"")})} /></div>
+        <div><label style={lbl}>Uses per code (blank = unlimited)</label><input style={inp} inputMode="numeric" value={f.max_uses} onChange={e=>setF({...f,max_uses:e.target.value.replace(/\D/g,"")})} /></div>
+        <div><label style={lbl}>Prefix (optional)</label><input style={inp} placeholder="e.g. VIP" value={f.prefix} onChange={e=>setF({...f,prefix:e.target.value.toUpperCase()})} /></div>
+        <div><label style={lbl}>Or custom code (1 only)</label><input style={inp} placeholder="e.g. EID2026" value={f.code} onChange={e=>setF({...f,code:e.target.value.toUpperCase()})} /></div>
+        <div><label style={lbl}>Expires on (optional)</label><input type="date" style={inp} value={f.expires_at} onChange={e=>setF({...f,expires_at:e.target.value})} /></div>
+        <div><label style={lbl}>Minimum package (AED)</label><input style={inp} inputMode="decimal" placeholder="optional" value={f.min_amount} onChange={e=>setF({...f,min_amount:e.target.value.replace(/[^0-9.]/g,"")})} /></div>
+        <div style={{gridColumn:"1/-1"}}><label style={lbl}>Note (who is it for?)</label><input style={inp} placeholder="e.g. Repeat client — Tallal" value={f.note} onChange={e=>setF({...f,note:e.target.value})} /></div>
+      </div>
+      <button onClick={gen} disabled={busy} style={{marginTop:16,background:"#8B5CF6",color:"#fff",border:"none",borderRadius:8,padding:"11px 20px",fontWeight:700,fontSize:13.5,cursor:"pointer",opacity:busy?0.6:1}}>{busy?"Creating…":"✨ Generate"}</button>
+      {ok&&<div style={{marginTop:12,color:"#4ade80",fontSize:13}}>{ok}</div>}
+      {err&&<div style={{marginTop:12,color:"#f87171",fontSize:13}}>{err}</div>}
+    </div>
+    <div style={card}>
+      <div style={{fontWeight:700,color:"#fff",marginBottom:12}}>All codes {list?`(${list.length})`:""}</div>
+      {!list?<div style={{color:"#a892c6"}}>Loading…</div>:list.length===0?<div style={{color:"#a892c6",fontSize:13}}>No codes yet.</div>:(
+        <div style={{display:"grid",gap:8}}>{list.map(c=>{ const [st,col]=status(c); return(
+          <div key={c.id} style={{display:"flex",flexWrap:"wrap",gap:12,alignItems:"center",padding:"12px 14px",borderRadius:10,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)"}}>
+            <button onClick={()=>copy(c.code)} title="Copy" style={{fontFamily:"monospace",fontSize:15,fontWeight:700,color:"#fff",background:"none",border:"1px dashed rgba(255,255,255,0.25)",borderRadius:6,padding:"5px 10px",cursor:"pointer"}}>{c.code} ⧉</button>
+            <span style={{fontSize:13,color:"#e2d9f3",fontWeight:600}}>{c.kind==="percent"?`${Number(c.value)}% off`:`AED ${Number(c.value)} off`}</span>
+            <span style={{fontSize:12,color:"#a892c6"}}>Used {c.used_count}{c.max_uses?` / ${c.max_uses}`:""}</span>
+            {c.expires_at&&<span style={{fontSize:12,color:"#a892c6"}}>Expires {new Date(c.expires_at).toLocaleDateString("en-GB")}</span>}
+            {c.note&&<span style={{fontSize:12,color:"#a892c6"}}>· {c.note}</span>}
+            <span style={{fontSize:11,fontWeight:700,color:col,border:`1px solid ${col}`,borderRadius:20,padding:"2px 9px"}}>{st}</span>
+            <span style={{marginLeft:"auto",display:"flex",gap:8}}>
+              <button onClick={()=>toggle(c)} style={{background:"rgba(255,255,255,0.08)",color:"#fff",border:"1px solid rgba(255,255,255,0.14)",borderRadius:8,padding:"7px 12px",fontSize:12.5,cursor:"pointer"}}>{c.active?"Pause":"Resume"}</button>
+              <button onClick={()=>del(c)} style={{background:"transparent",color:"#f87171",border:"1px solid rgba(231,76,60,0.5)",borderRadius:8,padding:"7px 12px",fontSize:12.5,cursor:"pointer"}}>Delete</button>
+            </span>
+          </div>);})}</div>
+      )}
+    </div>
+  </div>);
+}
+
 // ─── PAYPAL CHECKOUT (existing booking) ─────────────────────────────────────
 // Renders the official PayPal JS SDK buttons for an EXISTING appointment. The order is
 // created and captured by /api/payments/paypal/* on the server -- the browser never decides
@@ -4333,6 +4391,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkPkgId,setBkPkgId]=useState("");
   const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer"|"cash">("bank_transfer");
   const [bkTerms,setBkTerms]=useState(false);
+  const [bkCouponInput,setBkCouponInput]=useState("");
+  const [bkCoupon,setBkCoupon]=useState<{code:string;discount:number;label:string}|null>(null);
+  const [bkCouponMsg,setBkCouponMsg]=useState("");
+  const [bkCouponBusy,setBkCouponBusy]=useState(false);
   const [ppCfg,setPpCfg]=useState<{enabled:boolean;clientId?:string;env?:string;aedPerUsd?:number}|null>(null);
   const [ppPaid,setPpPaid]=useState(false);
   const [ppPending,setPpPending]=useState("");
@@ -4619,7 +4681,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // person picked (settings.pricingPackages) -- looked up fresh at submit time, never cached
   // from an earlier step -- so an in-between CMS price edit can never be bypassed.
   const bkSelectedPkg = settings.pricingPackages.find(p=>p.id===bkPkgId) || null;
-  const bkBase = bkSelectedPkg ? parsePackagePrice(bkSelectedPkg.price) : 0;
+  const bkBase = bkSelectedPkg ? Math.max(0, parsePackagePrice(bkSelectedPkg.price) - (bkCoupon?.discount||0)) : 0;
   const bkFee = calcFee(bkBase); const bkTotal = calcTotal(bkBase);
   useEffect(()=>{
     if(!booking.date||!booking.time){ setBkSlotTaken(false); return; }
@@ -4646,9 +4708,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
     const created = await createAppointment({
       name:booking.name, email:booking.email, phone:booking.phone||"", service:booking.service,
-      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms,
+      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms, coupon:bkCoupon?.code||"",
     });
     if(!created&&(globalThis as any).__bkSlot){ setBkSlotTaken(true); }
+    if(!created&&(globalThis as any).__bkCouponErr){ setBkCoupon(null); }
     if(!created){ setBkSubmitting(false); setBkError((globalThis as any).__bkErr||"Your booking could not be saved. Please try again."); return; }
     setBkConfirmed(created);
     // Attach the receipt (if bank transfer) BEFORE the WhatsApp alert goes out below, so
@@ -4859,7 +4922,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // state the old flat tab bar used -- this is a navigation/layout reorganization only,
     // every existing panel below is unchanged and still reachable.
     const cmsPageTitle:Record<string,string> = {
-      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", projects:"Portfolio",
+      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
       email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", companies:"Companies", contacts:"Contacts", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
@@ -4954,6 +5017,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
         <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
+          <CmsNavItem icon="🏷️" label="Coupons" active={cmsTab==="coupons"} onClick={()=>setCmsTab("coupons")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
@@ -5578,6 +5642,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {/* PAYMENTS LEDGER -- read-only list of every payment (functions/api/admin/payments.ts).
             Approve/Reject still only happen from the Bookings tab -- this tab is for finance
             visibility (totals, filtering by status/method), not a second place to act. */}
+        {cmsTab==="coupons"&&adminSession&&<CouponsAdmin token={adminSession.access_token} />}
+
         {cmsTab==="payments"&&(
           <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
@@ -8710,6 +8776,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 Please pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> in cash <strong style={{color:C.FG}}>before the event starts</strong>. Naveed will contact you on WhatsApp to confirm your booking.
               </div>
             )}
+            <div style={{maxWidth:480,margin:"0 auto 20px",padding:"14px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.04)"}}>
+              <div style={{fontWeight:700,fontSize:13,color:C.FG,marginBottom:8}}>🏷️ Have a discount code?</div>
+              {bkCoupon?(
+                <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                  <span style={{color:"#4ade80",fontSize:13,fontWeight:600}}>✓ {bkCoupon.code} applied — {bkCoupon.label} (−AED {bkCoupon.discount.toLocaleString()})</span>
+                  <button onClick={()=>{setBkCoupon(null);setBkCouponMsg("");}} className="adv-btn-outline" style={{padding:"6px 12px",fontSize:11}}>Remove</button>
+                  <div style={{width:"100%",fontSize:13,color:C.FG}}>New total: <strong>AED {bkTotal.toLocaleString()}</strong></div>
+                </div>
+              ):(
+                <div style={{display:"flex",gap:8}}>
+                  <input className="adv-input" placeholder="Enter code" value={bkCouponInput} onChange={e=>{setBkCouponInput(e.target.value.toUpperCase());setBkCouponMsg("");}} style={{flex:1}} />
+                  <button disabled={!bkCouponInput.trim()||bkCouponBusy} onClick={async()=>{ setBkCouponBusy(true); setBkCouponMsg(""); try{ const r=await fetch("/api/bookings/coupon",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:bkCouponInput,package_id:String(bkSelectedPkg.id)})}); const j=await r.json(); if(r.ok){ setBkCoupon(j); } else setBkCouponMsg(j.error||"This code is not valid."); }catch{ setBkCouponMsg("Could not check the code. Please try again."); } setBkCouponBusy(false); }} className="adv-btn-outline" style={{padding:"10px 16px",fontSize:11}}>{bkCouponBusy?"Checking…":"Apply"}</button>
+                </div>
+              )}
+              {bkCouponMsg&&<div style={{color:"#ff8a8a",fontSize:12,marginTop:8}}>{bkCouponMsg}</div>}
+            </div>
             <div style={{maxWidth:480,margin:"0 auto 20px",padding:"14px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.04)"}}>
               <div style={{fontWeight:700,fontSize:13,color:C.FG,marginBottom:8}}>Cancellation policy</div>
               <ul style={{margin:"0 0 12px 18px",padding:0,fontSize:12.5,color:C.MID,lineHeight:1.7}}>

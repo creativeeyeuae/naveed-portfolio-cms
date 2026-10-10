@@ -647,19 +647,19 @@ async function createAppointment(input:NewAppointmentInput): Promise<{id:string;
     const id = crypto.randomUUID();
     const ref = genAppointmentRef();
     const fee = calcFee(input.price_base); const total = calcTotal(input.price_base);
-    const status = input.method==="bank_transfer" ? "pending_verification" : "pending_payment";
+    const status = "pending_verification"; // online payments: capture endpoint sets confirmed+paid
     const {error:apptErr} = await sb.from("appointments").insert({
       id, appointment_ref:ref, customer_id:input.customer_id, service_key:input.service_key, service_name:input.service_name,
       package_id:input.package_id, package_name:input.package_name, price_base:input.price_base, currency:"AED",
       transaction_fee:fee, total, booking_date:input.booking_date, booking_time:to24h(input.booking_time), notes:input.notes, status,
     });
-    if(apptErr){ console.error("[booking] appointment insert failed:",apptErr); return null; }
-    const payStatus = input.method==="bank_transfer" ? "under_review" : "pending";
+    if(apptErr){ console.error("[booking] appointment insert failed:",apptErr); (globalThis as any).__bkErr=apptErr.message; return null; }
+    const payStatus = "under_review"; // same proven status for both methods; PayPal capture sets "paid"
     const {error:payErr} = await sb.from("payments").insert({
       appointment_id:id, method:input.method, base_amount:input.price_base, transaction_fee:fee, total,
       currency:"AED", status:payStatus, provider:input.method==="bank_transfer"?"bank":null,
     });
-    if(payErr){ console.error("[booking] payment insert failed:",payErr); return null; }
+    if(payErr){ console.error("[booking] payment insert failed:",payErr); (globalThis as any).__bkErr=payErr.message; return null; }
     return {id,ref};
   } catch(e) { console.error("[booking] createAppointment threw:",e); return null; }
 }
@@ -4665,7 +4665,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       package_id:bkSelectedPkg.id, package_name:bkSelectedPkg.label, price_base:bkBase,
       booking_date:booking.date, booking_time:booking.time, notes:booking.details, method:bkPayMethod,
     });
-    if(!created){ setBkSubmitting(false); setBkError("Payment could not be completed. Please try again."); return; }
+    if(!created){ setBkSubmitting(false); setBkError("Your booking could not be saved. Please try again."+((globalThis as any).__bkErr?` (${(globalThis as any).__bkErr})`:"")); return; }
     setBkConfirmed(created);
     // Attach the receipt (if bank transfer) BEFORE the WhatsApp alert goes out below, so
     // Naveed's notification/CMS record always reflects whether the slip is already in hand.

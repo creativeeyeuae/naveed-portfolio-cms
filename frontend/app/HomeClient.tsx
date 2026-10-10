@@ -651,6 +651,71 @@ async function createAppointment(input:{name:string;email:string;phone:string;se
     return {id:j.id,ref:j.ref};
   } catch { (globalThis as any).__bkErr="Network problem. Please check your connection and try again."; return null; }
 }
+// ─── CLIENT REQUESTS + WALLET (CMS) ──────────────────────────────────────────
+const cmsCard:React.CSSProperties={background:"rgba(255,255,255,0.045)",border:"1px solid rgba(255,255,255,0.09)",borderRadius:14,padding:20};
+const cmsInp:React.CSSProperties={background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.12)",color:"#fff",padding:"10px 12px",fontSize:13.5,borderRadius:8,width:"100%",boxSizing:"border-box"};
+const cmsBtn=(bg:string,fg="#fff"):React.CSSProperties=>({background:bg,color:fg,border:bg==="transparent"?"1px solid rgba(255,255,255,0.16)":"none",borderRadius:8,padding:"9px 14px",fontWeight:600,fontSize:13,cursor:"pointer"});
+function ClientRequestsAdmin({token}:{token:string}){
+  const [list,setList]=useState<any[]|null>(null); const [all,setAll]=useState(false); const [err,setErr]=useState("");
+  const [note,setNote]=useState<Record<string,string>>({}); const [refund,setRefund]=useState<Record<string,boolean>>({}); const [busy,setBusy]=useState("");
+  const H={Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
+  const load=async()=>{ setErr(""); try{ const r=await fetch(`/api/admin/client-requests?status=${all?"all":"pending"}`,{headers:H}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setList(j.requests);}catch(e:any){ setErr(e.message); setList([]);} };
+  useEffect(()=>{ load(); },[all]);
+  const act=async(r:any,action:string)=>{ setBusy(r.id); setErr(""); try{ const res=await fetch("/api/admin/client-requests",{method:"POST",headers:H,body:JSON.stringify({id:r.id,action,note:note[r.id]||"",refund_to_wallet:!!refund[r.id]})}); const j=await res.json(); if(!res.ok) throw new Error(j.error); load(); }catch(e:any){ setErr(e.message);} setBusy(""); };
+  const col:any={pending:"#fbbf24",approved:"#4ade80",rejected:"#f87171",withdrawn:"#94a3b8"};
+  return(<div style={{maxWidth:1180,margin:"32px auto",padding:"0 24px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:10,marginBottom:20}}>
+      <div><div style={{fontSize:24,fontWeight:700,color:"#fff"}}>Client Requests</div><div style={{fontSize:13,color:"#a892c6",marginTop:4}}>Cancellation and reschedule requests from the client portal. Approving notifies the client on WhatsApp + email.</div></div>
+      <label style={{fontSize:13,color:"#e2d9f3",display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={all} onChange={e=>setAll(e.target.checked)} /> Show handled requests too</label>
+    </div>
+    {err&&<div style={{color:"#f87171",marginBottom:12,fontSize:13}}>{err}</div>}
+    {!list?<div style={{color:"#a892c6"}}>Loading…</div>:!list.length?<div style={{...cmsCard,color:"#a892c6",fontSize:13}}>No {all?"":"pending "}requests.</div>:(
+      <div style={{display:"grid",gap:12}}>{list.map(r=>{ const a=r.appointments||{}; const paid=(a.payments||[]).some((p:any)=>p.status==="paid"); return(
+        <div key={r.id} style={cmsCard}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+            <div><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{r.kind==="cancel"?"✕ Cancellation":"📅 Reschedule"} · {r.customers?.full_name||"Client"} <span style={{fontSize:12.5,color:"#a892c6",fontWeight:400}}>({a.appointment_ref})</span></div>
+              <div style={{fontSize:13,color:"#e2d9f3",marginTop:6}}>{a.service_name} · now {a.booking_date} {String(a.booking_time||"").slice(0,5)}{r.kind==="reschedule"?<> → <b>{r.new_date} {String(r.new_time||"").slice(0,5)}</b></>:<> · fee per terms <b>{Number(r.fee_percent)}%</b> · AED {Number(a.total||0).toLocaleString()} {paid?"(paid)":"(not paid)"}</>}</div>
+              <div style={{fontSize:12.5,color:"#a892c6",marginTop:4}}>{r.customers?.email} · {r.customers?.whatsapp||r.customers?.phone} · {new Date(r.created_at).toLocaleString("en-GB")}</div>
+              {r.reason&&<div style={{fontSize:13,color:"#fff",marginTop:6}}>“{r.reason}”</div>}</div>
+            <span style={{alignSelf:"flex-start",fontSize:11,fontWeight:700,color:col[r.status],border:`1px solid ${col[r.status]}`,borderRadius:20,padding:"3px 10px",textTransform:"uppercase"}}>{r.status}</span>
+          </div>
+          {r.status==="pending"&&<div style={{display:"grid",gap:10,marginTop:14}}>
+            <input style={cmsInp} placeholder="Note to client (optional)" value={note[r.id]||""} onChange={e=>setNote({...note,[r.id]:e.target.value})} />
+            {r.kind==="cancel"&&paid&&Number(r.fee_percent)<100&&<label style={{fontSize:13,color:"#e2d9f3",display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={!!refund[r.id]} onChange={e=>setRefund({...refund,[r.id]:e.target.checked})} /> Refund AED {(Number(a.total||0)*(100-Number(r.fee_percent))/100).toLocaleString()} to the client's wallet</label>}
+            <div style={{display:"flex",gap:8}}><button disabled={busy===r.id} onClick={()=>act(r,"approve")} style={cmsBtn("#22c55e")}>✓ Approve</button><button disabled={busy===r.id} onClick={()=>act(r,"reject")} style={cmsBtn("transparent","#f87171")}>Reject</button></div>
+          </div>}
+          {r.admin_note&&r.status!=="pending"&&<div style={{fontSize:12.5,color:"#a892c6",marginTop:8}}>Note: {r.admin_note} · by {r.decided_by}</div>}
+        </div>);})}</div>)}
+  </div>);
+}
+function WalletAdmin({token}:{token:string}){
+  const [q,setQ]=useState(""); const [found,setFound]=useState<any[]>([]); const [sel,setSel]=useState<any>(null); const [w,setW]=useState<any>(null);
+  const [amt,setAmt]=useState(""); const [kind,setKind]=useState("credit"); const [note,setNote]=useState(""); const [msg,setMsg]=useState(""); const [busy,setBusy]=useState(false);
+  const H={Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
+  useEffect(()=>{ if(q.trim().length<3){setFound([]);return;} const t=setTimeout(async()=>{ const r=await fetch(`/api/admin/wallet?q=${encodeURIComponent(q.trim())}`,{headers:H}); const j=await r.json(); setFound(j.clients||[]); },400); return()=>clearTimeout(t); },[q]);
+  const open=async(c:any)=>{ setSel(c); setMsg(""); const r=await fetch(`/api/admin/wallet?customer_id=${c.id}`,{headers:H}); const j=await r.json(); if(!r.ok) setMsg(j.error); setW(r.ok?j:{balance:0,transactions:[]}); };
+  const save=async()=>{ setBusy(true); setMsg(""); try{ const sign=["debit"].includes(kind)?-1:1; const r=await fetch("/api/admin/wallet",{method:"POST",headers:H,body:JSON.stringify({customer_id:sel.id,amount:sign*Math.abs(Number(amt)),kind,note})}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setMsg(`✓ Saved. New balance AED ${j.balance}`); setAmt(""); setNote(""); open(sel); }catch(e:any){ setMsg(e.message);} setBusy(false); };
+  return(<div style={{maxWidth:1180,margin:"32px auto",padding:"0 24px"}}>
+    <div style={{fontSize:24,fontWeight:700,color:"#fff"}}>Client Wallet</div>
+    <div style={{fontSize:13,color:"#a892c6",marginTop:4,marginBottom:20}}>Add credit (refunds, gifts, offers) or use a client's balance. Clients see their balance in their portal and get a WhatsApp when credit is added.</div>
+    <div style={{...cmsCard,marginBottom:16}}>
+      <input style={cmsInp} placeholder="Search client by name, email or WhatsApp…" value={q} onChange={e=>setQ(e.target.value)} />
+      {found.length>0&&<div style={{display:"grid",gap:6,marginTop:10}}>{found.map(c=><button key={c.id} onClick={()=>open(c)} style={{...cmsBtn(sel?.id===c.id?"#8B5CF6":"transparent"),textAlign:"left",display:"flex",justifyContent:"space-between"}}><span>{c.full_name||"—"} · {c.email} · {c.whatsapp||c.phone||""}</span><b>AED {Number(c.balance).toLocaleString()}</b></button>)}</div>}
+    </div>
+    {sel&&<div style={cmsCard}>
+      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}><div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{sel.full_name} <span style={{fontSize:12.5,color:"#a892c6",fontWeight:400}}>{sel.email}</span></div><div style={{fontSize:22,fontWeight:700,color:"#4ade80"}}>AED {Number(w?.balance||0).toLocaleString()}</div></div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginTop:14}}>
+        <select style={cmsInp} value={kind} onChange={e=>setKind(e.target.value)}><option value="credit">Add credit</option><option value="refund">Refund</option><option value="gift">Gift / offer</option><option value="debit">Use balance (deduct)</option></select>
+        <input style={cmsInp} inputMode="decimal" placeholder="Amount (AED)" value={amt} onChange={e=>setAmt(e.target.value.replace(/[^0-9.]/g,""))} />
+        <input style={{...cmsInp,gridColumn:"span 2"}} placeholder="Note shown to client (e.g. Refund for CF-XXXX)" value={note} onChange={e=>setNote(e.target.value)} />
+      </div>
+      <button disabled={busy||!Number(amt)} onClick={save} style={{...cmsBtn("#8B5CF6"),marginTop:12}}>{busy?"Saving…":"Save"}</button>
+      {msg&&<div style={{marginTop:10,fontSize:13,color:msg.startsWith("✓")?"#4ade80":"#f87171"}}>{msg}</div>}
+      <div style={{marginTop:16}}>{(w?.transactions||[]).map((t:any)=><div key={t.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#e2d9f3"}}><span>{t.note||t.kind} <span style={{color:"#a892c6",fontSize:11.5}}>· {new Date(t.created_at).toLocaleDateString("en-GB")} · {t.created_by}</span></span><b style={{color:Number(t.amount)>0?"#4ade80":"#f87171"}}>{Number(t.amount)>0?"+":""}{Number(t.amount)} AED</b></div>)}</div>
+    </div>}
+  </div>);
+}
+
 // ─── COUPONS (CMS) ────────────────────────────────────────────────────────────
 function CouponsAdmin({token}:{token:string}){
   const [list,setList]=useState<any[]|null>(null);
@@ -4939,7 +5004,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // state the old flat tab bar used -- this is a navigation/layout reorganization only,
     // every existing panel below is unchanged and still reachable.
     const cmsPageTitle:Record<string,string> = {
-      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", projects:"Portfolio",
+      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", clientRequests:"Client Requests", wallet:"Client Wallet", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
       email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", companies:"Companies", contacts:"Contacts", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
@@ -5035,6 +5100,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
         <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
           <CmsNavItem icon="🏷️" label="Coupons" active={cmsTab==="coupons"} onClick={()=>setCmsTab("coupons")} />
+          <CmsNavItem icon="📝" label="Client Requests" active={cmsTab==="clientRequests"} onClick={()=>setCmsTab("clientRequests")} />
+          <CmsNavItem icon="💳" label="Client Wallet" active={cmsTab==="wallet"} onClick={()=>setCmsTab("wallet")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
@@ -5660,6 +5727,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             Approve/Reject still only happen from the Bookings tab -- this tab is for finance
             visibility (totals, filtering by status/method), not a second place to act. */}
         {cmsTab==="coupons"&&adminSession&&<CouponsAdmin token={adminSession.access_token} />}
+        {cmsTab==="clientRequests"&&adminSession&&<ClientRequestsAdmin token={adminSession.access_token} />}
+        {cmsTab==="wallet"&&adminSession&&<WalletAdmin token={adminSession.access_token} />}
 
         {cmsTab==="payments"&&(
           <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>

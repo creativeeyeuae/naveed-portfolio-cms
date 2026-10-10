@@ -297,7 +297,102 @@ function ProfileCard() {
   );
 }
 
+
+async function api(path: string, body?: any) {
+  const token = await getAccessToken();
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) } : { headers: { Authorization: `Bearer ${token}` } });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Something went wrong.");
+  return j;
+}
+const field: CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.05)", color: "inherit", fontSize: 14 };
+function feeFor(date: string, time: string) {
+  const h = (new Date(`${date}T${(time || "00:00:00").slice(0, 8)}+04:00`).getTime() - Date.now()) / 3600e3;
+  return h > 72 ? 0 : h >= 24 ? 50 : 100;
+}
+
+function BookingActions({ b, onDone }: { b: Booking; onDone: () => void }) {
+  const [mode, setMode] = useState<"" | "cancel" | "reschedule">("");
+  const [date, setDate] = useState(""); const [time, setTime] = useState(""); const [reason, setReason] = useState("");
+  const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  if (["cancelled", "completed"].includes(b.status)) return null;
+  const fee = feeFor((b as any).booking_date, (b as any).booking_time);
+  const submit = async () => {
+    setBusy(true); setMsg("");
+    try { await api("/api/client/requests", { appointment_id: b.id, kind: mode, new_date: date, new_time: time, reason }); setMsg("✓ Request sent. Naveed will confirm shortly on WhatsApp and email."); setMode(""); onDone(); }
+    catch (e: any) { setMsg(e.message); }
+    setBusy(false);
+  };
+  return (
+    <div style={{ marginTop: -6, marginBottom: 8, paddingLeft: 4 }}>
+      {!mode && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button onClick={() => setMode("reschedule")} style={{ ...btnGhost, padding: "7px 12px", fontSize: 12 }}>📅 Request reschedule</button>
+        <button onClick={() => setMode("cancel")} style={{ ...btnGhost, padding: "7px 12px", fontSize: 12, color: "#f87171", borderColor: "rgba(248,113,113,0.5)" }}>✕ Request cancellation</button>
+      </div>}
+      {mode && <div style={{ ...cardStyle, display: "grid", gap: 10 }}>
+        <div style={{ fontWeight: 700 }}>{mode === "cancel" ? "Request cancellation" : "Request a new date"}</div>
+        {mode === "cancel" ? (
+          <div style={{ fontSize: 13, color: fee === 0 ? "#4ade80" : fee === 50 ? "#fbbf24" : "#f87171" }}>
+            {fee === 0 ? "Free cancellation (more than 72 hours before)." : fee === 50 ? "50% of the total is charged (within 72–24 hours)." : "No refund (less than 24 hours before)."} <a href="/terms#cancellation" target="_blank" rel="noopener noreferrer" style={{ color: "#c4b5fd" }}>Terms</a>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <input type="date" style={field} value={date} onChange={(e) => setDate(e.target.value)} />
+            <input type="time" style={field} value={time} onChange={(e) => setTime(e.target.value)} />
+          </div>
+        )}
+        <textarea style={{ ...field, minHeight: 60 }} placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} />
+        <div style={{ display: "flex", gap: 8 }}>
+          <button disabled={busy || (mode === "reschedule" && (!date || !time))} onClick={submit} style={btnPrimary}>{busy ? "Sending…" : "Send request"}</button>
+          <button onClick={() => setMode("")} style={btnGhost}>Back</button>
+        </div>
+      </div>}
+      {msg && <div style={{ fontSize: 12.5, marginTop: 6, color: msg.startsWith("✓") ? "#4ade80" : "#f87171" }}>{msg}</div>}
+    </div>
+  );
+}
+
+function RequestsPanel() {
+  const [list, setList] = useState<any[] | null>(null); const [err, setErr] = useState("");
+  useEffect(() => { api("/api/client/requests").then((j) => setList(j.requests)).catch((e) => { setErr(e.message); setList([]); }); }, []);
+  const col: Record<string, string> = { pending: "#fbbf24", approved: "#4ade80", rejected: "#f87171", withdrawn: "#94a3b8" };
+  if (!list) return <div style={cardStyle}>Loading…</div>;
+  if (!list.length) return <div style={cardStyle}><span style={{ fontSize: 13, color: "var(--text-muted,#A892C6)" }}>{err || "No requests yet. You can request a reschedule or cancellation from My Bookings."}</span></div>;
+  return <div style={{ display: "grid", gap: 10 }}>{list.map((r) => (
+    <div key={r.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div>
+        <div style={{ fontWeight: 700 }}>{r.kind === "cancel" ? "Cancellation" : "Reschedule"} · {r.appointments?.appointment_ref}</div>
+        <div style={{ fontSize: 12.5, color: "var(--text-muted,#A892C6)" }}>{r.appointments?.service_name} · {r.kind === "reschedule" ? `to ${r.new_date} ${String(r.new_time || "").slice(0, 5)}` : `fee ${Number(r.fee_percent)}%`} · {new Date(r.created_at).toLocaleDateString("en-GB")}</div>
+        {r.admin_note && <div style={{ fontSize: 12.5, marginTop: 4 }}>Note: {r.admin_note}</div>}
+      </div>
+      <span style={{ alignSelf: "center", fontSize: 11, fontWeight: 700, color: col[r.status], border: `1px solid ${col[r.status]}`, borderRadius: 20, padding: "3px 10px", textTransform: "uppercase" }}>{r.status}</span>
+    </div>))}</div>;
+}
+
+function WalletPanel() {
+  const [w, setW] = useState<any>(null); const [err, setErr] = useState("");
+  useEffect(() => { api("/api/client/wallet").then(setW).catch((e) => { setErr(e.message); setW({ balance: 0, transactions: [] }); }); }, []);
+  if (!w) return <div style={cardStyle}>Loading…</div>;
+  return <div style={{ display: "grid", gap: 14 }}>
+    <div style={{ ...cardStyle, background: "linear-gradient(135deg,rgba(139,92,246,0.35),rgba(139,92,246,0.08))" }}>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted,#A892C6)" }}>Wallet balance</div>
+      <div style={{ fontSize: 34, fontWeight: 700 }}>AED {Number(w.balance).toLocaleString("en-US")}</div>
+      <div style={{ fontSize: 12.5, color: "var(--text-muted,#A892C6)", marginTop: 4 }}>Credit from refunds, gifts and offers. Ask Naveed to use it on your next booking.</div>
+    </div>
+    {err && <div style={{ color: "#f87171", fontSize: 12.5 }}>{err}</div>}
+    <div style={cardStyle}>
+      <div style={{ fontWeight: 700, marginBottom: 10 }}>History</div>
+      {!w.transactions.length ? <div style={{ fontSize: 13, color: "var(--text-muted,#A892C6)" }}>No transactions yet.</div> :
+        w.transactions.map((t: any) => <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.07)", fontSize: 13 }}>
+          <span>{t.note || t.kind}<br /><span style={{ fontSize: 11.5, color: "var(--text-muted,#A892C6)" }}>{new Date(t.created_at).toLocaleDateString("en-GB")}</span></span>
+          <b style={{ color: Number(t.amount) > 0 ? "#4ade80" : "#f87171" }}>{Number(t.amount) > 0 ? "+" : ""}{Number(t.amount).toLocaleString("en-US")} AED</b>
+        </div>)}
+    </div>
+  </div>;
+}
+
 export default function ClientPortalPage() {
+  const [tab, setTab] = useState<"bookings" | "requests" | "wallet" | "messages" | "profile">("bookings");
   const [checked, setChecked] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -342,56 +437,41 @@ export default function ClientPortalPage() {
     return <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }} />;
   }
 
+  const MENU: [typeof tab, string, string][] = [["bookings", "📅", "My Bookings"], ["requests", "📝", "Requests"], ["wallet", "💳", "Wallet"], ["messages", "💬", "Messages"], ["profile", "👤", "My Profile"]];
   return (
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", padding: "64px 24px 100px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 32 }}>
-          <div>
-            <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 4 }}>Welcome{user?.email ? `, ${user.email}` : ""}</h1>
-            <p style={{ color: "var(--text-muted, #A892C6)", fontSize: 13.5 }}>Your bookings, payments and messages, in one place.</p>
+      <style>{`.cp-wrap{display:grid;grid-template-columns:240px 1fr;gap:28px;max-width:1180px;margin:0 auto;padding:40px 24px 100px}
+.cp-side{position:sticky;top:24px;align-self:start;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px}
+.cp-item{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:11px 12px;border-radius:9px;border:none;background:transparent;color:inherit;font-size:14px;cursor:pointer;margin-bottom:4px}
+.cp-item:hover{background:rgba(255,255,255,0.06)}.cp-item.on{background:#8B5CF6;color:#fff;font-weight:700}
+@media(max-width:820px){.cp-wrap{grid-template-columns:1fr;padding:20px 14px 80px}.cp-side{position:static;display:flex;overflow-x:auto;gap:6px;padding:8px}.cp-item{white-space:nowrap;margin:0;width:auto}.cp-hide{display:none}}`}</style>
+      <div className="cp-wrap">
+        <aside className="cp-side">
+          <div className="cp-hide" style={{ padding: "6px 10px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Client Area</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted,#A892C6)", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email}</div>
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <Link href="/contact" style={{ ...btnGhost, textDecoration: "none", display: "inline-block" }}>New Inquiry</Link>
-            <button
-              onClick={async () => { await signOut(); window.location.href = "/login"; }}
-              style={btnGhost}
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-
-        <section style={{ marginBottom: 40 }}>
-          <h2 style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted, #A892C6)", marginBottom: 14 }}>My Profile</h2>
-          <ProfileCard />
-        </section>
-
-        <section style={{ marginBottom: 40 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h2 style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted, #A892C6)" }}>Your Bookings</h2>
-            <button onClick={loadBookings} style={{ ...btnGhost, padding: "6px 12px", fontSize: 11 }}>↻ Refresh</button>
-          </div>
-          {bookingsErr && <div style={{ color: "#e74c3c", fontSize: 12.5, marginBottom: 14 }}>{bookingsErr}</div>}
-          {bookingsLoading ? (
-            <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Loading…</div>
-          ) : bookings.length === 0 ? (
-            <div style={cardStyle}>
-              <p style={{ fontSize: 13, color: "var(--text-muted, #A892C6)", margin: 0 }}>
-                No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.
-              </p>
-            </div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {bookings.map((b) => (
-                <BookingCard key={b.id} b={b} onReceiptChanged={loadBookings} />
-              ))}
-            </div>
-          )}
-        </section>
-
+          {MENU.map(([k, i, l]) => <button key={k} className={`cp-item${tab === k ? " on" : ""}`} onClick={() => setTab(k)}><span>{i}</span>{l}</button>)}
+          <a href="/booking" className="cp-item" style={{ textDecoration: "none" }}><span>➕</span>New Booking</a>
+          <button className="cp-item" onClick={async () => { await signOut(); window.location.href = "/login"; }}><span>↩</span>Sign out</button>
+        </aside>
         <section>
-          <h2 style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted, #A892C6)", marginBottom: 14 }}>Messages</h2>
-          <MessageThread userEmail={user?.email} />
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 18px" }}>{MENU.find((m) => m[0] === tab)?.[2]}</h1>
+          {tab === "bookings" && (<>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}><button onClick={loadBookings} style={{ ...btnGhost, padding: "6px 12px", fontSize: 11 }}>↻ Refresh</button></div>
+            {bookingsErr && <div style={{ color: "#e74c3c", fontSize: 12.5, marginBottom: 14 }}>{bookingsErr}</div>}
+            {bookingsLoading ? <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Loading…</div> : bookings.length === 0 ? (
+              <div style={cardStyle}><p style={{ fontSize: 13, color: "var(--text-muted, #A892C6)", margin: 0 }}>No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.</p></div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {bookings.map((b) => (<div key={b.id}><BookingCard b={b} onReceiptChanged={loadBookings} /><BookingActions b={b} onDone={loadBookings} /></div>))}
+              </div>
+            )}
+          </>)}
+          {tab === "requests" && <RequestsPanel />}
+          {tab === "wallet" && <WalletPanel />}
+          {tab === "messages" && <MessageThread userEmail={user?.email} />}
+          {tab === "profile" && <ProfileCard />}
         </section>
       </div>
     </main>

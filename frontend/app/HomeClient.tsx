@@ -8635,7 +8635,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     <option value="+44">🇬🇧 +44</option>
                     <option value="+1">🇺🇸 +1</option>
                   </select>
-                  <input className="adv-input" value={booking.phone.replace(/^\+\d{1,4}\s?/,"")} onChange={e=>setBooking(b=>({...b,phone:bkCountry+" "+e.target.value.replace(/[^\d\s]/g,"")}))} placeholder="5XX XXX XXX" />
+                  <input className="adv-input" value={booking.phone.replace(/^\+\d{1,4}\s?/,"")} onChange={e=>{ let v=e.target.value.replace(/[^\d\s]/g,""); const cc=bkCountry.replace("+",""); const dd=v.replace(/\s/g,""); if(dd.startsWith("00"+cc)) v=dd.slice(2+cc.length); else if(dd.startsWith(cc)&&dd.length>cc.length+7) v=dd.slice(cc.length); if(v.replace(/\s/g,"").startsWith("0")) v=v.replace(/^\s*0/,""); setBooking(b=>({...b,phone:bkCountry+" "+v})); }} placeholder="5XX XXX XXX (without 0)" />
                 </div>
               </div>
               <div><label className="adv-label">Email *</label><input type="email" className="adv-input" value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>

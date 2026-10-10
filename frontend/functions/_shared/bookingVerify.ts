@@ -26,5 +26,6 @@ export async function unsign(env: any, token: string): Promise<any | null> {
   } catch { return null; }
 }
 export const normEmail = (e: any) => String(e || "").trim().toLowerCase();
-export const normPhone = (p: any) => String(p || "").replace(/[^\d]/g, "");
+import { toWhatsAppNumber } from "./liveChatWhatsapp";
+export const normPhone = (p: any) => toWhatsAppNumber(String(p || ""));
 export const sixDigits = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, "0");

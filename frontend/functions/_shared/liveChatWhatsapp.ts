@@ -26,7 +26,24 @@ export function adminWhatsAppNumber(env: any): string {
 export function toWhatsAppNumber(raw: string | null | undefined, defaultCountry = "971"): string {
   let d = String(raw || "").trim().replace(/[^\d+]/g, "");
   if (!d) return "";
-  if (d.startsWith("+")) return d.slice(1).replace(/\D/g, "");
+  if (d.startsWith("+")) d = d.slice(1).replace(/\D/g, "");
+  else {
+    d = d.replace(/\D/g, "");
+    if (d.startsWith("00")) d = d.slice(2);
+    else if (!d.startsWith(defaultCountry)) {
+      if (d.startsWith("0") && d.length >= 9 && d.length <= 10) return defaultCountry + d.slice(1);
+      if (d.length === 9 && /^[5]/.test(d)) return defaultCountry + d;
+      return d;
+    }
+  }
+  // d now starts with a country code: fix "971 00971...", "971 971...", "971 0..."
+  for (const cc of [defaultCountry, "966", "92", "91", "63", "44", "1"]) {
+    if (d.startsWith(cc + "00" + cc)) d = d.slice(cc.length + 2);
+    if (d.startsWith(cc + cc) && d.length > cc.length + 8) d = d.slice(cc.length);
+    if (d.startsWith(cc + "0") && d.length > cc.length + 8) d = cc + d.slice(cc.length + 1);
+  }
+  return d;
+  // (legacy path below kept for reference; unreachable)
   d = d.replace(/\D/g, "");
   if (d.startsWith("00")) return d.slice(2);
   if (d.startsWith(defaultCountry)) return d;

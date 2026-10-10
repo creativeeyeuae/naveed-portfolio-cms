@@ -4404,6 +4404,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [acMode,setAcMode]=useState<""|"create"|"login"|"signin">("");
   const [acPw,setAcPw]=useState(""); const [acPw2,setAcPw2]=useState(""); const [acBusy,setAcBusy]=useState(false); const [acMsg,setAcMsg]=useState("");
   useEffect(()=>{ (async()=>{ try{ const ac=await import("@/lib/authClient"); const ss=await ac.getSession(); if(ss?.user?.email){ setClientSess({email:ss.user.email,token:ss.access_token}); setBooking(b=>({...b,email:b.email||ss.user.email!})); } }catch{} })(); },[]);
+  useEffect(()=>{ const em=booking.email.trim().toLowerCase(); if(clientSess||vfToken||vfDone||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){ if(acMode==="signin"&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) setAcMode(""); return; }
+    const t=setTimeout(async()=>{ try{ const r=await fetch("/api/bookings/account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"lookup",email:em})}); const j=await r.json(); setAcMode(j.exists?"signin":""); setAcMsg(""); }catch{} },600);
+    return ()=>clearTimeout(t); },[booking.email,clientSess,vfToken,vfDone]);
   const acSignIn=async(email:string,pw:string)=>{ const ac=await import("@/lib/authClient"); const {data,error}=await ac.signInWithPassword(email,pw); if(error||!data?.session) throw new Error(error?.message||"Wrong password."); setClientSess({email:data.session.user.email!,token:data.session.access_token}); setBooking(b=>({...b,email:data.session!.user.email!})); };
   const [bkCouponInput,setBkCouponInput]=useState("");
   const [bkCoupon,setBkCoupon]=useState<{code:string;discount:number;label:string}|null>(null);
@@ -8676,12 +8679,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div style={{fontSize:11.5,color:C.MID,marginTop:6}}>At least 8 characters, with letters and numbers.</div>
                   <div style={{display:"flex",justifyContent:"flex-end",marginTop:14}}><button disabled={acBusy||acPw.length<8||acPw!==acPw2} onClick={async()=>{ setAcBusy(true); setAcMsg(""); try{ const r=await fetch("/api/bookings/account",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({verify_token:vfDone!.token,mode:"create",name:booking.name,password:acPw})}); const j=await r.json(); if(r.status===409){ setAcMode("login"); setAcMsg(j.error); } else if(!r.ok){ setAcMsg(j.error||"Could not create account."); } else { await acSignIn(booking.email.trim(),acPw); setAcPw("");setAcPw2(""); setBkStep(1); } }catch(e:any){ setAcMsg(e.message||"Please try again."); } setAcBusy(false); }} className="adv-btn-primary">{acBusy?"Creating…":"Create Account & Continue"}</button></div>
                 </div>);
-              if((verified&&acMode==="login")||acMode==="signin") return pwBox(acMode==="signin"?"Sign in to book":"Welcome back!",acMode==="signin"?"Enter the email above and your password.":"You already have an account with this email. Enter your password to continue.",
+              if((verified&&acMode==="login")||acMode==="signin") return pwBox("Welcome back!","You already have an account with this email — enter your password to continue.",
                 <div>
                   <label className="adv-label">Password</label><input type="password" className="adv-input" value={acPw} onChange={e=>{setAcPw(e.target.value);setAcMsg("");}} autoComplete="current-password" />
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginTop:14,flexWrap:"wrap"}}>
-                    <span style={{display:"flex",gap:14}}><a href="/reset-password" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#c4b5fd"}}>Forgot password?</a>{acMode==="signin"&&<button onClick={()=>{setAcMode("");setAcMsg("");}} style={{background:"none",border:"none",color:C.MID,fontSize:12,cursor:"pointer"}}>← New client</button>}</span>
-                    <button disabled={acBusy||!acPw||!booking.email.trim()} onClick={async()=>{ setAcBusy(true); setAcMsg(""); try{ await acSignIn(booking.email.trim(),acPw); setAcPw(""); setAcMode(""); setBkStep(1); }catch(e:any){ setAcMsg(/invalid/i.test(e.message)?"Wrong email or password.":e.message); } setAcBusy(false); }} className="adv-btn-primary">{acBusy?"Signing in…":"Sign In & Continue"}</button>
+                    <span style={{display:"flex",gap:14}}><a href="/reset-password" target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:"#c4b5fd"}}>Forgot password?</a></span>
+                    <button disabled={acBusy||!acPw||!booking.email.trim()} onClick={async()=>{ setAcBusy(true); setAcMsg(""); try{ await acSignIn(booking.email.trim(),acPw); setAcPw(""); setAcMode(""); setBkStep(1); }catch(e:any){ setAcMsg(/invalid/i.test(e.message)?"Wrong email or password.":e.message); } setAcBusy(false); }} className="adv-btn-primary">{acBusy?"Checking…":"Continue Booking"}</button>
                   </div>
                 </div>);
               if(vfToken&&vfSentTo===vKey) return(
@@ -8700,7 +8703,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>);
               return(<div>
                 {vfMsg&&<div style={{color:"#ff8a8a",fontSize:12.5,marginBottom:10,textAlign:"right"}}>{vfMsg}</div>}
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><button onClick={()=>{setAcMode("signin");setAcMsg("");}} style={{background:"none",border:"none",color:"#c4b5fd",fontSize:13,cursor:"pointer",padding:0}}>Already a client? Sign in</button><button onClick={send} disabled={vfBusy||!booking.phone.replace(/\D/g,"").trim()||!booking.email.trim()} className="adv-btn-primary">{vfBusy?"Sending codes…":"Verify & Continue"}</button></div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><span /><button onClick={send} disabled={vfBusy||!booking.phone.replace(/\D/g,"").trim()||!booking.email.trim()} className="adv-btn-primary">{vfBusy?"Sending codes…":"Verify & Continue"}</button></div>
               </div>);
             })()}
           </div>
@@ -8893,13 +8896,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             {bkPayMethod==="cash"?(
               <div style={{maxWidth:420,margin:"24px auto 0"}}>
                 <p style={{color:C.MID,fontSize:13}}>Your booking is saved. Please pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> in cash <strong style={{color:C.FG}}>before the event starts</strong>. Naveed will contact you on WhatsApp to confirm.</p>
-                <button onClick={resetAppointmentFlow} className="adv-btn-outline" style={{marginTop:24}}>Book Another Session</button>
+                <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginTop:24}}><a href="/client" className="adv-btn-primary" style={{textDecoration:"none",display:"inline-block"}}>Go to My Inbox →</a><button onClick={resetAppointmentFlow} className="adv-btn-outline">Book Another Session</button></div>
               </div>
             ):bkPayMethod==="bank_transfer"?(
               bkReceiptDone?(
                 <div style={{marginTop:24}}>
                   <p style={{color:C.MID,fontSize:13}}>Your payment receipt has been submitted and is awaiting verification. You'll get a confirmation message on WhatsApp and email as soon as it's verified.</p>
-                  <button onClick={resetAppointmentFlow} className="adv-btn-outline" style={{marginTop:24}}>Book Another Session</button>
+                  <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginTop:24}}><a href="/client" className="adv-btn-primary" style={{textDecoration:"none",display:"inline-block"}}>Go to My Inbox →</a><button onClick={resetAppointmentFlow} className="adv-btn-outline">Book Another Session</button></div>
                 </div>
               ):(
                 <div style={{maxWidth:420,margin:"24px auto 0"}}>

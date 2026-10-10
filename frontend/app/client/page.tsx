@@ -235,6 +235,68 @@ function MessageThread({ userEmail }: { userEmail?: string }) {
   );
 }
 
+function ProfileCard() {
+  const [p, setP] = useState<any>(null);
+  const [wa, setWa] = useState(""); const [bio, setBio] = useState("");
+  const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  const [pw1, setPw1] = useState(""); const [pw2, setPw2] = useState(""); const [pwMsg, setPwMsg] = useState("");
+  const call = async (body?: any) => {
+    const token = await getAccessToken();
+    const r = await fetch("/api/client/profile", body ? { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) } : { headers: { Authorization: `Bearer ${token}` } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || "Failed"); setP(j); setWa(j.whatsapp || ""); setBio(j.bio || ""); return j;
+  };
+  useEffect(() => { call().catch(() => {}); }, []);
+  const pickAvatar = (f?: File) => {
+    if (!f) return; const img = new Image(); const url = URL.createObjectURL(f);
+    img.onload = async () => {
+      const s = 256, c = document.createElement("canvas"); c.width = s; c.height = s; const ctx = c.getContext("2d")!;
+      const m = Math.min(img.width, img.height); ctx.drawImage(img, (img.width - m) / 2, (img.height - m) / 2, m, m, 0, 0, s, s);
+      URL.revokeObjectURL(url); setBusy(true); setMsg("");
+      try { await call({ avatar: c.toDataURL("image/jpeg", 0.82) }); setMsg("✓ Photo updated"); } catch (e: any) { setMsg(e.message); } setBusy(false);
+    };
+    img.src = url;
+  };
+  const inp: CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.05)", color: "inherit", fontSize: 14 };
+  const ro: CSSProperties = { ...inp, opacity: 0.6, cursor: "not-allowed" };
+  const lbl: CSSProperties = { fontSize: 12, color: "var(--text-muted,#A892C6)", display: "block", marginBottom: 6 };
+  if (!p) return <div style={cardStyle}><span style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Loading profile…</span></div>;
+  return (
+    <div style={{ ...cardStyle, display: "grid", gap: 16 }}>
+      <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ width: 84, height: 84, borderRadius: "50%", overflow: "hidden", background: "rgba(139,92,246,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, fontWeight: 700, flexShrink: 0 }}>
+          {p.avatar ? <img src={p.avatar} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (p.name || p.email || "?").slice(0, 1).toUpperCase()}
+        </div>
+        <div>
+          <div style={{ fontSize: 18, fontWeight: 700 }}>{p.name || "Client"}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted,#A892C6)", marginBottom: 8 }}>{p.email}</div>
+          <label style={{ ...btnGhost, display: "inline-block", cursor: "pointer" }}>{busy ? "Saving…" : "Change photo"}<input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => pickAvatar(e.target.files?.[0])} /></label>
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+        <div><label style={lbl}>Name (contact us to change)</label><input style={ro} value={p.name} readOnly /></div>
+        <div><label style={lbl}>Email (cannot be changed)</label><input style={ro} value={p.email} readOnly /></div>
+        <div><label style={lbl}>WhatsApp number</label><input style={inp} value={wa} onChange={(e) => setWa(e.target.value)} placeholder="+971 5X XXX XXXX" /></div>
+      </div>
+      <div><label style={lbl}>About you / your company</label><textarea style={{ ...inp, minHeight: 80, resize: "vertical" }} maxLength={600} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell us a little about you or your business" /></div>
+      <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+        <button disabled={busy} onClick={async () => { setBusy(true); setMsg(""); try { await call({ whatsapp: wa, bio }); setMsg("✓ Profile saved"); } catch (e: any) { setMsg(e.message); } setBusy(false); }} style={btnPrimary}>{busy ? "Saving…" : "Save profile"}</button>
+        {msg && <span style={{ fontSize: 12.5, color: msg.startsWith("✓") ? "#4ade80" : "#f87171" }}>{msg}</span>}
+      </div>
+      <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: 14 }}>
+        <div style={{ fontWeight: 700, marginBottom: 10 }}>Change password</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+          <input type="password" style={inp} placeholder="New password" value={pw1} onChange={(e) => setPw1(e.target.value)} autoComplete="new-password" />
+          <input type="password" style={inp} placeholder="Confirm new password" value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" />
+        </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10 }}>
+          <button disabled={pw1.length < 8 || pw1 !== pw2} onClick={async () => { setPwMsg(""); const { updatePassword } = await import("@/lib/authClient"); const { error } = await updatePassword(pw1); setPwMsg(error ? error.message : "✓ Password changed"); if (!error) { setPw1(""); setPw2(""); } }} style={btnGhost}>Update password</button>
+          {pwMsg && <span style={{ fontSize: 12.5, color: pwMsg.startsWith("✓") ? "#4ade80" : "#f87171" }}>{pwMsg}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ClientPortalPage() {
   const [checked, setChecked] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -298,6 +360,11 @@ export default function ClientPortalPage() {
             </button>
           </div>
         </div>
+
+        <section style={{ marginBottom: 40 }}>
+          <h2 style={{ fontSize: 13, letterSpacing: 2, textTransform: "uppercase", color: "var(--text-muted, #A892C6)", marginBottom: 14 }}>My Profile</h2>
+          <ProfileCard />
+        </section>
 
         <section style={{ marginBottom: 40 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>

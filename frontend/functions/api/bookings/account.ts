@@ -24,6 +24,13 @@ export const onRequestOptions: PagesFunction = async ({ request }) =>
 export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const origin = request.headers.get("Origin");
   let b: any; try { b = await request.json(); } catch { return json({ error: "Invalid request." }, 400, origin); }
+  if (b.mode === "lookup") {
+    const em = String(b.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return json({ exists: false }, 200, origin);
+    const r = await supaAdmin(env, `customers?email=ilike.${encodeURIComponent(em)}&auth_user_id=not.is.null&select=id&limit=1`, { method: "GET" });
+    const rows = r.ok ? ((await r.json()) as any[]) : [];
+    return json({ exists: rows.length > 0 }, 200, origin);
+  }
   const v = await unsign(env, b.verify_token);
   if (!v || v.t !== "verified") return json({ error: "Please verify your email and WhatsApp first.", needVerify: true }, 401, origin);
   const email: string = v.e, phone: string = v.p;

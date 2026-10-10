@@ -6,6 +6,8 @@
 import { json, corsHeaders, supaAdmin } from "../../../_shared/adminAuth";
 import { notifyAllAdmins } from "../../../_shared/webpush";
 import { emailBookingUpdate, whatsappBookingUpdate } from "../../../_shared/bookingNotify";
+import { forwardAdminAlertsWhatsApp } from "../../../_shared/liveChatWhatsapp";
+import { resendPayload } from "../../../_shared/emailDeliver";
 import { paypalConfigured, paypalToken, paypalApi, usdFromAed, loadPayableBooking } from "../../../_shared/paypal";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
@@ -67,6 +69,13 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: "paypal", action: "paypal_payment_captured", entity_type: "payment", entity_id: payment.id, details: { appointment_id: appt.id, order_id: orderId, capture_id: capture.id, usd, aed: appt.total, env: env.PAYPAL_ENV || "sandbox" } }) }).catch(() => {});
 
   try { await notifyAllAdmins(env, { title: "PayPal payment received", body: `${appt.appointment_ref} paid USD ${usd} (AED ${appt.total}) — booking confirmed`, url: "/?admin=1" }); } catch {}
+  // Now that it's paid: the "new booking" alert to Naveed (WhatsApp + email) -- sent only here
+  // for online payments, so abandoned/unpaid checkouts never trigger alerts.
+  const alert = `🔔 NEW PAID BOOKING — Naveed Anjum\n\n🎯 ${appt.service_name || "-"}${appt.package_name ? " (" + appt.package_name + ")" : ""}\n💳 Paid online: USD ${usd} (AED ${appt.total})\nRef: ${appt.appointment_ref}\n\n🔗 https://bynaveedanjum.com/?admin=1`;
+  try { await forwardAdminAlertsWhatsApp(env, alert); } catch {}
+  try {
+    if (env.RESEND_API_KEY) await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(resendPayload(env, "booking@bynaveedanjum.com", `New paid booking — ${appt.appointment_ref}`, `<pre style="font-family:Arial,sans-serif;font-size:15px;white-space:pre-wrap">${alert.replace(/</g, "&lt;")}</pre>`)) });
+  } catch {}
   try { await whatsappBookingUpdate(env, appt.id, "confirmed", { paid: true }); } catch {}
   try { await emailBookingUpdate(env, appt.id, "confirmed"); } catch {}
 

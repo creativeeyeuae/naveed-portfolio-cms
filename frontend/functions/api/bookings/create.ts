@@ -72,8 +72,21 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const slot = await rpc(env, "is_slot_taken", { p_date: date, p_time: time });
   if (slot.ok && slot.data === true) return json({ error: "This time slot is no longer available. Please select another time.", slotTaken: true }, 409, origin);
 
-  const cust = await rpc(env, "find_or_create_customer", { p_full_name: name, p_email: email, p_phone: phone || null, p_whatsapp: phone || null, p_company: null });
-  const customerId = typeof cust.data === "string" ? cust.data : null;
+  // Reuse an existing client when the email OR the WhatsApp number matches (no duplicate accounts).
+  let customerId: string | null = null;
+  try {
+    const last9 = normPhone(phone).slice(-9);
+    const or = [`email.ilike.${encodeURIComponent(email)}`];
+    if (last9.length === 9) or.push(`whatsapp.ilike.*${last9}`, `phone.ilike.*${last9}`);
+    const ex = await supaAdmin(env, `customers?or=(${or.join(",")})&select=id,email,created_at&order=created_at.asc&limit=5`, { method: "GET" });
+    const rows = ex.ok ? ((await ex.json()) as any[]) : [];
+    const byEmail = rows.find((r) => String(r.email || "").toLowerCase() === email);
+    customerId = (byEmail || rows[0])?.id || null;
+  } catch {}
+  if (!customerId) {
+    const cust = await rpc(env, "find_or_create_customer", { p_full_name: name, p_email: email, p_phone: phone || null, p_whatsapp: phone || null, p_company: null });
+    customerId = typeof cust.data === "string" ? cust.data : null;
+  }
   if (!customerId) return json({ error: "Something went wrong saving your details. Please try again." }, 500, origin);
 
   if (couponRow && !(await useCoupon(env, couponRow))) return json({ error: "This code has just been used up. Please remove it and try again.", couponError: true }, 409, origin);

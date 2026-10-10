@@ -4736,7 +4736,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // Auto WhatsApp alert goes out from the server through the existing bridge (see
     // /api/notify/trigger.ts's "new_booking" handling -> _shared/liveChatWhatsapp.ts) --
     // deliberately no wa.me/WhatsApp Web popup here anymore.
-    notifyServer("new_booking", created.id);
+    if(bkPayMethod!=="paypal") notifyServer("new_booking", created.id); // online payments notify only after capture
     setBkStep(7);
   }
   async function submitReceipt(){

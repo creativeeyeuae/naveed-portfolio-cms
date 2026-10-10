@@ -14,6 +14,7 @@ import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
+import LeadFinder from "@/components/cms/LeadFinder";
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
@@ -5154,7 +5155,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // state the old flat tab bar used -- this is a navigation/layout reorganization only,
     // every existing panel below is unchanged and still reachable.
     const cmsPageTitle:Record<string,string> = {
-      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", clientRequests:"Client Requests", wallet:"Client Wallet", offers:"Offers & Notifications", deliver:"Deliver Final Work", projects:"Portfolio",
+      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", clientRequests:"Client Requests", wallet:"Client Wallet", offers:"Offers & Notifications", leadfinder:"Lead Finder", deliver:"Deliver Final Work", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
       email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", companies:"Companies", contacts:"Contacts", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
@@ -5253,6 +5254,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <CmsNavItem icon="📝" label="Client Requests" active={cmsTab==="clientRequests"} onClick={()=>setCmsTab("clientRequests")} />
           <CmsNavItem icon="💳" label="Client Wallet" active={cmsTab==="wallet"} onClick={()=>setCmsTab("wallet")} />
           <CmsNavItem icon="📣" label="Offers & Notifications" active={cmsTab==="offers"} onClick={()=>setCmsTab("offers")} />
+          <CmsNavItem icon="🎯" label="Lead Finder" active={cmsTab==="leadfinder"} onClick={()=>setCmsTab("leadfinder")} />
           <CmsNavItem icon="📁" label="Deliver Files" active={cmsTab==="deliver"} onClick={()=>setCmsTab("deliver")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
@@ -5883,6 +5885,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {cmsTab==="wallet"&&adminSession&&<WalletAdmin token={adminSession.access_token} />}
         {cmsTab==="offers"&&adminSession&&<OffersAdmin token={adminSession.access_token} />}
         {cmsTab==="deliver"&&adminSession&&<DeliverAdmin token={adminSession.access_token} />}
+        {cmsTab==="leadfinder"&&adminSession&&<LeadFinder token={adminSession.access_token} />}
 
         {cmsTab==="payments"&&(
           <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>

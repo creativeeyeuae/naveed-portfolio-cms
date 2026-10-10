@@ -65,5 +65,6 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   if (customerId && userId) {
     await supaAdmin(env, `customers?id=eq.${customerId}&auth_user_id=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ auth_user_id: userId }) }).catch(() => {});
   }
+  try { const { sendNamedTemplate, nameVars, AUTO_TEMPLATE_NAMES } = await import("../../_shared/autoEmail"); await sendNamedTemplate(env, AUTO_TEMPLATE_NAMES.account_welcome, email, nameVars(name)); } catch {}
   return json({ ok: true }, 200, origin);
 };

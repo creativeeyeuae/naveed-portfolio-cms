@@ -62,6 +62,7 @@ export const onRequestPost: PagesFunction<ClientEnv & any> = async ({ request, e
     const rows = await exists();
     for (const extra of rows.slice(1)) await supaAdmin(env, `wallet_transactions?id=eq.${extra.id}`, { method: "DELETE" });
     const balance = await walletBalance(env, cid);
+    try { const { sendNamedTemplate, nameVars, AUTO_TEMPLATE_NAMES } = await import("../../_shared/autoEmail"); const cc = ((await (await supaAdmin(env, `customers?id=eq.${cid}&select=full_name,email`, { method: "GET" })).json()) as any[])?.[0]; if (cc?.email) await sendNamedTemplate(env, AUTO_TEMPLATE_NAMES.wallet_topup, cc.email, { ...nameVars(cc.full_name), amount: Number(aed).toLocaleString("en-US"), balance: Number(balance).toLocaleString("en-US") }); } catch {}
     await addClientNotification(env, cid, `AED ${aed.toLocaleString()} added to your wallet`, `New balance: AED ${balance.toLocaleString()}`, "/client", "paypal");
     try { await forwardAdminAlertsWhatsApp(env, `💰 WALLET TOP-UP\n\n${user.email} added AED ${aed} (USD ${capture.amount.value}) via PayPal.\nNew balance: AED ${balance}`); } catch {}
     return json({ ok: true, balance }, 200, origin);

@@ -44,6 +44,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   const balance = await walletBalance(env, b.customer_id);
   await addClientNotification(env, b.customer_id, amount > 0 ? `💳 AED ${amount} added to your wallet` : `💳 AED ${Math.abs(amount)} used from your wallet`, `${b.note ? b.note + " · " : ""}Balance: AED ${balance}`, "/client", admin.email);
   if (amount > 0) {
+    try { const { sendNamedTemplate, nameVars, AUTO_TEMPLATE_NAMES } = await import("../../_shared/autoEmail"); const cc = ((await (await supaAdmin(env, `customers?id=eq.${b.customer_id}&select=full_name,email`, { method: "GET" })).json()) as any[])?.[0]; if (cc?.email) await sendNamedTemplate(env, AUTO_TEMPLATE_NAMES.wallet_topup, cc.email, { ...nameVars(cc.full_name), amount: Number(amount).toLocaleString("en-US"), balance: Number(balance).toLocaleString("en-US") }); } catch {}
     try {
       const c = ((await (await supaAdmin(env, `customers?id=eq.${b.customer_id}&select=full_name,whatsapp,phone`, { method: "GET" })).json()) as any[])?.[0];
       const ph = c?.whatsapp || c?.phone;

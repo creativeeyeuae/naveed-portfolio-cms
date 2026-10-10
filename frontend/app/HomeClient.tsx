@@ -4002,6 +4002,20 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ alert(e.message||"Could not save template"); }
     setEmailBusy(false);
   }
+  // Adds the automated booking/account emails as normal, editable templates (only missing ones).
+  async function emailInstallAutomations(){
+    if(!adminSession) return;
+    if(!confirm("Add the automated emails (booking received, confirmed, cancelled, rescheduled, files ready, welcome, wallet...) as editable templates?\n\nExisting templates are never changed — only missing ones are added.")) return;
+    setEmailBusy(true);
+    try{
+      const res=await fetch("/api/admin/email/automations",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({action:"install"})});
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Could not add automated emails");
+      alert(`Added: ${data.added.length} template(s)${data.skipped.length?`\nAlready existed (kept as they are): ${data.skipped.join(", ")}`:""}`);
+      await loadEmailTemplates();
+    }catch(e:any){ alert(e.message||"Could not add automated emails"); }
+    setEmailBusy(false);
+  }
   async function emailDeleteTemplate(id:string){
     if(!adminSession) return;
     if(!confirm("Delete this template? This can't be undone.")) return;
@@ -7027,6 +7041,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{display:"flex",justifyContent:"flex-end",gap:8,flexWrap:"wrap" as const,marginBottom:14}}>
                   <button onClick={()=>{setEmailStartersOpen(o=>!o);setEmailImportOpen(false);}} style={emailStartersOpen?S.btnP:S.btnO}>✨ Start from a Design</button>
                   <button onClick={()=>{setEmailImportOpen(o=>!o);setEmailStartersOpen(false);}} style={emailImportOpen?S.btnP:S.btnO}>&lt;/&gt; Import HTML</button>
+                  <button onClick={emailInstallAutomations} disabled={emailBusy} style={S.btnO}>⚡ Add Automated Emails</button>
                   <button onClick={emailNewTemplate} style={S.btnP}>+ Blank Template</button>
                 </div>
                 {emailStartersOpen&&(

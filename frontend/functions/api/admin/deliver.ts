@@ -8,6 +8,7 @@ import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../..
 import { addClientNotification } from "../../_shared/clientExtras";
 import { forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 import { resendPayload } from "../../_shared/emailDeliver";
+import { sendNamedTemplate, nameVars, AUTO_TEMPLATE_NAMES } from "../../_shared/autoEmail";
 
 const DEFAULT_TPL = {
   wa: "🎉 Hi {name}, your final {service} files are ready!\n\n📸 {photos} photos · 🎬 {videos} videos\n🔗 Download: {link}\n⏳ Available until {expires}\n\nRef: {ref}\nPlease download and keep a backup. It was a pleasure working with you!\n— Naveed Anjum",
@@ -70,7 +71,8 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
 
   let sentWa = false, sentEmail = false;
   if (b.whatsapp && (c.whatsapp || c.phone)) { try { sentWa = !!(await forwardClientWhatsAppAlert(env, c.whatsapp || c.phone, fill(T.wa), c.full_name)); } catch {} }
-  if (b.email && c.email && (env as any).RESEND_API_KEY) {
+  if (b.email && c.email) sentEmail = await sendNamedTemplate(env, AUTO_TEMPLATE_NAMES.files_delivered, c.email, { ...nameVars(c.full_name), booking_ref: a.appointment_ref, service_name: a.service_name || "", link, photos: map.photos, videos: map.videos, expires: map.expires });
+  if (!sentEmail && b.email && c.email && (env as any).RESEND_API_KEY) {
     const html = `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;background:#FAF8FD;padding:28px;border-radius:12px;color:#2A2438"><div style="font-size:11px;font-weight:bold;letter-spacing:2px;color:#6D28D9">YOUR FILES ARE READY</div><div style="white-space:pre-wrap;font-size:15px;line-height:1.6;margin:12px 0 20px">${esc(fill(T.emailBody))}</div><a href="${esc(link)}" style="display:inline-block;background:#6D28D9;color:#fff;text-decoration:none;font-weight:bold;border-radius:10px;padding:13px 20px">Download your files</a><p style="font-size:12px;color:#5B5470;margin-top:20px">— Naveed Anjum · bynaveedanjum.com</p></div>`;
     try { const r = await fetch("https://api.resend.com/emails", { method: "POST", headers: { Authorization: `Bearer ${(env as any).RESEND_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify(resendPayload(env, c.email, fill(T.emailSubject), html)) }); sentEmail = r.ok; } catch {}
   }

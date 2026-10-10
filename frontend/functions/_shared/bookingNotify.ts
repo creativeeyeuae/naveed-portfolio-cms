@@ -14,6 +14,7 @@
 import { supaAdmin } from "./adminAuth";
 import { renderTemplate, substituteVariables } from "./emailRender";
 import { resendPayload } from "./emailDeliver";
+import { nameVars, serviceVars } from "./autoEmail";
 import { forwardClientWhatsAppAlert } from "./liveChatWhatsapp";
 
 export type BookingEvent = "received" | "confirmed" | "payment_rejected" | "cancelled" | "rescheduled" | "completed";
@@ -21,7 +22,7 @@ export type EmailOutcome = "sent" | "no_email" | "not_configured" | "failed";
 
 const TEMPLATE_NAMES: Record<BookingEvent, string[]> = {
   received: ["Booking Received", "Booking Request Received"],
-  confirmed: ["Booking Confirmation", "Booking Confirmed"],
+  confirmed: ["Booking Confirmed", "Booking Confirmation"],
   payment_rejected: ["Payment Issue", "Payment Rejected"],
   cancelled: ["Booking Cancelled", "Booking Cancellation"],
   rescheduled: ["Booking Rescheduled", "Booking Reschedule"],
@@ -109,6 +110,9 @@ export async function emailBookingUpdate(env: any, appointmentId: string, event:
       package_name: appt.package_name || "",
       total: appt.total != null ? `AED ${Number(appt.total).toLocaleString("en-US")}` : "",
       reason: extra.reason || appt.admin_notes || "",
+      ...(() => { const n = nameVars(full); return { comma_name: n.comma_name, name_sp: n.name_sp }; })(),
+      ...serviceVars(appt.service_name),
+      link: "https://bynaveedanjum.com/client",
     };
 
     // 1) Naveed's own saved template, if one is named for this event.

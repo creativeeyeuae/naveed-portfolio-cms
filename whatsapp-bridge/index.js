@@ -23,6 +23,31 @@ const QRCodeLib = require("qrcode");
 // WhatsApp ids of messages this bridge itself sent (alerts) -- so they're never mistaken
 // for Naveed typing a reply in his self-chat.
 const sentByBridge = new Set();
+
+// Message store for WhatsApp "retry" requests. When the receiving phone can't decrypt a
+// message on the first try, WhatsApp asks the sender to RE-SEND it. Without this store the
+// bridge can't answer, so the message shows "Waiting for this message" and then disappears.
+const SENT_STORE_FILE = path.join(__dirname, "sent-store.json");
+let sentStore = {};
+try { sentStore = JSON.parse(fs.readFileSync(SENT_STORE_FILE, "utf8")) || {}; } catch {}
+let sentStoreTimer = null;
+function rememberSent(msg) {
+  try {
+    if (!msg?.key?.id || !msg.message) return;
+    sentStore[msg.key.id] = msg.message;
+    const ids = Object.keys(sentStore);
+    if (ids.length > 2000) for (const id of ids.slice(0, ids.length - 2000)) delete sentStore[id];
+    clearTimeout(sentStoreTimer);
+    sentStoreTimer = setTimeout(() => { try { fs.writeFileSync(SENT_STORE_FILE, JSON.stringify(sentStore)); } catch {} }, 1000);
+  } catch {}
+}
+const msgRetryCounterMap = {};
+const msgRetryCounterCache = {
+  get: (k) => msgRetryCounterMap[k],
+  set: (k, v) => { msgRetryCounterMap[k] = v; },
+  del: (k) => { delete msgRetryCounterMap[k]; },
+  flushAll: () => { for (const k of Object.keys(msgRetryCounterMap)) delete msgRetryCounterMap[k]; },
+};
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
 
 // Draw the QR using plain "#" / " " characters only -- no Unicode block glyphs.
@@ -198,7 +223,11 @@ async function start() {
 
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
-  const sock = makeWASocket({ version, auth: state, logger, printQRInTerminal: false });
+  const sock = makeWASocket({
+    version, auth: state, logger, printQRInTerminal: false,
+    msgRetryCounterCache,
+    getMessage: async (key) => sentStore[key?.id] || undefined,
+  });
   currentSock = sock;
 
   sock.ev.on("creds.update", saveCreds);
@@ -327,6 +356,7 @@ async function pollAndSend(sock) {
         if (check.jid) target = check.jid;
       } catch (e) { /* lookup failed -- still try to send */ }
       const sent = await sock.sendMessage(target, { text: row.body });
+      rememberSent(sent);
       if (sent?.key?.id) { sentByBridge.add(sent.key.id); if (sentByBridge.size > 500) sentByBridge.delete(sentByBridge.values().next().value); }
       await callWebhook({ type: "status_update", message_id: row.id, wa_message_id: sent?.key?.id, status: "sent" });
     } catch (e) {

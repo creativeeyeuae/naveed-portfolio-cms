@@ -722,7 +722,8 @@ function PayPalCheckout({appointmentId,clientId,onPaid,onPending}:{appointmentId
     const render=()=>{
       const pp=(window as any).paypal; if(!pp||!boxRef.current||cancelled) return;
       boxRef.current.innerHTML="";
-      pp.Buttons({
+      const btn=pp.Buttons({
+        fundingSource: pp.FUNDING.CARD, // inline card form on our page -- no PayPal popup
         style:{layout:"vertical",shape:"rect",label:"pay",height:45},
         createOrder: async()=>{
           setMsg("");
@@ -744,12 +745,14 @@ function PayPalCheckout({appointmentId,clientId,onPaid,onPending}:{appointmentId
         },
         onCancel: ()=>setMsg("Payment cancelled. Your booking is saved -- you can pay any time using the button below."),
         onError: ()=>setMsg("Something went wrong with PayPal. Please try again, or choose bank transfer."),
-      }).render(boxRef.current).catch(()=>{});
+      });
+      if(btn.isEligible&&!btn.isEligible()){ setMsg("Card payment is not available right now. Please choose bank transfer or cash."); return; }
+      btn.render(boxRef.current).catch(()=>{});
     };
     if((window as any).paypal){ render(); }
     else {
       const id="paypal-sdk"; let sc=document.getElementById(id) as HTMLScriptElement|null;
-      if(!sc){ sc=document.createElement("script"); sc.id=id; sc.src=`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons`; sc.async=true; document.body.appendChild(sc); }
+      if(!sc){ sc=document.createElement("script"); sc.id=id; sc.src=`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=paylater,venmo`; sc.async=true; document.body.appendChild(sc); }
       sc.addEventListener("load",render);
       sc.addEventListener("error",()=>setMsg("Could not load PayPal. Please check your connection and refresh."));
     }
@@ -8770,8 +8773,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   placeholder did, so nothing changes for anyone until it's configured. */}
               {(ppCfg?.enabled||settings.paymentLinkUrl?.trim()) ? (
                 <button onClick={()=>setBkPayMethod("paypal")} className={`adv-tile${bkPayMethod==="paypal"?" is-active":""}`}>
-                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 {ppCfg?.enabled?"PayPal / Debit or Credit Card":"Pay Online"}</div>
-                  <div style={{fontSize:12,color:C.MID}}>{ppCfg?.enabled?"Pay instantly and securely. Your booking is confirmed automatically.":"Pay securely online by card. Confirmed as soon as we see your payment."}</div>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 {ppCfg?.enabled?"Debit / Credit Card":"Pay Online"}</div>
+                  <div style={{fontSize:12,color:C.MID}}>{ppCfg?.enabled?"Pay securely by card right here (processed by PayPal). Your booking is confirmed automatically.":"Pay securely online by card. Confirmed as soon as we see your payment."}</div>
                 </button>
               ) : (
                 <button disabled title="Available soon" className="adv-tile is-disabled">
@@ -8796,7 +8799,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             )}
             {bkPayMethod==="paypal"&&ppCfg?.enabled&&(
               <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
-                After you confirm below, pay securely with PayPal or card. Total <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> is charged as <strong style={{color:C.FG}}>USD {(Math.round(bkTotal/(ppCfg.aedPerUsd||3.6725)*100)/100).toFixed(2)}</strong> (PayPal does not support AED; fixed rate 1 USD = 3.6725 AED). Your booking is confirmed automatically once payment succeeds.
+                After you confirm below, enter your card details securely on this page. Total <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> is charged as <strong style={{color:C.FG}}>USD {(Math.round(bkTotal/(ppCfg.aedPerUsd||3.6725)*100)/100).toFixed(2)}</strong> (PayPal does not support AED; fixed rate 1 USD = 3.6725 AED). Your booking is confirmed automatically once payment succeeds.
               </div>
             )}
             {bkPayMethod==="paypal"&&!ppCfg?.enabled&&(

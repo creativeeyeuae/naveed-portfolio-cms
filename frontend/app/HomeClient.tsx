@@ -897,6 +897,21 @@ function CouponsAdmin({token}:{token:string}){
 // Renders the official PayPal JS SDK buttons for an EXISTING appointment. The order is
 // created and captured by /api/payments/paypal/* on the server -- the browser never decides
 // the amount or whether the booking is paid.
+function WalletPay({appointmentId,total,onPaid}:{appointmentId:string;total:number;onPaid:()=>void}){
+  const [bal,setBal]=useState<number|null>(null); const [busy,setBusy]=useState(false); const [msg,setMsg]=useState("");
+  useEffect(()=>{(async()=>{try{const ac=await import("@/lib/authClient");const t=await ac.getAccessToken();if(!t)return;const r=await fetch("/api/client/wallet",{headers:{Authorization:`Bearer ${t}`}});const j=await r.json();if(r.ok)setBal(Number(j.balance)||0);}catch{}})();},[]);
+  if(bal===null||bal<=0) return null;
+  const enough=bal>=total;
+  const pay=async()=>{setBusy(true);setMsg("");try{const ac=await import("@/lib/authClient");const t=await ac.getAccessToken();const r=await fetch("/api/client/pay-wallet",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({appointment_id:appointmentId})});const j=await r.json().catch(()=>({}));if(r.ok&&j.ok){onPaid();return;}setMsg(j.error||"Could not pay from wallet.");}catch{setMsg("Could not pay from wallet.");}setBusy(false);};
+  return(<div style={{background:"linear-gradient(135deg,rgba(74,222,128,0.16),rgba(139,92,246,0.10))",border:"1px solid rgba(74,222,128,0.4)",borderRadius:12,padding:16,marginBottom:16,textAlign:"left"}}>
+    <div style={{fontSize:12,color:"#A892C6",fontWeight:700,letterSpacing:1}}>YOUR WALLET</div>
+    <div style={{fontSize:22,fontWeight:800,color:"#4ADE80",margin:"4px 0 8px"}}>AED {bal.toLocaleString()}</div>
+    {enough?<button onClick={pay} disabled={busy} className="adv-btn-primary" style={{width:"100%"}}>{busy?"Paying…":`Pay AED ${total.toLocaleString()} from wallet`}</button>
+      :<div style={{fontSize:12.5,color:"#E2D9F3"}}>Not enough to cover AED {total.toLocaleString()}. <a href="/client" style={{color:"#C4B5FD"}}>Top up your wallet</a> or pay below by card / PayPal.</div>}
+    {msg&&<div style={{fontSize:12.5,color:"#ff8a8a",marginTop:8}}>{msg}</div>}
+    {enough&&<div style={{fontSize:11.5,color:"#A892C6",marginTop:10,textAlign:"center"}}>— or pay by card / PayPal below —</div>}
+  </div>);
+}
 function PayPalCheckout({appointmentId,clientId,onPaid,onPending}:{appointmentId:string;clientId:string;onPaid:()=>void;onPending:(m:string)=>void}){
   const boxRef=useRef<HTMLDivElement|null>(null);
   const [msg,setMsg]=useState("");
@@ -9140,6 +9155,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 ):(
                   <div>
                     <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Complete your payment of <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> (charged as USD {(Math.round(bkTotal/(ppCfg.aedPerUsd||3.6725)*100)/100).toFixed(2)}) to confirm your booking.{ppCfg.env!=="live"&&<span style={{display:"block",color:"#fbbf24",marginTop:6}}>Test mode (PayPal Sandbox) — no real money is charged.</span>}</p>
+                    <WalletPay appointmentId={bkConfirmed.id} total={bkTotal} onPaid={()=>setPpPaid(true)} />
                     <PayPalCheckout appointmentId={bkConfirmed.id} clientId={ppCfg.clientId} onPaid={()=>setPpPaid(true)} onPending={m=>setPpPending(m)} />
                     <p style={{color:C.MID,fontSize:12,marginTop:16}}>Your booking is saved. If you leave now, you can pay later — just message us on WhatsApp with your reference.</p>
                   </div>

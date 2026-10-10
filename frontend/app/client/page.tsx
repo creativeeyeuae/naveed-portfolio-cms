@@ -145,9 +145,18 @@ function BookingCard({ b, onReceiptChanged, onMessage }: { b: Booking; onReceipt
           <ReceiptReupload appointmentId={b.id} onDone={onReceiptChanged} />
         </div>
       )}
+      {payment && payment.status !== "paid" && !["cancelled", "completed"].includes(b.status) && <WalletPayBtn id={b.id} total={Number(b.total)} onDone={onReceiptChanged} />}
       <BookingActions b={b} onDone={onReceiptChanged} onMessage={onMessage} />
     </div>
   );
+}
+
+function WalletPayBtn({ id, total, onDone }: { id: string; total: number; onDone: () => void }) {
+  const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  return <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+    <button disabled={busy} onClick={async () => { setBusy(true); setMsg(""); try { await api("/api/client/pay-wallet", { appointment_id: id }); setMsg("✓ Paid from wallet — booking confirmed."); onDone(); } catch (e: any) { setMsg(e.message); } setBusy(false); }} style={{ ...btnPrimary, background: "#16A34A" }}>{busy ? "Paying…" : `Pay AED ${total.toLocaleString()} from wallet`}</button>
+    {msg && <span style={{ fontSize: 12.5, color: msg.startsWith("✓") ? "#4ADE80" : "#F87171" }}>{msg}</span>}
+  </div>;
 }
 
 function MessageThread({ userEmail }: { userEmail?: string }) {
@@ -359,16 +368,53 @@ function RequestsPanel() {
     </div>))}</div>;
 }
 
+function TopUp({ onDone }: { onDone: () => void }) {
+  const [amt, setAmt] = useState(500); const [cfg, setCfg] = useState<any>(null); const [msg, setMsg] = useState(""); const [busy, setBusy] = useState(false);
+  const box = useRef<HTMLDivElement | null>(null); const amtRef = useRef(amt); amtRef.current = amt;
+  useEffect(() => { fetch("/api/payments/paypal/config").then((r) => r.json()).then(setCfg).catch(() => setCfg({ enabled: false })); }, []);
+  useEffect(() => {
+    if (!cfg?.enabled || !cfg.clientId) return; let dead = false;
+    const render = () => {
+      const pp = (window as any).paypal; if (!pp || !box.current || dead) return; box.current.innerHTML = "";
+      for (const src of [pp.FUNDING.CARD, pp.FUNDING.PAYPAL]) {
+        const b = pp.Buttons({ fundingSource: src, style: { layout: "vertical", shape: "rect", label: "pay", height: 45 },
+          createOrder: async () => { setMsg(""); const j = await api("/api/client/wallet-topup", { action: "create", amount_aed: amtRef.current }).catch((e) => { setMsg(e.message); throw e; }); return j.id; },
+          onApprove: async (d: any) => { setBusy(true); try { const j = await api("/api/client/wallet-topup", { action: "capture", order_id: d.orderID }); setMsg(j.pending ? j.message : `✓ AED ${amtRef.current.toLocaleString()} added. New balance AED ${Number(j.balance).toLocaleString()}`); onDone(); } catch (e: any) { setMsg(e.message); } setBusy(false); },
+          onCancel: () => setMsg("Top-up cancelled."), onError: () => setMsg("PayPal error — please try again.") });
+        if (!b.isEligible || b.isEligible()) b.render(box.current).catch(() => {});
+      }
+    };
+    if ((window as any).paypal) render(); else {
+      let sc = document.getElementById("paypal-sdk") as HTMLScriptElement | null;
+      if (!sc) { sc = document.createElement("script"); sc.id = "paypal-sdk"; sc.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.clientId)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=paylater,venmo`; sc.async = true; document.body.appendChild(sc); }
+      sc.addEventListener("load", render);
+    }
+    return () => { dead = true; };
+  }, [cfg]);
+  if (cfg && !cfg.enabled) return null;
+  const usd = (Math.round((amt / (cfg?.aedPerUsd || 3.6725)) * 100) / 100).toFixed(2);
+  return <div style={{ ...cardStyle, display: "grid", gap: 12 }}>
+    <div><div style={{ fontSize: 17, fontWeight: 700 }}>Add credit</div><div style={{ fontSize: 13, color: "#A892C6", marginTop: 4 }}>Top up in advance and pay future bookings instantly from your wallet.</div></div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{[250, 500, 1000, 2000, 5000].map((v) => <button key={v} onClick={() => setAmt(v)} style={{ borderRadius: 20, padding: "8px 14px", font: "inherit", fontSize: 13, fontWeight: 700, cursor: "pointer", border: amt === v ? "none" : "1px solid rgba(255,255,255,0.16)", background: amt === v ? "#8B5CF6" : "transparent", color: "#fff" }}>AED {v.toLocaleString()}</button>)}</div>
+    <label style={{ display: "grid", gap: 6, fontSize: 12.5, color: "#C4B5FD", fontWeight: 600 }}>Or enter amount (AED 50 – 20,000)<input type="number" min={50} max={20000} value={amt} onChange={(e) => setAmt(Math.max(0, Math.round(Number(e.target.value) || 0)))} style={{ ...field, maxWidth: 220 }} /></label>
+    <div style={{ fontSize: 12.5, color: "#A892C6" }}>Charged as USD {usd} (1 USD = 3.6725 AED).{cfg?.env !== "live" && <span style={{ color: "#FBBF24" }}> Test mode — no real money.</span>}</div>
+    {amt >= 50 && amt <= 20000 ? <div ref={box} style={{ background: "#fff", borderRadius: 10, padding: 12, maxWidth: 420, opacity: busy ? 0.5 : 1, pointerEvents: busy ? "none" : "auto" }} /> : <div style={{ fontSize: 12.5, color: "#F87171" }}>Choose an amount between AED 50 and 20,000.</div>}
+    {msg && <div style={{ fontSize: 13, color: msg.startsWith("✓") ? "#4ADE80" : "#F87171" }}>{msg}</div>}
+  </div>;
+}
+
 function WalletPanel() {
   const [w, setW] = useState<any>(null); const [err, setErr] = useState("");
-  useEffect(() => { api("/api/client/wallet").then(setW).catch((e) => { setErr(e.message); setW({ balance: 0, transactions: [] }); }); }, []);
+  const load = () => api("/api/client/wallet").then(setW).catch((e) => { setErr(e.message); setW({ balance: 0, transactions: [] }); });
+  useEffect(() => { load(); }, []);
   if (!w) return <div style={cardStyle}>Loading…</div>;
   return <div style={{ display: "grid", gap: 14 }}>
     <div style={{ ...cardStyle, background: "linear-gradient(135deg,rgba(139,92,246,0.35),rgba(139,92,246,0.08))" }}>
       <div style={{ fontSize: 12.5, color: "#A892C6" }}>Wallet balance</div>
       <div style={{ fontSize: 34, fontWeight: 700 }}>AED {Number(w.balance).toLocaleString("en-US")}</div>
-      <div style={{ fontSize: 12.5, color: "#A892C6", marginTop: 4 }}>Credit from refunds, gifts and offers. Ask Naveed to use it on your next booking.</div>
+      <div style={{ fontSize: 12.5, color: "#A892C6", marginTop: 4 }}>Use it to pay any booking instantly — at checkout or from My Bookings.</div>
     </div>
+    <TopUp onDone={load} />
     {err && <div style={{ color: "#f87171", fontSize: 12.5 }}>{err}</div>}
     <div style={cardStyle}>
       <div style={{ fontWeight: 700, marginBottom: 10 }}>History</div>

@@ -663,6 +663,58 @@ async function createAppointment(input:NewAppointmentInput): Promise<{id:string;
     return {id,ref};
   } catch(e) { console.error("[booking] createAppointment threw:",e); return null; }
 }
+// ─── PAYPAL CHECKOUT (existing booking) ─────────────────────────────────────
+// Renders the official PayPal JS SDK buttons for an EXISTING appointment. The order is
+// created and captured by /api/payments/paypal/* on the server -- the browser never decides
+// the amount or whether the booking is paid.
+function PayPalCheckout({appointmentId,clientId,onPaid,onPending}:{appointmentId:string;clientId:string;onPaid:()=>void;onPending:(m:string)=>void}){
+  const boxRef=useRef<HTMLDivElement|null>(null);
+  const [msg,setMsg]=useState("");
+  const [busy,setBusy]=useState(false);
+  useEffect(()=>{
+    let cancelled=false;
+    const render=()=>{
+      const pp=(window as any).paypal; if(!pp||!boxRef.current||cancelled) return;
+      boxRef.current.innerHTML="";
+      pp.Buttons({
+        style:{layout:"vertical",shape:"rect",label:"pay",height:45},
+        createOrder: async()=>{
+          setMsg("");
+          const r=await fetch("/api/payments/paypal/create-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({appointment_id:appointmentId})});
+          const j=await r.json().catch(()=>({}));
+          if(!r.ok||!j.id){ setMsg(j.error||"Could not start the payment. Please try again."); throw new Error(j.error||"create failed"); }
+          return j.id;
+        },
+        onApprove: async(data:any)=>{
+          setBusy(true); setMsg("");
+          try{
+            const r=await fetch("/api/payments/paypal/capture-order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({appointment_id:appointmentId,order_id:data.orderID})});
+            const j=await r.json().catch(()=>({}));
+            if(r.ok&&j.ok){ onPaid(); return; }
+            if(r.status===202&&j.pending){ onPending(j.message); return; }
+            if(j.retry&&data?.restart) return data.restart();
+            setMsg(j.error||"Payment could not be completed. You have not been charged.");
+          } finally { setBusy(false); }
+        },
+        onCancel: ()=>setMsg("Payment cancelled. Your booking is saved -- you can pay any time using the button below."),
+        onError: ()=>setMsg("Something went wrong with PayPal. Please try again, or choose bank transfer."),
+      }).render(boxRef.current).catch(()=>{});
+    };
+    if((window as any).paypal){ render(); }
+    else {
+      const id="paypal-sdk"; let sc=document.getElementById(id) as HTMLScriptElement|null;
+      if(!sc){ sc=document.createElement("script"); sc.id=id; sc.src=`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&intent=capture&components=buttons`; sc.async=true; document.body.appendChild(sc); }
+      sc.addEventListener("load",render);
+      sc.addEventListener("error",()=>setMsg("Could not load PayPal. Please check your connection and refresh."));
+    }
+    return ()=>{ cancelled=true; };
+  },[appointmentId,clientId]);
+  return(<div>
+    <div ref={boxRef} style={{background:"#fff",borderRadius:10,padding:12,minHeight:60,opacity:busy?0.5:1,pointerEvents:busy?"none":"auto"}} />
+    {busy&&<div style={{fontSize:12,color:"#c4b5fd",marginTop:8}}>Confirming your payment…</div>}
+    {msg&&<div style={{fontSize:12.5,color:"#ff8a8a",marginTop:10}}>{msg}</div>}
+  </div>);
+}
 async function uploadReceiptFile(file:File, appointmentId:string): Promise<string|null> {
   if(!sb) return null;
   try {
@@ -4296,6 +4348,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkCountry,setBkCountry]=useState("+971");
   const [bkPkgId,setBkPkgId]=useState("");
   const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer">("bank_transfer");
+  const [ppCfg,setPpCfg]=useState<{enabled:boolean;clientId?:string;env?:string;aedPerUsd?:number}|null>(null);
+  const [ppPaid,setPpPaid]=useState(false);
+  const [ppPending,setPpPending]=useState("");
+  useEffect(()=>{ fetch("/api/payments/paypal/config").then(r=>r.json()).then(setPpCfg).catch(()=>setPpCfg({enabled:false})); },[]);
   const [bkSlotTaken,setBkSlotTaken]=useState(false);
   const [bkCheckingSlot,setBkCheckingSlot]=useState(false);
   const [bkSubmitting,setBkSubmitting]=useState(false);
@@ -8624,10 +8680,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   pasted a real hosted payment link (CMS > Settings > Online Payment Link);
                   until then it stays disabled exactly as the old "PayPal -- Available soon"
                   placeholder did, so nothing changes for anyone until it's configured. */}
-              {settings.paymentLinkUrl?.trim() ? (
+              {(ppCfg?.enabled||settings.paymentLinkUrl?.trim()) ? (
                 <button onClick={()=>setBkPayMethod("paypal")} className={`adv-tile${bkPayMethod==="paypal"?" is-active":""}`}>
-                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 Pay Online</div>
-                  <div style={{fontSize:12,color:C.MID}}>Pay securely online by card. Confirmed as soon as we see your payment.</div>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💳 {ppCfg?.enabled?"PayPal / Debit or Credit Card":"Pay Online"}</div>
+                  <div style={{fontSize:12,color:C.MID}}>{ppCfg?.enabled?"Pay instantly and securely. Your booking is confirmed automatically.":"Pay securely online by card. Confirmed as soon as we see your payment."}</div>
                 </button>
               ) : (
                 <button disabled title="Available soon" className="adv-tile is-disabled">
@@ -8650,7 +8706,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 {bkReceiptFile&&<div style={{fontSize:12,color:C.PL,marginTop:6}}>✓ {bkReceiptFile.name}</div>}
               </div>
             )}
-            {bkPayMethod==="paypal"&&(
+            {bkPayMethod==="paypal"&&ppCfg?.enabled&&(
+              <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
+                After you confirm below, pay securely with PayPal or card. Total <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> is charged as <strong style={{color:C.FG}}>USD {(Math.round(bkTotal/(ppCfg.aedPerUsd||3.6725)*100)/100).toFixed(2)}</strong> (PayPal does not support AED; fixed rate 1 USD = 3.6725 AED). Your booking is confirmed automatically once payment succeeds.
+              </div>
+            )}
+            {bkPayMethod==="paypal"&&!ppCfg?.enabled&&(
               <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
                 After you confirm below, a secure payment page will open in a new tab for <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong>. Please complete the payment there and include your booking reference (shown next) so we can match it to your booking.
               </div>
@@ -8700,6 +8761,24 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div><button onClick={submitReceipt} disabled={!bkReceiptFile||bkReceiptUploading} className="adv-btn-primary">{bkReceiptUploading?"Uploading...":"Upload Receipt"}</button></div>
                 </div>
               )
+            ):ppCfg?.enabled&&ppCfg.clientId?(
+              <div style={{maxWidth:420,margin:"24px auto 0"}}>
+                {ppPaid?(
+                  <div>
+                    <p style={{color:"#4ade80",fontSize:15,fontWeight:700,marginBottom:8}}>✓ Payment received — your booking is confirmed!</p>
+                    <p style={{color:C.MID,fontSize:13}}>A confirmation has been sent to your email and WhatsApp.</p>
+                    <button onClick={()=>{setPpPaid(false);setPpPending("");resetAppointmentFlow();}} className="adv-btn-outline" style={{marginTop:24}}>Book Another Session</button>
+                  </div>
+                ):ppPending?(
+                  <p style={{color:C.MID,fontSize:13}}>{ppPending}</p>
+                ):(
+                  <div>
+                    <p style={{color:C.MID,fontSize:13,marginBottom:16}}>Complete your payment of <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> (charged as USD {(Math.round(bkTotal/(ppCfg.aedPerUsd||3.6725)*100)/100).toFixed(2)}) to confirm your booking.{ppCfg.env!=="live"&&<span style={{display:"block",color:"#fbbf24",marginTop:6}}>Test mode (PayPal Sandbox) — no real money is charged.</span>}</p>
+                    <PayPalCheckout appointmentId={bkConfirmed.id} clientId={ppCfg.clientId} onPaid={()=>setPpPaid(true)} onPending={m=>setPpPending(m)} />
+                    <p style={{color:C.MID,fontSize:12,marginTop:16}}>Your booking is saved. If you leave now, you can pay later — just message us on WhatsApp with your reference.</p>
+                  </div>
+                )}
+              </div>
             ):(
               // Real "Pay Online" confirmation -- an explicit button (not an auto-opened tab,
               // which popup blockers tend to kill right after an async submit) linking out to

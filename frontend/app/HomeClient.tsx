@@ -8827,15 +8827,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               {bkCouponMsg&&<div style={{color:"#ff8a8a",fontSize:12,marginTop:8}}>{bkCouponMsg}</div>}
             </div>
             <div style={{maxWidth:480,margin:"0 auto 20px",padding:"14px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.04)"}}>
-              <div style={{fontWeight:700,fontSize:13,color:C.FG,marginBottom:8}}>Cancellation policy</div>
+              <div style={{fontWeight:700,fontSize:13,color:C.FG,marginBottom:8}}>Booking terms (summary)</div>
               <ul style={{margin:"0 0 12px 18px",padding:0,fontSize:12.5,color:C.MID,lineHeight:1.7}}>
                 <li><strong style={{color:"#4ade80"}}>72+ hours</strong> before the booking — free cancellation, full refund</li>
                 <li><strong style={{color:"#fbbf24"}}>Within 72 to 24 hours</strong> before — 50% of the total is charged</li>
                 <li><strong style={{color:"#f87171"}}>Less than 24 hours</strong> before — no refund</li>
+                <li><strong style={{color:C.FG}}>Delivery:</strong> about 7 working days after the shoot and full payment — depends on payment and post-production work</li>
+                <li>Copyright stays with the photographer; you receive a licence to use your files once fully paid. Liability is limited to the amount paid.</li>
               </ul>
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{display:"inline-block",fontSize:12.5,color:"#c4b5fd",fontWeight:600,marginBottom:12}}>Read full Terms &amp; Conditions →</a>
               <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer",fontSize:13,color:C.FG}}>
                 <input type="checkbox" checked={bkTerms} onChange={e=>{setBkTerms(e.target.checked);setBkError("");}} style={{marginTop:3,width:16,height:16,accentColor:"#8B5CF6"}} />
-                <span>I have read and agree to the cancellation policy and booking terms. *</span>
+                <span>I have read and agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{color:"#c4b5fd"}}>Terms &amp; Conditions</a>, including the cancellation policy and delivery times. *</span>
               </label>
             </div>
             {/* Honeypot -- invisible to real visitors, but a form-filling bot will find and

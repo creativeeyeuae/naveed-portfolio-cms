@@ -143,6 +143,7 @@ export default function SiteFooter({ site, spa }: { site: PublicSiteInfo; spa?: 
               SERVICE_PAGES links above). Kept in this quiet bottom-bar spot rather than the
               main nav (SiteHeader.tsx) or the link columns above, since it's a secondary
               utility for existing/returning clients, not a page visitors need to discover. */}
+          <Link href="/terms" style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>Terms &amp; Conditions</Link>
           <Link href="/login" style={{ fontSize: 10, letterSpacing: 2, color: "#2a2a3a", textTransform: "uppercase", textDecoration: "none", transition: "color 0.2s" }} {...hoverDark}>Client Login</Link>
         </div>
       </div>

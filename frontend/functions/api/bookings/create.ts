@@ -81,7 +81,7 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const ref = "CF-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
   const aRes = await supaAdmin(env, "appointments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: net, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + (couponNote ? couponNote + "\n" : "") + "[Client accepted cancellation terms v1 on " + new Date().toISOString() + ": 72h+ free / 72-24h 50% / <24h no refund]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
+    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: net, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + (couponNote ? couponNote + "\n" : "") + "[Client accepted Terms & Conditions v1 (bynaveedanjum.com/terms) on " + new Date().toISOString() + " - incl. cancellation 72h+ free / 72-24h 50% / <24h no refund; delivery ~7 working days after shoot + full payment]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
   });
   if (!aRes.ok) return json({ error: "Your booking could not be saved. Please try again.", detail: (await aRes.text()).slice(0, 300) }, 500, origin);
 

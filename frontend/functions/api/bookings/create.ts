@@ -39,8 +39,17 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const service = clean(b.service, 120), notes = clean(b.notes, 2000), packageId = clean(b.package_id, 80);
   const method = b.method === "paypal" ? "paypal" : b.method === "cash" ? "cash" : "bank_transfer";
   // Email + WhatsApp must have been verified (signed token from /api/bookings/verify-check).
-  const v = await unsign(env, b.verify_token);
-  if (!v || v.t !== "verified" || v.e !== normEmail(b.email) || v.p !== normPhone(b.phone)) return json({ error: "Please verify your email and WhatsApp number first.", needVerify: true }, 401, origin);
+  // Either a signed-in client (Supabase session) or a fresh email+WhatsApp verification.
+  let trusted = false;
+  if (b.auth_token) {
+    const ur = await fetch("https://ziwaocjrpbrksnepbpxi.supabase.co/auth/v1/user", { headers: { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${b.auth_token}` } });
+    const u: any = ur.ok ? await ur.json().catch(() => null) : null;
+    if (u?.email && normEmail(u.email) === normEmail(b.email)) trusted = true;
+  }
+  if (!trusted) {
+    const v = await unsign(env, b.verify_token);
+    if (!v || v.t !== "verified" || v.e !== normEmail(b.email) || v.p !== normPhone(b.phone)) return json({ error: "Please verify your email and WhatsApp number first.", needVerify: true }, 401, origin);
+  }
   if (b.agreed_terms !== true) return json({ error: "Please read and accept the cancellation terms to continue." }, 400, origin);
   const date = clean(b.date, 10), time = to24h(clean(b.time, 12));
 

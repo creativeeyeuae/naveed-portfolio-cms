@@ -641,7 +641,7 @@ type NewAppointmentInput = {
 function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
   try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
 }
-async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean;coupon?:string}): Promise<{id:string;ref:string}|null> {
+async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean;coupon?:string;verify_token:string}): Promise<{id:string;ref:string}|null> {
   // Created on the SERVER (/api/bookings/create): price, fee, total, slot and date are all
   // validated there with the live CMS packages -- the browser never writes booking rows.
   try {
@@ -4391,6 +4391,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkPkgId,setBkPkgId]=useState("");
   const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer"|"cash">("bank_transfer");
   const [bkTerms,setBkTerms]=useState(false);
+  // Email + WhatsApp verification (step 0)
+  const [vfToken,setVfToken]=useState(""); const [vfDone,setVfDone]=useState<{token:string;key:string}|null>(null);
+  const [vfEmailCode,setVfEmailCode]=useState(""); const [vfWaCode,setVfWaCode]=useState("");
+  const [vfBusy,setVfBusy]=useState(false); const [vfMsg,setVfMsg]=useState(""); const [vfSentTo,setVfSentTo]=useState("");
   const [bkCouponInput,setBkCouponInput]=useState("");
   const [bkCoupon,setBkCoupon]=useState<{code:string;discount:number;label:string}|null>(null);
   const [bkCouponMsg,setBkCouponMsg]=useState("");
@@ -4708,7 +4712,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
     const created = await createAppointment({
       name:booking.name, email:booking.email, phone:booking.phone||"", service:booking.service,
-      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms, coupon:bkCoupon?.code||"",
+      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms, coupon:bkCoupon?.code||"", verify_token:vfDone?.token||"",
     });
     if(!created&&(globalThis as any).__bkSlot){ setBkSlotTaken(true); }
     if(!created&&(globalThis as any).__bkCouponErr){ setBkCoupon(null); }
@@ -8636,7 +8640,37 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
               <div><label className="adv-label">Email *</label><input type="email" className="adv-input" value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
             </div>
-            <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={()=>setBkStep(1)} disabled={!booking.phone.trim()||!booking.email.trim()} className="adv-btn-primary">Continue</button></div>
+            {(()=>{
+              const vKey=(booking.email.trim().toLowerCase()+"|"+booking.phone.replace(/\D/g,""));
+              const verified=vfDone&&vfDone.key===vKey;
+              const send=async()=>{ setVfBusy(true); setVfMsg(""); setVfEmailCode(""); setVfWaCode("");
+                try{ const r=await fetch("/api/bookings/verify-start",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:booking.name,email:booking.email,phone:booking.phone})}); const j=await r.json();
+                  if(!r.ok) setVfMsg(j.error||"Could not send codes."); else { setVfToken(j.token); setVfSentTo(vKey); }
+                }catch{ setVfMsg("Network problem. Please try again."); } setVfBusy(false); };
+              const check=async()=>{ setVfBusy(true); setVfMsg("");
+                try{ const r=await fetch("/api/bookings/verify-check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:vfToken,email_code:vfEmailCode,whatsapp_code:vfWaCode})}); const j=await r.json();
+                  if(!r.ok){ setVfMsg(j.error||"Incorrect code."); if(j.expired){ setVfToken(""); } } else { setVfDone({token:j.verified,key:vKey}); setVfToken(""); setBkStep(1); }
+                }catch{ setVfMsg("Network problem. Please try again."); } setVfBusy(false); };
+              if(verified) return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><span style={{color:"#4ade80",fontSize:13}}>✓ Email and WhatsApp verified</span><button onClick={()=>setBkStep(1)} className="adv-btn-primary">Continue</button></div>;
+              if(vfToken&&vfSentTo===vKey) return(
+                <div style={{marginTop:8,padding:"16px",borderRadius:12,border:"1px solid rgba(139,92,246,0.4)",background:"rgba(139,92,246,0.08)"}}>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Verify your contact details</div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>We sent a 6-digit code to your <strong style={{color:C.FG}}>email</strong> and another to your <strong style={{color:C.FG}}>WhatsApp</strong>. Check your spam folder if the email doesn't arrive.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <div><label className="adv-label">Email code</label><input className="adv-input" inputMode="numeric" maxLength={6} value={vfEmailCode} onChange={e=>setVfEmailCode(e.target.value.replace(/\D/g,""))} placeholder="••••••" style={{letterSpacing:4,textAlign:"center"}} /></div>
+                    <div><label className="adv-label">WhatsApp code</label><input className="adv-input" inputMode="numeric" maxLength={6} value={vfWaCode} onChange={e=>setVfWaCode(e.target.value.replace(/\D/g,""))} placeholder="••••••" style={{letterSpacing:4,textAlign:"center"}} /></div>
+                  </div>
+                  {vfMsg&&<div style={{color:"#ff8a8a",fontSize:12.5,marginTop:10}}>{vfMsg}</div>}
+                  <div style={{display:"flex",justifyContent:"space-between",gap:10,marginTop:14,flexWrap:"wrap"}}>
+                    <button onClick={send} disabled={vfBusy} className="adv-btn-outline" style={{fontSize:11}}>Resend codes</button>
+                    <button onClick={check} disabled={vfBusy||vfEmailCode.length!==6||vfWaCode.length!==6} className="adv-btn-primary">{vfBusy?"Checking…":"Verify & Continue"}</button>
+                  </div>
+                </div>);
+              return(<div>
+                {vfMsg&&<div style={{color:"#ff8a8a",fontSize:12.5,marginBottom:10,textAlign:"right"}}>{vfMsg}</div>}
+                <div style={{display:"flex",justifyContent:"flex-end"}}><button onClick={send} disabled={vfBusy||!booking.phone.replace(/\D/g,"").trim()||!booking.email.trim()} className="adv-btn-primary">{vfBusy?"Sending codes…":"Verify & Continue"}</button></div>
+              </div>);
+            })()}
           </div>
         )}
 

@@ -8,6 +8,7 @@
 //   - customer is found/created via the existing find_or_create_customer RPC
 import { json, corsHeaders, supaAdmin } from "../../_shared/adminAuth";
 import { checkCoupon, useCoupon } from "../../_shared/coupons";
+import { unsign, normEmail, normPhone } from "../../_shared/bookingVerify";
 
 const TX_FEE_RATE = 0.04;
 const round = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -37,6 +38,9 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const name = clean(b.name, 120), email = clean(b.email, 160).toLowerCase(), phone = clean(b.phone, 40);
   const service = clean(b.service, 120), notes = clean(b.notes, 2000), packageId = clean(b.package_id, 80);
   const method = b.method === "paypal" ? "paypal" : b.method === "cash" ? "cash" : "bank_transfer";
+  // Email + WhatsApp must have been verified (signed token from /api/bookings/verify-check).
+  const v = await unsign(env, b.verify_token);
+  if (!v || v.t !== "verified" || v.e !== normEmail(b.email) || v.p !== normPhone(b.phone)) return json({ error: "Please verify your email and WhatsApp number first.", needVerify: true }, 401, origin);
   if (b.agreed_terms !== true) return json({ error: "Please read and accept the cancellation terms to continue." }, 400, origin);
   const date = clean(b.date, 10), time = to24h(clean(b.time, 12));
 

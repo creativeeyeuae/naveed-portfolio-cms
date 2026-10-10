@@ -414,8 +414,10 @@ export default function ClientPortalPage() {
   const [promoHidden, setPromoHidden] = useState(false);
   const [q, setQ] = useState("");
   const [wallet, setWallet] = useState<number | null>(null);
+  const [walletTx, setWalletTx] = useState<any[]>([]);
+  const [reqs, setReqs] = useState<any[]>([]);
   async function loadFeed() { try { setFeed(await api("/api/client/feed")); } catch { setFeed({ banner: null, notifications: [], unread: 0, deliveries: [] }); } }
-  useEffect(() => { (async () => { const ss = await getSession(); if (!ss) return; loadFeed(); api("/api/client/wallet").then((j) => setWallet(j.balance)).catch(() => setWallet(0)); })(); }, []);
+  useEffect(() => { (async () => { const ss = await getSession(); if (!ss) return; loadFeed(); api("/api/client/wallet").then((j) => { setWallet(j.balance); setWalletTx(j.transactions || []); }).catch(() => setWallet(0)); api("/api/client/requests").then((j) => setReqs(j.requests || [])).catch(() => {}); })(); }, []);
   const [checked, setChecked] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -493,7 +495,7 @@ main input,main textarea,main select,main button{font-family:inherit}
 .cp-item{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:12px;border-radius:10px;border:none;background:transparent;color:#E2D9F3;font-weight:500;font:inherit;font-size:14px;cursor:pointer;margin-bottom:4px;text-decoration:none}
 .cp-item:hover{background:rgba(255,255,255,0.06)}.cp-item.on{background:#8B5CF6;color:#fff;font-weight:700}
 .cp-tabs{display:none}
-@media(max-width:860px){.cp-wrap{grid-template-columns:1fr;padding:16px 14px 110px}.cp-side{display:none}.cp-mob{display:flex}.cp-3{grid-template-columns:1fr!important}
+@media(max-width:860px){.cp-wrap{grid-template-columns:1fr;padding:16px 14px 110px}.cp-side{display:none}.cp-mob{display:flex}.cp-3{grid-template-columns:1fr!important}.cp-2{grid-template-columns:1fr!important}
 .cp-tabs{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:#1B1230;border-top:1px solid rgba(255,255,255,0.1);padding:6px 4px calc(10px + env(safe-area-inset-bottom))}
 .cp-tab{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;justify-content:center;border:none;background:transparent;color:#8A7AA8;font:inherit;font-size:11px;cursor:pointer}.cp-tab.on{color:#C4B5FD;font-weight:700}}`}</style>
       <div className="cp-wrap">
@@ -563,6 +565,17 @@ main input,main textarea,main select,main button{font-family:inherit}
               {!upcoming.length ? <div style={{ fontSize: 13, color: "#A892C6" }}>Nothing booked yet. <Link href="/?page=booking" style={{ color: "#C4B5FD" }}>Book a session →</Link></div> :
                 upcoming.slice(0, 3).map((b: any) => <div key={b.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.07)", fontSize: 13.5 }}><span><b>{b.service_name}</b><br /><span style={{ color: "#A892C6", fontSize: 12.5 }}>{b.appointment_ref} · {b.booking_date} {String(b.booking_time || "").slice(0, 5)}</span></span><span style={{ alignSelf: "center", fontSize: 11, fontWeight: 700, color: b.status === "confirmed" ? "#4ADE80" : "#FBBF24" }}>{String(b.status).replace(/_/g, " ").toUpperCase()}</span></div>)}
             </div>
+            <div className="cp-2" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14 }}>
+              <section style={{ ...card, borderRadius: 16, padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Wallet activity</h2><button onClick={() => go("wallet")} style={{ ...btnGhost, padding: "6px 12px", fontSize: 12 }}>Open</button></div>
+                {!walletTx.length ? <div style={{ fontSize: 13, color: "#A892C6", padding: "10px 0" }}>No wallet activity yet.</div> : walletTx.slice(0, 3).map((t: any, n: number) => <div key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderBottom: n < Math.min(walletTx.length, 3) - 1 ? "1px solid rgba(255,255,255,0.07)" : "none", fontSize: 13.5 }}><span>{t.note || t.kind}<br /><span style={{ fontSize: 11.5, color: "#8A7AA8" }}>{new Date(t.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</span></span><b style={{ color: Number(t.amount) > 0 ? "#4ADE80" : "#F87171" }}>{Number(t.amount) > 0 ? "+" : ""}{Number(t.amount).toLocaleString("en-US")} AED</b></div>)}
+              </section>
+              <section style={{ ...card, borderRadius: 16, padding: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Requests</h2><button onClick={() => go("requests")} style={{ ...btnGhost, padding: "6px 12px", fontSize: 12 }}>Open</button></div>
+                {!reqs.length ? <div style={{ fontSize: 13, color: "#A892C6", padding: "10px 0" }}>No requests. Reschedule or cancel from My Bookings.</div> : reqs.slice(0, 3).map((r: any) => { const c = ({ pending: "#FBBF24", approved: "#4ADE80", rejected: "#F87171" } as any)[r.status] || "#94A3B8"; return <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", fontSize: 13.5 }}><span>{r.kind === "cancel" ? "Cancellation" : "Reschedule"} · {r.appointments?.appointment_ref}<br /><span style={{ fontSize: 11.5, color: "#8A7AA8" }}>{r.kind === "reschedule" ? `to ${r.new_date} · ${String(r.new_time || "").slice(0, 5)}` : `fee ${Number(r.fee_percent)}%`}</span></span><span style={{ fontSize: 11, fontWeight: 700, color: c, border: `1px solid ${c}`, borderRadius: 20, padding: "3px 10px", textTransform: "uppercase" }}>{r.status}</span></div>; })}
+              </section>
+            </div>
+          
           </div>)}
 
           {tab === "bookings" && (<>

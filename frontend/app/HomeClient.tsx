@@ -641,7 +641,7 @@ type NewAppointmentInput = {
 function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
   try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
 }
-async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"}): Promise<{id:string;ref:string}|null> {
+async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean}): Promise<{id:string;ref:string}|null> {
   // Created on the SERVER (/api/bookings/create): price, fee, total, slot and date are all
   // validated there with the live CMS packages -- the browser never writes booking rows.
   try {
@@ -4331,7 +4331,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkStep,setBkStep]=useState(0);
   const [bkCountry,setBkCountry]=useState("+971");
   const [bkPkgId,setBkPkgId]=useState("");
-  const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer">("bank_transfer");
+  const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer"|"cash">("bank_transfer");
+  const [bkTerms,setBkTerms]=useState(false);
   const [ppCfg,setPpCfg]=useState<{enabled:boolean;clientId?:string;env?:string;aedPerUsd?:number}|null>(null);
   const [ppPaid,setPpPaid]=useState(false);
   const [ppPending,setPpPending]=useState("");
@@ -4630,6 +4631,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setBkError("");
     if(!booking.name||!booking.email||!booking.date||!booking.time||!bkSelectedPkg||!booking.service){ setBkError("Please complete every required field."); return; }
     if(bkHp.trim()) return; // honeypot tripped -- silently drop, no feedback for bots
+    if(!bkTerms){ setBkError("Please read and accept the cancellation terms to continue."); return; }
     if(Number(bkCaptchaAnswer)!==bkCaptchaA+bkCaptchaB){ setBkError("Please solve the human-check question correctly before continuing."); return; }
     // Bank transfer now requires the receipt slip attached right here, before the booking is
     // sent -- not as a separate "come back later" step. Validate it up front so an invalid
@@ -4644,7 +4646,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
     const created = await createAppointment({
       name:booking.name, email:booking.email, phone:booking.phone||"", service:booking.service,
-      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod,
+      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms,
     });
     if(!created&&(globalThis as any).__bkSlot){ setBkSlotTaken(true); }
     if(!created){ setBkSubmitting(false); setBkError((globalThis as any).__bkErr||"Your booking could not be saved. Please try again."); return; }
@@ -5395,11 +5397,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           {cust?.email&&<div style={{fontSize:12.5,color:C.MID,marginBottom:10}}>✉️ {cust.email} &nbsp;·&nbsp; AED {Number(b.price_base||0).toLocaleString()} + {Number(b.transaction_fee||0).toLocaleString()} fee</div>}
                           {payment&&(
                             <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"center",padding:"10px 12px",borderRadius:10,marginBottom:12,background:payment.status==="paid"?"rgba(34,197,94,0.08)":"rgba(245,158,11,0.08)",border:`1px solid ${payment.status==="paid"?"rgba(34,197,94,0.25)":"rgba(245,158,11,0.25)"}`}}>
-                              <span style={{fontSize:13,color:C.FG,fontWeight:600}}>Payment · {payment.method==="bank_transfer"?"Bank Transfer":"PayPal"}</span>
+                              <span style={{fontSize:13,color:C.FG,fontWeight:600}}>Payment · {payment.provider==="cash"?"Cash (before event)":payment.method==="bank_transfer"?"Bank Transfer":"PayPal"}</span>
                               <StatusPill status={payment.status} />
                               {payment.receipt_signed_url?(
                                 <a href={payment.receipt_signed_url} target="_blank" rel="noreferrer" style={{color:C.PL,fontSize:13,fontWeight:600}}>View Receipt →</a>
-                              ):payment.method==="bank_transfer"&&payment.status!=="paid"&&payment.status!=="approved"&&payment.status!=="verified"?(
+                              ):payment.method==="bank_transfer"&&payment.provider!=="cash"&&payment.status!=="paid"&&payment.status!=="approved"&&payment.status!=="verified"?(
                                 <span style={{color:C.MID,fontSize:12.5}}>Waiting for client's receipt</span>
                               ):null}
                             </div>
@@ -8657,6 +8659,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>🏦 Bank Transfer</div>
                 <div style={{fontSize:12,color:C.MID}}>Pay by bank transfer, then upload your receipt. Confirmed once verified.</div>
               </button>
+              <button onClick={()=>setBkPayMethod("cash")} className={`adv-tile${bkPayMethod==="cash"?" is-active":""}`}>
+                <div style={{fontWeight:700,fontSize:13,marginBottom:4}}>💵 Cash</div>
+                <div style={{fontSize:12,color:C.MID}}>Pay in cash before the event starts. We'll confirm your booking personally.</div>
+              </button>
               {/* "Pay Online" -- reuses the existing "paypal" method value already wired into
                   createAppointment/payments (no schema change). Only enabled once Naveed has
                   pasted a real hosted payment link (CMS > Settings > Online Payment Link);
@@ -8699,6 +8705,23 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               </div>
             )}
 
+            {bkPayMethod==="cash"&&(
+              <div className="adv-note-box" style={{maxWidth:480,margin:"0 auto 24px"}}>
+                Please pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> in cash <strong style={{color:C.FG}}>before the event starts</strong>. Naveed will contact you on WhatsApp to confirm your booking.
+              </div>
+            )}
+            <div style={{maxWidth:480,margin:"0 auto 20px",padding:"14px 16px",borderRadius:10,border:"1px solid rgba(255,255,255,0.12)",background:"rgba(255,255,255,0.04)"}}>
+              <div style={{fontWeight:700,fontSize:13,color:C.FG,marginBottom:8}}>Cancellation policy</div>
+              <ul style={{margin:"0 0 12px 18px",padding:0,fontSize:12.5,color:C.MID,lineHeight:1.7}}>
+                <li><strong style={{color:"#4ade80"}}>72+ hours</strong> before the booking — free cancellation, full refund</li>
+                <li><strong style={{color:"#fbbf24"}}>Within 72 to 24 hours</strong> before — 50% of the total is charged</li>
+                <li><strong style={{color:"#f87171"}}>Less than 24 hours</strong> before — no refund</li>
+              </ul>
+              <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer",fontSize:13,color:C.FG}}>
+                <input type="checkbox" checked={bkTerms} onChange={e=>{setBkTerms(e.target.checked);setBkError("");}} style={{marginTop:3,width:16,height:16,accentColor:"#8B5CF6"}} />
+                <span>I have read and agree to the cancellation policy and booking terms. *</span>
+              </label>
+            </div>
             {/* Honeypot -- invisible to real visitors, but a form-filling bot will find and
                 fill it like any other field. A filled value silently drops the submission. */}
             <div aria-hidden="true" style={{position:"absolute",left:"-9999px",top:"-9999px",opacity:0,height:0,overflow:"hidden"}}>
@@ -8715,7 +8738,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
             <div style={{display:"flex",justifyContent:"space-between",maxWidth:480,margin:"0 auto"}}>
               <button onClick={()=>setBkStep(5)} className="adv-btn-outline">Back</button>
-              <button onClick={submitAppointment} disabled={bkSubmitting||!bkCaptchaAnswer.trim()||(bkPayMethod==="bank_transfer"&&!bkReceiptFile)} className="adv-btn-primary">{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
+              <button onClick={submitAppointment} disabled={bkSubmitting||!bkTerms||!bkCaptchaAnswer.trim()||(bkPayMethod==="bank_transfer"&&!bkReceiptFile)} className="adv-btn-primary">{bkSubmitting?"Submitting...":"Confirm Booking"}</button>
             </div>
           </div>
         )}
@@ -8725,7 +8748,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
             <div style={{fontSize:48,color:C.PL,marginBottom:16}}>✓</div>
             <h2 style={{fontWeight:700,letterSpacing:0.5,marginBottom:8}}>Booking Received</h2>
             <p style={{color:C.MID,fontSize:13,marginBottom:4}}>Reference: <strong style={{color:C.FG}}>{bkConfirmed.ref}</strong></p>
-            {bkPayMethod==="bank_transfer"?(
+            {bkPayMethod==="cash"?(
+              <div style={{maxWidth:420,margin:"24px auto 0"}}>
+                <p style={{color:C.MID,fontSize:13}}>Your booking is saved. Please pay <strong style={{color:C.FG}}>AED {bkTotal.toLocaleString()}</strong> in cash <strong style={{color:C.FG}}>before the event starts</strong>. Naveed will contact you on WhatsApp to confirm.</p>
+                <button onClick={resetAppointmentFlow} className="adv-btn-outline" style={{marginTop:24}}>Book Another Session</button>
+              </div>
+            ):bkPayMethod==="bank_transfer"?(
               bkReceiptDone?(
                 <div style={{marginTop:24}}>
                   <p style={{color:C.MID,fontSize:13}}>Your payment receipt has been submitted and is awaiting verification. You'll get a confirmation message on WhatsApp and email as soon as it's verified.</p>

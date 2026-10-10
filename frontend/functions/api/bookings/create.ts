@@ -35,7 +35,8 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
 
   const name = clean(b.name, 120), email = clean(b.email, 160).toLowerCase(), phone = clean(b.phone, 40);
   const service = clean(b.service, 120), notes = clean(b.notes, 2000), packageId = clean(b.package_id, 80);
-  const method = b.method === "paypal" ? "paypal" : "bank_transfer";
+  const method = b.method === "paypal" ? "paypal" : b.method === "cash" ? "cash" : "bank_transfer";
+  if (b.agreed_terms !== true) return json({ error: "Please read and accept the cancellation terms to continue." }, 400, origin);
   const date = clean(b.date, 10), time = to24h(clean(b.time, 12));
 
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || !service || !packageId) return json({ error: "Please complete every required field." }, 400, origin);
@@ -63,13 +64,13 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const ref = "CF-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
   const aRes = await supaAdmin(env, "appointments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: base, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes, status: "pending_verification" }),
+    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: base, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + "[Client accepted cancellation terms v1 on " + new Date().toISOString() + ": 72h+ free / 72-24h 50% / <24h no refund]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
   });
   if (!aRes.ok) return json({ error: "Your booking could not be saved. Please try again.", detail: (await aRes.text()).slice(0, 300) }, 500, origin);
 
   const pRes = await supaAdmin(env, "payments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ appointment_id: id, method, base_amount: base, transaction_fee: fee, total, currency: "AED", status: "under_review", provider: method === "bank_transfer" ? "bank" : "paypal" }),
+    body: JSON.stringify({ appointment_id: id, method: method === "cash" ? "bank_transfer" : method, base_amount: base, transaction_fee: fee, total, currency: "AED", status: "under_review", provider: method === "cash" ? "cash" : method === "bank_transfer" ? "bank" : "paypal" }),
   });
   if (!pRes.ok) {
     await supaAdmin(env, `appointments?id=eq.${id}`, { method: "DELETE" }).catch(() => {});

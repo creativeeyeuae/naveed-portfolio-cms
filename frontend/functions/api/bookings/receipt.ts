@@ -20,9 +20,9 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   if (!ext) return json({ error: "Please upload a JPG, PNG or PDF receipt." }, 400, origin);
   if (file.size > 10 * 1024 * 1024) return json({ error: "Receipt file is too large (max 10MB)." }, 400, origin);
 
-  const aRes = await supaAdmin(env, `appointments?id=eq.${id}&select=id,created_at,payments(id,method,status)`, { method: "GET" });
+  const aRes = await supaAdmin(env, `appointments?id=eq.${id}&select=id,created_at,payments(id,method,status,provider)`, { method: "GET" });
   const appt = aRes.ok ? ((await aRes.json()) as any[])?.[0] : null;
-  const pay = appt?.payments?.find((p: any) => p.method === "bank_transfer");
+  const pay = appt?.payments?.find((p: any) => p.method === "bank_transfer" && p.provider !== "cash");
   if (!appt || !pay) return json({ error: "Booking not found." }, 404, origin);
   if (pay.status === "paid") return json({ error: "This booking is already paid." }, 409, origin);
   if (Date.now() - new Date(appt.created_at).getTime() > 24 * 3600e3) return json({ error: "Please send your receipt on WhatsApp instead." }, 403, origin);

@@ -641,27 +641,15 @@ type NewAppointmentInput = {
 function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
   try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
 }
-async function createAppointment(input:NewAppointmentInput): Promise<{id:string;ref:string}|null> {
-  if(!sb) return null;
+async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"}): Promise<{id:string;ref:string}|null> {
+  // Created on the SERVER (/api/bookings/create): price, fee, total, slot and date are all
+  // validated there with the live CMS packages -- the browser never writes booking rows.
   try {
-    const id = crypto.randomUUID();
-    const ref = genAppointmentRef();
-    const fee = calcFee(input.price_base); const total = calcTotal(input.price_base);
-    const status = "pending_verification"; // online payments: capture endpoint sets confirmed+paid
-    const {error:apptErr} = await sb.from("appointments").insert({
-      id, appointment_ref:ref, customer_id:input.customer_id, service_key:input.service_key, service_name:input.service_name,
-      package_id:input.package_id, package_name:input.package_name, price_base:input.price_base, currency:"AED",
-      transaction_fee:fee, total, booking_date:input.booking_date, booking_time:to24h(input.booking_time), notes:input.notes, status,
-    });
-    if(apptErr){ console.error("[booking] appointment insert failed:",apptErr); (globalThis as any).__bkErr=apptErr.message; return null; }
-    const payStatus = "under_review"; // same proven status for both methods; PayPal capture sets "paid"
-    const {error:payErr} = await sb.from("payments").insert({
-      appointment_id:id, method:input.method, base_amount:input.price_base, transaction_fee:fee, total,
-      currency:"AED", status:payStatus, provider:input.method==="bank_transfer"?"bank":null,
-    });
-    if(payErr){ console.error("[booking] payment insert failed:",payErr); (globalThis as any).__bkErr=payErr.message; return null; }
-    return {id,ref};
-  } catch(e) { console.error("[booking] createAppointment threw:",e); return null; }
+    const r = await fetch("/api/bookings/create",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(input)});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok||!j.id){ (globalThis as any).__bkErr = j.error||"Please try again."; (globalThis as any).__bkSlot = !!j.slotTaken; return null; }
+    return {id:j.id,ref:j.ref};
+  } catch { (globalThis as any).__bkErr="Network problem. Please check your connection and try again."; return null; }
 }
 // ─── PAYPAL CHECKOUT (existing booking) ─────────────────────────────────────
 // Renders the official PayPal JS SDK buttons for an EXISTING appointment. The order is
@@ -716,15 +704,11 @@ function PayPalCheckout({appointmentId,clientId,onPaid,onPending}:{appointmentId
   </div>);
 }
 async function uploadReceiptFile(file:File, appointmentId:string): Promise<string|null> {
-  if(!sb) return null;
   try {
-    const ext=(file.name.split(".").pop()||"pdf").toLowerCase().replace(/[^a-z0-9]/g,"")||"pdf";
-    const path=`${appointmentId}/${Date.now()}.${ext}`;
-    const {error} = await sb.storage.from("receipts").upload(path,file,{contentType:file.type});
-    if(error) return null;
-    const {error:updErr} = await sb.from("payments").update({receipt_path:path,receipt_status:"submitted",uploaded_at:new Date().toISOString()}).eq("appointment_id",appointmentId);
-    if(updErr) return null;
-    return path;
+    const fd=new FormData(); fd.append("appointment_id",appointmentId); fd.append("file",file);
+    const r=await fetch("/api/bookings/receipt",{method:"POST",body:fd});
+    const j=await r.json().catch(()=>({}));
+    return r.ok&&j.ok?j.path:null;
   } catch { return null; }
 }
 function validateReceiptFile(file:File): string|null {
@@ -4658,14 +4642,12 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setBkSubmitting(true);
     const stillTaken = await isSlotTaken(booking.date,booking.time);
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
-    const customerId = await findOrCreateCustomerId({full_name:booking.name,email:booking.email,phone:booking.phone,whatsapp:booking.phone,company:""});
-    if(!customerId){ setBkSubmitting(false); setBkError("Something went wrong saving your details. Please try again."); return; }
     const created = await createAppointment({
-      customer_id:customerId, service_key:booking.service, service_name:booking.service,
-      package_id:bkSelectedPkg.id, package_name:bkSelectedPkg.label, price_base:bkBase,
-      booking_date:booking.date, booking_time:booking.time, notes:booking.details, method:bkPayMethod,
+      name:booking.name, email:booking.email, phone:booking.phone||"", service:booking.service,
+      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod,
     });
-    if(!created){ setBkSubmitting(false); setBkError("Your booking could not be saved. Please try again."+((globalThis as any).__bkErr?` (${(globalThis as any).__bkErr})`:"")); return; }
+    if(!created&&(globalThis as any).__bkSlot){ setBkSlotTaken(true); }
+    if(!created){ setBkSubmitting(false); setBkError((globalThis as any).__bkErr||"Your booking could not be saved. Please try again."); return; }
     setBkConfirmed(created);
     // Attach the receipt (if bank transfer) BEFORE the WhatsApp alert goes out below, so
     // Naveed's notification/CMS record always reflects whether the slip is already in hand.

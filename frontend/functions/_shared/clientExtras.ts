@@ -17,3 +17,10 @@ export async function walletBalance(env: any, customerId: string): Promise<numbe
   const rows = (await r.json()) as any[];
   return Math.round(rows.reduce((t, x) => t + Number(x.amount || 0), 0) * 100) / 100;
 }
+
+/** Adds a portal-bell notification (customerId null = all clients). Never throws. */
+export async function addClientNotification(env: any, customerId: string | null, title: string, body = "", link = "", by = "system") {
+  try {
+    await supaAdmin(env, "client_notifications", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ customer_id: customerId, title: title.slice(0, 160), body: body.slice(0, 1000) || null, link: link || null, created_by: by }) });
+  } catch {}
+}

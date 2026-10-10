@@ -641,7 +641,7 @@ type NewAppointmentInput = {
 function notifyServer(type:"new_booking"|"receipt_uploaded"|"new_lead", id:string) {
   try { fetch("/api/notify/trigger",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,id})}).catch(()=>{}); } catch {}
 }
-async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean;coupon?:string;verify_token:string;auth_token?:string}): Promise<{id:string;ref:string}|null> {
+async function createAppointment(input:{name:string;email:string;phone:string;service:string;package_id:string;date:string;time:string;notes:string;method:"paypal"|"bank_transfer"|"cash";agreed_terms:boolean;coupon?:string;verify_token:string;auth_token?:string;booked_for?:any}): Promise<{id:string;ref:string}|null> {
   // Created on the SERVER (/api/bookings/create): price, fee, total, slot and date are all
   // validated there with the live CMS packages -- the browser never writes booking rows.
   try {
@@ -713,6 +713,125 @@ function WalletAdmin({token}:{token:string}){
       {msg&&<div style={{marginTop:10,fontSize:13,color:msg.startsWith("✓")?"#4ade80":"#f87171"}}>{msg}</div>}
       <div style={{marginTop:16}}>{(w?.transactions||[]).map((t:any)=><div key={t.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid rgba(255,255,255,0.07)",fontSize:13,color:"#e2d9f3"}}><span>{t.note||t.kind} <span style={{color:"#a892c6",fontSize:11.5}}>· {new Date(t.created_at).toLocaleDateString("en-GB")} · {t.created_by}</span></span><b style={{color:Number(t.amount)>0?"#4ade80":"#f87171"}}>{Number(t.amount)>0?"+":""}{Number(t.amount)} AED</b></div>)}</div>
     </div>}
+  </div>);
+}
+
+// ─── OFFERS & NOTIFICATIONS (CMS) ────────────────────────────────────────────
+function OffersAdmin({token}:{token:string}){
+  const H={Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
+  const blank={title:"",subtitle:"",coupon_code:"",cta_label:"Book now",cta_link:"/booking",image_url:"",overlay_color:"#1B0F33",overlay_opacity:55,show_portal:true,show_website:false,starts_at:"",ends_at:"",notify_all:false};
+  const [f,setF]=useState<any>(blank); const [list,setList]=useState<any[]|null>(null); const [msg,setMsg]=useState(""); const [busy,setBusy]=useState(false);
+  const [n,setN]=useState({audience:"all",title:"",body:"",link:"",whatsapp:false,email:false}); const [nMsg,setNMsg]=useState(""); const [nBusy,setNBusy]=useState(false);
+  const load=async()=>{ const r=await fetch("/api/admin/offers",{headers:H}); const j=await r.json(); if(!r.ok){ setMsg(j.error); setList([]); } else setList(j.offers); };
+  useEffect(()=>{ load(); },[]);
+  const save=async()=>{ setBusy(true); setMsg(""); try{ const r=await fetch("/api/admin/offers",{method:"POST",headers:H,body:JSON.stringify(f)}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setMsg("✓ Banner published"); setF(blank); load(); }catch(e:any){ setMsg(e.message);} setBusy(false); };
+  const send=async()=>{ setNBusy(true); setNMsg(""); try{ const r=await fetch("/api/admin/client-notify",{method:"POST",headers:H,body:JSON.stringify(n)}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setNMsg(`✓ Sent to ${j.recipients} client(s)${n.whatsapp?` · WhatsApp ${j.whatsapp}`:""}${n.email?` · email ${j.email}`:""}${j.capped?" (first 300 only)":""}`); setN({...n,title:"",body:""}); }catch(e:any){ setNMsg(e.message);} setNBusy(false); };
+  const lbl:React.CSSProperties={fontSize:12,color:"#c4b5fd",fontWeight:600,display:"block",marginBottom:6};
+  const live=(o:any)=>!o.active?["Paused","#94a3b8"]:o.ends_at&&new Date(o.ends_at)<new Date()?["Ended","#f87171"]:o.starts_at&&new Date(o.starts_at)>new Date()?["Scheduled","#fbbf24"]:["Live","#4ade80"];
+  return(<div style={{maxWidth:1180,margin:"32px auto",padding:"0 24px"}}>
+    <div style={{fontSize:24,fontWeight:700,color:"#fff"}}>Offers &amp; Notifications</div>
+    <div style={{fontSize:13,color:"#a892c6",marginTop:4,marginBottom:20}}>Banners show at the top of the client portal and mobile view. Notifications go to the client's bell, and optionally WhatsApp and email.</div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(380px,1fr))",gap:18}}>
+      <div style={{...cmsCard,display:"grid",gap:12}}>
+        <div style={{fontWeight:700,color:"#fff"}}>New offer banner</div>
+        <div><label style={lbl}>Title *</label><input style={cmsInp} value={f.title} onChange={e=>setF({...f,title:e.target.value})} placeholder="15% off headshot sessions" /></div>
+        <div><label style={lbl}>Sub-text</label><input style={cmsInp} value={f.subtitle} onChange={e=>setF({...f,subtitle:e.target.value})} placeholder="This month only" /></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={lbl}>Coupon code (optional)</label><input style={cmsInp} value={f.coupon_code} onChange={e=>setF({...f,coupon_code:e.target.value.toUpperCase()})} placeholder="from Coupons page" /></div>
+          <div><label style={lbl}>Button text</label><input style={cmsInp} value={f.cta_label} onChange={e=>setF({...f,cta_label:e.target.value})} /></div>
+          <div><label style={lbl}>Starts</label><input type="date" style={cmsInp} value={f.starts_at} onChange={e=>setF({...f,starts_at:e.target.value})} /></div>
+          <div><label style={lbl}>Ends</label><input type="date" style={cmsInp} value={f.ends_at} onChange={e=>setF({...f,ends_at:e.target.value})} /></div>
+        </div>
+        <SingleImageUpload label="Background photo (optional)" value={f.image_url} onChange={(v:string)=>setF({...f,image_url:v})} />
+        <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:12,alignItems:"center"}}>
+          <input type="color" value={f.overlay_color} onChange={e=>setF({...f,overlay_color:e.target.value})} aria-label="Overlay colour" style={{width:44,height:40,border:"none",background:"none"}} />
+          <label style={{fontSize:12.5,color:"#e2d9f3"}}>Colour over photo: {f.overlay_opacity}% see-through<input type="range" min={0} max={90} step={5} value={f.overlay_opacity} onChange={e=>setF({...f,overlay_opacity:Number(e.target.value)})} style={{width:"100%"}} /></label>
+        </div>
+        <label style={{fontSize:13,color:"#e2d9f3",display:"flex",gap:8,alignItems:"center"}}><input type="checkbox" checked={f.notify_all} onChange={e=>setF({...f,notify_all:e.target.checked})} /> Also add it to every client's notifications</label>
+        <div style={{position:"relative",overflow:"hidden",borderRadius:14,minHeight:150,backgroundColor:"#2A1B47",backgroundImage:f.image_url?`url(${f.image_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>
+          <div style={{position:"absolute",inset:0,background:f.overlay_color,opacity:f.overlay_opacity/100}} />
+          <div style={{position:"relative",padding:18}}><div style={{fontSize:11,fontWeight:800,letterSpacing:1.6,color:"rgba(255,255,255,0.85)"}}>PREVIEW</div><div style={{fontSize:22,fontWeight:800,color:"#fff"}}>{f.title||"Your offer title"}</div><div style={{fontSize:13,color:"rgba(255,255,255,0.9)"}}>{f.subtitle}{f.coupon_code?` · Code ${f.coupon_code}`:""}</div><span style={{display:"inline-block",marginTop:10,background:"#fff",color:"#1B1230",borderRadius:8,padding:"8px 14px",fontWeight:800,fontSize:13}}>{f.cta_label||"Book now"}</span></div>
+        </div>
+        <button disabled={busy||!f.title.trim()} onClick={save} style={{...cmsBtn("#8B5CF6"),justifySelf:"start"}}>{busy?"Publishing…":"Publish banner"}</button>
+        {msg&&<div style={{fontSize:13,color:msg.startsWith("✓")?"#4ade80":"#f87171"}}>{msg}</div>}
+      </div>
+      <div style={{display:"grid",gap:18,alignContent:"start"}}>
+        <div style={cmsCard}>
+          <div style={{fontWeight:700,color:"#fff",marginBottom:10}}>Banners</div>
+          {!list?<div style={{color:"#a892c6"}}>Loading…</div>:!list.length?<div style={{color:"#a892c6",fontSize:13}}>No banners yet.</div>:list.map(o=>{ const [st,col]=live(o); return(
+            <div key={o.id} style={{display:"flex",gap:10,alignItems:"center",padding:"10px 0",borderTop:"1px solid rgba(255,255,255,0.07)",flexWrap:"wrap"}}>
+              <div style={{flex:1,minWidth:180}}><b style={{color:"#fff"}}>{o.title}</b><div style={{fontSize:12,color:"#a892c6"}}>{o.ends_at?`ends ${new Date(o.ends_at).toLocaleDateString("en-GB")} · `:""}{o.views} views · {o.clicks} clicks</div></div>
+              <span style={{fontSize:11,fontWeight:700,color:col,border:`1px solid ${col}`,borderRadius:20,padding:"2px 9px"}}>{st}</span>
+              <button onClick={async()=>{ await fetch("/api/admin/offers",{method:"PATCH",headers:H,body:JSON.stringify({id:o.id,active:!o.active})}); load(); }} style={cmsBtn("transparent")}>{o.active?"Pause":"Resume"}</button>
+              <button onClick={async()=>{ if(!window.confirm("Delete this banner?")) return; await fetch(`/api/admin/offers?id=${o.id}`,{method:"DELETE",headers:H}); load(); }} style={cmsBtn("transparent","#f87171")}>Delete</button>
+            </div>);})}
+        </div>
+        <div style={{...cmsCard,display:"grid",gap:10}}>
+          <div style={{fontWeight:700,color:"#fff"}}>Send a notification</div>
+          <div><label style={lbl}>To</label><select style={cmsInp} value={n.audience} onChange={e=>setN({...n,audience:e.target.value})}><option value="all">All clients</option><option value="upcoming">Clients with upcoming bookings</option></select></div>
+          <div><label style={lbl}>Title *</label><input style={cmsInp} value={n.title} onChange={e=>setN({...n,title:e.target.value})} placeholder="Studio closed on Friday" /></div>
+          <div><label style={lbl}>Message</label><textarea style={{...cmsInp,minHeight:70}} value={n.body} onChange={e=>setN({...n,body:e.target.value})} /></div>
+          <div><label style={lbl}>Link (optional)</label><input style={cmsInp} value={n.link} onChange={e=>setN({...n,link:e.target.value})} placeholder="/booking or https://…" /></div>
+          <div style={{display:"flex",gap:14,fontSize:13,color:"#e2d9f3",flexWrap:"wrap"}}><span>Bell ✓</span><label style={{display:"flex",gap:6}}><input type="checkbox" checked={n.whatsapp} onChange={e=>setN({...n,whatsapp:e.target.checked})} /> WhatsApp</label><label style={{display:"flex",gap:6}}><input type="checkbox" checked={n.email} onChange={e=>setN({...n,email:e.target.checked})} /> Email</label></div>
+          <button disabled={nBusy||!n.title.trim()} onClick={()=>{ if((n.whatsapp||n.email)&&!window.confirm("This also sends a WhatsApp/email to every client in this group. Continue?")) return; send(); }} style={{...cmsBtn("#8B5CF6"),justifySelf:"start"}}>{nBusy?"Sending…":"Send notification"}</button>
+          {nMsg&&<div style={{fontSize:13,color:nMsg.startsWith("✓")?"#4ade80":"#f87171"}}>{nMsg}</div>}
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+// ─── DELIVER FINAL WORK (CMS) ───────────────────────────────────────────────
+function DeliverAdmin({token}:{token:string}){
+  const H={Authorization:`Bearer ${token}`,"Content-Type":"application/json"};
+  const [data,setData]=useState<any>(null); const [err,setErr]=useState(""); const [sel,setSel]=useState<any>(null); const [q,setQ]=useState("");
+  const [f,setF]=useState({link:"",photos:"",videos:"",days:30,email:true,whatsapp:true,complete:true}); const [msg,setMsg]=useState(""); const [busy,setBusy]=useState(false);
+  const [t,setT]=useState<any>(null); const [tTab,setTTab]=useState("wa"); const [tMsg,setTMsg]=useState("");
+  const load=async()=>{ setErr(""); const r=await fetch("/api/admin/deliver",{headers:H}); const j=await r.json(); if(!r.ok){ setErr(j.error); setData({bookings:[]}); } else { setData(j); setT(j.templates); } };
+  useEffect(()=>{ load(); },[]);
+  const lbl:React.CSSProperties={fontSize:12,color:"#c4b5fd",fontWeight:600,display:"block",marginBottom:6};
+  const okLink=/^https:\/\/(drive|docs)\.google\.com\//.test(f.link.trim());
+  const list=(data?.bookings||[]).filter((b:any)=>!q.trim()||[b.appointment_ref,b.service_name,b.customers?.full_name,b.customers?.email].join(" ").toLowerCase().includes(q.trim().toLowerCase()));
+  const deliver=async()=>{ setBusy(true); setMsg(""); try{ const r=await fetch("/api/admin/deliver",{method:"POST",headers:H,body:JSON.stringify({appointment_id:sel.id,...f})}); const j=await r.json(); if(!r.ok) throw new Error(j.error); setMsg(`✓ Delivered${j.email?" · email sent":""}${j.whatsapp?" · WhatsApp sent":""} · added to client's My Files`); setF({...f,link:"",photos:"",videos:""}); load(); }catch(e:any){ setMsg(e.message);} setBusy(false); };
+  return(<div style={{maxWidth:1180,margin:"32px auto",padding:"0 24px"}}>
+    <div style={{fontSize:24,fontWeight:700,color:"#fff"}}>Deliver Final Work</div>
+    <div style={{fontSize:13,color:"#a892c6",marginTop:4,marginBottom:20}}>Pick a paid booking, paste the Google Drive link and deliver. The client gets it by email + WhatsApp and in their portal (My Files). Set the Drive folder to "Anyone with the link can view".</div>
+    {err&&<div style={{color:"#f87171",fontSize:13,marginBottom:12}}>{err}</div>}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(380px,1fr))",gap:18}}>
+      <div style={{...cmsCard,display:"grid",gap:10,alignContent:"start"}}>
+        <input style={cmsInp} placeholder="Search booking, client…" value={q} onChange={e=>setQ(e.target.value)} />
+        <div style={{display:"grid",gap:6,maxHeight:260,overflowY:"auto"}}>{!data?<span style={{color:"#a892c6"}}>Loading…</span>:!list.length?<span style={{color:"#a892c6",fontSize:13}}>No confirmed bookings found.</span>:list.map((b:any)=>{ const paid=(b.payments||[]).some((p:any)=>p.status==="paid"); const done=(b.booking_deliveries||[]).length; return(
+          <button key={b.id} onClick={()=>{ setSel(b); setMsg(""); }} style={{...cmsBtn(sel?.id===b.id?"#8B5CF6":"transparent"),textAlign:"left",display:"flex",justifyContent:"space-between",gap:8}}>
+            <span>{b.customers?.full_name||"Client"} · {b.appointment_ref} · {b.booking_date}</span>
+            <span style={{fontSize:11,fontWeight:700,color:done?"#4ade80":paid?"#c4b5fd":"#fbbf24"}}>{done?"DELIVERED":paid?"PAID":"NOT PAID"}</span>
+          </button>);})}</div>
+        {sel&&<div style={{display:"grid",gap:10,borderTop:"1px solid rgba(255,255,255,0.08)",paddingTop:12}}>
+          <div style={{color:"#fff",fontWeight:700}}>{sel.customers?.full_name} · {sel.service_name} <span style={{color:"#a892c6",fontWeight:400,fontSize:12.5}}>{sel.appointment_ref}</span></div>
+          <div><label style={lbl}>Google Drive link *</label><input style={cmsInp} value={f.link} onChange={e=>setF({...f,link:e.target.value})} placeholder="https://drive.google.com/drive/folders/…" />{f.link&&<div style={{fontSize:12,marginTop:4,color:okLink?"#4ade80":"#fbbf24"}}>{okLink?"✓ Google Drive link":"Not a Google Drive link — check it before sending"}</div>}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div><label style={lbl}>Photos</label><input style={cmsInp} inputMode="numeric" value={f.photos} onChange={e=>setF({...f,photos:e.target.value.replace(/\D/g,"")})} /></div>
+            <div><label style={lbl}>Videos</label><input style={cmsInp} inputMode="numeric" value={f.videos} onChange={e=>setF({...f,videos:e.target.value.replace(/\D/g,"")})} /></div>
+            <div><label style={lbl}>Link available</label><select style={cmsInp} value={f.days} onChange={e=>setF({...f,days:Number(e.target.value)})}><option value={30}>30 days</option><option value={60}>60 days</option><option value={90}>90 days</option></select></div>
+          </div>
+          <div style={{display:"flex",gap:14,fontSize:13,color:"#e2d9f3",flexWrap:"wrap"}}>
+            <label style={{display:"flex",gap:6}}><input type="checkbox" checked={f.email} onChange={e=>setF({...f,email:e.target.checked})} /> Email</label>
+            <label style={{display:"flex",gap:6}}><input type="checkbox" checked={f.whatsapp} onChange={e=>setF({...f,whatsapp:e.target.checked})} /> WhatsApp</label>
+            <label style={{display:"flex",gap:6}}><input type="checkbox" checked={f.complete} onChange={e=>setF({...f,complete:e.target.checked})} /> Mark booking Completed</label>
+          </div>
+          <button disabled={busy||!/^https:\/\//.test(f.link.trim())} onClick={deliver} style={{...cmsBtn("#8B5CF6"),justifySelf:"start"}}>{busy?"Delivering…":"Deliver to client"}</button>
+          {msg&&<div style={{fontSize:13,color:msg.startsWith("✓")?"#4ade80":"#f87171"}}>{msg}</div>}
+        </div>}
+      </div>
+      <div style={{...cmsCard,display:"grid",gap:10,alignContent:"start"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><b style={{color:"#fff"}}>Message templates</b><span style={{display:"flex",gap:6}}>{[["wa","WhatsApp"],["email","Email"]].map(([k,l])=><button key={k} onClick={()=>setTTab(k)} style={cmsBtn(tTab===k?"#8B5CF6":"transparent")}>{l}</button>)}</span></div>
+        <div style={{fontSize:12,color:"#a892c6"}}>Placeholders: {"{name} {ref} {service} {link} {photos} {videos} {expires}"}</div>
+        {t&&(tTab==="wa"?<textarea style={{...cmsInp,minHeight:240,lineHeight:1.6}} value={t.wa} onChange={e=>setT({...t,wa:e.target.value})} />:<>
+          <input style={cmsInp} value={t.emailSubject} onChange={e=>setT({...t,emailSubject:e.target.value})} />
+          <textarea style={{...cmsInp,minHeight:200,lineHeight:1.6}} value={t.emailBody} onChange={e=>setT({...t,emailBody:e.target.value})} />
+          <div style={{fontSize:12,color:"#a892c6"}}>The email adds a "Download your files" button automatically.</div></>)}
+        <button onClick={async()=>{ setTMsg(""); const r=await fetch("/api/admin/deliver",{method:"POST",headers:H,body:JSON.stringify({action:"templates",...t})}); const j=await r.json(); setTMsg(r.ok?"✓ Templates saved":j.error); }} style={{...cmsBtn("transparent"),justifySelf:"start"}}>Save templates</button>
+        {tMsg&&<div style={{fontSize:13,color:tMsg.startsWith("✓")?"#4ade80":"#f87171"}}>{tMsg}</div>}
+      </div>
+    </div>
   </div>);
 }
 
@@ -4460,6 +4579,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkPkgId,setBkPkgId]=useState("");
   const [bkPayMethod,setBkPayMethod]=useState<"paypal"|"bank_transfer"|"cash">("bank_transfer");
   const [bkTerms,setBkTerms]=useState(false);
+  const [bkFor,setBkFor]=useState<"me"|"other">("me");
+  const [bkGuest,setBkGuest]=useState({name:"",whatsapp:"",relation:"Family",notify:true});
   // Email + WhatsApp verification (step 0)
   const [vfToken,setVfToken]=useState(""); const [vfDone,setVfDone]=useState<{token:string;key:string}|null>(null);
   const [vfEmailCode,setVfEmailCode]=useState(""); const [vfWaCode,setVfWaCode]=useState("");
@@ -4790,7 +4911,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     if(stillTaken){ setBkSlotTaken(true); setBkSubmitting(false); setBkError("This time slot is no longer available. Please select another time."); return; }
     const created = await createAppointment({
       name:booking.name, email:booking.email, phone:booking.phone||"", service:booking.service,
-      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms, coupon:bkCoupon?.code||"", verify_token:vfDone?.token||"", auth_token:clientSess?.token||"",
+      package_id:String(bkSelectedPkg.id), date:booking.date, time:booking.time, notes:booking.details||"", method:bkPayMethod, agreed_terms:bkTerms, coupon:bkCoupon?.code||"", verify_token:vfDone?.token||"", auth_token:clientSess?.token||"", booked_for: bkFor==="other"?bkGuest:null,
     });
     if(!created&&(globalThis as any).__bkSlot){ setBkSlotTaken(true); }
     if(!created&&(globalThis as any).__bkCouponErr){ setBkCoupon(null); }
@@ -5004,7 +5125,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     // state the old flat tab bar used -- this is a navigation/layout reorganization only,
     // every existing panel below is unchanged and still reachable.
     const cmsPageTitle:Record<string,string> = {
-      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", clientRequests:"Client Requests", wallet:"Client Wallet", projects:"Portfolio",
+      dashboard:"Dashboard", leads:"Leads", bookings:"Bookings & Payments", coupons:"Coupons", clientRequests:"Client Requests", wallet:"Client Wallet", offers:"Offers & Notifications", deliver:"Deliver Final Work", projects:"Portfolio",
       categories:"Categories", testimonials:"Testimonials", blog:"Journal", media:"Media Library",
       activity:"Activity", errorlog:"Error Logs", access:"Admin & Access", seoagent:"SEO Agent", servicepages:"Service Pages",
       email:"Email Designer", whatsapp:"WhatsApp", followups:"Follow-ups", clientdir:"Client Directory", companies:"Companies", contacts:"Contacts", messages:"Messages", comments:"Comments", permrequests:"Image Requests",
@@ -5102,6 +5223,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <CmsNavItem icon="🏷️" label="Coupons" active={cmsTab==="coupons"} onClick={()=>setCmsTab("coupons")} />
           <CmsNavItem icon="📝" label="Client Requests" active={cmsTab==="clientRequests"} onClick={()=>setCmsTab("clientRequests")} />
           <CmsNavItem icon="💳" label="Client Wallet" active={cmsTab==="wallet"} onClick={()=>setCmsTab("wallet")} />
+          <CmsNavItem icon="📣" label="Offers & Notifications" active={cmsTab==="offers"} onClick={()=>setCmsTab("offers")} />
+          <CmsNavItem icon="📁" label="Deliver Files" active={cmsTab==="deliver"} onClick={()=>setCmsTab("deliver")} />
         <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
         <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
         <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
@@ -5729,6 +5852,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {cmsTab==="coupons"&&adminSession&&<CouponsAdmin token={adminSession.access_token} />}
         {cmsTab==="clientRequests"&&adminSession&&<ClientRequestsAdmin token={adminSession.access_token} />}
         {cmsTab==="wallet"&&adminSession&&<WalletAdmin token={adminSession.access_token} />}
+        {cmsTab==="offers"&&adminSession&&<OffersAdmin token={adminSession.access_token} />}
+        {cmsTab==="deliver"&&adminSession&&<DeliverAdmin token={adminSession.access_token} />}
 
         {cmsTab==="payments"&&(
           <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
@@ -8721,6 +8846,23 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 </div>
               </div>
               <div><label className="adv-label">Email *</label><input type="email" className="adv-input" value={booking.email} onChange={e=>setBooking(b=>({...b,email:e.target.value}))} /></div>
+              <div style={{marginTop:18}}>
+                <label className="adv-label">Who is this booking for?</label>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <button type="button" onClick={()=>setBkFor("me")} className={`adv-tile${bkFor==="me"?" is-active":""}`} style={{fontWeight:700,fontSize:13}}>Myself</button>
+                  <button type="button" onClick={()=>setBkFor("other")} className={`adv-tile${bkFor==="other"?" is-active":""}`} style={{fontWeight:700,fontSize:13}}>Someone else</button>
+                </div>
+                {bkFor==="other"&&(
+                  <div style={{marginTop:12,display:"grid",gap:10}}>
+                    <div style={{fontSize:12,color:C.MID}}>You stay the account holder and pay. Tell us who the session is for:</div>
+                    <div><label className="adv-label">Their full name *</label><input className="adv-input" value={bkGuest.name} onChange={e=>setBkGuest(g=>({...g,name:e.target.value}))} placeholder="e.g. Sara Ahmed" /></div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                      <div><label className="adv-label">Their WhatsApp (optional)</label><input className="adv-input" value={bkGuest.whatsapp} onChange={e=>setBkGuest(g=>({...g,whatsapp:e.target.value}))} placeholder="+971 5X XXX XXXX" /></div>
+                      <div><label className="adv-label">Relationship</label><select className="adv-input" value={bkGuest.relation} onChange={e=>setBkGuest(g=>({...g,relation:e.target.value}))}><option>Family</option><option>Colleague</option><option>My company</option><option>Friend / gift</option></select></div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             {(()=>{
               const vKey=(booking.email.trim().toLowerCase()+"|"+booking.phone.replace(/\D/g,""));

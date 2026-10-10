@@ -77,6 +77,12 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const net = round(Math.max(0, base - discount));
   if (net <= 0) return json({ error: "This code cannot be used for this package." }, 400, origin);
   const fee = round(net * TX_FEE_RATE), total = round(net + fee);
+  // Booking on behalf of someone else (the account holder still books and pays).
+  let forNote = "";
+  if (b.booked_for && typeof b.booked_for === "object" && clean(b.booked_for.name, 120)) {
+    const g = b.booked_for;
+    forNote = `[Booked for: ${clean(g.name, 120)}${clean(g.relation, 40) ? " (" + clean(g.relation, 40) + ")" : ""}${clean(g.whatsapp, 40) ? " · WhatsApp " + clean(g.whatsapp, 40) : ""}${g.notify ? " · send them updates" : ""}]`;
+  }
 
   const slot = await rpc(env, "is_slot_taken", { p_date: date, p_time: time });
   if (slot.ok && slot.data === true) return json({ error: "This time slot is no longer available. Please select another time.", slotTaken: true }, 409, origin);
@@ -103,7 +109,7 @@ export const onRequestPost: PagesFunction<any> = async ({ request, env }) => {
   const ref = "CF-" + Array.from(crypto.getRandomValues(new Uint8Array(6)), (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join("");
   const aRes = await supaAdmin(env, "appointments", {
     method: "POST", headers: { Prefer: "return=minimal" },
-    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: net, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (notes ? notes + "\n\n" : "") + (couponNote ? couponNote + "\n" : "") + "[Client accepted Terms & Conditions v1 (bynaveedanjum.com/terms) on " + new Date().toISOString() + " - incl. cancellation 72h+ free / 72-24h 50% / <24h no refund; delivery ~7 working days after shoot + full payment]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
+    body: JSON.stringify({ id, appointment_ref: ref, customer_id: customerId, service_key: service, service_name: service, package_id: packageId, package_name: clean(pkg.label, 120), price_base: net, currency: "AED", transaction_fee: fee, total, booking_date: date, booking_time: time, notes: (forNote ? forNote + "\n" : "") + (notes ? notes + "\n\n" : "") + (couponNote ? couponNote + "\n" : "") + "[Client accepted Terms & Conditions v1 (bynaveedanjum.com/terms) on " + new Date().toISOString() + " - incl. cancellation 72h+ free / 72-24h 50% / <24h no refund; delivery ~7 working days after shoot + full payment]" + (method === "cash" ? "\n[Payment: CASH before the event starts]" : ""), status: "pending_verification" }),
   });
   if (!aRes.ok) return json({ error: "Your booking could not be saved. Please try again.", detail: (await aRes.text()).slice(0, 300) }, 500, origin);
 

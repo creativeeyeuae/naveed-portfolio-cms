@@ -3,7 +3,7 @@
 //   GET  ?customer_id=               -> balance + history
 //   POST { customer_id, amount, kind, note } -> add credit (+) or deduct (-)
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
-import { walletBalance } from "../../_shared/clientExtras";
+import { walletBalance, addClientNotification } from "../../_shared/clientExtras";
 import { forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
@@ -42,6 +42,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   const r = await supaAdmin(env, "wallet_transactions", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ customer_id: b.customer_id, amount, kind, note: String(b.note || "").slice(0, 300) || null, created_by: admin.email }) });
   if (!r.ok) return json({ error: "Could not save.", detail: (await r.text()).slice(0, 200) }, 500, origin);
   const balance = await walletBalance(env, b.customer_id);
+  await addClientNotification(env, b.customer_id, amount > 0 ? `💳 AED ${amount} added to your wallet` : `💳 AED ${Math.abs(amount)} used from your wallet`, `${b.note ? b.note + " · " : ""}Balance: AED ${balance}`, "/client", admin.email);
   if (amount > 0) {
     try {
       const c = ((await (await supaAdmin(env, `customers?id=eq.${b.customer_id}&select=full_name,whatsapp,phone`, { method: "GET" })).json()) as any[])?.[0];

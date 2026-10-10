@@ -392,7 +392,14 @@ function WalletPanel() {
 }
 
 export default function ClientPortalPage() {
-  const [tab, setTab] = useState<"bookings" | "requests" | "wallet" | "messages" | "profile">("bookings");
+  const [tab, setTab] = useState<"dashboard" | "bookings" | "requests" | "wallet" | "files" | "messages" | "profile">("dashboard");
+  const [feed, setFeed] = useState<any>(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [promoHidden, setPromoHidden] = useState(false);
+  const [q, setQ] = useState("");
+  const [wallet, setWallet] = useState<number | null>(null);
+  async function loadFeed() { try { setFeed(await api("/api/client/feed")); } catch { setFeed({ banner: null, notifications: [], unread: 0, deliveries: [] }); } }
+  useEffect(() => { (async () => { const ss = await getSession(); if (!ss) return; loadFeed(); api("/api/client/wallet").then((j) => setWallet(j.balance)).catch(() => setWallet(0)); })(); }, []);
   const [checked, setChecked] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -437,43 +444,127 @@ export default function ClientPortalPage() {
     return <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }} />;
   }
 
-  const MENU: [typeof tab, string, string][] = [["bookings", "📅", "My Bookings"], ["requests", "📝", "Requests"], ["wallet", "💳", "Wallet"], ["messages", "💬", "Messages"], ["profile", "👤", "My Profile"]];
+  const MENU: [typeof tab, string, string][] = [["dashboard", "M3 12l9-9 9 9M5 10v10h14V10", "Dashboard"], ["bookings", "M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "My Bookings"], ["requests", "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11", "Requests"], ["wallet", "M3 7h18v12H3zM16 13h2M3 7l3-4h12l3 4", "Wallet"], ["files", "M4 16l4-4 4 4 4-6 4 6M4 4h16v16H4z", "My Files"], ["messages", "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "Messages"], ["profile", "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "My Profile"]];
+  const MOBILE: (typeof tab)[] = ["dashboard", "bookings", "files", "wallet", "profile"];
+  const Icon = ({ d, size = 18 }: { d: string; size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>;
+  const ql = q.trim().toLowerCase();
+  const match = (...xs: any[]) => !ql || xs.join(" ").toLowerCase().includes(ql);
+  const shownBookings = bookings.filter((b: any) => match(b.appointment_ref, b.service_name, b.package_name, b.booking_date, b.status));
+  const deliveries = (feed?.deliveries || []).filter((d: any) => match(d.appointments?.appointment_ref, d.appointments?.service_name));
+  const upcoming = bookings.filter((b: any) => ["pending_verification", "confirmed"].includes(b.status));
+  const banner = feed?.banner;
+  const go = (t: typeof tab) => { setTab(t); setBellOpen(false); if (typeof window !== "undefined") window.scrollTo({ top: 0 }); };
+  const card: CSSProperties = { background: "rgba(255,255,255,0.045)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: 18 };
+  const searchBox = (light: boolean) => (
+    <label style={{ flex: "1 1 280px", display: "flex", alignItems: "center", gap: 10, background: light ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.05)", border: light ? "none" : "1px solid rgba(255,255,255,0.12)", borderRadius: 12, padding: "0 14px", height: 48 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={light ? "#5B4B7A" : "#A892C6"} strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+      <span style={{ position: "absolute", left: -9999 }}>Search</span>
+      <input value={q} onChange={(e) => { setQ(e.target.value); if (e.target.value && tab === "dashboard") setTab("bookings"); }} placeholder="Search bookings, files, references…" style={{ border: "none", outline: "none", background: "transparent", color: light ? "#1B1230" : "inherit", font: "inherit", fontSize: 15, flex: 1, minWidth: 0 }} />
+    </label>
+  );
   return (
     <main style={{ background: "var(--bg-primary)", color: "var(--text-primary)", minHeight: "100vh", fontFamily: "Georgia, serif" }}>
-      <style>{`.cp-wrap{display:grid;grid-template-columns:240px 1fr;gap:28px;max-width:1180px;margin:0 auto;padding:40px 24px 100px}
-.cp-side{position:sticky;top:24px;align-self:start;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:14px;padding:14px}
-.cp-item{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:11px 12px;border-radius:9px;border:none;background:transparent;color:inherit;font-size:14px;cursor:pointer;margin-bottom:4px}
+      <style>{`.cp-wrap{display:grid;grid-template-columns:250px 1fr;gap:28px;max-width:1240px;margin:0 auto;padding:32px 24px 100px}
+.cp-side{position:sticky;top:24px;align-self:start;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.09);border-radius:16px;padding:14px}
+.cp-item{display:flex;gap:12px;align-items:center;width:100%;text-align:left;padding:11px 12px;border-radius:10px;border:none;background:transparent;color:inherit;font:inherit;font-size:14px;cursor:pointer;margin-bottom:4px;text-decoration:none}
 .cp-item:hover{background:rgba(255,255,255,0.06)}.cp-item.on{background:#8B5CF6;color:#fff;font-weight:700}
-@media(max-width:820px){.cp-wrap{grid-template-columns:1fr;padding:20px 14px 80px}.cp-side{position:static;display:flex;overflow-x:auto;gap:6px;padding:8px}.cp-item{white-space:nowrap;margin:0;width:auto}.cp-hide{display:none}}`}</style>
+.cp-tabs{display:none}
+@media(max-width:860px){.cp-wrap{grid-template-columns:1fr;padding:16px 14px 110px}.cp-side{display:none}
+.cp-tabs{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:#1B1230;border-top:1px solid rgba(255,255,255,0.1);padding:6px 4px calc(10px + env(safe-area-inset-bottom))}
+.cp-tab{display:flex;flex-direction:column;align-items:center;gap:3px;min-height:52px;justify-content:center;border:none;background:transparent;color:#8A7AA8;font:inherit;font-size:11px;cursor:pointer}.cp-tab.on{color:#C4B5FD;font-weight:700}}`}</style>
       <div className="cp-wrap">
         <aside className="cp-side">
-          <div className="cp-hide" style={{ padding: "6px 10px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
+          <div style={{ padding: "6px 10px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Client Area</div>
             <div style={{ fontSize: 12, color: "var(--text-muted,#A892C6)", overflow: "hidden", textOverflow: "ellipsis" }}>{user?.email}</div>
           </div>
-          {MENU.map(([k, i, l]) => <button key={k} className={`cp-item${tab === k ? " on" : ""}`} onClick={() => setTab(k)}><span>{i}</span>{l}</button>)}
-          <a href="/booking" className="cp-item" style={{ textDecoration: "none" }}><span>➕</span>New Booking</a>
-          <button className="cp-item" onClick={async () => { await signOut(); window.location.href = "/login"; }}><span>↩</span>Sign out</button>
+          {MENU.map(([k, d, l]) => <button key={k} className={`cp-item${tab === k ? " on" : ""}`} onClick={() => go(k)}><Icon d={d} /><span style={{ flex: 1 }}>{l}</span>{k === "files" && feed?.deliveries?.length ? <span style={{ fontSize: 11, fontWeight: 700, background: "#4ADE80", color: "#14281C", borderRadius: 20, padding: "1px 8px" }}>{feed.deliveries.length}</span> : null}</button>)}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "10px 0" }} />
+          <a href="/booking" className="cp-item" style={{ background: "#8B5CF6", color: "#fff", fontWeight: 700, justifyContent: "center" }}>+ New Booking</a>
+          <button className="cp-item" style={{ color: "var(--text-muted,#A892C6)" }} onClick={async () => { await signOut(); window.location.href = "/login"; }}><Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />Sign out</button>
         </aside>
-        <section>
-          <h1 style={{ fontSize: 26, fontWeight: 700, margin: "0 0 18px" }}>{MENU.find((m) => m[0] === tab)?.[2]}</h1>
+        <section style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18, position: "relative" }}>
+            <div><div style={{ fontSize: 13, color: "var(--text-muted,#A892C6)" }}>Welcome back</div><h1 style={{ fontSize: 26, fontWeight: 700, margin: "2px 0 0" }}>{MENU.find((m) => m[0] === tab)?.[2]}</h1></div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <a href="/booking" className="cp-tabs-only" style={{ display: "none" }}>Book</a>
+              <button aria-label="Notifications" onClick={async () => { setBellOpen(!bellOpen); if (!bellOpen && feed?.unread) { await api("/api/client/feed", { action: "read_all" }).catch(() => {}); setFeed({ ...feed, unread: 0, notifications: feed.notifications.map((n: any) => ({ ...n, read: true, wasUnread: !n.read })) }); } }} style={{ position: "relative", width: 46, height: 46, borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
+                {feed?.unread ? <span style={{ position: "absolute", top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, background: "#F43F5E", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{feed.unread}</span> : null}
+              </button>
+            </div>
+            {bellOpen && <div style={{ position: "absolute", top: 54, right: 0, width: "min(360px, 92vw)", maxHeight: 420, overflowY: "auto", background: "#221640", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 14, padding: 8, boxShadow: "0 18px 40px rgba(0,0,0,0.45)", zIndex: 40 }}>
+              <div style={{ padding: "8px 10px", fontWeight: 700 }}>Notifications</div>
+              {!feed?.notifications?.length ? <div style={{ padding: 10, fontSize: 13, color: "var(--text-muted,#A892C6)" }}>No notifications yet.</div> :
+                feed.notifications.map((n: any) => <a key={n.id} href={n.link || "#"} target={n.link && /^https/.test(n.link) ? "_blank" : undefined} rel="noopener noreferrer" style={{ display: "flex", gap: 10, padding: 10, borderRadius: 10, textDecoration: "none", color: "inherit", background: n.wasUnread ? "rgba(139,92,246,0.14)" : "transparent" }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: n.wasUnread ? "#8B5CF6" : "transparent", marginTop: 6, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13 }}>{n.title}{n.body ? <><br /><span style={{ color: "var(--text-muted,#A892C6)" }}>{n.body}</span></> : null}<br /><span style={{ fontSize: 11.5, color: "var(--text-muted,#A892C6)" }}>{new Date(n.created_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span></span>
+                </a>)}
+            </div>}
+          </div>
+
+          {tab === "dashboard" && (<div style={{ display: "grid", gap: 16 }}>
+            {banner && !promoHidden ? (
+              <div style={{ position: "relative", overflow: "hidden", borderRadius: 20, minHeight: 280, backgroundColor: "#2A1B47", backgroundImage: banner.image_url ? `url(${banner.image_url})` : "none", backgroundSize: "cover", backgroundPosition: "center" }}>
+                <div style={{ position: "absolute", inset: 0, background: banner.overlay_color || "#1B0F33", opacity: (banner.overlay_opacity ?? 55) / 100 }} />
+                <button aria-label="Dismiss offer" onClick={() => setPromoHidden(true)} style={{ position: "absolute", top: 14, right: 14, zIndex: 2, width: 40, height: 40, borderRadius: 10, border: "1px solid rgba(255,255,255,0.45)", background: "rgba(0,0,0,0.25)", color: "#fff", fontSize: 18, cursor: "pointer" }}>×</button>
+                <div style={{ position: "relative", zIndex: 1, padding: "clamp(22px,4vw,38px)", display: "grid", gap: 16, maxWidth: 760 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 2, color: "rgba(255,255,255,0.85)" }}>{banner.ends_at ? `OFFER · ENDS ${new Date(banner.ends_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }).toUpperCase()}` : "SPECIAL OFFER"}</div>
+                    <div style={{ fontSize: "clamp(24px,4vw,36px)", lineHeight: 1.15, fontWeight: 800, color: "#fff", marginTop: 8 }}>{banner.title}</div>
+                    {(banner.subtitle || banner.coupon_code) && <div style={{ fontSize: 15, color: "rgba(255,255,255,0.92)", marginTop: 8 }}>{banner.subtitle}{banner.coupon_code ? <> · Code <b>{banner.coupon_code}</b></> : null}</div>}
+                  </div>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {searchBox(true)}
+                    <a href={banner.cta_link || "/booking"} onClick={() => api("/api/client/feed", { action: "click", banner_id: banner.id }).catch(() => {})} style={{ background: "#fff", color: "#1B1230", textDecoration: "none", fontWeight: 800, fontSize: 14.5, borderRadius: 12, padding: "0 22px", height: 48, display: "flex", alignItems: "center" }}>{banner.cta_label || "Book now"}</a>
+                  </div>
+                </div>
+              </div>
+            ) : <div style={{ display: "flex" }}>{searchBox(false)}</div>}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 12 }}>
+              {[["Upcoming", String(upcoming.length), upcoming[0] ? `Next: ${(upcoming[0] as any).booking_date}` : "No upcoming bookings", "bookings", ""], ["Wallet balance", wallet == null ? "…" : `AED ${Number(wallet).toLocaleString()}`, "Credit for your next booking", "wallet", "#4ADE80"], ["Files ready", String(feed?.deliveries?.length || 0), "Delivered galleries", "files", ""], ["Notifications", String(feed?.unread || 0), "Unread", "", "#FBBF24"]].map(([l, v, sub, t, col]) => (
+                <button key={l} onClick={() => t ? go(t as any) : setBellOpen(true)} style={{ ...card, textAlign: "left", color: "inherit", font: "inherit", cursor: "pointer" }}>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted,#A892C6)" }}>{l}</div>
+                  <div style={{ fontSize: 26, fontWeight: 800, marginTop: 6, color: col || "inherit" }}>{v}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted,#A892C6)" }}>{sub}</div>
+                </button>))}
+            </div>
+            <div style={card}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><b>Upcoming bookings</b><button onClick={() => go("bookings")} style={{ ...btnGhost, padding: "6px 12px", fontSize: 12 }}>See all</button></div>
+              {!upcoming.length ? <div style={{ fontSize: 13, color: "var(--text-muted,#A892C6)" }}>Nothing booked yet. <Link href="/booking" style={{ color: "#C4B5FD" }}>Book a session →</Link></div> :
+                upcoming.slice(0, 3).map((b: any) => <div key={b.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.07)", fontSize: 13.5 }}><span><b>{b.service_name}</b><br /><span style={{ color: "var(--text-muted,#A892C6)", fontSize: 12.5 }}>{b.appointment_ref} · {b.booking_date} {String(b.booking_time || "").slice(0, 5)}</span></span><span style={{ alignSelf: "center", fontSize: 11, fontWeight: 700, color: b.status === "confirmed" ? "#4ADE80" : "#FBBF24" }}>{String(b.status).replace(/_/g, " ").toUpperCase()}</span></div>)}
+            </div>
+          </div>)}
+
           {tab === "bookings" && (<>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}><button onClick={loadBookings} style={{ ...btnGhost, padding: "6px 12px", fontSize: 11 }}>↻ Refresh</button></div>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>{searchBox(false)}<button onClick={loadBookings} style={{ ...btnGhost, padding: "6px 14px", fontSize: 12 }}>↻ Refresh</button></div>
             {bookingsErr && <div style={{ color: "#e74c3c", fontSize: 12.5, marginBottom: 14 }}>{bookingsErr}</div>}
-            {bookingsLoading ? <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Loading…</div> : bookings.length === 0 ? (
-              <div style={cardStyle}><p style={{ fontSize: 13, color: "var(--text-muted, #A892C6)", margin: 0 }}>No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.</p></div>
+            {bookingsLoading ? <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>Loading…</div> : shownBookings.length === 0 ? (
+              <div style={cardStyle}><p style={{ fontSize: 13, color: "var(--text-muted, #A892C6)", margin: 0 }}>{q ? "No bookings match your search." : <>No bookings yet. <Link href="/booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.</>}</p></div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {bookings.map((b) => (<div key={b.id}><BookingCard b={b} onReceiptChanged={loadBookings} /><BookingActions b={b} onDone={loadBookings} /></div>))}
+                {shownBookings.map((b) => (<div key={b.id}><BookingCard b={b} onReceiptChanged={loadBookings} /><BookingActions b={b} onDone={loadBookings} /></div>))}
               </div>
             )}
           </>)}
+          {tab === "files" && (<div style={{ display: "grid", gap: 12 }}>
+            {!deliveries.length ? <div style={card}><span style={{ fontSize: 13, color: "var(--text-muted,#A892C6)" }}>{q ? "No files match your search." : "Your final photos and videos will appear here as soon as they're delivered."}</span></div> :
+              deliveries.map((d: any) => { const expired = d.expires_at && new Date(d.expires_at) < new Date(); return (
+                <div key={d.id} style={{ ...card, display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                  <div><div style={{ fontWeight: 700 }}>{d.appointments?.service_name || "Your files"}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted,#A892C6)" }}>{d.appointments?.appointment_ref} · {d.photos ? `${d.photos} photos` : ""}{d.videos ? ` · ${d.videos} videos` : ""} · {expired ? "link expired — message us for a new one" : d.expires_at ? `available until ${new Date(d.expires_at).toLocaleDateString("en-GB")}` : ""}</div></div>
+                  {!expired && <a href={d.link} target="_blank" rel="noopener noreferrer" style={{ ...btnPrimary, textDecoration: "none", display: "inline-block" }}>Download files</a>}
+                </div>); })}
+          </div>)}
           {tab === "requests" && <RequestsPanel />}
           {tab === "wallet" && <WalletPanel />}
           {tab === "messages" && <MessageThread userEmail={user?.email} />}
-          {tab === "profile" && <ProfileCard />}
+          {tab === "profile" && (<div style={{ display: "grid", gap: 14 }}><ProfileCard /><button className="cp-item" style={{ ...btnGhost, width: "auto", justifySelf: "start" }} onClick={async () => { await signOut(); window.location.href = "/login"; }}>Sign out</button></div>)}
         </section>
       </div>
+      <nav className="cp-tabs" aria-label="Client menu">
+        {MOBILE.map((k) => { const m = MENU.find((x) => x[0] === k)!; return <button key={k} className={`cp-tab${tab === k ? " on" : ""}`} onClick={() => go(k)}><Icon d={m[1]} size={22} /><span>{k === "dashboard" ? "Home" : k === "bookings" ? "Bookings" : k === "files" ? "Files" : k === "wallet" ? "Wallet" : "Me"}</span></button>; })}
+      </nav>
     </main>
   );
 }

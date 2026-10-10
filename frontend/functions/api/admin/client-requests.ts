@@ -7,6 +7,7 @@
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
 import { emailBookingUpdate, whatsappBookingUpdate } from "../../_shared/bookingNotify";
 import { forwardClientWhatsAppAlert } from "../../_shared/liveChatWhatsapp";
+import { addClientNotification } from "../../_shared/clientExtras";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -34,6 +35,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
 
   if (b.action === "reject") {
     await decide("rejected");
+    await addClientNotification(env, req.customer_id, `Your ${req.kind} request for ${appt.appointment_ref} was not approved`, note, "/client", admin.email);
     const phone = req.customers?.whatsapp || req.customers?.phone;
     if (phone) { try { await forwardClientWhatsAppAlert(env, phone, `Hi ${req.customers?.full_name || ""}, your ${req.kind} request for booking ${appt.appointment_ref} could not be approved.${note ? "\nNote: " + note : ""}\nReply here if you have any questions.\n— Naveed Anjum`, req.customers?.full_name); } catch {} }
     return json({ ok: true }, 200, origin);
@@ -46,6 +48,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     await supaAdmin(env, `appointments?id=eq.${appt.id}`, { method: "PATCH", body: JSON.stringify({ booking_date: req.new_date, booking_time: req.new_time, updated_at: nowIso }) });
     await supaAdmin(env, "appointment_status_history", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ appointment_id: appt.id, old_status: appt.status, new_status: appt.status, changed_by: `admin:${admin.email}`, reason: `Client reschedule approved: ${appt.booking_date} ${appt.booking_time} -> ${req.new_date} ${req.new_time}` }) }).catch(() => {});
     await decide("approved");
+    await addClientNotification(env, req.customer_id, `✅ ${appt.appointment_ref} moved to ${req.new_date} ${String(req.new_time).slice(0, 5)}`, note, "/client", admin.email);
     try { await whatsappBookingUpdate(env, appt.id, "rescheduled"); } catch {}
     try { await emailBookingUpdate(env, appt.id, "rescheduled"); } catch {}
     return json({ ok: true }, 200, origin);
@@ -62,6 +65,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     if (refunded > 0) await supaAdmin(env, "wallet_transactions", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ customer_id: req.customer_id, amount: refunded, kind: "refund", note: `Refund for cancelled booking ${appt.appointment_ref} (${100 - Number(req.fee_percent)}%)`, appointment_id: appt.id, created_by: admin.email }) });
   }
   await decide("approved");
+  await addClientNotification(env, req.customer_id, `Booking ${appt.appointment_ref} cancelled`, refunded ? `AED ${refunded} refunded to your wallet` : note, "/client", admin.email);
   try { await whatsappBookingUpdate(env, appt.id, "cancelled", { reason }); } catch {}
   try { await emailBookingUpdate(env, appt.id, "cancelled", { reason }); } catch {}
   return json({ ok: true, refunded }, 200, origin);

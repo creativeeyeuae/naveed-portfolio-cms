@@ -508,7 +508,7 @@ main input,main textarea,main select,main button{font-family:inherit}
           <div className="cp-label">CLIENT AREA</div>
           {MENU.map(([k, d, l]) => <button key={k} className={`cp-item${tab === k ? " on" : ""}`} onClick={() => go(k)}><Icon d={d} /><span style={{ flex: 1 }}>{l}</span>{k === "files" && feed?.deliveries?.length ? <span style={{ fontSize: 11, fontWeight: 700, background: "#4ADE80", color: "#14281C", borderRadius: 20, padding: "1px 8px" }}>{feed.deliveries.length}</span> : null}</button>)}
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "10px 0" }} />
-          <a href="/contact" className="cp-item" style={{ background: "#8B5CF6", color: "#fff", fontWeight: 700, justifyContent: "center" }}>+ New Booking</a>
+          <a href="/?page=booking" className="cp-item" style={{ background: "#8B5CF6", color: "#fff", fontWeight: 700, justifyContent: "center" }}>+ New Booking</a>
           <button className="cp-item" onClick={() => go("inquiry")} style={{ justifyContent: "center", border: "1px solid rgba(255,255,255,0.16)", marginTop: 6 }}>Send an inquiry</button>
           <button className="cp-item" style={{ color: "#A892C6" }} onClick={async () => { await signOut(); window.location.href = "/login"; }}><Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />Sign out</button>
         </aside>
@@ -516,7 +516,7 @@ main input,main textarea,main select,main button{font-family:inherit}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 18, position: "relative" }}>
             <div><div style={{ fontSize: 13, color: "#A892C6" }}>Welcome back</div><h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5, margin: "4px 0 0" }}>{MENU.find((m) => m[0] === tab)?.[2]}</h1></div>
             <div style={{ display: "flex", gap: 8 }}>
-              <a href="/contact" className="cp-mob" style={{ alignItems: "center", height: 46, padding: "0 14px", borderRadius: 12, background: "#8B5CF6", color: "#fff", fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>+ Book</a>
+              <a href="/?page=booking" className="cp-mob" style={{ alignItems: "center", height: 46, padding: "0 14px", borderRadius: 12, background: "#8B5CF6", color: "#fff", fontWeight: 700, fontSize: 13.5, textDecoration: "none" }}>+ Book</a>
               <button aria-label="Notifications" onClick={async () => { setBellOpen(!bellOpen); if (!bellOpen && feed?.unread) { await api("/api/client/feed", { action: "read_all" }).catch(() => {}); setFeed({ ...feed, unread: 0, notifications: feed.notifications.map((n: any) => ({ ...n, read: true, wasUnread: !n.read })) }); } }} style={{ position: "relative", width: 46, height: 46, borderRadius: 12, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Icon d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
                 {feed?.unread ? <span style={{ position: "absolute", top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, background: "#F43F5E", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{feed.unread}</span> : null}
@@ -545,7 +545,7 @@ main input,main textarea,main select,main button{font-family:inherit}
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {searchBox(true)}
-                    <a href={!banner.cta_link || banner.cta_link === "/booking" ? "/contact" : banner.cta_link} onClick={() => api("/api/client/feed", { action: "click", banner_id: banner.id }).catch(() => {})} style={{ background: "#fff", color: "#1B1230", textDecoration: "none", fontWeight: 800, fontSize: 14.5, borderRadius: 12, padding: "0 22px", height: 48, display: "flex", alignItems: "center" }}>{banner.cta_label || "Book now"}</a>
+                    <a href={!banner.cta_link || banner.cta_link === "/booking" ? "/?page=booking" : banner.cta_link} onClick={() => api("/api/client/feed", { action: "click", banner_id: banner.id }).catch(() => {})} style={{ background: "#fff", color: "#1B1230", textDecoration: "none", fontWeight: 800, fontSize: 14.5, borderRadius: 12, padding: "0 22px", height: 48, display: "flex", alignItems: "center" }}>{banner.cta_label || "Book now"}</a>
                   </div>
                 </div>
               </div>
@@ -560,7 +560,7 @@ main input,main textarea,main select,main button{font-family:inherit}
             </div>
             <div style={card}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}><b>Upcoming bookings</b><button onClick={() => go("bookings")} style={{ ...btnGhost, padding: "6px 12px", fontSize: 12 }}>See all</button></div>
-              {!upcoming.length ? <div style={{ fontSize: 13, color: "#A892C6" }}>Nothing booked yet. <Link href="/contact" style={{ color: "#C4B5FD" }}>Book a session →</Link></div> :
+              {!upcoming.length ? <div style={{ fontSize: 13, color: "#A892C6" }}>Nothing booked yet. <Link href="/?page=booking" style={{ color: "#C4B5FD" }}>Book a session →</Link></div> :
                 upcoming.slice(0, 3).map((b: any) => <div key={b.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 0", borderTop: "1px solid rgba(255,255,255,0.07)", fontSize: 13.5 }}><span><b>{b.service_name}</b><br /><span style={{ color: "#A892C6", fontSize: 12.5 }}>{b.appointment_ref} · {b.booking_date} {String(b.booking_time || "").slice(0, 5)}</span></span><span style={{ alignSelf: "center", fontSize: 11, fontWeight: 700, color: b.status === "confirmed" ? "#4ADE80" : "#FBBF24" }}>{String(b.status).replace(/_/g, " ").toUpperCase()}</span></div>)}
             </div>
           </div>)}
@@ -570,7 +570,7 @@ main input,main textarea,main select,main button{font-family:inherit}
             {bookingsErr && <div style={{ color: "#e74c3c", fontSize: 12.5, marginBottom: 14 }}>{bookingsErr}</div>}
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>{(["upcoming", "past", "cancelled"] as const).map((k) => <button key={k} onClick={() => setBFilter(k)} style={chip(bFilter === k)}>{k[0].toUpperCase() + k.slice(1)}</button>)}</div>
             {bookingsLoading ? <div style={{ fontSize: 12.5, color: "#A892C6" }}>Loading…</div> : filtered.length === 0 ? (
-              <div style={cardStyle}><p style={{ fontSize: 13, color: "#A892C6", margin: 0 }}>{q ? "No bookings match your search." : bFilter !== "upcoming" ? `No ${bFilter} bookings.` : <>No upcoming bookings. <Link href="/contact" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.</>}</p></div>
+              <div style={cardStyle}><p style={{ fontSize: 13, color: "#A892C6", margin: 0 }}>{q ? "No bookings match your search." : bFilter !== "upcoming" ? `No ${bFilter} bookings.` : <>No upcoming bookings. <Link href="/?page=booking" style={{ color: "var(--accent-primary, #8B5CF6)" }}>Book a session</Link> and it'll show up here.</>}</p></div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {filtered.map((b) => <BookingCard key={b.id} b={b} onReceiptChanged={loadBookings} onMessage={() => go("messages")} />)}

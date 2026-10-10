@@ -2550,7 +2550,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const params=new URLSearchParams(window.location.search);
       if(params.get("admin")==="1") setCms(true);
       const p=params.get("page");
-      if(p==="packages"||p==="cv"||p==="blog") goTo(p);
+      if(p==="packages"||p==="cv"||p==="blog"||p==="booking") goTo(p);
     }catch{}
   },[]);
 

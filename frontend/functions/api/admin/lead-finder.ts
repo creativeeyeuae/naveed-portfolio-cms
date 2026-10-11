@@ -87,6 +87,42 @@ async function hasMx(email: string): Promise<boolean> {
   try { const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(email.split("@")[1])}&type=MX`, { headers: { Accept: "application/dns-json" } }); const j: any = await r.json(); return Array.isArray(j.Answer) && j.Answer.length > 0; } catch { return false; }
 }
 
+// Auto-fill: reads a company's own public website (home, contact, about, team) and pulls out
+// business emails, UAE mobile (WhatsApp) / landline numbers, and a named person (founder / MD /
+// director) when the page states one. Free -- plain page fetches, no paid API.
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36";
+const ROLE = "Founder|Co-Founder|CEO|Managing Director|Director|Owner|Principal|General Manager|Creative Director|Design Director|Partner";
+function normPhone(p: string) {
+  let d = String(p || "").replace(/[^\d+]/g, ""); if (d.startsWith("00")) d = "+" + d.slice(2);
+  if (/^0\d{8,9}$/.test(d)) d = "+971" + d.slice(1); if (/^971\d{8,9}$/.test(d)) d = "+" + d;
+  return /^\+971\d{8,9}$/.test(d) ? d : "";
+}
+async function findContactInfo(site: string) {
+  const paths = ["", "/contact", "/contact-us", "/about", "/about-us", "/team", "/our-team"];
+  const pages = await Promise.all(paths.map(async (p) => {
+    try { const r = await fetch(site + p, { headers: { "User-Agent": UA }, redirect: "follow", signal: AbortSignal.timeout(6000) }); return r.ok ? (await r.text()).slice(0, 400000) : ""; } catch { return ""; }
+  }));
+  const d = domain(site); const emails = new Set<string>(); const mobiles = new Set<string>(); const lands = new Set<string>(); let name = "", title = "";
+  for (const raw of pages) {
+    if (!raw) continue;
+    const html = raw.replace(/&#64;|&#x40;|\[at\]|\(at\)/gi, "@").replace(/&nbsp;/g, " ");
+    for (const m of html.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []) { const e = m.toLowerCase(); if (!JUNK.test(e) && e.length < 80) emails.add(e); }
+    const nums = [...html.matchAll(/(?:tel:|wa\.me\/|whatsapp\.com\/send\?phone=)\s*([+\d][\d\s().-]{7,18})/gi)].map((m) => m[1])
+      .concat(html.replace(/<[^>]+>/g, " ").match(/(?:\+971|00971|\b0)\s?\(?[2-9]\d?\)?[\s.-]?\d{3}[\s.-]?\d{3,4}\b/g) || []);
+    for (const n of nums) { const p = normPhone(n); if (p) (/^\+9715/.test(p) ? mobiles : lands).add(p); }
+    if (!name) {
+      const text = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, "\n").replace(/[ \t]+/g, " ");
+      const ld = /"founder"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]{3,40})"/i.exec(html);
+      const a = new RegExp(`\\b([A-Z][a-z]+(?: [A-Z][a-z'-]+){1,2})\\s*[,\\-–|\\n(]+\\s*(?:the\\s+)?(${ROLE})\\b`).exec(text);
+      const bb = new RegExp(`\\b(${ROLE})\\s*[:,\\-–|\\n]+\\s*([A-Z][a-z]+(?: [A-Z][a-z'-]+){1,2})\\b`).exec(text);
+      if (ld) { name = ld[1]; title = "Founder"; } else if (a) { name = a[1]; title = a[2]; } else if (bb) { name = bb[2]; title = bb[1]; }
+      if (/^(Our|The|Contact|About|Read|Meet|Get|View|Learn|Dubai|Interior|Design)\b/.test(name)) { name = ""; title = ""; }
+    }
+  }
+  const em = [...emails].sort((x, y) => Number(y.endsWith("@" + d)) - Number(x.endsWith("@" + d)));
+  return { emails: em.slice(0, 3), mobile: [...mobiles][0] || "", landline: [...lands][0] || "", name, title };
+}
+
 // Google stays inside its free monthly allowance: we count every Places call this month and stop
 // before the limit (default 3,000 calls; Google's free tier for Text Search is higher).
 const GOOGLE_MONTHLY_CAP = 3000;
@@ -126,6 +162,58 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
         return { website: l.website, email, alt: emails.slice(1), mx: email ? await hasMx(email) : false };
       }));
       return json({ results: out }, 200, origin);
+    }
+    // Auto-fill missing details for companies already in Contacts.
+    if (b.action === "autofill_list") {
+      const r = await supaAdmin(env, "outreach_companies?select=id,email,phone,whatsapp,website&website=not.is.null&limit=5000", { method: "GET" });
+      const all = r.ok ? ((await r.json()) as any[]) : [];
+      const done = await supaAdmin(env, "audit_log?action=eq.company_autofilled&select=entity_id&limit=10000", { method: "GET" });
+      const doneIds = new Set((done.ok ? ((await done.json()) as any[]) : []).map((x) => x.entity_id));
+      const ids = all.filter((c) => (!c.email || !c.whatsapp || !c.phone) && (b.force || !doneIds.has(c.id))).map((c) => c.id);
+      return json({ ids, total: all.length }, 200, origin);
+    }
+    if (b.action === "autofill") {
+      const ids: string[] = (Array.isArray(b.ids) ? b.ids : []).slice(0, 2).filter((x: any) => /^[0-9a-f-]{36}$/i.test(String(x)));
+      if (!ids.length) return json({ results: [] }, 200, origin);
+      const cr = await supaAdmin(env, `outreach_companies?id=in.(${ids.join(",")})&select=id,name,email,phone,whatsapp,website,city,country`, { method: "GET" });
+      const comps = cr.ok ? ((await cr.json()) as any[]) : [];
+      const results = await Promise.all(comps.map(async (c: any) => {
+        const site = normSite(c.website); const res: any = { id: c.id, name: c.name, email: "", mobile: "", landline: "", person: "" };
+        try {
+          const info = site ? await findContactInfo(site) : null;
+          if (info) {
+            let email = ""; for (const e of info.emails) { if (await hasMx(e)) { email = e; break; } }
+            const patch: any = {};
+            if (!c.email && email) patch.email = res.email = email;
+            if (!c.whatsapp && info.mobile) patch.whatsapp = res.mobile = info.mobile;
+            if (!c.phone && info.landline) patch.phone = res.landline = info.landline;
+            if (Object.keys(patch).length) { patch.updated_at = new Date().toISOString(); await supaAdmin(env, `outreach_companies?id=eq.${c.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) }); }
+            // the person record used by campaigns
+            const pr = await supaAdmin(env, `outreach_contacts?company_id=eq.${c.id}&select=id,email,full_name,whatsapp,phone&limit=1`, { method: "GET" });
+            const person = pr.ok ? ((await pr.json()) as any[])?.[0] : null;
+            const pEmail = person?.email || email || c.email || null;
+            if (person) {
+              const pp: any = {};
+              if (!person.email && pEmail) pp.email = pEmail;
+              if (!person.full_name && info.name) { pp.full_name = info.name; pp.first_name = info.name.split(" ")[0]; pp.last_name = info.name.split(" ").slice(1).join(" ") || null; pp.job_title = info.title || null; res.person = info.name; }
+              if (!person.whatsapp && info.mobile) pp.whatsapp = info.mobile;
+              if (!person.phone && info.landline) pp.phone = info.landline;
+              if (Object.keys(pp).length) await supaAdmin(env, `outreach_contacts?id=eq.${person.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(pp) });
+            } else if (pEmail || info.mobile) {
+              const np = await supaAdmin(env, "outreach_contacts", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ company_id: c.id, full_name: info.name || null, first_name: info.name ? info.name.split(" ")[0] : null, last_name: info.name ? info.name.split(" ").slice(1).join(" ") || null : null, job_title: info.title || null, email: pEmail, whatsapp: info.mobile || c.whatsapp || null, phone: info.landline || c.phone || null, website: site || null, city: c.city || "Dubai", country: c.country || "UAE", source: "Auto-fill" }) });
+              const created = np.ok ? ((await np.json()) as any[])?.[0] : null;
+              if (info.name) res.person = info.name;
+              if (created) { // give the new person the same tags as the company, so campaigns reach them
+                const tg = await supaAdmin(env, `outreach_company_tags?company_id=eq.${c.id}&select=tag_id`, { method: "GET" });
+                for (const t of tg.ok ? ((await tg.json()) as any[]) : []) await supaAdmin(env, "outreach_contact_tags", { method: "POST", headers: { Prefer: "return=minimal,resolution=ignore-duplicates" }, body: JSON.stringify({ contact_id: created.id, tag_id: t.tag_id }) });
+              }
+            }
+          }
+        } catch (e: any) { res.error = e?.message || "failed"; }
+        await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: `admin:${admin.email}`, action: "company_autofilled", entity_type: "outreach_company", entity_id: c.id, details: res }) });
+        return res;
+      }));
+      return json({ results }, 200, origin);
     }
     if (b.action === "save") {
       const tagName = clean(b.tag).slice(0, 80) || "Lead Finder";

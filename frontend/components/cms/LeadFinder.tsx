@@ -2,7 +2,7 @@
 // CMS > Lead Finder -- find companies by niche + area, find their public business emails,
 // review, then save the ticked ones into Contacts with a tag (Email Designer > Campaigns can then
 // target that tag). Nothing is emailed from here.
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Lead = { name: string; website: string; phone: string; email: string; address: string; rating: string; source: string; already?: boolean; mx?: boolean; checked?: boolean; pick?: boolean; alt?: string[] };
 const NICHES = ["Interior design", "Real estate", "Architecture", "Hotel", "Restaurant", "Events", "Corporate", "Fashion", "Beauty"];
@@ -30,12 +30,42 @@ export default function LeadFinder({ token }: { token: string }) {
     const pick = leads.filter((l) => l.pick); if (!pick.length) { setMsg("Tick at least one company."); return; }
     const tag = `Leads · ${niche} · ${area}`;
     if (!confirm(`Save ${pick.length} companies to Contacts with tag "${tag}"?\nNothing will be emailed.`)) return;
-    setBusy("Saving…"); try { const j = await call({ action: "save", leads: pick, tag, niche, area }); setMsg(`✓ Saved ${j.saved} (skipped ${j.skipped} duplicates) with tag "${j.tag}". Use it in Email Designer → Campaigns.`); setLeads((c) => c.map((l) => (l.pick ? { ...l, already: true, pick: false } : l))); } catch (e: any) { setMsg(e.message); } setBusy("");
+    setBusy("Saving…"); try { const j = await call({ action: "save", leads: pick, tag, niche, area }); setMsg(`✓ Saved ${j.saved} (skipped ${j.skipped} duplicates) with tag "${j.tag}". Use it in Email Designer → Campaigns.`); setLeads((c) => c.map((l) => (l.pick ? { ...l, already: true, pick: false } : l))); setBusy(""); autofill(false); return; } catch (e: any) { setMsg(e.message); } setBusy("");
+  };
+  // Auto-fill: visits every saved company's own website and fills in the missing email,
+  // mobile/WhatsApp, landline and contact person. Runs 2 companies at a time; free.
+  const [af, setAf] = useState<{ running: boolean; done: number; total: number; email: number; mobile: number; land: number; person: number }>({ running: false, done: 0, total: 0, email: 0, mobile: 0, land: 0, person: 0 });
+  const stopRef = useRef(false);
+  const autofill = async (force = false) => {
+    stopRef.current = false;
+    try {
+      const { ids } = await call({ action: "autofill_list", force });
+      const st = { running: true, done: 0, total: ids.length, email: 0, mobile: 0, land: 0, person: 0 }; setAf({ ...st });
+      for (let k = 0; k < ids.length && !stopRef.current; k += 2) {
+        try { const j = await call({ action: "autofill", ids: ids.slice(k, k + 2) });
+          for (const r of j.results || []) { if (r.email) st.email++; if (r.mobile) st.mobile++; if (r.landline) st.land++; if (r.person) st.person++; }
+        } catch { /* skip a slow website and keep going */ }
+        st.done = Math.min(k + 2, ids.length); setAf({ ...st });
+      }
+      st.running = false; setAf({ ...st });
+    } catch (e: any) { setMsg(e.message); setAf((a) => ({ ...a, running: false })); }
   };
   const ticked = leads.filter((l) => l.pick).length, withEmail = leads.filter((l) => l.email && l.mx).length;
   return (
     <div style={{ maxWidth: 1180, margin: "32px auto", padding: "0 20px", fontFamily: "Manrope, system-ui, sans-serif", color: "#F5F1FB", display: "grid", gap: 16 }}>
       <div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>🎯 Lead Finder</h1><div style={{ color: "#A892C6", fontSize: 13.5, marginTop: 4 }}>Find companies by niche and area, collect their public business emails, then save them to Contacts for a campaign. Nothing is sent from here.</div></div>
+      <div style={{ ...card, display: "grid", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <div><div style={{ fontWeight: 800, fontSize: 16 }}>✨ Auto-fill missing details</div><div style={{ color: "#A892C6", fontSize: 13 }}>Checks each saved company's own website (home, contact, about, team pages) and fills in the missing email, mobile / WhatsApp, landline and contact person name. Free. Companies already checked are skipped next time.</div></div>
+          {af.running ? <button onClick={() => { stopRef.current = true; }} style={btn(false)}>Stop</button>
+            : <div style={{ display: "flex", gap: 8 }}><button onClick={() => autofill(false)} style={btn(true)}>Auto-fill all companies</button><button onClick={() => autofill(true)} style={btn(false)} title="Check every company again, including ones checked before">Re-check all</button></div>}
+        </div>
+        {af.total > 0 && <>
+          <div style={{ height: 8, background: "#221640", borderRadius: 99, overflow: "hidden" }}><div style={{ width: `${(af.done / af.total) * 100}%`, height: "100%", background: "#8B5CF6", transition: "width .3s" }} /></div>
+          <div style={{ fontSize: 13, color: "#C4B5FD" }}>{af.running ? "Working…" : "Finished."} {af.done} / {af.total} companies · found <b>{af.email}</b> emails · <b>{af.mobile}</b> mobiles · <b>{af.land}</b> landlines · <b>{af.person}</b> contact names</div>
+        </>}
+        {af.total === 0 && !af.running && af.done === 0 && null}
+      </div>
       <div style={{ ...card, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
         <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#C4B5FD", fontWeight: 600 }}>Niche<input list="lf-niches" value={niche} onChange={(e) => setNiche(e.target.value)} style={{ ...inp, width: 220 }} /><datalist id="lf-niches">{NICHES.map((n) => <option key={n} value={n} />)}</datalist></label>
         <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#C4B5FD", fontWeight: 600 }}>Area<input value={area} onChange={(e) => setArea(e.target.value)} style={{ ...inp, width: 180 }} /></label>

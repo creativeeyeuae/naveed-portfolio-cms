@@ -3611,10 +3611,27 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setImportBusy(true); setImportErr("");
     try{
       const rows=importPreviewResults.map(r=>({data:r.data,action:importRowActions[r.row_index]||"skip",duplicate_id:r.duplicate?.id}));
-      const res=await fetch("/api/admin/outreach-import/commit",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({entity_type:importOpen,rows,tag_name:importTagName.trim(),source:importOpen==="company"?"excel_import":"excel_import"})});
-      const data=await res.json();
-      if(!res.ok) throw new Error(data.error||"Import failed");
-      setImportResult(data); setImportStep(6);
+      // Send in small batches: one big request exceeds Cloudflare's per-request subrequest/time limits.
+      const todo=rows.filter(r=>r.action!=="skip");
+      const total={total:rows.length,imported:0,updated:0,skipped:rows.length-todo.length,duplicates:0,errors:[] as any[]};
+      const BATCH=15;
+      for(let s=0;s<todo.length;s+=BATCH){
+        setImportErr(`Importing ${Math.min(s+BATCH,todo.length)} of ${todo.length}…`);
+        const chunk=todo.slice(s,s+BATCH);
+        let data:any=null;
+        for(let attempt=0;attempt<3&&!data;attempt++){
+          try{
+            const res=await fetch("/api/admin/outreach-import/commit",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({entity_type:importOpen,rows:chunk,tag_name:importTagName.trim(),source:"excel_import"})});
+            const txt=await res.text(); const d=JSON.parse(txt);
+            if(!res.ok) throw new Error(d.error||"Import failed");
+            data=d;
+          }catch(err){ if(attempt===2) throw err; await new Promise(r=>setTimeout(r,1500)); }
+        }
+        total.imported+=data.imported||0; total.updated+=data.updated||0; total.duplicates+=data.duplicates||0;
+        for(const e of data.errors||[]) total.errors.push({...e,row_index:e.row_index+s});
+      }
+      setImportErr("");
+      setImportResult(total); setImportStep(6);
       if(importOpen==="company") await loadCompanies(); else await loadContacts();
     }catch(e:any){ setImportErr(e.message||"Import failed"); }
     setImportBusy(false);

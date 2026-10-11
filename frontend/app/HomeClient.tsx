@@ -2945,6 +2945,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // that same shared renderer -- it never sends anything, so it's fine if it's only visually close.
   const [emailSubTab,setEmailSubTab]=useState<"templates"|"campaigns">("templates");
   const [emailTemplates,setEmailTemplates]=useState<any[]|null>(null);
+  const [navGroupOpen,setNavGroupOpen]=useState<string|null>(null); // CMS sidebar: which group is expanded (null = the active page's group)
+  useEffect(()=>{ setNavGroupOpen(null); },[cmsTab]); // eslint-disable-line react-hooks/exhaustive-deps
   const [companySel,setCompanySel]=useState<string[]>([]); // Companies tab: ticked for "Email selected"
   const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
   const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
@@ -5198,6 +5200,19 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </button>
       );
     }
+    function CmsNavGroup({id,icon,label,active,badge,children}:{id:string;icon:string;label:string;active:boolean;badge?:number;children:any}){
+      const open=navGroupOpen===id||(navGroupOpen===null&&active);
+      return(
+        <div style={{marginBottom:2}}>
+          <button onClick={()=>setNavGroupOpen(open?"__none":id)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",textAlign:"left" as const,padding:"10px 12px",borderRadius:8,border:"none",cursor:"pointer",background:active&&!open?"rgba(139,92,246,0.14)":"transparent",color:active?"#fff":"#CFC6E0",fontSize:12.5,fontWeight:700,letterSpacing:0.2}}>
+            <span style={{fontSize:13}}>{icon}</span><span style={{flex:1}}>{label}</span>
+            {!!badge&&!open&&<span style={{fontSize:10.5,fontWeight:700,background:C.P,color:"#fff",borderRadius:10,padding:"1px 7px"}}>{badge}</span>}
+            <span style={{fontSize:10,opacity:0.7,transform:open?"rotate(90deg)":"none",transition:"transform 0.15s"}}>▶</span>
+          </button>
+          {open&&<div style={{padding:"2px 0 8px 12px",borderLeft:"1px solid rgba(139,92,246,0.25)",marginLeft:18}}>{children}</div>}
+        </div>
+      );
+    }
     function CmsNavSection({label}:{label:string}){
       return <div style={{fontSize:10,fontWeight:700,letterSpacing:1.4,textTransform:"uppercase" as const,color:"#564A73",padding:"18px 12px 7px"}}>{label}</div>;
     }
@@ -5258,6 +5273,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         </div>
       );
     }
+    const navInboxCount=(waConversations?waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0):0)+(msgList?msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length:0)+(lcList?lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length:0);
     const cmsSidebar = (
       <div style={{width:250,minWidth:250,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,borderRight:`1px solid ${C.BORDER}`,position:"fixed",top:0,left:0,height:"100vh",overflowY:"auto" as const,padding:"18px 12px",zIndex:20,transform:(isMobile&&!mobileNavOpen)?"translateX(-100%)":"translateX(0)",transition:"transform 0.2s"}}>
         <div style={{display:"flex",alignItems:"center",gap:10,padding:"4px 6px 18px",marginBottom:6,borderBottom:`1px solid ${C.BORDER}`}}>
@@ -5268,58 +5284,69 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           </div>
         </div>
         <CmsNavItem icon="📊" label="Dashboard" active={cmsTab==="dashboard"} onClick={()=>setCmsTab("dashboard")} />
-        <CmsNavSection label="Business" />
-        <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
-        <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
-        <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
+        <CmsNavGroup id="bookings" icon="📅" label="Bookings & Money" active={cmsTab==="bookings"||cmsTab==="calendar"||cmsTab==="payments"||cmsTab==="invoices"||cmsTab==="deliver"||cmsTab==="wallet"||cmsTab==="coupons"||cmsTab==="clientRequests"}>
+          <CmsNavItem icon="📅" label="Bookings" active={cmsTab==="bookings"} onClick={()=>setCmsTab("bookings")} />
+          <CmsNavItem icon="🗓" label="Calendar" active={cmsTab==="calendar"} onClick={()=>setCmsTab("calendar")} />
+          <CmsNavItem icon="💳" label="Payments" active={cmsTab==="payments"} onClick={()=>setCmsTab("payments")} />
+          <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
+          <CmsNavItem icon="📁" label="Deliver Files" active={cmsTab==="deliver"} onClick={()=>setCmsTab("deliver")} />
+          <CmsNavItem icon="💳" label="Client Wallet" active={cmsTab==="wallet"} onClick={()=>setCmsTab("wallet")} />
           <CmsNavItem icon="🏷️" label="Coupons" active={cmsTab==="coupons"} onClick={()=>setCmsTab("coupons")} />
           <CmsNavItem icon="📝" label="Client Requests" active={cmsTab==="clientRequests"} onClick={()=>setCmsTab("clientRequests")} />
-          <CmsNavItem icon="💳" label="Client Wallet" active={cmsTab==="wallet"} onClick={()=>setCmsTab("wallet")} />
-          <CmsNavItem icon="📣" label="Offers & Notifications" active={cmsTab==="offers"} onClick={()=>setCmsTab("offers")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="clients" icon="🤝" label="Clients & Leads" active={cmsTab==="clientdir"||cmsTab==="companies"||cmsTab==="contacts"||cmsTab==="leadfinder"||cmsTab==="followups"||cmsTab==="leads"}>
+          <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
+          <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
+          <CmsNavItem icon="👥" label="Contacts" active={cmsTab==="contacts"} onClick={()=>setCmsTab("contacts")} />
           <CmsNavItem icon="🎯" label="Lead Finder" active={cmsTab==="leadfinder"} onClick={()=>setCmsTab("leadfinder")} />
-          <CmsNavItem icon="📁" label="Deliver Files" active={cmsTab==="deliver"} onClick={()=>setCmsTab("deliver")} />
-        <CmsNavItem icon="🧮" label="Invoices" active={cmsTab==="invoices"} onClick={()=>setCmsTab("invoices")} />
-        <CmsNavItem icon="🤝" label="Client Directory" active={cmsTab==="clientdir"} onClick={()=>setCmsTab("clientdir")} />
-        <CmsNavItem icon="🏢" label="Companies" active={cmsTab==="companies"} onClick={()=>setCmsTab("companies")} />
-        <CmsNavItem icon="👥" label="Contacts" active={cmsTab==="contacts"} onClick={()=>setCmsTab("contacts")} />
-        <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
-        <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
-        <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
-        <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
-        <CmsNavItem icon="💬" label={`Live Chat${lcList&&lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length>0?` · ${lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="livechat"} onClick={()=>setCmsTab("livechat")} />
-        <CmsNavItem icon="🤖" label="Chatbot Q&A" active={cmsTab==="chatfaqs"} onClick={()=>setCmsTab("chatfaqs")} />
-        <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
-        <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
-        <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
-        <CmsNavSection label="Content" />
-        <CmsNavItem icon="🖼" label="Portfolio" active={cmsTab==="projects"} onClick={()=>setCmsTab("projects")} />
-        <CmsNavItem icon="🏷" label="Categories" active={cmsTab==="categories"} onClick={()=>setCmsTab("categories")} />
-        <CmsNavItem icon="⭐" label="Reviews" active={cmsTab==="testimonials"} onClick={()=>setCmsTab("testimonials")} />
-        <CmsNavItem icon="📝" label="Journal" active={cmsTab==="blog"} onClick={()=>setCmsTab("blog")} />
-        <CmsNavItem icon="🧾" label="Services" active={cmsTab==="settings"&&settingsTab==="services"} onClick={()=>{setCmsTab("settings");setSettingsTab("services");}} />
-        <CmsNavItem icon="💳" label="Packages" active={cmsTab==="settings"&&settingsTab==="pricing"} onClick={()=>{setCmsTab("settings");setSettingsTab("pricing");}} />
-        <CmsNavItem icon="🗂" label="Media Library" active={cmsTab==="media"} onClick={()=>setCmsTab("media")} />
-        <CmsNavSection label="Website" />
-        <CmsNavItem icon="🔀" label="Navigation & Pages" active={cmsTab==="settings"&&settingsTab==="pages"} onClick={()=>{setCmsTab("settings");setSettingsTab("pages");}} />
-        <CmsNavItem icon="⚙️" label="General" active={cmsTab==="settings"&&settingsTab==="general"} onClick={()=>{setCmsTab("settings");setSettingsTab("general");}} />
-        <CmsNavItem icon="🎞" label="Hero Slides" active={cmsTab==="settings"&&settingsTab==="hero"} onClick={()=>{setCmsTab("settings");setSettingsTab("hero");}} />
-        <CmsNavItem icon="👤" label="About" active={cmsTab==="settings"&&settingsTab==="about"} onClick={()=>{setCmsTab("settings");setSettingsTab("about");}} />
-        <CmsNavItem icon="🤝" label="Clients" active={cmsTab==="settings"&&settingsTab==="clients"} onClick={()=>{setCmsTab("settings");setSettingsTab("clients");}} />
-        <CmsNavItem icon="🎓" label="CV & Skills" active={cmsTab==="settings"&&settingsTab==="cv"} onClick={()=>{setCmsTab("settings");setSettingsTab("cv");}} />
-        <CmsNavItem icon="📦" label="Gear Photos" active={cmsTab==="settings"&&settingsTab==="gear"} onClick={()=>{setCmsTab("settings");setSettingsTab("gear");}} />
-        <CmsNavItem icon="⬇️" label="Footer" active={cmsTab==="settings"&&settingsTab==="footer"} onClick={()=>{setCmsTab("settings");setSettingsTab("footer");}} />
-        <CmsNavItem icon="✉️" label="Contact" active={cmsTab==="settings"&&settingsTab==="contact"} onClick={()=>{setCmsTab("settings");setSettingsTab("contact");}} />
-        <CmsNavItem icon="🔔" label="Popup" active={cmsTab==="settings"&&settingsTab==="popup"} onClick={()=>{setCmsTab("settings");setSettingsTab("popup");}} />
-        <CmsNavItem icon="🎨" label="Colors" active={cmsTab==="settings"&&settingsTab==="colors"} onClick={()=>{setCmsTab("settings");setSettingsTab("colors");}} />
-        <CmsNavItem icon="🔤" label="Text & Banners" active={cmsTab==="settings"&&settingsTab==="text"} onClick={()=>{setCmsTab("settings");setSettingsTab("text");}} />
-        <CmsNavSection label="SEO" />
-        <CmsNavItem icon="🤖" label="SEO Agent" active={cmsTab==="seoagent"} onClick={()=>setCmsTab("seoagent")} />
-        <CmsNavItem icon="🔍" label="SEO & Metadata" active={cmsTab==="settings"&&settingsTab==="seo"} onClick={()=>{setCmsTab("settings");setSettingsTab("seo");}} />
-        <CmsNavItem icon="🧭" label="Service Pages" active={cmsTab==="servicepages"} onClick={()=>setCmsTab("servicepages")} />
-        <CmsNavSection label="System" />
-        <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
-        <CmsNavItem icon="⚠️" label="Error Logs" active={cmsTab==="errorlog"} onClick={()=>setCmsTab("errorlog")} />
-        <CmsNavItem icon="🔐" label="Admin & Access" active={cmsTab==="access"} onClick={()=>setCmsTab("access")} />
+          <CmsNavItem icon="✅" label={`Follow-ups${followUpsList&&followUpsList.length>0?` · ${followUpsList.length}`:""}`} active={cmsTab==="followups"} onClick={()=>setCmsTab("followups")} />
+          <CmsNavItem icon="📥" label="Leads" active={cmsTab==="leads"} onClick={()=>setCmsTab("leads")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="marketing" icon="📣" label="Marketing" active={cmsTab==="email"||cmsTab==="offers"}>
+          <CmsNavItem icon="📧" label="Email Designer" active={cmsTab==="email"} onClick={()=>setCmsTab("email")} />
+          <CmsNavItem icon="📣" label="Offers & Notifications" active={cmsTab==="offers"} onClick={()=>setCmsTab("offers")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="inbox" icon="💬" label="Inbox & Chat" active={cmsTab==="whatsapp"||cmsTab==="messages"||cmsTab==="livechat"||cmsTab==="chatfaqs"||cmsTab==="comments"||cmsTab==="permrequests"} badge={navInboxCount}>
+          <CmsNavItem icon="📱" label={`WhatsApp${waConversations&&waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)>0?` · ${waConversations.reduce((a:number,c:any)=>a+Number(c.unread_count||0),0)}`:""}`} active={cmsTab==="whatsapp"} onClick={()=>setCmsTab("whatsapp")} />
+          <CmsNavItem icon="✉️" label={`Messages${msgList&&msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length>0?` · ${msgList.filter((m:any)=>m.sender==="client"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="messages"} onClick={()=>setCmsTab("messages")} />
+          <CmsNavItem icon="💬" label={`Live Chat${lcList&&lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length>0?` · ${lcList.filter((m:any)=>m.sender==="visitor"&&!m.is_read_by_admin).length}`:""}`} active={cmsTab==="livechat"} onClick={()=>setCmsTab("livechat")} />
+          <CmsNavItem icon="🤖" label="Chatbot Q&A" active={cmsTab==="chatfaqs"} onClick={()=>setCmsTab("chatfaqs")} />
+          <CmsNavItem icon="💬" label="Comments" active={cmsTab==="comments"} onClick={()=>setCmsTab("comments")} />
+          <CmsNavItem icon="🖼️🔒" label={`Image Requests${permReqList&&permReqList.filter((r:any)=>r.status==="pending").length>0?` · ${permReqList.filter((r:any)=>r.status==="pending").length}`:""}`} active={cmsTab==="permrequests"} onClick={()=>setCmsTab("permrequests")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="content" icon="🖼" label="Content" active={cmsTab==="projects"||cmsTab==="categories"||cmsTab==="testimonials"||cmsTab==="blog"||(cmsTab==="settings"&&settingsTab==="services")||(cmsTab==="settings"&&settingsTab==="pricing")||cmsTab==="media"}>
+          <CmsNavItem icon="🖼" label="Portfolio" active={cmsTab==="projects"} onClick={()=>setCmsTab("projects")} />
+          <CmsNavItem icon="🏷" label="Categories" active={cmsTab==="categories"} onClick={()=>setCmsTab("categories")} />
+          <CmsNavItem icon="⭐" label="Reviews" active={cmsTab==="testimonials"} onClick={()=>setCmsTab("testimonials")} />
+          <CmsNavItem icon="📝" label="Journal" active={cmsTab==="blog"} onClick={()=>setCmsTab("blog")} />
+          <CmsNavItem icon="🧾" label="Services" active={cmsTab==="settings"&&settingsTab==="services"} onClick={()=>{setCmsTab("settings");setSettingsTab("services");}} />
+          <CmsNavItem icon="💳" label="Packages" active={cmsTab==="settings"&&settingsTab==="pricing"} onClick={()=>{setCmsTab("settings");setSettingsTab("pricing");}} />
+          <CmsNavItem icon="🗂" label="Media Library" active={cmsTab==="media"} onClick={()=>setCmsTab("media")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="website" icon="🌐" label="Website" active={(cmsTab==="settings"&&settingsTab==="pages")||(cmsTab==="settings"&&settingsTab==="general")||(cmsTab==="settings"&&settingsTab==="hero")||(cmsTab==="settings"&&settingsTab==="about")||(cmsTab==="settings"&&settingsTab==="clients")||(cmsTab==="settings"&&settingsTab==="cv")||(cmsTab==="settings"&&settingsTab==="gear")||(cmsTab==="settings"&&settingsTab==="footer")||(cmsTab==="settings"&&settingsTab==="contact")||(cmsTab==="settings"&&settingsTab==="popup")||(cmsTab==="settings"&&settingsTab==="colors")||(cmsTab==="settings"&&settingsTab==="text")}>
+          <CmsNavItem icon="🔀" label="Navigation & Pages" active={cmsTab==="settings"&&settingsTab==="pages"} onClick={()=>{setCmsTab("settings");setSettingsTab("pages");}} />
+          <CmsNavItem icon="⚙️" label="General" active={cmsTab==="settings"&&settingsTab==="general"} onClick={()=>{setCmsTab("settings");setSettingsTab("general");}} />
+          <CmsNavItem icon="🎞" label="Hero Slides" active={cmsTab==="settings"&&settingsTab==="hero"} onClick={()=>{setCmsTab("settings");setSettingsTab("hero");}} />
+          <CmsNavItem icon="👤" label="About" active={cmsTab==="settings"&&settingsTab==="about"} onClick={()=>{setCmsTab("settings");setSettingsTab("about");}} />
+          <CmsNavItem icon="🤝" label="Clients" active={cmsTab==="settings"&&settingsTab==="clients"} onClick={()=>{setCmsTab("settings");setSettingsTab("clients");}} />
+          <CmsNavItem icon="🎓" label="CV & Skills" active={cmsTab==="settings"&&settingsTab==="cv"} onClick={()=>{setCmsTab("settings");setSettingsTab("cv");}} />
+          <CmsNavItem icon="📦" label="Gear Photos" active={cmsTab==="settings"&&settingsTab==="gear"} onClick={()=>{setCmsTab("settings");setSettingsTab("gear");}} />
+          <CmsNavItem icon="⬇️" label="Footer" active={cmsTab==="settings"&&settingsTab==="footer"} onClick={()=>{setCmsTab("settings");setSettingsTab("footer");}} />
+          <CmsNavItem icon="✉️" label="Contact" active={cmsTab==="settings"&&settingsTab==="contact"} onClick={()=>{setCmsTab("settings");setSettingsTab("contact");}} />
+          <CmsNavItem icon="🔔" label="Popup" active={cmsTab==="settings"&&settingsTab==="popup"} onClick={()=>{setCmsTab("settings");setSettingsTab("popup");}} />
+          <CmsNavItem icon="🎨" label="Colors" active={cmsTab==="settings"&&settingsTab==="colors"} onClick={()=>{setCmsTab("settings");setSettingsTab("colors");}} />
+          <CmsNavItem icon="🔤" label="Text & Banners" active={cmsTab==="settings"&&settingsTab==="text"} onClick={()=>{setCmsTab("settings");setSettingsTab("text");}} />
+        </CmsNavGroup>
+        <CmsNavGroup id="seo" icon="🔍" label="SEO" active={cmsTab==="seoagent"||(cmsTab==="settings"&&settingsTab==="seo")||cmsTab==="servicepages"}>
+          <CmsNavItem icon="🤖" label="SEO Agent" active={cmsTab==="seoagent"} onClick={()=>setCmsTab("seoagent")} />
+          <CmsNavItem icon="🔍" label="SEO & Metadata" active={cmsTab==="settings"&&settingsTab==="seo"} onClick={()=>{setCmsTab("settings");setSettingsTab("seo");}} />
+          <CmsNavItem icon="🧭" label="Service Pages" active={cmsTab==="servicepages"} onClick={()=>setCmsTab("servicepages")} />
+        </CmsNavGroup>
+        <CmsNavGroup id="system" icon="🛠" label="System" active={cmsTab==="activity"||cmsTab==="errorlog"||cmsTab==="access"}>
+          <CmsNavItem icon="📈" label="Activity" active={cmsTab==="activity"} onClick={()=>setCmsTab("activity")} />
+          <CmsNavItem icon="⚠️" label="Error Logs" active={cmsTab==="errorlog"} onClick={()=>setCmsTab("errorlog")} />
+          <CmsNavItem icon="🔐" label="Admin & Access" active={cmsTab==="access"} onClick={()=>setCmsTab("access")} />
+        </CmsNavGroup>
         {/* Sign out, also reachable here in the sidebar (not just the top bar) -- stays
             visible/reachable on every tab, including on mobile where the top bar's own
             Sign Out can wrap off to a second line next to the admin's email. */}

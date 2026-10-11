@@ -1417,16 +1417,16 @@ function CropModal({src,onCancel,onConfirm}:{src:string;onCancel:()=>void;onConf
 // the photo's own intrinsic ratio; grid-auto-flow:dense fills the gaps around
 // shorter tiles automatically, producing the collage effect with zero manual work
 // per project, for any mix or count of images.
-function SmartGrid({images,onClick}:{images:Img[];onClick:(i:number)=>void}) {
+function SmartGrid({images,onClick,title=""}:{images:Img[];onClick:(i:number)=>void;title?:string}) {
   if(!images?.length) return null;
   return (
     <div className="egallery">
-      {images.map((img,i)=>(<GalleryTile key={i} img={img} index={i} onClick={()=>onClick(i)} />))}
+      {images.map((img,i)=>(<GalleryTile key={i} img={img} index={i} title={title} onClick={()=>onClick(i)} />))}
     </div>
   );
 }
 
-function GalleryTile({img,index,onClick}:{img:Img;index:number;onClick:()=>void}) {
+function GalleryTile({img,index,onClick,title=""}:{img:Img;index:number;onClick:()=>void;title?:string}) {
   // Seed a span + placeholder ratio from the CMS-stored orientation so the tile has a
   // sensible size before the real image loads (avoids a big layout jump), then refine
   // both from the image's actual measured dimensions once it decodes.
@@ -1442,7 +1442,7 @@ function GalleryTile({img,index,onClick}:{img:Img;index:number;onClick:()=>void}
   }
   return (
     <div className={`egallery-item eg-span-${span}`} onClick={onClick} style={{aspectRatio:loaded?"auto":ratio,background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`}}>
-      <img src={img.url} alt={img.caption||""} loading={index<2?"eager":"lazy"} decoding="async" onLoad={handleLoad}
+      <img src={img.url} alt={img.caption||(title?`${title} — photo ${index+1} by Naveed Anjum, Dubai`:"Photography by Naveed Anjum, Dubai")} loading={index<2?"eager":"lazy"} decoding="async" onLoad={handleLoad}
         style={{width:"100%",height:loaded?"auto":"100%",objectFit:loaded?undefined:"cover",display:"block"}} />
       {img.caption&&<div className="egallery-caption">{img.caption}</div>}
     </div>
@@ -8611,7 +8611,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           <ProjectReaction projectId={selProj.id} />
           {selProj.description&&<p style={{color:C.MID,fontSize:15,lineHeight:1.9,maxWidth:680,marginBottom:48}}>{selProj.description}</p>}
           {ytId&&<div style={{marginBottom:48,aspectRatio:"16/9",maxWidth:900}}><iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${ytId}`} frameBorder={0} allowFullScreen style={{display:"block"}} /></div>}
-          {selProj.images?.length>0&&<div style={{marginBottom:48}}><SmartGrid images={selProj.images} onClick={i=>setLb({open:true,index:i})} /></div>}
+          {selProj.images?.length>0&&<div style={{marginBottom:48}}><SmartGrid images={selProj.images} title={selProj.projectName||selProj.title} onClick={i=>setLb({open:true,index:i})} /></div>}
           {selProj.reels?.length>0&&<div style={{marginBottom:48,display:"flex",gap:12,flexWrap:"wrap"}}>{selProj.reels.map((r,i)=><a key={i} href={r} target="_blank" rel="noopener noreferrer" style={{...S.btnO,textDecoration:"none"}}>View Reel {i+1}</a>)}</div>}
           <div style={{marginTop:48,paddingTop:48,borderTop:`1px solid ${C.BORDER}`}}>
             <div style={{fontSize:10,letterSpacing:5,color:C.PL,textTransform:"uppercase",marginBottom:20}}>Related Projects</div>

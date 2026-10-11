@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
 import { buildMetadata } from "@/lib/seo";
@@ -26,8 +27,8 @@ export async function generateMetadata() {
   const site = await getPublicSiteInfo();
   return buildMetadata({
     path: "/cv/",
-    title: `${site.cvBannerTitle} — ${site.siteName}`,
-    description: CV_DESCRIPTION,
+    title: metaTitle(`${site.cvBannerTitle} — ${site.siteName}`),
+    description: metaDesc(CV_DESCRIPTION),
   });
 }
 

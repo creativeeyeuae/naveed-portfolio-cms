@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -76,7 +77,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return buildMetadata({
     path: `/journal/${post.slug}/`,
     title: post.seoTitle || post.title,
-    description: post.seoDescription || post.excerpt,
+    description: metaDesc(post.seoDescription || post.excerpt),
     imageUrl: coverImageUrl(post),
     ogType: "article",
     publishedTime: post.publishedAt,
@@ -92,7 +93,7 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
   const jsonLd = articleJsonLd({
     path: `/journal/${post.slug}/`,
     title: post.title,
-    description: post.seoDescription || post.excerpt,
+    description: metaDesc(post.seoDescription || post.excerpt),
     imageUrl: coverImageUrl(post),
     datePublished: post.publishedAt,
     category: post.category,

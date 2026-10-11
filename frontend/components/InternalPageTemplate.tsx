@@ -41,7 +41,7 @@ export default function InternalPageTemplate({
 
       {/* Standard internal-page banner -- identical everywhere, exact port of PageBanner. */}
       <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(252px,39.6vh,432px)", display: "flex", alignItems: "center", padding: "120px 40px 36px" }}>
-        {image && <img src={image} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />}
+        {image && <img src={image} alt={`${title} — Naveed Anjum, photographer & cinematographer in Dubai`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />}
         {image && <div style={{ position: "absolute", inset: 0, background: "linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)" }} />}
         <div style={{ position: "relative", zIndex: 1, maxWidth: 1400, margin: "0 auto", width: "100%" }}>
           <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>

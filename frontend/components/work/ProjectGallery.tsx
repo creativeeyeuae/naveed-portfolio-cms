@@ -149,9 +149,11 @@ function HeroTile({
 function GalleryTile({
   img,
   onOpen,
+  altText = "",
 }: {
   img: GalleryImage;
   onOpen: () => void;
+  altText?: string;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -171,7 +173,7 @@ function GalleryTile({
     >
       <img
         src={img.url}
-        alt={img.caption || ""}
+        alt={img.caption || altText}
         loading="lazy"
         decoding="async"
         className={PROTECTED_IMG_CLASS}
@@ -281,6 +283,7 @@ export default function ProjectGallery({
                 <GalleryTile
                   key={img.id}
                   img={img}
+                  altText={`${projectName} — photo ${i + 2} by Naveed Anjum, Dubai`}
                   onOpen={() => setLightboxIndex(i + 1)}
                 />
               ))}
@@ -354,7 +357,7 @@ export default function ProjectGallery({
             <div style={{ position: "relative" }}>
               <img
                 src={images[lightboxIndex].url}
-                alt={images[lightboxIndex].caption || ""}
+                alt={images[lightboxIndex].caption || `${projectName} — photo ${lightboxIndex + 1}`}
                 className={PROTECTED_IMG_CLASS}
                 {...protectedImgProps}
                 style={{ maxWidth: "92vw", maxHeight: "84vh", objectFit: "contain", display: "block" }}

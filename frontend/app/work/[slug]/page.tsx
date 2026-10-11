@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -170,8 +171,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const coverUrl = album.bannerImage || album.coverImage || (album.media || [])[0]?.externalUrl;
   return buildMetadata({
     path: `/work/${album.slug}/`,
-    title: album.seoTitle || album.projectName || album.title,
-    description: album.seoDescription || album.description,
+    title: metaTitle(album.seoTitle || album.projectName || album.title),
+    description: metaDesc(album.seoDescription || album.description),
     imageUrl: coverUrl,
     ogType: "website",
   });
@@ -270,7 +271,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
   const jsonLd = creativeWorkJsonLd({
     path: `/work/${album.slug}/`,
     title: displayName,
-    description: album.seoDescription || album.description,
+    description: metaDesc(album.seoDescription || album.description),
     imageUrl: bannerImageUrl,
     dateCreated: album.projectDate,
     location: album.location,
@@ -291,7 +292,7 @@ export default async function WorkProjectPage({ params }: { params: Promise<{ sl
       <div style={{ position: "relative", overflow: "hidden", background: C.DARK, minHeight: "clamp(228px,34vh,384px)", display: "flex", alignItems: "center", padding: "120px 40px 34px" }}>
         {bannerImageUrl && (
           <>
-            <img src={bannerImageUrl} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
+            <img src={bannerImageUrl} alt={`${displayName} — project by Naveed Anjum, Dubai`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(105deg,rgba(9,6,14,0.85) 0%,rgba(9,6,14,0.45) 100%)" }} />
           </>
         )}

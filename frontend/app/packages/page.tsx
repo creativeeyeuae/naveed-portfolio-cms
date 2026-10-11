@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
@@ -26,8 +27,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteInfo();
   return buildMetadata({
     path: "/packages/",
-    title: `${site.packagesBannerTitle} — ${site.siteName}`,
-    description: `Photography and videography packages, pricing and services from ${site.siteName}.`,
+    title: metaTitle(`${site.packagesBannerTitle} — ${site.siteName}`),
+    description: metaDesc(`Photography and videography packages and prices in Dubai from ${site.siteName} — clear inclusions, fast delivery and easy online booking.`),
     ogType: "website",
   });
 }

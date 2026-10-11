@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Playfair_Display, Cormorant_Garamond, Montserrat, Oswald, Space_Grotesk, Cairo, El_Messiri, Noto_Sans_Devanagari, Noto_Nastaliq_Urdu } from "next/font/google";
 import { getPublicSiteInfo } from "@/lib/cmsData";
@@ -83,7 +84,7 @@ export const viewport: Viewport = { themeColor: "#221640" };
 export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteInfo();
   const title = site.seoTitle || FALLBACK_TITLE;
-  const description = site.seoDesc || FALLBACK_DESC;
+  const description = metaDesc(site.seoDesc || FALLBACK_DESC);
   return {
     metadataBase: new URL(SITE_URL),
     title,

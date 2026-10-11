@@ -1,3 +1,4 @@
+import { metaDesc, metaTitle } from "@/lib/seoText";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicSiteInfo } from "@/lib/cmsData";
@@ -27,8 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const site = await getPublicSiteInfo();
   return buildMetadata({
     path: "/about/",
-    title: `About — ${site.siteName}`,
-    description: site.aboutBio,
+    title: metaTitle(`About — ${site.siteName}`),
+    description: metaDesc(site.aboutBio),
     ogType: "profile",
   });
 }

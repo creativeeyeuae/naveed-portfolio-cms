@@ -15,6 +15,7 @@ import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
 import LeadFinder from "@/components/cms/LeadFinder";
+import BookingExtraActions from "@/components/cms/BookingExtraActions";
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
@@ -5801,6 +5802,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                               )}
                             </div>
                           )}
+                          {adminSession&&<BookingExtraActions b={b} token={adminSession.access_token} onDone={(text,ok)=>{setBookingNotice({id:b.id,ok,text});if(ok) loadBookings();}} />}
                         </div>
                       );
                     })}

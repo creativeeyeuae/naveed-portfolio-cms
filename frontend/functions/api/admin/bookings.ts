@@ -27,6 +27,20 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
   }
   const rows = (await res.json()) as any[];
 
+  // Live stage (started / on hold) set by bookings/[id]/update.ts -- latest entry wins.
+  try {
+    const ids = rows.map((r) => r.id).filter(Boolean);
+    if (ids.length) {
+      const st = await supaAdmin(env, `audit_log?action=eq.booking_stage&entity_id=in.(${ids.join(",")})&select=entity_id,details,created_at&order=created_at.desc&limit=2000`, { method: "GET" });
+      const seen = new Set<string>();
+      for (const s of st.ok ? ((await st.json()) as any[]) : []) {
+        if (seen.has(s.entity_id)) continue; seen.add(s.entity_id);
+        const row = rows.find((r) => r.id === s.entity_id);
+        if (row && s.details?.stage) { row.stage = s.details.stage; row.stage_reason = s.details.reason || ""; row.stage_note = s.details.note || ""; row.stage_at = s.created_at; }
+      }
+    }
+  } catch {}
+
   // For any payment with a receipt on file, mint a short-lived signed URL so the admin can
   // view it -- the receipts bucket has no public/anon read access at all, on purpose.
   for (const row of rows) {

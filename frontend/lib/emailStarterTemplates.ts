@@ -22,6 +22,9 @@ export type EmailBrand = {
   tiktok: string;
   heroImages: string[];   // website hero slides first, then project covers
   workImages: string[];   // project cover images
+  // Real price tiers from Settings > Packages -- proposals fill their price table from these,
+  // so prices never need typing by hand.
+  packages?: { label: string; price: string; priceNote?: string; features?: string[] }[];
 };
 
 export const DEFAULT_BRAND: EmailBrand = {
@@ -67,7 +70,57 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
   ];
   const portfolioBtn = (text = "View Portfolio") => ({ type: "button", text, href: b.workUrl });
 
+  // ── Proposals: one ready design per service, each with a top navigation bar
+  // (Services · Packages & Prices · Portfolio · Book · WhatsApp) and a price table filled
+  // automatically from Settings > Packages. Pick one, change the client name — send.
+  const bookUrl = `${b.site}/?page=booking`, pkgUrl = `${b.site}/packages`;
+  const esc = (s: string) => String(s || "").replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c] as string));
+  const nav = (svcUrl: string, accent: string, bg: string, fg: string) => ({
+    type: "html",
+    html: `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};"><tr><td align="center" style="padding:12px 8px;font-family:Arial,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;">${[["Services", svcUrl], ["Packages &amp; Prices", pkgUrl], ["Portfolio", b.workUrl], ["Book", bookUrl], ["WhatsApp", wa]].map(([t, h], i) => `<a href="${h}" style="color:${i === 3 ? accent : fg};text-decoration:none;font-weight:700;padding:0 9px;display:inline-block;line-height:24px;">${t}</a>`).join(`<span style="color:${fg};opacity:.35;">|</span>`)}</td></tr></table>`,
+  });
+  const tiers = (b.packages || []).filter((p) => p.label).slice(0, 3);
+  const priceTable = (accent: string, light2: string, svc: string) => {
+    if (!tiers.length) return { type: "html", html: `<table width="100%" cellpadding="14" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;"><tr style="background:${light2};"><td><b>${esc(svc)}</b></td><td align="right"><a href="${pkgUrl}" style="color:${accent};font-weight:700;">See packages &amp; prices →</a></td></tr></table>` };
+    const w = Math.floor(100 / tiers.length);
+    const cols = tiers.map((p, i) => {
+      const hot = tiers.length > 1 && i === 1;
+      const feats = (p.features || []).slice(0, 5).map((f) => `<div style="padding:4px 0;border-top:1px solid ${hot ? "rgba(255,255,255,.15)" : "#ece8f2"};">✓ ${esc(f)}</div>`).join("");
+      return `<td width="${w}%" valign="top" style="padding:6px;"><div style="background:${hot ? accent : light2};color:${hot ? "#fff" : "#2a2433"};border-radius:10px;padding:16px 14px;text-align:center;font-family:Arial,sans-serif;">${hot ? `<div style="font-size:10px;letter-spacing:.12em;font-weight:700;opacity:.85;">MOST POPULAR</div>` : ""}<div style="font-size:15px;font-weight:800;margin:4px 0;">${esc(p.label)}</div><div style="font-size:22px;font-weight:800;margin:6px 0;">${esc(p.price || "On request")}</div>${p.priceNote ? `<div style="font-size:11px;opacity:.75;">${esc(p.priceNote)}</div>` : ""}<div style="font-size:12px;text-align:left;margin-top:10px;">${feats}</div><a href="${bookUrl}" style="display:inline-block;margin-top:12px;padding:8px 14px;border-radius:6px;background:${hot ? "#fff" : accent};color:${hot ? accent : "#fff"};font-size:12px;font-weight:700;text-decoration:none;">Choose</a></div></td>`;
+    }).join("");
+    return { type: "html", html: `<table width="100%" cellpadding="0" cellspacing="0"><tr>${cols}</tr></table>` };
+  };
+  const PROPOSALS: { key: string; svc: string; slug: string; accent: string; navBg: string; navFg: string; tint: string; headingFont: string; font: string; title: string; intro: string; scope: string; img: number; dark?: boolean }[] = [
+    { key: "proposal-realestate", svc: "Real Estate & Interiors", slug: "real-estate-photographer-dubai", accent: "#B08D57", navBg: "#111111", navFg: "#e9e2d6", tint: "#f7f3ec", headingFont: "playfair", font: "lato", img: 0, title: "Spaces that sell\nthemselves", intro: "Here's my proposal for photographing and filming {{company}}'s properties — bright, true-to-life images and smooth walkthrough films that help listings move faster.", scope: "• Wide-angle interiors & exteriors, HDR-blended\n• Twilight / golden-hour exterior set\n• Cinematic walkthrough film + vertical Reel\n• Drone aerials (where permitted)\n• Delivery in 48–72 hours, MLS & portal-ready" },
+    { key: "proposal-corporate", svc: "Corporate & Brand Film", slug: "commercial-photographer-dubai", accent: "#2563EB", navBg: "#0B1730", navFg: "#c9d6f2", tint: "#eef3fd", headingFont: "montserrat", font: "lato", img: 1, title: "Your brand story,\non film", intro: "Thank you for the brief. Below is how I'd bring {{company}}'s story to life — a polished brand film plus a library of stills your team can use all year.", scope: "• Pre-production: concept, script outline & shot list\n• 1 shoot day, director-led crew\n• 60–90s hero film + 3 social cut-downs\n• Executive portraits & team photography\n• Licensed music, colour grade & 2 revision rounds" },
+    { key: "proposal-events", svc: "Events & Exhibitions", slug: "event-photographer-dubai", accent: "#E11D48", navBg: "#1a0b12", navFg: "#f3cbd5", tint: "#fdf0f3", headingFont: "montserrat", font: "lato", img: 2, title: "Every moment\ncaptured", intro: "Here's my proposal to cover {{company}}'s event — fast, discreet coverage with same-day highlights so you can post while the buzz is live.", scope: "• Full coverage: arrivals, keynotes, networking, branding\n• Same-day selects for social (within 3 hours)\n• 2–3 minute highlight film + vertical Reels\n• Booth / stand & product shots\n• Full gallery in 5 working days" },
+    { key: "proposal-hospitality", svc: "Hotels, F&B & Hospitality", slug: "lifestyle-photographer-dubai", accent: "#0F766E", navBg: "#0b1f1d", navFg: "#c7e6e2", tint: "#eef8f6", headingFont: "playfair", font: "lato", img: 3, title: "Taste, stay,\nremember", intro: "Thank you for considering me for {{company}}. Here's a proposal for imagery that makes guests want to book a table — or a room — the moment they see it.", scope: "• Rooms, suites, lobby, spa & pool\n• Signature dishes & beverage styling\n• Lifestyle scenes with talent (optional)\n• Short-form Reels for Instagram & TikTok\n• Web-ready & print-ready files" },
+    { key: "proposal-product", svc: "Product & E-commerce", slug: "product-photographer-dubai", accent: "#7C3AED", navBg: "#ffffff", navFg: "#3b2a5c", tint: "#f4f0fd", headingFont: "montserrat", font: "lato", img: 4, title: "Products that\nclick", intro: "Here's my proposal for {{company}}'s product content — clean, consistent e-commerce images plus lifestyle shots that sell the feeling, not just the item.", scope: "• White-background packshots (Amazon / Noon ready)\n• Styled lifestyle & flat-lay scenes\n• 360° spin or short product loops\n• Colour-accurate retouching\n• Consistent look across the whole range" },
+    { key: "proposal-portrait", svc: "Portraits & Personal Branding", slug: "personal-branding-photographer-dubai", accent: "#C9A96E", navBg: "#140D21", navFg: "#e6dcc8", tint: "#faf6ee", headingFont: "playfair", font: "lato", img: 5, title: "Look like the\nleader you are", intro: "Here's my proposal for your portrait and personal branding session — confident, natural images for LinkedIn, press, your website and speaking profiles.", scope: "• Pre-shoot styling & location call\n• Studio or on-location session (2–3 looks)\n• Headshots, environmental & candid portraits\n• Professional retouching\n• Social-ready crops for every platform" },
+  ];
+  const proposalTemplates: StarterTemplate[] = PROPOSALS.map((p) => ({
+    key: p.key, name: `Proposal · ${p.svc}`, subject: `{{first_name}}, your ${p.svc.split(" &")[0].toLowerCase()} proposal is ready`,
+    description: `Ready-to-send ${p.svc} proposal: navigation bar, scope, prices pulled from Packages, one-click Book.`,
+    blocks: [
+      light({ accent: p.accent, headingFont: p.headingFont, font: p.font, preheader: `Your ${p.svc} proposal — scope, packages and how to book.` }),
+      nav(`${b.site}/${p.slug}`, p.accent, p.navBg, p.navFg),
+      hero(p.img, p.title, `${p.svc} proposal · Prepared for {{company}}`, "Book a date", bookUrl, { height: 280, overlay: p.navBg === "#ffffff" ? "#1d1430" : p.navBg, overlayOpacity: 0.6, titleFont: p.headingFont }),
+      { type: "text", html: `Dear {{first_name}},\n\n${p.intro}`, size: 15, padY: 24 },
+      { type: "heading", text: "What's included", size: 19, bold: true },
+      { type: "text", html: p.scope, size: 14.5, bg: p.tint, padY: 18 },
+      { type: "gallery", img1: workImg(p.img), img2: workImg(p.img + 1), cap1: "Recent work", cap2: p.svc, link1: b.workUrl, link2: b.workUrl },
+      { type: "heading", text: "Packages & prices", size: 19, bold: true },
+      priceTable(p.accent, p.tint, p.svc),
+      { type: "text", html: "A 50% deposit secures your date · This proposal is valid for 14 days · Custom quote available for multi-day or recurring work.", size: 12.5, color: "#7d7290", align: "center" },
+      { type: "button", text: "Accept & Book Your Date", href: bookUrl, btnColor: p.accent },
+      { type: "button", text: "Questions? Chat on WhatsApp", href: wa, btnColor: "#25D366" },
+      signature(),
+      ...footerBlocks(),
+    ],
+  }));
+
   return [
+    ...proposalTemplates,
     // ── Corporate (light) ───────────────────────────────────────────────────
     {
       key: "corporate", name: "Corporate Introduction", subject: "Premium visual content for {{company}}",

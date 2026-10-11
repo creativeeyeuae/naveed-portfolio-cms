@@ -2983,6 +2983,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       phone:settings.phone||"", email:settings.email||"", waNumber:settings.waNumber||"", address:settings.address||settings.location||"",
       instagram:settings.instagram||"", youtube:settings.youtube||"", linkedin:settings.linkedin||"", tiktok:settings.tiktok||"",
       heroImages, workImages,
+      packages:(Array.isArray(settings.pricingPackages)?settings.pricingPackages:[]).filter((p:any)=>p&&typeof p.label==="string").map((p:any)=>({label:p.label,price:typeof p.price==="string"?p.price:"",priceNote:typeof p.priceNote==="string"?p.priceNote:undefined,features:Array.isArray(p.features)?p.features.filter((f:any)=>typeof f==="string"):[]})),
     });
   },[settings,projects]);
   const [emailCampaignOpenId,setEmailCampaignOpenId]=useState<string|null>(null);

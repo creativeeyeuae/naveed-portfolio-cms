@@ -43,7 +43,7 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
-export function resendPayload(env: DeliverEnv, to: string, subject: string, html: string) {
+export function resendPayload(env: DeliverEnv, to: string, subject: string, html: string, opts: { unsubscribeUrl?: string } = {}) {
   const from = senderFrom(env);
   const replyTo = String(env.EMAIL_REPLY_TO || bareAddress(from)).trim();
   return {
@@ -53,6 +53,8 @@ export function resendPayload(env: DeliverEnv, to: string, subject: string, html
     html,
     text: htmlToText(html),
     reply_to: replyTo || undefined,
-    headers: replyTo ? { "List-Unsubscribe": `<mailto:${replyTo}?subject=unsubscribe>` } : undefined,
+    headers: opts.unsubscribeUrl
+      ? { "List-Unsubscribe": `<${opts.unsubscribeUrl}>${replyTo ? `, <mailto:${replyTo}?subject=unsubscribe>` : ""}`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
+      : replyTo ? { "List-Unsubscribe": `<mailto:${replyTo}?subject=unsubscribe>` } : undefined,
   };
 }

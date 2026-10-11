@@ -4168,7 +4168,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const res=await fetch(`/api/admin/email/campaigns/${id}/send`,{method:"POST",headers:{Authorization:`Bearer ${adminSession.access_token}`}});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Could not send campaign");
-      alert(`Sent: ${data.sent}, Failed: ${data.failed}, Skipped (no email): ${data.skipped_no_email}, Skipped (no consent): ${data.skipped_no_consent}`);
+      alert(`Sent: ${data.sent}, Failed: ${data.failed}, Skipped (no email): ${data.skipped_no_email}, Skipped (no consent): ${data.skipped_no_consent}${data.note?`\n\n${data.note}`:""}`);
       await loadEmailCampaigns();
       await loadEmailCampaignDetail(id);
     }catch(e:any){ alert(e.message||"Could not send campaign"); }

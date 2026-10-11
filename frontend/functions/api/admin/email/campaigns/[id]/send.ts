@@ -115,6 +115,33 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
 
 const SELECT_OUTREACH = "id,first_name,last_name,full_name,email,job_title,status,company:outreach_companies(name)";
 
+// ── Safe-sending guard rails for contacts / leads (protects the domain from spam reports & blocks)
+const SITE = "https://bynaveedanjum.com";
+async function dailyCap(env: Env): Promise<number> {
+  try { const s = await supaAdmin(env, "site_settings?key=eq.nap_settings&select=value&limit=1", { method: "GET" }); const v = s.ok ? ((await s.json()) as any[])?.[0]?.value : null; const o = typeof v === "string" ? JSON.parse(v) : v || {}; const n = Number(o.mktDailyCap); return n >= 10 && n <= 500 ? n : 40; } catch { return 40; }
+}
+async function sentToday(env: Env): Promise<number> {
+  const since = new Date(Date.now() - 24 * 3600e3).toISOString();
+  const r = await supaAdmin(env, `email_messages?status=eq.sent&sent_at=gte.${since}&select=id`, { method: "GET", headers: { Prefer: "count=exact", Range: "0-0" } });
+  const m = /\/(\d+)$/.exec(r.headers.get("content-range") || ""); return m ? Number(m[1]) : 0;
+}
+async function blockedEmails(env: Env, campaignId: string): Promise<Set<string>> {
+  const out = new Set<string>();
+  const u = await supaAdmin(env, "audit_log?action=eq.email_unsubscribed&select=details&limit=5000", { method: "GET" });
+  for (const x of (u.ok ? ((await u.json()) as any[]) : [])) if (x?.details?.email) out.add(String(x.details.email).toLowerCase());
+  const f = await supaAdmin(env, "email_messages?status=eq.failed&select=to_email&limit=5000", { method: "GET" });
+  for (const x of (f.ok ? ((await f.json()) as any[]) : [])) if (x?.to_email) out.add(String(x.to_email).toLowerCase());
+  const s = await supaAdmin(env, `email_messages?campaign_id=eq.${campaignId}&status=eq.sent&select=to_email`, { method: "GET" });
+  for (const x of (s.ok ? ((await s.json()) as any[]) : [])) if (x?.to_email) out.add(String(x.to_email).toLowerCase());
+  return out;
+}
+const mxCache = new Map<string, boolean>();
+async function hasMx(email: string): Promise<boolean> {
+  const d = email.split("@")[1]; if (mxCache.has(d)) return mxCache.get(d)!;
+  let ok = true; try { const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(d)}&type=MX`, { headers: { Accept: "application/dns-json" } }); const j: any = await r.json(); ok = Array.isArray(j.Answer) && j.Answer.length > 0; } catch {}
+  mxCache.set(d, ok); return ok;
+}
+
 async function sendToOutreach(env: Env, campaign: any, template: any, campaignId: string, audience: any, adminEmail: string, origin: string | null) {
   let contacts: any[] = [];
   if (audience.type === "outreach_tag" && audience.tag_id) {
@@ -128,12 +155,20 @@ async function sendToOutreach(env: Env, campaign: any, template: any, campaignId
 
   let sent = 0, failed = 0, skippedNoEmail = 0, skippedNoConsent = 0;
   const seen = new Set<string>();
+  const blocked = await blockedEmails(env, campaignId);
+  const allowance = Math.max(0, (await dailyCap(env)) - (await sentToday(env)));
+  let paused = "";
+  const { sign } = await import("../../../../../_shared/bookingVerify");
   for (const c of contacts) {
+    if (sent >= allowance) { paused = "daily_limit"; break; }
+    if (sent + failed >= 15 && failed / (sent + failed) > 0.1) { paused = "too_many_failures"; break; }
     const email = String(c.email || "").trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { await logMessage(env, campaignId, null, email || "(none)", "skipped_no_email", `${c.full_name || ""}`.trim() || null); skippedNoEmail++; continue; }
     if (seen.has(email)) continue; // same person twice in the list -- send once
     seen.add(email);
     if (c.status === "inactive") { await logMessage(env, campaignId, null, email, "skipped_no_consent", "Contact marked inactive (do not contact)."); skippedNoConsent++; continue; }
+    if (blocked.has(email)) continue; // unsubscribed, bounced before, or already sent in this campaign
+    if (!(await hasMx(email))) { await logMessage(env, campaignId, null, email, "skipped_no_email", "Email domain has no mail server."); skippedNoEmail++; continue; }
 
     const full = String(c.full_name || `${c.first_name || ""} ${c.last_name || ""}`).trim();
     const vars = {
@@ -142,13 +177,16 @@ async function sendToOutreach(env: Env, campaign: any, template: any, campaignId
       company: c.company?.name || "",
       job_title: c.job_title || "",
     };
-    const html = renderTemplate((template.blocks || []) as EmailBlock[], vars);
+    const unsubUrl = `${SITE}/api/unsubscribe?t=${encodeURIComponent(await sign(env, { u: email, exp: Date.now() + 365 * 86400e3 }))}`;
+    const footer = `<div style="text-align:center;font-family:Arial,sans-serif;font-size:12px;color:#8a8296;padding:14px 10px 24px">Not interested? <a href="${unsubUrl}" style="color:#8a8296;text-decoration:underline">Unsubscribe</a> — you won't hear from us again.</div>`;
+    let html = renderTemplate((template.blocks || []) as EmailBlock[], vars);
+    html = html.includes("</body>") ? html.replace("</body>", footer + "</body>") : html + footer;
     const subject = substituteVariables(template.subject || template.name, vars).replace(/&amp;/g, "&");
     try {
       const sendRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify(resendPayload(env, email, subject, html)),
+        body: JSON.stringify(resendPayload(env, email, subject, html, { unsubscribeUrl: unsubUrl })),
       });
       if (sendRes.ok) { await logMessage(env, campaignId, null, email, "sent", null); sent++; }
       else { await logMessage(env, campaignId, null, email, "failed", (await sendRes.text()).slice(0, 500)); failed++; }
@@ -160,9 +198,10 @@ async function sendToOutreach(env: Env, campaign: any, template: any, campaignId
     await new Promise((res) => setTimeout(res, 600));
   }
 
-  await supaAdmin(env, `email_campaigns?id=eq.${campaignId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "sent", sent_at: new Date().toISOString() }) });
-  await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: `admin:${adminEmail}`, action: "email_campaign_sent", entity_type: "email_campaign", entity_id: campaignId, details: { audience: audience.type, sent, failed, skippedNoEmail, skippedNoConsent } }) });
-  return json({ ok: true, sent, failed, skipped_no_email: skippedNoEmail, skipped_no_consent: skippedNoConsent }, 200, origin);
+  // Paused (daily limit / failures) -> back to draft so "Send Now" continues later with the rest.
+  await supaAdmin(env, `email_campaigns?id=eq.${campaignId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(paused ? { status: "draft" } : { status: "sent", sent_at: new Date().toISOString() }) });
+  await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: `admin:${adminEmail}`, action: "email_campaign_sent", entity_type: "email_campaign", entity_id: campaignId, details: { audience: audience.type, sent, failed, skippedNoEmail, skippedNoConsent, paused } }) });
+  return json({ ok: true, sent, failed, skipped_no_email: skippedNoEmail, skipped_no_consent: skippedNoConsent, paused, note: paused === "daily_limit" ? "Daily safe-sending limit reached. Click Send Now again tomorrow to continue with the remaining contacts." : paused === "too_many_failures" ? "Stopped automatically: too many emails failed. Please check the list before sending again." : "" }, 200, origin);
 }
 
 async function logMessage(env: Env, campaignId: string, customerId: string | null, toEmail: string, status: string, error: string | null) {

@@ -70,7 +70,7 @@ export default function BookingExtraActions({ b, token, onDone }: { b: any; toke
           <div style={{ fontSize: 12, color: "#E2D9F3" }}>This cannot be undone (a copy is kept in the activity log). Paid bookings can't be deleted. Type <b>DELETE</b> to confirm.</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input style={{ ...inp, width: 160 }} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="DELETE" />
-            <button disabled={busy || typed !== "DELETE"} onClick={() => run("delete", { confirm: "DELETE", notify: false })} style={pill("#dc2626", "#fff", "#dc2626")}>{busy ? "Deleting…" : "🗑 Delete"}</button>
+            <button disabled={busy || typed.trim().toUpperCase() !== "DELETE"} onClick={() => run("delete", { confirm: "DELETE", notify: false })} style={pill("#dc2626", "#fff", "#dc2626")}>{busy ? "Deleting…" : "🗑 Delete"}</button>
             <button onClick={() => { setMode(""); setTyped(""); }} style={ghost}>Back</button></div>
         </div>
       )}

@@ -37,10 +37,17 @@ async function searchOSM(niche: string, area: string, limit: number) {
     const bb = gj?.[0]?.boundingbox; if (bb) bbox = `${bb[0]},${bb[2]},${bb[1]},${bb[3]}`; else throw new Error(`Couldn't find the area "${area}".`);
   }
   const parts = filters.flatMap((f) => [`node${f}(${bbox});`, `way${f}(${bbox});`]).join("");
-  const q = `[out:json][timeout:25];(${parts});out center tags ${Math.min(limit * 3, 600)};`;
-  const r = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "bynaveedanjum.com lead finder" }, body: "data=" + encodeURIComponent(q) });
-  if (!r.ok) throw new Error("OpenStreetMap is busy right now — try again in a minute.");
-  const j: any = await r.json();
+  const q = `[out:json][timeout:14];(${parts});out center tags ${Math.min(limit * 3, 600)};`;
+  // Several free OpenStreetMap servers -- if one is busy or slow, try the next.
+  let j: any = null;
+  for (const host of ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"]) {
+    try {
+      const r = await fetch(host, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "bynaveedanjum.com lead finder (booking@bynaveedanjum.com)", Accept: "application/json" }, body: "data=" + encodeURIComponent(q), signal: AbortSignal.timeout(15000) });
+      if (!r.ok) continue;
+      j = JSON.parse(await r.text()); break;
+    } catch {}
+  }
+  if (!j) throw new Error("OpenStreetMap is busy right now — please try again in a minute.");
   return (j.elements || []).map((e: any) => {
     const t = e.tags || {};
     return { name: clean(t.name || t["name:en"]), website: normSite(t.website || t["contact:website"] || t.url), phone: clean(t.phone || t["contact:phone"]), email: clean(t.email || t["contact:email"]).toLowerCase(), address: [t["addr:street"], t["addr:city"]].filter(Boolean).join(", "), rating: "", source: "OpenStreetMap" };

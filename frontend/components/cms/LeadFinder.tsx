@@ -18,11 +18,11 @@ export default function LeadFinder({ token }: { token: string }) {
   const addManual = () => { const rows = manual.split(/\n+/).map((s) => s.trim()).filter(Boolean).map((s) => { const [name, website] = s.includes("|") ? s.split("|").map((x) => x.trim()) : [s.replace(/^https?:\/\/(www\.)?/, "").split("/")[0], s]; return { name, website: /^https?:/.test(website) ? website : "https://" + website, phone: "", email: "", address: "", rating: "", source: "Manual", pick: true } as Lead; }); setLeads((l) => [...rows, ...l]); setManual(""); };
   const enrich = async () => {
     const todo = leads.map((l, i) => ({ l, i })).filter(({ l }) => l.pick && !l.checked && (l.website || l.email));
-    for (let k = 0; k < todo.length; k += 8) {
-      setBusy(`Finding emails… ${Math.min(k + 8, todo.length)} / ${todo.length}`);
-      try { const j = await call({ action: "enrich", leads: todo.slice(k, k + 8).map(({ l }) => ({ website: l.website, email: l.email })) });
+    for (let k = 0; k < todo.length; k += 4) {
+      setBusy(`Finding emails… ${Math.min(k + 4, todo.length)} / ${todo.length}`);
+      try { const j = await call({ action: "enrich", leads: todo.slice(k, k + 4).map(({ l }) => ({ website: l.website, email: l.email })) });
         setLeads((cur) => { const n = [...cur]; j.results.forEach((r: any, x: number) => { const i = todo[k + x].i; n[i] = { ...n[i], email: r.email, alt: r.alt, mx: r.mx, checked: true, pick: n[i].pick && !!r.email && r.mx }; }); return n; });
-      } catch (e: any) { setMsg(e.message); break; }
+      } catch { /* one slow batch: mark checked and keep going */ setLeads((cur) => { const n = [...cur]; todo.slice(k, k + 4).forEach(({ i }) => { n[i] = { ...n[i], checked: true }; }); return n; }); }
     }
     setBusy(""); setMsg("Done. Only companies with a valid email stay ticked — review them before saving.");
   };

@@ -23,6 +23,8 @@ const NICHE_OSM: Record<string, string[]> = {
   beauty: ['["shop"="beauty"]["website"]', '["shop"="hairdresser"]["website"]'],
 };
 const clean = (s: any) => String(s || "").trim();
+// UAE mobile numbers start 05x / +971 5x -> stored as WhatsApp/mobile; anything else = landline.
+const isMobile = (p: string) => /^(\+?971|00971|0)?\s*5\d/.test(String(p || "").replace(/[\s()-]/g, ""));
 const normSite = (u: string) => { const v = clean(u); if (!v) return ""; try { const x = new URL(/^https?:/i.test(v) ? v : "https://" + v); return x.origin; } catch { return ""; } };
 const domain = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } };
 
@@ -71,14 +73,13 @@ async function searchGoogle(env: any, niche: string, area: string, limit: number
 const JUNK = /(example|sentry|wixpress|domain\.com|yourdomain|email\.com|\.png|\.jpg|\.jpeg|\.gif|\.webp|\.svg|godaddy|cloudflare|noreply|no-reply)/i;
 async function findEmails(site: string): Promise<string[]> {
   const found = new Set<string>(); const d = domain(site);
-  for (const path of ["", "/contact", "/contact-us", "/about"]) {
-    try {
-      const r = await fetch(site + path, { headers: { "User-Agent": "Mozilla/5.0 (compatible; bynaveedanjum-leadfinder/1.0)" }, redirect: "follow", signal: AbortSignal.timeout(6000) });
-      if (!r.ok) continue;
-      const html = (await r.text()).slice(0, 400000).replace(/&#64;|\[at\]|\(at\)/gi, "@");
-      for (const m of html.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []) { const e = m.toLowerCase().replace(/^mailto:/, ""); if (!JUNK.test(e)) found.add(e); }
-      if (found.size >= 3) break;
-    } catch {}
+  // Home + contact pages fetched in parallel, each with a short timeout (keeps the request fast).
+  const pages = await Promise.all(["", "/contact", "/contact-us"].map(async (path) => {
+    try { const r = await fetch(site + path, { headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36" }, redirect: "follow", signal: AbortSignal.timeout(5000) }); return r.ok ? (await r.text()).slice(0, 400000) : ""; } catch { return ""; }
+  }));
+  for (const raw of pages) {
+    const html = raw.replace(/&#64;|&#x40;|\[at\]|\(at\)/gi, "@");
+    for (const m of html.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []) { const e = m.toLowerCase().replace(/^mailto:/, ""); if (!JUNK.test(e) && e.length < 80) found.add(e); }
   }
   return [...found].sort((a, b) => Number(b.endsWith("@" + d) || b.endsWith("." + d)) - Number(a.endsWith("@" + d) || a.endsWith("." + d))).slice(0, 3);
 }
@@ -117,14 +118,13 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
       return json({ leads: rows, google: !!env.GOOGLE_PLACES_KEY }, 200, origin);
     }
     if (b.action === "enrich") {
-      const list = (Array.isArray(b.leads) ? b.leads : []).slice(0, 8);
-      const out = [];
-      for (const l of list) {
+      const list = (Array.isArray(b.leads) ? b.leads : []).slice(0, 4);
+      const out = await Promise.all(list.map(async (l: any) => {
         const site = normSite(l.website); let emails: string[] = l.email ? [String(l.email).toLowerCase()] : [];
         if (!emails.length && site) emails = await findEmails(site);
         const email = emails[0] || "";
-        out.push({ website: l.website, email, alt: emails.slice(1), mx: email ? await hasMx(email) : false });
-      }
+        return { website: l.website, email, alt: emails.slice(1), mx: email ? await hasMx(email) : false };
+      }));
       return json({ results: out }, 200, origin);
     }
     if (b.action === "save") {
@@ -138,11 +138,11 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
       for (const l of (Array.isArray(b.leads) ? b.leads : []).slice(0, 200)) {
         const site = normSite(l.website), email = clean(l.email).toLowerCase();
         if (have.some((c) => (site && domain(normSite(c.website)) === domain(site)) || (email && clean(c.email).toLowerCase() === email))) { skipped++; continue; }
-        const cr = await supaAdmin(env, "outreach_companies", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ name: clean(l.name).slice(0, 200), industry: clean(b.niche || l.niche).slice(0, 80) || null, website: site || null, email: email || null, phone: clean(l.phone) || null, city: clean(b.area || "Dubai"), country: "UAE", address: clean(l.address) || null, source: `Lead Finder · ${clean(l.source) || "OpenStreetMap"}`, notes: l.rating ? `Rating ${l.rating}` : null }) });
+        const cr = await supaAdmin(env, "outreach_companies", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ name: clean(l.name).slice(0, 200), industry: clean(b.niche || l.niche).slice(0, 80) || null, website: site || null, email: email || null, phone: !isMobile(l.phone) ? clean(l.phone) || null : null, whatsapp: isMobile(l.phone) ? clean(l.phone) : null, city: clean(b.area || "Dubai"), country: "UAE", address: clean(l.address) || null, source: `Lead Finder · ${clean(l.source) || "OpenStreetMap"}`, notes: l.rating ? `Rating ${l.rating}` : null }) });
         const comp = cr.ok ? ((await cr.json()) as any[])?.[0] : null; if (!comp) { skipped++; continue; }
         have.push(comp);
         if (email) {
-          const pr = await supaAdmin(env, "outreach_contacts", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ company_id: comp.id, full_name: null, email, phone: clean(l.phone) || null, website: site || null, city: clean(b.area || "Dubai"), country: "UAE", source: "Lead Finder" }) });
+          const pr = await supaAdmin(env, "outreach_contacts", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ company_id: comp.id, full_name: null, email, phone: !isMobile(l.phone) ? clean(l.phone) || null : null, whatsapp: isMobile(l.phone) ? clean(l.phone) : null, website: site || null, city: clean(b.area || "Dubai"), country: "UAE", source: "Lead Finder" }) });
           const person = pr.ok ? ((await pr.json()) as any[])?.[0] : null;
           if (person && tag) await supaAdmin(env, "outreach_contact_tags", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ contact_id: person.id, tag_id: tag.id }) });
         }

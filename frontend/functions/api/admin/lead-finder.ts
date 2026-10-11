@@ -57,6 +57,8 @@ async function searchOSM(niche: string, area: string, limit: number) {
 async function searchGoogle(env: any, niche: string, area: string, limit: number) {
   const out: any[] = []; let pageToken = "";
   for (let i = 0; i < 3 && out.length < limit; i++) {
+    if ((await googleCallsThisMonth(env)) >= GOOGLE_MONTHLY_CAP) { if (out.length) break; throw new Error("Google's free monthly limit is reached — use OpenStreetMap until next month."); }
+    await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: "lead-finder", action: "google_places_call", entity_type: "lead_finder", details: { q: `${niche} in ${area}` } }) }).catch(() => {});
     const r = await fetch("https://places.googleapis.com/v1/places:searchText", { method: "POST", headers: { "Content-Type": "application/json", "X-Goog-Api-Key": env.GOOGLE_PLACES_KEY, "X-Goog-FieldMask": "places.displayName,places.websiteUri,places.nationalPhoneNumber,places.internationalPhoneNumber,places.formattedAddress,places.rating,nextPageToken" }, body: JSON.stringify({ textQuery: `${niche} in ${area}`, pageSize: 20, ...(pageToken ? { pageToken } : {}) }) });
     const j: any = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j?.error?.message || "Google Places error.");
@@ -84,7 +86,17 @@ async function hasMx(email: string): Promise<boolean> {
   try { const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(email.split("@")[1])}&type=MX`, { headers: { Accept: "application/dns-json" } }); const j: any = await r.json(); return Array.isArray(j.Answer) && j.Answer.length > 0; } catch { return false; }
 }
 
-export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, env }) => {
+// Google stays inside its free monthly allowance: we count every Places call this month and stop
+// before the limit (default 3,000 calls; Google's free tier for Text Search is higher).
+const GOOGLE_MONTHLY_CAP = 3000;
+async function googleCallsThisMonth(env: any): Promise<number> {
+  const d = new Date(); const since = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+  const r = await supaAdmin(env, `audit_log?action=eq.google_places_call&created_at=gte.${since}&select=id`, { method: "GET", headers: { Prefer: "count=exact", Range: "0-0" } });
+  const m = /\/(\d+)$/.exec(r.headers.get("content-range") || ""); return m ? Number(m[1]) : 0;
+}
+
+export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, env: rawEnv }) => {
+  const env: any = { ...rawEnv, GOOGLE_PLACES_KEY: rawEnv.GOOGLE_PLACES_KEY || rawEnv.GOOGLE_PLACES_API_KEY };
   const origin = request.headers.get("Origin");
   const admin = await requireAdmin(request, env); if (admin instanceof Response) return admin;
   const b = (await request.json().catch(() => ({}))) as any;

@@ -16,6 +16,7 @@ import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEn
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
 import LeadFinder from "@/components/cms/LeadFinder";
 import BookingExtraActions from "@/components/cms/BookingExtraActions";
+import CompanyBulkSend from "@/components/cms/CompanyBulkSend";
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
@@ -2944,6 +2945,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   // that same shared renderer -- it never sends anything, so it's fine if it's only visually close.
   const [emailSubTab,setEmailSubTab]=useState<"templates"|"campaigns">("templates");
   const [emailTemplates,setEmailTemplates]=useState<any[]|null>(null);
+  const [companySel,setCompanySel]=useState<string[]>([]); // Companies tab: ticked for "Email selected"
   const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
   const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
   const EMAIL_TEMPLATE_EMPTY={name:"",subject:"",blocks:[] as any[]};
@@ -3214,7 +3216,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     }catch(e:any){ setBookingsErr(e.message||"Failed to load bookings"); }
     setBookingsLoading(false);
   }
-  useEffect(()=>{ if((cmsTab==="bookings"||cmsTab==="calendar")&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+  useEffect(()=>{ if((cmsTab==="bookings"||cmsTab==="calendar"||cmsTab==="dashboard")&&adminSession) loadBookings(); },[cmsTab,adminSession]);
+  useEffect(()=>{ if(cmsTab==="dashboard"&&adminSession&&!companiesList) loadCompanies(); },[cmsTab,adminSession]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Payments ledger (CMS > Payments) -- read-only list of every payment; state changes still
   // only ever happen via payments/[id]/approve.ts and reject.ts, called from the Bookings tab.
@@ -5364,31 +5367,64 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {/* DASHBOARD -- real, computed overview (no fabricated data). Landing screen after login. */}
         {cmsTab==="dashboard"&&(
           <div style={{maxWidth:1100,margin:"0 auto",padding:"32px 24px"}}>
-            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(4,1fr)",gap:16,marginBottom:28}}>
-              {[
-                ["TOTAL BOOKINGS", String((bookingsList||[]).length||"—")],
-                ["PENDING RECEIPTS", String((bookingsList||[]).filter((b:any)=>(b.payments||[])[0]?.status==="under_review").length)],
-                ["PUBLISHED PROJECTS", String(projects.length)],
-                ["NEW LEADS", String(leads.length)],
-              ].map(([label,value])=>(
-                <div key={label} style={{...CARD_STYLE,padding:20}}>
-                  <div style={{fontSize:11,letterSpacing:1,color:C.MID,marginBottom:8,textTransform:"uppercase" as const}}>{label}</div>
-                  <div style={{fontSize:26,fontWeight:700,color:C.FG}}>{value}</div>
+            {(()=>{
+              const bl:any[]=bookingsList||[]; const cl:any[]=companiesList||[];
+              const today=new Date().toISOString().slice(0,10);
+              const cnt=(f:(b:any)=>boolean)=>bl.filter(f).length;
+              const paidAed=bl.reduce((s,b)=>s+((b.payments||[]).filter((p:any)=>p.status==="paid").reduce((a:number,p:any)=>a+Number(p.total||0),0)),0);
+              const upcoming=bl.filter(b=>["confirmed","pending","pending_verification"].includes(b.status)&&(b.booking_date||"")>=today).sort((a,b)=>(a.booking_date+(a.booking_time||"")).localeCompare(b.booking_date+(b.booking_time||"")));
+              const tiles:[string,string,string,string,()=>void][]=[
+                ["📅","Total bookings",bookingsList?String(bl.length):"…",`${cnt(b=>b.status==="confirmed")} confirmed · ${cnt(b=>b.status==="completed")} done`,()=>setCmsTab("bookings")],
+                ["⏳","Waiting for you",bookingsList?String(cnt(b=>["pending","pending_verification"].includes(b.status))):"…",`${cnt(b=>(b.payments||[])[0]?.status==="under_review")} receipts to check`,()=>setCmsTab("bookings")],
+                ["🎬","Upcoming shoots",bookingsList?String(upcoming.length):"…",upcoming[0]?`Next: ${upcoming[0].booking_date} ${String(upcoming[0].booking_time||"").slice(0,5)}`:"Nothing scheduled",()=>setCmsTab("calendar")],
+                ["⚠️","In progress / on hold",bookingsList?`${cnt(b=>b.stage==="in_progress")} / ${cnt(b=>b.stage==="on_hold")}`:"…",cnt(b=>b.stage==="on_hold")?"Needs attention":"All on track",()=>setCmsTab("bookings")],
+                ["💰","Paid (AED)",bookingsList?paidAed.toLocaleString():"…",`${cnt(b=>b.status==="cancelled")} cancelled`,()=>setCmsTab("payments")],
+                ["🏢","Companies / leads",companiesList?String(cl.length):"…",`${cl.filter(c=>c.status==="prospect").length} prospects · ${cl.filter(c=>c.status==="contacted").length} contacted · ${cl.filter(c=>c.status==="interested").length} interested`,()=>setCmsTab("companies")],
+                ["✉️","Website enquiries",String(leads.length),"From the contact form",()=>setCmsTab("leads")],
+                ["🖼","Published projects",String(projects.length),"Portfolio",()=>setCmsTab("projects")],
+              ];
+              return(<>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:14,marginBottom:22}}>
+                  {tiles.map(([icon,label,value,sub,go])=>(
+                    <button key={label} onClick={go} style={{...CARD_STYLE,padding:18,textAlign:"left" as const,cursor:"pointer",font:"inherit",color:"inherit"}}>
+                      <div style={{fontSize:11,letterSpacing:1,color:C.MID,marginBottom:8,textTransform:"uppercase" as const}}>{icon} {label}</div>
+                      <div style={{fontSize:24,fontWeight:700,color:C.FG}}>{value}</div>
+                      <div style={{fontSize:11.5,color:C.MID,marginTop:6}}>{sub}</div>
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+                {upcoming.length>0&&(
+                  <div style={{...CARD_STYLE,padding:22,marginBottom:16}}>
+                    <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:12}}>Upcoming shoots & events</div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(3,1fr)",gap:12}}>
+                      {upcoming.slice(0,6).map((b:any)=>(
+                        <button key={b.id} onClick={()=>setCmsTab("bookings")} style={{textAlign:"left" as const,cursor:"pointer",font:"inherit",color:C.FG,background:"rgba(139,92,246,0.07)",border:`1px solid ${b.stage==="on_hold"?"rgba(251,191,36,0.5)":C.BORDER}`,borderRadius:10,padding:14}}>
+                          <div style={{fontSize:12,color:C.PL,fontWeight:700}}>{new Date(b.booking_date+"T00:00:00").toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"})}{b.booking_time?` · ${String(b.booking_time).slice(0,5)}`:""}</div>
+                          <div style={{fontSize:14,fontWeight:700,margin:"6px 0 2px"}}>{b.service_name||"Booking"}</div>
+                          <div style={{fontSize:12,color:C.MID}}>{b.customers?.full_name||"—"}{b.customers?.company?` · ${b.customers.company}`:""}</div>
+                          <div style={{fontSize:12,color:C.MID,marginTop:4}}>{b.package_name||""}{b.total?` · AED ${Number(b.total).toLocaleString()}`:""}</div>
+                          <div style={{marginTop:8,display:"flex",gap:6,alignItems:"center"}}><StatusPill status={b.status} />{b.stage==="on_hold"&&<span style={{fontSize:11,color:"#fbbf24"}}>⏸ {b.stage_reason}</span>}{b.stage==="in_progress"&&<span style={{fontSize:11,color:"#4ade80"}}>▶ in progress</span>}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>);
+            })()}
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr",gap:16}}>
               <div style={{...CARD_STYLE,padding:22}}>
                 <div style={{fontSize:15,fontWeight:600,color:C.FG,marginBottom:4}}>Recent Bookings</div>
                 <div style={{fontSize:11.5,color:C.MID,marginBottom:16}}>Latest bookings received</div>
                 {!bookingsList||bookingsList.length===0?(
                   <div style={{fontSize:12,color:C.MID,fontStyle:"italic" as const}}>No bookings yet.</div>
-                ):bookingsList.slice(0,5).map((b:any)=>(
-                  <div key={b.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.BORDER}`,fontSize:12.5}}>
-                    <span style={{color:C.FG}}>{b.appointment_ref} — {b.customers?.full_name||"—"}</span>
+                ):bookingsList.slice(0,6).map((b:any)=>(
+                  <div key={b.id} onClick={()=>setCmsTab("bookings")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,padding:"10px 0",borderBottom:`1px solid ${C.BORDER}`,fontSize:12.5,cursor:"pointer"}}>
+                    <span style={{color:C.FG}}><b>{b.appointment_ref}</b> — {b.customers?.full_name||"—"}<span style={{color:C.MID}}> · {b.service_name||""}{b.booking_date?` · ${b.booking_date}`:""}{b.total?` · AED ${Number(b.total).toLocaleString()}`:""}</span></span>
                     <StatusPill status={b.status} />
                   </div>
                 ))}
+                {bookingsLoading&&<div style={{fontSize:12,color:C.MID}}>Loading…</div>}
+                {bookingsErr&&<div style={{fontSize:12,color:"#f87171"}}>{bookingsErr}</div>}
                 <button onClick={()=>setCmsTab("bookings")} style={{...S.btnSm,marginTop:14}}>View All Bookings →</button>
               </div>
               <div style={{...CARD_STYLE,padding:22}}>
@@ -6313,14 +6349,22 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
               <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No companies yet. Add one, or import a spreadsheet.</div>
             ):(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {adminSession&&<CompanyBulkSend token={adminSession.access_token} selected={companySel} companies={companiesList||[]} starters={emailStarters} onClear={()=>setCompanySel([])} onSent={()=>loadCompanies()} />}
+                <div style={{display:"flex",gap:10,alignItems:"center",fontSize:12.5,color:C.MID}}>
+                  <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={filtered.length>0&&filtered.every((c:any)=>companySel.includes(c.id))} onChange={e=>{const ids=filtered.map((c:any)=>c.id);setCompanySel(s=>e.target.checked?Array.from(new Set([...s,...ids])):s.filter(x=>!ids.includes(x)));}} />Select all shown ({filtered.length})</label>
+                  <span>· tick companies, then choose a template or proposal to send</span>
+                </div>
                 {filtered.map((c:any)=>{
                   const open=companyOpenId===c.id;
                   return(
-                    <div key={c.id} style={{...CARD_STYLE,padding:16}}>
+                    <div key={c.id} style={{...CARD_STYLE,padding:16,borderColor:companySel.includes(c.id)?"rgba(139,92,246,0.6)":undefined}}>
                       <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setCompanyOpenId(willOpen?c.id:null);if(willOpen)loadCompanyDetail(c.id);}}>
+                        <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                        <input type="checkbox" checked={companySel.includes(c.id)} onClick={e=>e.stopPropagation()} onChange={e=>setCompanySel(s=>e.target.checked?[...s,c.id]:s.filter(x=>x!==c.id))} style={{marginTop:3,width:16,height:16,cursor:"pointer"}} title="Select to email" />
                         <div>
                           <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.name}{c.industry?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.industry}</span>:null}</div>
                           <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.website||c.email||"—"} · {c.contact_count||0} contact{c.contact_count===1?"":"s"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
+                        </div>
                         </div>
                         <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
                       </div>

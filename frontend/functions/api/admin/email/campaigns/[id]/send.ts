@@ -43,7 +43,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env, params }
   // are B2B prospects: there's no consent table for them, so they're emailed unless marked
   // "inactive" (= do not contact). Each email is personalized with that person's own name,
   // company and job title, sent ONE BY ONE (never a group email with visible addresses).
-  if (audience.type === "outreach_all" || audience.type === "outreach_tag") {
+  if (audience.type === "outreach_all" || audience.type === "outreach_tag" || audience.type === "outreach_companies") {
     return await sendToOutreach(env, campaign, template, campaignId, audience, admin.email, origin);
   }
 
@@ -144,10 +144,33 @@ async function hasMx(email: string): Promise<boolean> {
 
 async function sendToOutreach(env: Env, campaign: any, template: any, campaignId: string, audience: any, adminEmail: string, origin: string | null) {
   let contacts: any[] = [];
-  if (audience.type === "outreach_tag" && audience.tag_id) {
+  // Companies picked directly (Companies list → select → Send email), or companies carrying the
+  // tag: send to each company's people; a company with no person on file gets its own
+  // company email instead, so imported company lists can be emailed straight away.
+  const addCompanies = async (companyIds: string[]) => {
+    const ids = companyIds.filter((x) => /^[0-9a-f-]{36}$/i.test(String(x))).slice(0, MAX_RECIPIENTS);
+    if (!ids.length) return;
+    for (let i = 0; i < ids.length; i += 80) {
+      const part = ids.slice(i, i + 80).join(",");
+      const pr = await supaAdmin(env, `outreach_contacts?company_id=in.(${part})&select=${SELECT_OUTREACH},company_id`, { method: "GET" });
+      const people = pr.ok ? ((await pr.json()) as any[]) : [];
+      contacts.push(...people);
+      const withPerson = new Set(people.filter((p) => p.email).map((p) => p.company_id));
+      const cr = await supaAdmin(env, `outreach_companies?id=in.(${part})&select=id,name,email,status`, { method: "GET" });
+      for (const co of cr.ok ? ((await cr.json()) as any[]) : []) {
+        if (!withPerson.has(co.id) && co.email) contacts.push({ id: co.id, first_name: "", last_name: "", full_name: "", email: co.email, job_title: "", status: co.status, company: { name: co.name } });
+      }
+    }
+  };
+  if (audience.type === "outreach_companies" && Array.isArray(audience.company_ids)) {
+    await addCompanies(audience.company_ids);
+  } else if (audience.type === "outreach_tag" && audience.tag_id) {
     const r = await supaAdmin(env, `outreach_contact_tags?tag_id=eq.${encodeURIComponent(audience.tag_id)}&select=contact:outreach_contacts(${SELECT_OUTREACH})&limit=${MAX_RECIPIENTS}`, { method: "GET" });
     const rows = r.ok ? ((await r.json()) as any[]) : [];
     contacts = rows.map((row) => row.contact).filter(Boolean);
+    const ct = await supaAdmin(env, `outreach_company_tags?tag_id=eq.${encodeURIComponent(audience.tag_id)}&select=company_id&limit=${MAX_RECIPIENTS}`, { method: "GET" });
+    const tagged = (ct.ok ? ((await ct.json()) as any[]) : []).map((x) => x.company_id);
+    if (tagged.length) { const already = new Set(contacts.map((c) => String(c.email || "").toLowerCase())); const before = contacts.length; await addCompanies(tagged); contacts = contacts.slice(0, before).concat(contacts.slice(before).filter((c) => !already.has(String(c.email || "").toLowerCase()))); }
   } else {
     const r = await supaAdmin(env, `outreach_contacts?select=${SELECT_OUTREACH}&order=created_at.desc&limit=${MAX_RECIPIENTS}`, { method: "GET" });
     contacts = r.ok ? await r.json() : [];
@@ -198,6 +221,11 @@ async function sendToOutreach(env: Env, campaign: any, template: any, campaignId
     await new Promise((res) => setTimeout(res, 600));
   }
 
+  // Keep Companies in sync: a prospect that was just emailed becomes "contacted".
+  if (sent && audience.type === "outreach_companies" && Array.isArray(audience.company_ids)) {
+    const ids = audience.company_ids.filter((x: any) => /^[0-9a-f-]{36}$/i.test(String(x)));
+    for (let i = 0; i < ids.length; i += 80) await supaAdmin(env, `outreach_companies?id=in.(${ids.slice(i, i + 80).join(",")})&status=eq.prospect`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "contacted", updated_at: new Date().toISOString() }) });
+  }
   // Paused (daily limit / failures) -> back to draft so "Send Now" continues later with the rest.
   await supaAdmin(env, `email_campaigns?id=eq.${campaignId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(paused ? { status: "draft" } : { status: "sent", sent_at: new Date().toISOString() }) });
   await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: `admin:${adminEmail}`, action: "email_campaign_sent", entity_type: "email_campaign", entity_id: campaignId, details: { audience: audience.type, sent, failed, skippedNoEmail, skippedNoConsent, paused } }) });

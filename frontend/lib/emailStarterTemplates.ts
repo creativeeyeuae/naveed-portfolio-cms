@@ -80,7 +80,14 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
     html: `<table width="100%" cellpadding="0" cellspacing="0" style="background:${bg};"><tr><td align="center" style="padding:12px 8px;font-family:Arial,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;">${[["Services", svcUrl], ["Packages &amp; Prices", pkgUrl], ["Portfolio", b.workUrl], ["Book", bookUrl], ["WhatsApp", wa]].map(([t, h], i) => `<a href="${h}" style="color:${i === 3 ? accent : fg};text-decoration:none;font-weight:700;padding:0 9px;display:inline-block;line-height:24px;">${t}</a>`).join(`<span style="color:${fg};opacity:.35;">|</span>`)}</td></tr></table>`,
   });
   const tiers = (b.packages || []).filter((p) => p.label).slice(0, 3);
+  // Editable as plain text in the designer (one line per package: Name | Price | features; ... | note).
   const priceTable = (accent: string, light2: string, svc: string) => {
+    const lines = tiers.length
+      ? tiers.map((p) => [p.label, p.price || "On request", (p.features || []).slice(0, 5).join("; "), p.priceNote || ""].join(" | ").replace(/\s\|\s$/, ""))
+      : ["Essential | AED 0,000 | Half-day coverage; 40 edited photos", "Premium | AED 0,000 | Full-day coverage; 100+ edited photos; Highlight film", "Signature | AED 0,000 | Multi-day; Photo + video team; Same-day edits"];
+    return { type: "packages", items: lines.join("\n"), btnColor: accent, tint: light2, href: bookUrl, btnText: "Choose" };
+  };
+  const priceTableHtmlUnused = (accent: string, light2: string, svc: string) => {
     if (!tiers.length) return { type: "html", html: `<table width="100%" cellpadding="14" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:14px;"><tr style="background:${light2};"><td><b>${esc(svc)}</b></td><td align="right"><a href="${pkgUrl}" style="color:${accent};font-weight:700;">See packages &amp; prices →</a></td></tr></table>` };
     const w = Math.floor(100 / tiers.length);
     const cols = tiers.map((p, i) => {

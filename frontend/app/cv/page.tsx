@@ -78,7 +78,7 @@ export default async function CvPage() {
             <div style={{ fontSize: 11, letterSpacing: 6, color: C.PL, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
               <span style={{ width: 32, height: 1, background: C.PL, display: "inline-block" }} />Curriculum Vitae<span style={{ width: 32, height: 1, background: C.PL, display: "inline-block" }} />
             </div>
-            <h1 style={{ fontSize: "clamp(32px,5vw,54px)", fontWeight: 700, letterSpacing: 1, margin: "0 0 10px", color: C.FG }}>{site.aboutName}</h1>
+            <h2 style={{ fontSize: "clamp(32px,5vw,54px)", fontWeight: 700, letterSpacing: 1, margin: "0 0 10px", color: C.FG }}>{site.aboutName}</h2>
             <p style={{ color: C.PL, fontSize: 15, fontWeight: 600, letterSpacing: 1.5, marginBottom: 10 }}>{site.aboutTitle}</p>
             <p style={{ color: "rgba(255,255,255,0.42)", fontSize: 13 }}>{[site.phone, site.email].filter(Boolean).join(" · ")}</p>
             <div style={{ display: "flex", justifyContent: "flex-start", gap: 16, marginTop: 22 }}>

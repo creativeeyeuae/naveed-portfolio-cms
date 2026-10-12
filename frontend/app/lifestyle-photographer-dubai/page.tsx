@@ -12,7 +12,7 @@ import { buildMetadata } from "@/lib/seo";
 // app/sitemap.ts -- no parallel page system, no new template.
 const TITLE = "Lifestyle Photographer in Dubai | Naveed Anjum";
 const DESC =
-  "Lifestyle photographer in Dubai for brands, individuals and families — natural, editorial-style imagery for social media, marketing and personal projects, by Naveed Anjum.";
+  "Lifestyle photographer in Dubai for brands, individuals and families — natural, editorial-style imagery for social media, marketing and personal projects.";
 const KEYWORDS = [
   "lifestyle photographer Dubai",
   "lifestyle photography Dubai",

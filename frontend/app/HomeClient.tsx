@@ -2678,7 +2678,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   },[authed]);
 
   const [editId,setEditId]=useState<string|null>(null);
-  const [cmsTab,setCmsTab]=useState("projects");
+  const [cmsTab,setCmsTab]=useState("dashboard");
 
   // CMS > Service Pages editor state -- same shape as the Projects editor above (spEditSlug
   // is this tab's "editId": which page's override is currently open; spForm is that page's
@@ -2947,7 +2947,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [emailTemplates,setEmailTemplates]=useState<any[]|null>(null);
   const [navGroupOpen,setNavGroupOpen]=useState<string|null>(null); // CMS sidebar: which group is expanded (null = the active page's group)
   useEffect(()=>{ setNavGroupOpen(null); },[cmsTab]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [companySel,setCompanySel]=useState<string[]>([]); // Companies tab: ticked for "Email selected"
+  const [companySel,setCompanySel]=useState<string[]>([]);
+  const [bkSel,setBkSel]=useState<string[]>([]); // Bookings tab: ticked for "Delete selected"
+  const [bkBulkBusy,setBkBulkBusy]=useState(""); // Companies tab: ticked for "Email selected"
   const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
   const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
   const EMAIL_TEMPLATE_EMPTY={name:"",subject:"",blocks:[] as any[]};
@@ -4068,6 +4070,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       spacer:{type:"spacer",height:24},
       social:{type:"social",instagram:settings.instagram||"",facebook:"",youtube:settings.youtube||"",linkedin:settings.linkedin||"",tiktok:settings.tiktok||"",whatsapp:"",website:"https://bynaveedanjum.com"},
       html:{type:"html",html:"<p>Custom HTML</p>"},
+      packages:{type:"packages",items:(Array.isArray(settings.pricingPackages)&&settings.pricingPackages.length?settings.pricingPackages.slice(0,3).map((pk:any)=>[pk.label,pk.price||"On request",(pk.features||[]).slice(0,5).join("; ")].join(" | ")).join("\n"):"Essential | AED 1,500 | 2 hours; 50 edited photos\nPremium | AED 3,000 | Half day; 120 edited photos; Highlight film\nSignature | AED 5,500 | Full day; Photo + video; Same-day edits"),href:"https://bynaveedanjum.com/?page=booking",btnText:"Choose"},
       footer:{type:"footer",text:"You're receiving this because you're a valued contact of Naveed Anjum."},
     };
     setEmailTemplateForm((f:any)=>({...f,blocks:[...(f.blocks||[]),blank[type]]}));
@@ -5740,6 +5743,15 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <div style={{color:C.MID,fontSize:13,fontStyle:"italic"}}>No bookings yet.</div>
                 ):(
                   <div style={{display:"flex",flexDirection:"column",gap:14}}>
+                    {(()=>{ const del=(bookingsList||[]).filter((b:any)=>["cancelled","pending","payment_rejected","pending_verification"].includes(b.status)); return (
+                      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap" as const,fontSize:12.5,color:C.MID,padding:"10px 14px",borderRadius:10,background:bkSel.length?"rgba(231,76,60,0.08)":"transparent",border:bkSel.length?"1px solid rgba(231,76,60,0.35)":"1px solid transparent"}}>
+                        <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={del.length>0&&del.every((b:any)=>bkSel.includes(b.id))} onChange={e=>setBkSel(e.target.checked?del.map((b:any)=>b.id):[])} />Select all deletable ({del.length}) — cancelled, pending or rejected</label>
+                        {bkSel.length>0&&<>
+                          <span style={{color:C.FG,fontWeight:600}}>{bkSel.length} selected</span>
+                          <button disabled={!!bkBulkBusy} onClick={async()=>{ if(!adminSession) return; if(!confirm(`Delete ${bkSel.length} booking(s) permanently?\nPaid bookings are always skipped. A copy is kept in the activity log.`)) return; let ok=0,skip=0; for(let i=0;i<bkSel.length;i++){ setBkBulkBusy(`Deleting ${i+1} of ${bkSel.length}…`); try{ const r=await fetch(`/api/admin/bookings/${bkSel[i]}/update`,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify({action:"delete",confirm:"DELETE"})}); if(r.ok) ok++; else skip++; }catch{ skip++; } } setBkBulkBusy(""); setBkSel([]); alert(`Deleted ${ok} booking(s).${skip?` ${skip} skipped (paid or not deletable).`:""}`); loadBookings(); }} style={{padding:"8px 14px",borderRadius:8,fontSize:12.5,fontWeight:700,cursor:"pointer",border:"none",background:"#dc2626",color:"#fff"}}>{bkBulkBusy||`🗑 Delete ${bkSel.length} selected`}</button>
+                          <button disabled={!!bkBulkBusy} onClick={()=>setBkSel([])} style={{padding:"8px 14px",borderRadius:8,fontSize:12.5,cursor:"pointer",border:"1px solid rgba(255,255,255,0.18)",background:"transparent",color:C.FG}}>Clear</button>
+                        </>}
+                      </div>); })()}
                     {bookingsList.filter((b:any)=>{
                       const pays=b.payments||[];
                       if(bkFilter==="action"&&!(b.status==="pending"||pays.some((p:any)=>p.status==="under_review"))) return false;
@@ -5758,6 +5770,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:16}}>
                             <div>
                               <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                                {["cancelled","pending","payment_rejected","pending_verification"].includes(b.status)&&<input type="checkbox" title="Select to delete" checked={bkSel.includes(b.id)} onChange={e=>setBkSel(s=>e.target.checked?[...s,b.id]:s.filter(x=>x!==b.id))} style={{width:16,height:16,cursor:"pointer"}} />}
                                 <span style={{fontSize:17,fontWeight:700,color:C.FG}}>{cust?.full_name||"Client"}</span>
                                 <StatusPill status={b.status} />
                               </div>
@@ -6946,7 +6959,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           {EMAIL_FONTS.map(f=><option key={f.key} value={f.key}>{f.label}</option>)}
                         </select>
                       );
-                      const LABELS:Record<string,string>={hero:"Hero header (photo)",contact:"Contact bar",gallery:"Two photos",logo:"Logo",heading:"Heading",text:"Paragraph",image:"Image",button:"Button",divider:"Divider",spacer:"Spacer",social:"Social icons",html:"Custom HTML",footer:"Footer"};
+                      const LABELS:Record<string,string>={hero:"Hero header (photo)",contact:"Contact bar",gallery:"Two photos",logo:"Logo",heading:"Heading",text:"Paragraph",image:"Image",button:"Button",divider:"Divider",spacer:"Spacer",social:"Social icons",html:"Custom HTML",packages:"Packages & prices",footer:"Footer"};
                       return (
                         <>
                           {/* ── Global design ─────────────────────────────────────── */}
@@ -6996,7 +7009,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                   {b.type==="heading"&&<input style={S.inp} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Heading text" />}
                                   {b.type==="text"&&<textarea style={{...S.inp,minHeight:80}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="Paragraph text — press Enter for a new line. <b>bold</b> and <a href='…'>links</a> work too." />}
                                   {b.type==="footer"&&<textarea style={{...S.inp,minHeight:50}} value={b.text} onChange={e=>emailUpdateBlock(idx,{text:e.target.value})} placeholder="Footer text" />}
-                                  {b.type==="html"&&<textarea spellCheck={false} style={{...S.inp,minHeight:100,fontFamily:"monospace",fontSize:11.5}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="<table>…</table> — any HTML snippet" />}
+                                  {b.type==="packages"&&(<div style={{display:"flex",flexDirection:"column" as const,gap:6}}><div style={{fontSize:11,color:C.MID}}>One package per line: <b>Name | Price | feature; feature; feature | small note</b>. Start a line with * to mark it “Most popular” (otherwise the middle one is).</div><textarea spellCheck={false} style={{...S.inp,minHeight:110,fontSize:12.5,lineHeight:1.6}} value={b.items||""} onChange={e=>emailUpdateBlock(idx,{items:e.target.value})} placeholder={"Essential | AED 1,500 | 2 hours; 50 photos\nPremium | AED 3,000 | Half day; 120 photos"} /><div style={{display:"flex",gap:8,flexWrap:"wrap" as const}}><input style={{...S.inp,flex:1,minWidth:120}} value={b.btnText||""} placeholder="Button text (Choose)" onChange={e=>emailUpdateBlock(idx,{btnText:e.target.value})} /><input style={{...S.inp,flex:2,minWidth:200}} value={b.href||""} placeholder="Button link (booking page)" onChange={e=>emailUpdateBlock(idx,{href:e.target.value})} />{Array.isArray(settings.pricingPackages)&&settings.pricingPackages.length>0&&<button type="button" onClick={()=>emailUpdateBlock(idx,{items:settings.pricingPackages.slice(0,3).map((pk:any)=>[pk.label,pk.price||"On request",(pk.features||[]).slice(0,5).join("; ")].join(" | ")).join("\n")})} style={{...S.btnO,padding:"6px 12px",fontSize:10.5}}>↻ Load my current Packages</button>}</div></div>)}
+                          {b.type==="html"&&<textarea spellCheck={false} style={{...S.inp,minHeight:100,fontFamily:"monospace",fontSize:11.5}} value={b.html} onChange={e=>emailUpdateBlock(idx,{html:e.target.value})} placeholder="<table>…</table> — any HTML snippet" />}
                                   {(b.type==="image"||b.type==="logo")&&(
                                     <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
                                       <input style={S.inp} value={b.src} onChange={e=>emailUpdateBlock(idx,{src:e.target.value})} placeholder={b.type==="logo"?"Logo image URL (PNG with transparent background works best — upload in Media Library, paste URL)":"Image URL (upload it in Media Library, then paste the URL here)"} />
@@ -7077,7 +7091,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                           </div>
 
                           <div style={{display:"flex",gap:6,flexWrap:"wrap" as const,marginTop:14}}>
-                            {["hero","logo","heading","text","image","gallery","button","divider","spacer","social","contact","html","footer"].map(t=>(
+                            {["hero","logo","heading","text","image","gallery","packages","button","divider","spacer","social","contact","html","footer"].map(t=>(
                               <button key={t} onClick={()=>emailAddBlock(t)} style={{...S.btnO,padding:"6px 12px",fontSize:10.5}}>+ {LABELS[t]}</button>
                             ))}
                           </div>
@@ -7120,7 +7134,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const boxW=Math.round(frameW*scale); // box exactly as wide as the scaled email -- no empty strip
                       return (
                         <div style={{width:boxW,maxWidth:"100%",height:Math.round(emailPreviewH*scale),overflow:"hidden" as const,borderRadius:10,border:`1px solid ${C.BORDER}`,background:getEmailSettings(blocks as any).bodyBg,margin:"0 auto"}}>
-                          <iframe title="Email preview" sandbox="allow-same-origin" srcDoc={html}
+                          <iframe key={`${emailTemplateEditId}-${emailPreviewWidth}-${html.length}`} title="Email preview" sandbox="allow-same-origin" srcDoc={html}
                             onLoad={e=>{ try{ const d=(e.target as HTMLIFrameElement).contentDocument; if(d) setEmailPreviewH(Math.max(300,Math.min(6000,d.documentElement.scrollHeight))); }catch{} }}
                             style={{width:frameW,height:emailPreviewH,border:0,transform:`scale(${scale})`,transformOrigin:"top left",display:"block"}} />
                         </div>
@@ -7187,6 +7201,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                         </div>
                         <div style={{display:"flex",gap:8}}>
                           <button onClick={()=>emailOpenTemplate(t)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}}>Edit</button>
+                          <button onClick={()=>{setEmailTemplateForm({name:`${t.name} (copy)`,subject:t.subject||"",blocks:JSON.parse(JSON.stringify(Array.isArray(t.blocks)?t.blocks:[]))});setEmailTemplateEditId("new");setEmailTestMsg("");}} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}} title="Make an editable copy">Duplicate</button>
                           <button onClick={()=>emailDeleteTemplate(t.id)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5,color:"#e74c3c"}}>Delete</button>
                         </div>
                       </div>

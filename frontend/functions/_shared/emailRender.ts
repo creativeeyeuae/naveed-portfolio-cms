@@ -212,6 +212,22 @@ function blockToHtml(b: any, s: typeof DEFAULT_SETTINGS): string {
     }
     case "html":
       return `<tr><td style="${pad(8, 8)}${bg}font-family:${bodyFont};color:${s.textColor};">${sanitizeHtml(b.html || "")}</td></tr>`;
+    case "packages": {
+      // Price cards written as plain text, one package per line:
+      //   Name | Price | feature; feature; feature | small note
+      // The middle card (or a line starting with *) is highlighted as "Most popular".
+      const rows = String(b.items || "").split(/\n+/).map((l) => l.trim()).filter(Boolean).slice(0, 4);
+      if (!rows.length) return "";
+      const accent = safeColor(b.btnColor, s.accent);
+      const tint = safeColor(b.tint, "#f6f3fb");
+      const href = safeUrl(b.href || "https://bynaveedanjum.com/?page=booking");
+      const btnText = escapeHtml(b.btnText || "Choose");
+      const parsed = rows.map((l) => { const hot = l.startsWith("*"); const [name = "", price = "", feats = "", note = ""] = l.replace(/^\*\s*/, "").split("|").map((x) => x.trim()); return { hot, name, price, feats: feats.split(";").map((f) => f.trim()).filter(Boolean).slice(0, 6), note }; });
+      if (!parsed.some((p) => p.hot) && parsed.length === 3) parsed[1].hot = true;
+      const w = Math.floor(100 / parsed.length);
+      const cells = parsed.map((p) => `<td width="${w}%" valign="top" class="pkg-cell" style="padding:6px;"><div style="background:${p.hot ? accent : tint};color:${p.hot ? "#ffffff" : s.textColor};border-radius:10px;padding:16px 14px;text-align:center;font-family:${bodyFont};">${p.hot ? `<div style="font-size:10px;letter-spacing:.12em;font-weight:700;opacity:.85;">MOST POPULAR</div>` : ""}<div style="font-size:15px;font-weight:800;margin:4px 0;">${escapeHtml(p.name)}</div><div style="font-size:22px;font-weight:800;margin:6px 0;">${escapeHtml(p.price || "On request")}</div>${p.note ? `<div style="font-size:11px;opacity:.75;">${escapeHtml(p.note)}</div>` : ""}<div style="font-size:12px;text-align:left;margin-top:10px;">${p.feats.map((f) => `<div style="padding:4px 0;border-top:1px solid ${p.hot ? "rgba(255,255,255,.18)" : "#e9e4f1"};">&#10003; ${escapeHtml(f)}</div>`).join("")}</div><a href="${href}" style="display:inline-block;margin-top:12px;padding:8px 14px;border-radius:6px;background:${p.hot ? "#ffffff" : accent};color:${p.hot ? accent : "#ffffff"};font-size:12px;font-weight:700;text-decoration:none;">${btnText}</a></div></td>`).join("");
+      return `<tr><td style="${pad(8, 8)}${bg}"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${cells}</tr></table></td></tr>`;
+    }
     case "hero": {
       // Background image via both the `background` attribute and CSS (widest client support);
       // the overlay is a semi-transparent layer inside, so text stays readable on any photo.

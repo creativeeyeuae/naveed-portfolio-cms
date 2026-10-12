@@ -2951,6 +2951,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [bkSel,setBkSel]=useState<string[]>([]); // Bookings tab: ticked for "Delete selected"
   const [bkBulkBusy,setBkBulkBusy]=useState(""); // Companies tab: ticked for "Email selected"
   const [emailTemplatesLoading,setEmailTemplatesLoading]=useState(false);
+  const [emailSavedMsg,setEmailSavedMsg]=useState("");
   const [emailTemplateEditId,setEmailTemplateEditId]=useState<string|null>(null);
   const EMAIL_TEMPLATE_EMPTY={name:"",subject:"",blocks:[] as any[]};
   const [emailTemplateForm,setEmailTemplateForm]=useState<any>(EMAIL_TEMPLATE_EMPTY);
@@ -4024,9 +4025,11 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const res=await fetch(url,{method:isNew?"POST":"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:JSON.stringify(emailTemplateForm)});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Could not save template");
-      setEmailTemplateEditId(data.template?.id||null);
+      if(data.template?.id) setEmailTemplateEditId(data.template.id); // stay in the editor
+      setEmailSavedMsg(`✓ Saved at ${new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`);
+      setTimeout(()=>setEmailSavedMsg(""),6000);
       await loadEmailTemplates();
-    }catch(e:any){ alert(e.message||"Could not save template"); }
+    }catch(e:any){ setEmailSavedMsg(`⚠ ${e.message||"Could not save template"}`); }
     setEmailBusy(false);
   }
   // Adds the automated booking/account emails as normal, editable templates (only missing ones).
@@ -7100,7 +7103,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     })()}
 
                     <div style={{marginTop:20}}>
-                      <button onClick={emailSaveTemplate} disabled={emailBusy} style={S.btnP}>Save Template</button>
+                      <button onClick={emailSaveTemplate} disabled={emailBusy} style={S.btnP}>{emailBusy?"Saving…":"Save Template"}</button>
+                          {emailSavedMsg&&<span style={{marginLeft:12,fontSize:12.5,fontWeight:600,color:emailSavedMsg.startsWith("✓")?"#4ade80":"#f87171"}}>{emailSavedMsg}</span>}
                     </div>
 
                     <div style={{marginTop:24,paddingTop:20,borderTop:`1px solid ${C.BORDER}`}}>

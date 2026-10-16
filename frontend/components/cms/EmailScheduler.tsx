@@ -48,7 +48,23 @@ export default function EmailScheduler({ token, companies, selected, filterLabel
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const load = () => fetch("/api/admin/email-schedules", { headers: H }).then((r) => r.json()).then((d) => { setSchedules(d.schedules || []); setReady(d.ready !== false); if (d.daily_cap) setCap(d.daily_cap); }).catch(() => setSchedules([]));
+  const [capDraft, setCapDraft] = useState("40");
+  const [capMsg, setCapMsg] = useState("");
+  const load = () => fetch("/api/admin/email-schedules", { headers: H }).then((r) => r.json()).then((d) => { setSchedules(d.schedules || []); setReady(d.ready !== false); if (d.daily_cap) { setCap(d.daily_cap); setCapDraft((x) => (document.activeElement as any)?.title?.startsWith("Most emails") ? x : String(d.daily_cap)); } }).catch(() => setSchedules([]));
+  async function saveCap() {
+    const n = Math.floor(Number(capDraft));
+    if (n === cap) return;
+    if (!(n >= 10 && n <= 500)) { setCapMsg("Daily limit must be between 10 and 500."); setCapDraft(String(cap)); return; }
+    const r = await fetch("/api/admin/email-schedules", { method: "PATCH", headers: H, body: JSON.stringify({ daily_cap: n }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { setCapMsg(d.error || "Could not save the limit."); setCapDraft(String(cap)); return; }
+    setCap(n); setCapMsg(`✓ Daily safe limit saved: ${n} emails per 24 hours.`);
+  }
+  async function updateSchedule(id: string, fields: Record<string, unknown>) {
+    const r = await fetch(`/api/admin/email-schedules/${id}`, { method: "PATCH", headers: H, body: JSON.stringify({ action: "update", ...fields }) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); alert(d.error || "Failed"); }
+    load();
+  }
   useEffect(() => {
     fetch("/api/admin/email/templates", { headers: H }).then((r) => r.json()).then((d) => setTemplates(d.templates || [])).catch(() => {});
     load();
@@ -119,6 +135,10 @@ export default function EmailScheduler({ token, companies, selected, filterLabel
         </div>
         <div><span style={lbl}>Start from row</span><input type="number" min={1} max={Math.max(1, list.length)} value={startRow} onChange={(e) => setStartRow(Math.max(1, Number(e.target.value) || 1))} style={inp} /></div>
         <div><span style={lbl}>Companies per day</span><input type="number" min={1} max={500} value={perDay} onChange={(e) => setPerDay(Math.max(1, Math.min(500, Number(e.target.value) || 1)))} style={inp} /></div>
+        <div>
+          <span style={lbl}>Daily safe limit (all emails)</span>
+          <input type="number" min={10} max={500} value={capDraft} onChange={(e) => setCapDraft(e.target.value)} onBlur={saveCap} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} style={inp} title="Most emails the site may send in 24 hours, across all campaigns and schedules" />
+        </div>
         <div><span style={lbl}>First day</span><input type="date" value={startDate} min={dubaiToday()} onChange={(e) => setStartDate(e.target.value)} style={inp} /></div>
         <div><span style={lbl}>Time (Dubai)</span><input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inp} /></div>
       </div>
@@ -138,8 +158,9 @@ export default function EmailScheduler({ token, companies, selected, filterLabel
           {" "}Each day's batch goes out a few at a time over ~{Math.max(5, Math.ceil(perDay / 8) * 5)} minutes.
         </div>
       )}
-      {perDay > cap && <div style={{ fontSize: 12, color: "#FCD34D" }}>⚠ Your daily safe limit is {cap} emails (Email settings). Days with more than {cap} will finish the rest later that day, as room frees up. The free Resend plan allows 100 emails a day.</div>}
-      {perDay <= cap && perDay > 100 && <div style={{ fontSize: 12, color: "#FCD34D" }}>⚠ The free Resend plan allows 100 emails a day.</div>}
+      {capMsg && <div style={{ fontSize: 12, color: capMsg.startsWith("✓") ? "#6EE7B7" : "#F87171" }}>{capMsg}</div>}
+      {perDay > cap && <div style={{ fontSize: 12, color: "#FCD34D" }}>Note: {perDay} per day is more than your daily safe limit ({cap}). The extra ones wait and go out later as room frees up -- raise the limit above if you want them all the same day.</div>}
+      {Math.max(perDay, cap) > 100 && <div style={{ fontSize: 12, color: "#FCD34D" }}>Note: the free Resend plan sends at most 100 emails a day -- anything above that will fail until the next day.</div>}
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button disabled={busy || !choice || !list.length || !days.length || startRow > list.length} onClick={save} style={btn(true)}>{busy ? "Saving…" : "Save schedule"}</button>
@@ -164,6 +185,15 @@ export default function EmailScheduler({ token, companies, selected, filterLabel
                   {s.status === "active" ? ` · next: ${new Date(s.next_run_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
                 </div>
                 {s.last_note && <div style={{ fontSize: 11, color: "#A892C6" }}>{s.last_note}</div>}
+                {s.status !== "done" && (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontSize: 11.5, color: "#C4B5FD" }}>
+                    Per day
+                    <input key={`b${s.id}${s.batch_size}`} type="number" min={1} max={500} defaultValue={s.batch_size} onBlur={(e) => { const n = Number(e.target.value); if (n && n !== s.batch_size) updateSchedule(s.id, { batch_size: n }); }} style={{ ...inp, width: 80, height: 28 }} />
+                    at
+                    <input key={`t${s.id}${s.send_time}`} type="time" defaultValue={s.send_time} onBlur={(e) => { if (e.target.value && e.target.value !== s.send_time) updateSchedule(s.id, { send_time: e.target.value }); }} style={{ ...inp, width: 110, height: 28 }} />
+                    <span style={{ color: "#A892C6" }}>(changes apply from the next send day)</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {s.status === "active" && <button onClick={() => act(s.id, "pause")} style={{ ...btn(), height: 28, fontSize: 11 }}>Pause</button>}
                   {s.status === "paused" && <button onClick={() => act(s.id, "resume")} style={{ ...btn(), height: 28, fontSize: 11 }}>Resume</button>}

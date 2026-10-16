@@ -20,6 +20,27 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
   return json({ schedules: rows, ready: true, daily_cap: await dailyCap(env) }, 200, origin);
 };
 
+// PATCH { daily_cap } -- the admin's own daily safe sending limit (nap_settings.mktDailyCap,
+// the same value Email settings uses). 10-500; the sender enforces it for every send.
+export const onRequestPatch: PagesFunction<AdminEnv> = async ({ request, env }) => {
+  const origin = request.headers.get("Origin");
+  const admin = await requireAdmin(request, env);
+  if (admin instanceof Response) return admin;
+  const b = (await request.json().catch(() => ({}))) as Record<string, any>;
+  const cap = Math.floor(Number(b.daily_cap));
+  if (!(cap >= 10 && cap <= 500)) return json({ error: "Daily limit must be between 10 and 500." }, 400, origin);
+  const s = await supaAdmin(env, "site_settings?key=eq.nap_settings&select=value&limit=1", { method: "GET" });
+  const row = s.ok ? ((await s.json()) as any[])?.[0] : null;
+  if (!row) return json({ error: "Settings not found." }, 404, origin);
+  const wasString = typeof row.value === "string";
+  const obj = wasString ? JSON.parse(row.value || "{}") : row.value || {};
+  obj.mktDailyCap = cap;
+  const r = await supaAdmin(env, "site_settings?key=eq.nap_settings", { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ value: wasString ? JSON.stringify(obj) : obj }) });
+  if (!r.ok) return json({ error: "Could not save the limit.", detail: await r.text() }, 500, origin);
+  await supaAdmin(env, "audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ actor: `admin:${admin.email}`, action: "email_daily_cap_changed", entity_type: "settings", entity_id: null, details: { daily_cap: cap } }) });
+  return json({ daily_cap: cap }, 200, origin);
+};
+
 // POST { name, template_id, company_ids[], start_row, batch_size, start_date, send_time, days[], filter_label }
 export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) => {
   const origin = request.headers.get("Origin");

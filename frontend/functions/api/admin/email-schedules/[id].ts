@@ -16,6 +16,12 @@ export const onRequestPatch: PagesFunction<AdminEnv> = async ({ request, env, pa
   if (b.action === "pause") fields = { status: "paused" };
   else if (b.action === "resume") fields = { status: "active", last_note: null };
   else if (b.action === "run_now") fields = { status: "active", next_run_at: new Date().toISOString(), locked_until: null };
+  else if (b.action === "update") { // edit per-day amount / send time of an existing schedule
+    fields = {};
+    if (b.batch_size !== undefined) { const n = Math.floor(Number(b.batch_size)); if (!(n >= 1 && n <= 500)) return json({ error: "Per day must be 1-500." }, 400, origin); fields.batch_size = n; }
+    if (b.send_time !== undefined) { if (!/^\d{1,2}:\d{2}$/.test(String(b.send_time))) return json({ error: "Time must be HH:MM." }, 400, origin); fields.send_time = String(b.send_time); }
+    if (!Object.keys(fields).length) return json({ error: "Nothing to update." }, 400, origin);
+  }
   else return json({ error: "Unknown action." }, 400, origin);
   const r = await supaAdmin(env, `email_schedules?id=eq.${id}&status=neq.done`, { method: "PATCH", body: JSON.stringify(fields) });
   if (!r.ok) return json({ error: "Could not update the schedule.", detail: await r.text() }, 500, origin);

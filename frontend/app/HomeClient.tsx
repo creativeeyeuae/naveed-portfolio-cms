@@ -13,6 +13,7 @@ import { protectedImgProps, PROTECTED_IMG_CLASS } from "@/lib/imageProtection";
 import { COUNTRY_CODES } from "@/lib/countryCodes";
 import WhatsAppWorkspace from "@/components/cms/WhatsAppWorkspace";
 import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEntry } from "@/lib/creativeBotOffline";
+import { PRICE_MENU, type PriceStep, type PriceOption } from "@/lib/priceMenu";
 // Same renderer the server uses to send -- the designer preview is exactly what recipients get.
 import LeadFinder from "@/components/cms/LeadFinder";
 import BookingExtraActions from "@/components/cms/BookingExtraActions";
@@ -1572,6 +1573,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
   const [online,setOnline] = useState(true);
   const [backOnline,setBackOnline] = useState(false);
   const [waConnected,setWaConnected] = useState(true); // Naveed's WhatsApp bridge status, from GET /api/visitor/chat
+  const [pmPath,setPmPath] = useState<number[]>([]); // guided price finder position (lib/priceMenu.ts)
   const wasOfflineRef = useRef(false);
   function markOnline(ok:boolean){
     setOnline(ok);
@@ -1654,7 +1656,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     const t=setInterval(loadThread,6000);
     return ()=>clearInterval(t);
   },[open]);
-  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity,offlineMsgs,offlinePending,online]);
+  useEffect(()=>{ if(listRef.current) listRef.current.scrollTop=listRef.current.scrollHeight; },[messages,open,needsIdentity,offlineMsgs,offlinePending,online,pmPath]);
 
   // AI-initiated WhatsApp handover (separate from, and fully compatible with, the EXISTING
   // manual Take Over control in the CMS admin panel -- that one is untouched). When the AI
@@ -1713,6 +1715,27 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     {label:"Book a session", text:"Hi, I'd like to book a session. Can we discuss the details?"},
   ];
 
+  // Guided price finder (lib/priceMenu.ts): Service -> Type -> Duration/Option -> price card.
+  // Runs entirely in the browser (no API calls, works in quick-answer/offline mode too).
+  // "Get an exact quote" sends the visitor's picks as a normal chat message, so it goes
+  // through the usual identity ask and lands in the CMS Live Chat like any other lead.
+  function pmWalk(path:number[]){
+    let step:PriceStep|null = PRICE_MENU; let picked:PriceOption|null = null; const labels:string[] = [];
+    for(const i of path){
+      const o:PriceOption|undefined = step?.options[i]; if(!o) break;
+      labels.push(o.label);
+      if(o.next){ step=o.next; picked=null; } else { picked=o; step=null; }
+    }
+    return { step, picked, labels };
+  }
+  const pm = pmWalk(pmPath);
+  const pmSummary = pm.labels.join(" › ");
+  const pmQuoteText = `Hi Naveed, I'm interested in: ${pmSummary}${pm.picked?.price?` (from ${pm.picked.price})`:""}. Please send me an exact quote.`;
+  function pmQuote(){ send(pmQuoteText); setPmPath([]); }
+  const pmBtn:React.CSSProperties = {textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8};
+  const pmHoverOn = (e:React.MouseEvent)=>{ (e.currentTarget as HTMLElement).style.borderColor=C.P; (e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)"; };
+  const pmHoverOff = (e:React.MouseEvent)=>{ (e.currentTarget as HTMLElement).style.borderColor=C.BORDER; (e.currentTarget as HTMLElement).style.background="transparent"; };
+
   async function actuallySend(t:string){
     setSending(true); setErr("");
     try{
@@ -1765,7 +1788,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
     setEndingChat(true);
     try{ await fetch("/api/visitor/end-chat",{method:"POST"}); }catch{}
     setMessages([]); setLoaded(true); setNeedsIdentity(false); setPendingText("");
-    setText(""); setErr(""); lastSeenIdRef.current=null;
+    setText(""); setErr(""); lastSeenIdRef.current=null; setPmPath([]);
     setEndingChat(false); setConfirmEndChat(false);
   }
   const chatIcon=(size:number,color:string)=>(
@@ -1788,7 +1811,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
           </div>
           <div ref={listRef} style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
             <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
-              Hi there 👋 {BOT_NAME} here. How can I help you today? Pick an option below or type your own message.
+              Hi there 👋 {BOT_NAME} here. How can I help you today? Please select one below, or type your own message.
             </div>
             {loaded&&messages.map((m,mi)=>(
               <div key={m.id}>
@@ -1821,13 +1844,44 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
             )}
             {!needsIdentity&&!sending&&(messages.length===0||expired)&&(
               <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:0}}>
-                {QUICK.map((q,i)=>(
-                  <button key={i} onClick={()=>send(q.text)} disabled={sending} style={{textAlign:"left",background:"transparent",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"10px 12px",fontSize:13,cursor:"pointer",transition:"border-color 0.2s, background 0.2s"}}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.P;(e.currentTarget as HTMLElement).style.background="rgba(139,92,246,0.08)";}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.borderColor=C.BORDER;(e.currentTarget as HTMLElement).style.background="transparent";}}>
-                    {q.label}
-                  </button>
-                ))}
+                {pmPath.length>0&&(
+                  <div style={{fontSize:11,color:C.MID,letterSpacing:0.2}}>{pmSummary}</div>
+                )}
+                {pm.step?(
+                  <>
+                    {pmPath.length>0&&(
+                      <div style={{background:C.DARK,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:"#fff",maxWidth:"90%"}}>{pm.step.question}</div>
+                    )}
+                    {pm.step.options.map((o,i)=>(
+                      <button key={i} onClick={()=>setPmPath([...pmPath,i])} disabled={sending} style={pmBtn} onMouseEnter={pmHoverOn} onMouseLeave={pmHoverOff}>
+                        <span>{o.emoji?`${o.emoji} `:""}{o.label}</span>
+                        {o.price?<span style={{fontSize:11.5,color:C.MID,whiteSpace:"nowrap"}}>{o.price}</span>:<span style={{color:C.MID}}>›</span>}
+                      </button>
+                    ))}
+                  </>
+                ):pm.picked&&(
+                  <div style={{background:`linear-gradient(135deg,rgba(139,92,246,0.18),rgba(139,92,246,0.04))`,border:`1px solid ${C.P}`,borderRadius:14,padding:"14px 16px"}}>
+                    <div style={{fontSize:10.5,letterSpacing:1.2,color:C.MID}}>STARTING FROM</div>
+                    <div style={{fontSize:22,fontWeight:700,color:"#fff",lineHeight:1.25}}>{pm.picked.price}</div>
+                    <div style={{fontSize:12.5,fontWeight:600,color:C.FG,marginTop:4}}>{pmSummary}</div>
+                    {pm.picked.includes&&pm.picked.includes.length>0&&(
+                      <ul style={{margin:"10px 0 0",paddingLeft:18,fontSize:12.5,color:C.FG,lineHeight:1.6}}>
+                        {pm.picked.includes.map((x,i)=><li key={i}>{x}</li>)}
+                      </ul>
+                    )}
+                    <div style={{fontSize:11,color:C.MID,marginTop:8}}>Final price depends on date, location & details.</div>
+                    <button onClick={pmQuote} disabled={sending} style={{width:"100%",marginTop:12,background:C.P,border:"none",color:"#fff",borderRadius:10,padding:"10px 12px",fontSize:13,fontWeight:600,cursor:"pointer"}}>✅ Get an exact quote</button>
+                    <a href={`https://wa.me/${num}?text=${encodeURIComponent(pmQuoteText)}`} target="_blank" rel="noopener noreferrer" style={{display:"block",marginTop:8,textAlign:"center",border:`1px solid ${C.BORDER}`,color:C.FG,borderRadius:10,padding:"9px 12px",fontSize:12.5,textDecoration:"none"}}>📱 Ask on WhatsApp</a>
+                  </div>
+                )}
+                {pmPath.length>0?(
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={()=>setPmPath(pmPath.slice(0,-1))} style={{...pmBtn,flex:1,justifyContent:"center",padding:"8px 10px",fontSize:12}}>← Back</button>
+                    <button onClick={()=>setPmPath([])} style={{...pmBtn,flex:1,justifyContent:"center",padding:"8px 10px",fontSize:12}}>↺ Start over</button>
+                  </div>
+                ):(
+                  <div style={{fontSize:11.5,color:C.MID,textAlign:"center",marginTop:2}}>…or type your question below</div>
+                )}
               </div>
             )}
             {needsIdentity&&(

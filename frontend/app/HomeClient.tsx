@@ -17,6 +17,7 @@ import { loadOfflineKnowledge, answerOffline, saveOfflineMessage, type OfflineEn
 import LeadFinder from "@/components/cms/LeadFinder";
 import BookingExtraActions from "@/components/cms/BookingExtraActions";
 import CompanyBulkSend from "@/components/cms/CompanyBulkSend";
+import EmailScheduler from "@/components/cms/EmailScheduler";
 import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
@@ -2871,6 +2872,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [companyBulkCatId,setCompanyBulkCatId]=useState("");
   const [companySort,setCompanySort]=useState("newest");
   const [companyShowCount,setCompanyShowCount]=useState(50);
+  const [companyScheduleOpen,setCompanyScheduleOpen]=useState(false);
   useEffect(()=>{ setCompanyShowCount(50); },[companySearch,companyStatusFilter,companyCatFilter,companySort]);
 
   const [contactsList,setContactsList]=useState<any[]|null>(null);
@@ -6504,10 +6506,17 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <button onClick={()=>setCompanyAddOpen(v=>!v)} style={S.btnP}>{companyAddOpen?"✕ Cancel":"+ Add Company"}</button>
                 <button onClick={()=>importOpenWizard("company")} style={S.btnSm} title="Import Excel or CSV -- matching companies only get their missing details filled in">⤓ Import</button>
                 <button onClick={()=>exportOutreachExcel()} disabled={exportBusy} style={S.btnSm} title="Download a full Excel backup: companies, contacts, categories, tags">{exportBusy?"Exporting…":"⤒ Export / Backup"}</button>
+                <button onClick={()=>setCompanyScheduleOpen(v=>!v)} style={companyScheduleOpen?S.btnP:S.btnSm} title="Send a list a few per day automatically">📅 Schedule emails</button>
                 <button onClick={()=>{setSegmentsOpen(v=>!v);if(!segmentsOpen)loadSegments("company");}} style={S.btnSm}>📋 Segments</button>
                 <button onClick={loadCompanies} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
+            {companyScheduleOpen&&adminSession&&(
+              <div style={{marginBottom:16}}>
+                <EmailScheduler token={adminSession.access_token} companies={sortedCompanies} selected={companySel} starters={emailStarters}
+                  filterLabel={[companyCatFilter==="all"?"All companies":companyCatFilter==="none"?"Uncategorized":catName(companyCatFilter),companyStatusFilter!=="all"?companyStatusFilter:"",companySearch.trim()?`"${companySearch.trim()}"`:""].filter(Boolean).join(" · ")} />
+              </div>
+            )}
             {/* Company categories: filter chips (with live counts) + editable list. */}
             {!companyCategoriesReady?(
               <div style={{marginBottom:16,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>

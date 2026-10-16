@@ -3,7 +3,7 @@
 // (skip / update existing / create new) so nothing is silently overwritten.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { findOrCreateCompany, fullNameOf } from "../../../_shared/outreachHelpers";
-import { loadCategories, autoCategorize, type Category } from "../../../_shared/companyCategories";
+import { loadCategories, autoCategorize, linkCategories, type Category } from "../../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -48,6 +48,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   }
 
   let importCats: Category[] | null | undefined; // loaded lazily, once, for auto-filing new companies
+  const labels = labelLinker(env); // per-row "Categories" / "Tags" columns (e.g. from an Export backup)
   let imported = 0;
   let updated = 0;
   let skipped = 0;
@@ -75,20 +76,26 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
           notes: row.data.notes || null,
           source,
         };
+        const st = validStatus(row.data.status);
         if (row.action === "update" && row.duplicate_id) {
           // Fill in only what's missing -- never blank out or overwrite existing data.
           await fillMissing(env, "outreach_companies", row.duplicate_id, fields);
           const companyId = row.duplicate_id;
           if (tagId) await linkTag(env, "outreach_company_tags", "company_id", companyId, tagId);
+          await labels.link("company", companyId, row.data.categories, row.data.tags);
           updated++;
         } else {
+          if (st) fields.status = st;
           const res = await supaAdmin(env, "outreach_companies", { method: "POST", body: JSON.stringify(fields) });
           if (!res.ok) throw new Error(await res.text());
           const created = ((await res.json()) as any[])?.[0];
           if (tagId && created?.id) await linkTag(env, "outreach_company_tags", "company_id", created.id, tagId);
           if (created?.id) {
-            if (importCats === undefined) importCats = await loadCategories(env).catch(() => null);
-            await autoCategorize(env, created.id, fields.industry, importCats);
+            const hasCats = await labels.link("company", created.id, row.data.categories, row.data.tags);
+            if (!hasCats) {
+              if (importCats === undefined) importCats = await loadCategories(env).catch(() => null);
+              await autoCategorize(env, created.id, fields.industry, importCats);
+            }
           }
           imported++;
         }
@@ -118,12 +125,16 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
           // Fill in only what's missing -- never blank out or overwrite existing data.
           await fillMissing(env, "outreach_contacts", row.duplicate_id, fields);
           if (tagId) await linkTag(env, "outreach_contact_tags", "contact_id", row.duplicate_id, tagId);
+          await labels.link("contact", row.duplicate_id, null, row.data.tags);
           updated++;
         } else {
+          const cst = validStatus(row.data.status);
+          if (cst) fields.status = cst;
           const res = await supaAdmin(env, "outreach_contacts", { method: "POST", body: JSON.stringify(fields) });
           if (!res.ok) throw new Error(await res.text());
           const created = ((await res.json()) as any[])?.[0];
           if (tagId && created?.id) await linkTag(env, "outreach_contact_tags", "contact_id", created.id, tagId);
+          if (created?.id) await labels.link("contact", created.id, null, row.data.tags);
           imported++;
         }
       }
@@ -171,6 +182,51 @@ async function fillMissing(env: AdminEnv, table: string, id: string, incoming: R
   patch.updated_at = new Date().toISOString();
   const res = await supaAdmin(env, `${table}?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
   if (!res.ok) throw new Error(await res.text());
+}
+
+const STATUSES = ["prospect", "contacted", "interested", "client", "inactive"];
+const validStatus = (v: unknown) => { const s = String(v || "").trim().toLowerCase(); return STATUSES.includes(s) ? s : null; };
+const splitList = (v: unknown) => String(v || "").split(/[,;|]/).map((s) => s.trim()).filter(Boolean);
+
+// Links comma-separated category / tag names from a row, creating any that don't exist yet.
+// Only ever ADDS links -- existing categories/tags on a record are kept. Returns true if at
+// least one category was linked (so new companies skip industry-based auto-filing).
+function labelLinker(env: AdminEnv) {
+  const catIds = new Map<string, string>(); const tagIds = new Map<string, string>(); let loaded = false; let catsReady = true;
+  async function load() {
+    if (loaded) return; loaded = true;
+    const cats = await loadCategories(env);
+    if (!cats) catsReady = false; else for (const c of cats) catIds.set(c.name.toLowerCase(), c.id);
+    const t = await supaAdmin(env, "outreach_tags?select=id,name&limit=5000", { method: "GET" });
+    for (const x of t.ok ? ((await t.json()) as any[]) : []) tagIds.set(String(x.name).toLowerCase(), x.id);
+  }
+  async function idFor(kind: "cat" | "tag", name: string) {
+    const map = kind === "cat" ? catIds : tagIds; const key = name.toLowerCase();
+    if (map.has(key)) return map.get(key)!;
+    const table = kind === "cat" ? "outreach_categories" : "outreach_tags";
+    const body = kind === "cat" ? { name: name.slice(0, 60), sort_order: 100 + catIds.size } : { name: name.slice(0, 80) };
+    const r = await supaAdmin(env, table, { method: "POST", body: JSON.stringify(body) });
+    const id = r.ok ? ((await r.json()) as any[])?.[0]?.id : null;
+    if (id) map.set(key, id);
+    return id as string | null;
+  }
+  return {
+    async link(entity: "company" | "contact", id: string, categories: unknown, tags: unknown): Promise<boolean> {
+      const cats = splitList(categories), tgs = splitList(tags);
+      if (!cats.length && !tgs.length) return false;
+      await load();
+      let linkedCat = false;
+      if (entity === "company" && catsReady) {
+        const ids = (await Promise.all(cats.map((n) => idFor("cat", n)))).filter(Boolean) as string[];
+        if (ids.length) { await linkCategories(env, id, ids); linkedCat = true; }
+      }
+      for (const n of tgs) {
+        const tid = await idFor("tag", n);
+        if (tid) await linkTag(env, entity === "company" ? "outreach_company_tags" : "outreach_contact_tags", entity === "company" ? "company_id" : "contact_id", id, tid);
+      }
+      return linkedCat;
+    },
+  };
 }
 
 // Links a tag to a just-created/updated row, ignoring an already-existing link.

@@ -3,6 +3,7 @@
 // never duplicated just because a second contact there gets added.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
 import { findOrCreateCompany } from "../../_shared/outreachHelpers";
+import { fetchAllRows } from "../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -12,12 +13,11 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
 
-  const res = await supaAdmin(env, "outreach_contacts?select=*,outreach_companies(id,name)&order=created_at.desc&limit=1000", { method: "GET" });
-  if (!res.ok) return json({ error: "Could not load contacts.", detail: await res.text() }, 500, origin);
-  const contacts = (await res.json()) as any[];
+  // Paged -- a single request stops at 1000 rows.
+  const contacts = await fetchAllRows<any>(env, "outreach_contacts?select=*,outreach_companies(id,name)&order=created_at.desc,id.asc");
+  if (!contacts) return json({ error: "Could not load contacts." }, 500, origin);
 
-  const tagRes = await supaAdmin(env, "outreach_contact_tags?select=contact_id,outreach_tags(id,name)", { method: "GET" });
-  const tagLinks = tagRes.ok ? ((await tagRes.json()) as any[]) : [];
+  const tagLinks = (await fetchAllRows<any>(env, "outreach_contact_tags?select=contact_id,tag_id,outreach_tags(id,name)&order=contact_id.asc,tag_id.asc")) || [];
   const tagsByContact = new Map<string, any[]>();
   for (const t of tagLinks) {
     if (!t.contact_id || !t.outreach_tags) continue;

@@ -3648,6 +3648,10 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     address:["address"],
     company_name:["company name","company","organisation","organization"],
     company_website:["company website"],
+    notes:["notes","note","remarks"],
+    status:["status"],
+    categories:["categories","category"],
+    tags:["tags","tag","labels"],
   };
   function importOpenWizard(entityType:"company"|"contact"){
     setImportOpen(entityType); setImportStep(1); setImportRawRows(null); setImportColumns([]);
@@ -3655,19 +3659,76 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setImportTagName(""); setImportErr(""); setImportResult(null);
   }
   function importCloseWizard(){ setImportOpen(null); }
+  // Export / backup to Excel -- functions/api/admin/outreach-export.ts. One workbook with
+  // Companies, Contacts and Categories sheets. Column headers match the Import wizard's
+  // auto-detect, so the same file can be imported back (duplicates only fill missing data).
+  // onlyCompanyIds: export just those companies (+ their contacts) instead of everything.
+  const [exportBusy,setExportBusy]=useState(false);
+  async function exportOutreachExcel(onlyCompanyIds?:string[]){
+    if(!adminSession) return;
+    setExportBusy(true);
+    try{
+      const res=await fetch("/api/admin/outreach-export",{headers:{Authorization:`Bearer ${adminSession.access_token}`}});
+      const d=await res.json();
+      if(!res.ok) throw new Error(d.error||"Export failed");
+      const XLSX=await import("xlsx");
+      const tagName=new Map<string,string>((d.tags||[]).map((t:any)=>[t.id,t.name]));
+      const catName=new Map<string,string>((d.categories||[]).map((k:any)=>[k.id,k.name]));
+      const group=(links:any[],key:string,val:string,names:Map<string,string>)=>{const m=new Map<string,string[]>();for(const l of links){const n=names.get(l[val]);if(!n)continue;if(!m.has(l[key]))m.set(l[key],[]);m.get(l[key])!.push(n);}return m;};
+      const compTags=group(d.company_tags||[],"company_id","tag_id",tagName);
+      const compCats=group(d.company_categories||[],"company_id","category_id",catName);
+      const contTags=group(d.contact_tags||[],"contact_id","tag_id",tagName);
+      const only=onlyCompanyIds&&onlyCompanyIds.length?new Set(onlyCompanyIds):null;
+      const companies=(d.companies||[]).filter((c:any)=>!only||only.has(c.id));
+      const compById=new Map<string,any>((d.companies||[]).map((c:any)=>[c.id,c]));
+      const contacts=(d.contacts||[]).filter((p:any)=>!only||(p.company_id&&only.has(p.company_id)));
+      const peopleCount=new Map<string,number>(); for(const p of d.contacts||[]) if(p.company_id) peopleCount.set(p.company_id,(peopleCount.get(p.company_id)||0)+1);
+      const date=(v:any)=>v?String(v).slice(0,10):"";
+      const compRows=companies.map((c:any)=>({
+        "Company name":c.name||"","Industry":c.industry||"","Categories":(compCats.get(c.id)||[]).join(", "),
+        "Website":c.website||"","Email":c.email||"","Phone":c.phone||"","WhatsApp":c.whatsapp||"",
+        "Country":c.country||"","City":c.city||"","Address":c.address||"","LinkedIn":c.linkedin||"",
+        "Notes":c.notes||"","Status":c.status||"","Tags":(compTags.get(c.id)||[]).join(", "),
+        "Source":c.source||"","People":peopleCount.get(c.id)||0,"Added":date(c.created_at),"Updated":date(c.updated_at),
+      }));
+      const contRows=contacts.map((p:any)=>{const co=p.company_id?compById.get(p.company_id):null;return{
+        "Full name":p.full_name||[p.first_name,p.last_name].filter(Boolean).join(" "),"First name":p.first_name||"","Last name":p.last_name||"",
+        "Job title":p.job_title||"","Email":p.email||"","Phone":p.phone||"","WhatsApp":p.whatsapp||"","Website":p.website||"",
+        "LinkedIn":p.linkedin||"","Country":p.country||"","City":p.city||"","Address":p.address||"",
+        "Company name":co?.name||"","Company website":co?.website||"","Notes":p.notes||"","Status":p.status||"",
+        "Tags":(contTags.get(p.id)||[]).join(", "),"Source":p.source||"","Added":date(p.created_at),
+      };});
+      const catRows=(d.categories||[]).map((k:any)=>({"Category":k.name,"Companies":(d.company_categories||[]).filter((l:any)=>l.category_id===k.id).length}));
+      const wb=XLSX.utils.book_new();
+      const addSheet=(rows:any[],name:string,headers:string[])=>{
+        const ws=rows.length?XLSX.utils.json_to_sheet(rows):XLSX.utils.aoa_to_sheet([headers]);
+        ws["!cols"]=headers.map(h=>({wch:Math.min(42,Math.max(h.length+2,...rows.slice(0,200).map(r=>String(r[h]??"").length+1)))}));
+        XLSX.utils.book_append_sheet(wb,ws,name);
+      };
+      addSheet(compRows,"Companies",Object.keys(compRows[0]||{"Company name":""}));
+      addSheet(contRows,"Contacts",Object.keys(contRows[0]||{"Full name":""}));
+      addSheet(catRows,"Categories",["Category","Companies"]);
+      const stamp=new Date().toISOString().slice(0,16).replace("T","_").replace(":","-");
+      XLSX.writeFile(wb,`${only?"companies-selected":"companies-backup"}_${stamp}.xlsx`);
+    }catch(e:any){ alert(e.message||"Export failed"); }
+    setExportBusy(false);
+  }
   async function importHandleFile(file:File){
     setImportErr("");
     try{
       const XLSX=await import("xlsx");
       const buf=await file.arrayBuffer();
       const wb=XLSX.read(buf,{type:"array"});
-      const sheet=wb.Sheets[wb.SheetNames[0]];
+      // A backup from "Export" has Companies + Contacts sheets -- pick the matching one.
+      const want=importOpen==="contact"?"contacts":"companies";
+      const sheetName=wb.SheetNames.find(n=>n.trim().toLowerCase()===want)||wb.SheetNames[0];
+      const sheet=wb.Sheets[sheetName];
       const rows=XLSX.utils.sheet_to_json(sheet,{defval:""}) as any[];
       if(!rows.length){ setImportErr("That file has no rows."); return; }
       const columns=Object.keys(rows[0]);
       const fields=importOpen==="company"
-        ?["name","industry","website","email","phone","whatsapp","country","city","address","linkedin"]
-        :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website"];
+        ?["name","industry","categories","website","email","phone","whatsapp","country","city","address","linkedin","notes","status","tags"]
+        :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website","notes","status","tags"];
       const mapping:Record<string,string>={};
       for(const field of fields){
         const guesses=IMPORT_FIELD_GUESSES[field]||[field];
@@ -3708,7 +3769,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       // Send in small batches: one big request exceeds Cloudflare's per-request subrequest/time limits.
       const todo=rows.filter(r=>r.action!=="skip");
       const total={total:rows.length,imported:0,updated:0,skipped:rows.length-todo.length,duplicates:0,errors:[] as any[]};
-      const BATCH=15;
+      const BATCH=8; // each row can now also merge + link categories/tags -- keep under Cloudflare's per-request subrequest cap
       for(let s=0;s<todo.length;s+=BATCH){
         setImportErr(`Importing ${Math.min(s+BATCH,todo.length)} of ${todo.length}…`);
         const chunk=todo.slice(s,s+BATCH);
@@ -6441,7 +6502,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
                 </select>
                 <button onClick={()=>setCompanyAddOpen(v=>!v)} style={S.btnP}>{companyAddOpen?"✕ Cancel":"+ Add Company"}</button>
-                <button onClick={()=>importOpenWizard("company")} style={S.btnSm}>⤓ Import</button>
+                <button onClick={()=>importOpenWizard("company")} style={S.btnSm} title="Import Excel or CSV -- matching companies only get their missing details filled in">⤓ Import</button>
+                <button onClick={()=>exportOutreachExcel()} disabled={exportBusy} style={S.btnSm} title="Download a full Excel backup: companies, contacts, categories, tags">{exportBusy?"Exporting…":"⤒ Export / Backup"}</button>
                 <button onClick={()=>{setSegmentsOpen(v=>!v);if(!segmentsOpen)loadSegments("company");}} style={S.btnSm}>📋 Segments</button>
                 <button onClick={loadCompanies} style={S.btnSm}>↻ Refresh</button>
               </div>
@@ -6569,6 +6631,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     </select>
                     <button onClick={()=>bulkCompanyCategory("add")} disabled={!companyBulkCatId||companyBusy} style={S.btnSm}>+ Add</button>
                     <button onClick={()=>bulkCompanyCategory("remove")} disabled={!companyBulkCatId||companyBusy} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>− Remove</button>
+                    <span style={{flex:1}} />
+                    <button onClick={()=>exportOutreachExcel(companySel)} disabled={exportBusy} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>{exportBusy?"Exporting…":`⤒ Export ${companySel.length} ticked`}</button>
                   </div>
                 )}
                 {filtered.length===0&&<div style={{color:C.MID,fontSize:13,fontStyle:"italic",padding:"8px 0"}}>No companies match these filters.</div>}
@@ -6725,6 +6789,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <button onClick={()=>setContactAddOpen(v=>!v)} style={S.btnP}>{contactAddOpen?"✕ Cancel":"+ Add Contact"}</button>
                 <button onClick={bcOpenScanner} style={S.btnSm}>📇 Scan Business Card</button>
                 <button onClick={()=>importOpenWizard("contact")} style={S.btnSm}>⤓ Import</button>
+                <button onClick={()=>exportOutreachExcel()} disabled={exportBusy} style={S.btnSm} title="Download a full Excel backup: companies, contacts, categories, tags">{exportBusy?"Exporting…":"⤒ Export / Backup"}</button>
                 <button onClick={()=>{setSegmentsOpen(v=>!v);if(!segmentsOpen)loadSegments("contact");}} style={S.btnSm}>📋 Segments</button>
                 <button onClick={loadContacts} style={S.btnSm}>↻ Refresh</button>
               </div>
@@ -6861,8 +6926,8 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
         {importOpen&&(()=>{
           const isCompany=importOpen==="company";
           const fields=isCompany
-            ?["name","industry","website","email","phone","whatsapp","country","city","address","linkedin"]
-            :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website"];
+            ?["name","industry","categories","website","email","phone","whatsapp","country","city","address","linkedin","notes","status","tags"]
+            :["first_name","last_name","full_name","job_title","email","phone","whatsapp","website","linkedin","country","city","address","company_name","company_website","notes","status","tags"];
           const counts=importPreviewResults?{
             valid:importPreviewResults.filter(r=>r.status==="valid").length,
             dup:importPreviewResults.filter(r=>r.status==="possible_duplicate").length,

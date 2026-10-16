@@ -14,7 +14,26 @@ export default function LeadFinder({ token }: { token: string }) {
   const [niche, setNiche] = useState("Interior design"); const [area, setArea] = useState("Dubai"); const [source, setSource] = useState<"osm" | "google">("google");
   const [leads, setLeads] = useState<Lead[]>([]); const [busy, setBusy] = useState(""); const [msg, setMsg] = useState(""); const [manual, setManual] = useState(""); const [google, setGoogle] = useState<boolean | null>(null);
   const call = async (body: any) => { const r = await fetch("/api/admin/lead-finder", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || (r.status === 401 ? "Your CMS login expired — please sign in again." : `Server error (${r.status}) — please try again.`)); return j; };
-  const search = async () => { setBusy("Searching…"); setMsg(""); try { const j = await call({ action: "search", niche, area, source, limit: 150 }); setGoogle(j.google); setLeads(j.leads.map((l: Lead) => ({ ...l, pick: !l.already }))); setMsg(`Found ${j.leads.length} companies (${j.leads.filter((l: Lead) => l.website).length} with a website). Next: click "Find emails".${source === "osm" ? " Tip: OpenStreetMap has very little contact data — choose Google Places for websites and phone numbers." : ""}`); } catch (e: any) { setMsg(e.message); } setBusy(""); };
+  // "Find more": each click searches the next part of the area (Deira, Jumeirah, Al Barsha…) or
+  // a different wording, and adds only companies not already in the list.
+  const [round, setRound] = useState(0); const [hasMore, setHasMore] = useState(false);
+  const findMore = async () => {
+    const keys = leads.flatMap((l) => [l.name, (() => { try { return new URL(l.website).hostname.replace(/^www\./, ""); } catch { return ""; } })()]).filter(Boolean);
+    let r = round, added = 0, more = true, where = "";
+    for (let tries = 0; tries < 4 && added === 0 && more; tries++) { // skip parts of town that add nothing new
+      r += 1; setBusy(`Finding more… (search ${r + 1})`);
+      try {
+        const j = await call({ action: "search", niche, area, source, limit: 150, round: r, exclude: keys });
+        more = !!j.has_more; where = j.searched || "";
+        const fresh = (j.leads as Lead[]).map((l) => ({ ...l, pick: !l.already }));
+        added = fresh.length; keys.push(...fresh.map((l) => l.name));
+        if (fresh.length) setLeads((c) => [...c, ...fresh]);
+      } catch (e: any) { setMsg(e.message); more = false; }
+    }
+    setRound(r); setHasMore(more); setBusy("");
+    setMsg(added ? `✓ Added ${added} more companies (${where}). Click "Find emails" for the new ones.` : more ? "No new companies in the last searches — try Find more again." : "No more new companies found for this search.");
+  };
+  const search = async () => { setBusy("Searching…"); setMsg(""); try { const j = await call({ action: "search", niche, area, source, limit: 150 }); setRound(0); setHasMore(!!j.has_more); setGoogle(j.google); setLeads(j.leads.map((l: Lead) => ({ ...l, pick: !l.already }))); setMsg(`Found ${j.leads.length} companies (${j.leads.filter((l: Lead) => l.website).length} with a website). Next: click "Find emails".${source === "osm" ? " Tip: OpenStreetMap has very little contact data — choose Google Places for websites and phone numbers." : ""}`); } catch (e: any) { setMsg(e.message); } setBusy(""); };
   const addManual = () => { const rows = manual.split(/\n+/).map((s) => s.trim()).filter(Boolean).map((s) => { const [name, website] = s.includes("|") ? s.split("|").map((x) => x.trim()) : [s.replace(/^https?:\/\/(www\.)?/, "").split("/")[0], s]; return { name, website: /^https?:/.test(website) ? website : "https://" + website, phone: "", email: "", address: "", rating: "", source: "Manual", pick: true } as Lead; }); setLeads((l) => [...rows, ...l]); setManual(""); };
   const enrich = async () => {
     const todo = leads.map((l, i) => ({ l, i })).filter(({ l }) => l.pick && !l.checked && (l.website || l.email));
@@ -30,7 +49,22 @@ export default function LeadFinder({ token }: { token: string }) {
     const pick = leads.filter((l) => l.pick); if (!pick.length) { setMsg("Tick at least one company."); return; }
     const tag = `Leads · ${niche} · ${area}`;
     if (!confirm(`Save ${pick.length} companies to Contacts with tag "${tag}"?\nNothing will be emailed.`)) return;
-    setBusy("Saving…"); try { const j = await call({ action: "save", leads: pick, tag, niche, area }); setMsg(`✓ Saved ${j.saved} (skipped ${j.skipped} duplicates) with tag "${j.tag}". Use it in Email Designer → Campaigns.`); setLeads((c) => c.map((l) => (l.pick ? { ...l, already: true, pick: false } : l))); setBusy(""); autofill(false); return; } catch (e: any) { setMsg(e.message); } setBusy("");
+    // Saved in small groups: one big request runs out of Cloudflare's per-request limit part-way
+    // (that's why only some companies were being saved). Each group is marked saved on success.
+    let saved = 0, skipped = 0, failedGroups = 0; const SZ = 5;
+    for (let k = 0; k < pick.length; k += SZ) {
+      const group = pick.slice(k, k + SZ);
+      setBusy(`Saving… ${Math.min(k + SZ, pick.length)} / ${pick.length}`);
+      let ok = false;
+      for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+        try { const j = await call({ action: "save", leads: group, tag, niche, area }); saved += j.saved || 0; skipped += j.skipped || 0; ok = true; }
+        catch { await new Promise((r) => setTimeout(r, 1200)); }
+      }
+      if (ok) setLeads((c) => c.map((l) => (group.includes(l) ? { ...l, already: true, pick: false } : l)));
+      else failedGroups++;
+    }
+    setMsg(`${failedGroups ? "⚠" : "✓"} Saved ${saved} (skipped ${skipped} already in Contacts) with tag "${tag}".${failedGroups ? ` ${failedGroups * SZ} or fewer could not be saved -- they are still ticked, click Save again.` : " Use it in Email Designer → Campaigns."}`);
+    setBusy(""); if (saved) autofill(false);
   };
   // Auto-fill: visits every saved company's own website and fills in the missing email,
   // mobile/WhatsApp, landline and contact person. Runs 2 companies at a time; free.
@@ -71,7 +105,7 @@ export default function LeadFinder({ token }: { token: string }) {
         <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#C4B5FD", fontWeight: 600 }}>Area<input value={area} onChange={(e) => setArea(e.target.value)} style={{ ...inp, width: 180 }} /></label>
         <label style={{ display: "grid", gap: 6, fontSize: 12, color: "#C4B5FD", fontWeight: 600 }}>Source<select value={source} onChange={(e) => setSource(e.target.value as any)} style={{ ...inp, background: "#221640" }}><option value="google">Google Places (best — websites & phones)</option><option value="osm">OpenStreetMap (free, little contact data)</option></select></label>
         <button onClick={search} disabled={!!busy} style={btn(true)}>Search</button>
-        {leads.length > 0 && <><button onClick={enrich} disabled={!!busy} style={btn()}>✉ Find emails</button><button onClick={save} disabled={!!busy || !ticked} style={{ ...btn(true), background: "#16A34A" }}>Save {ticked} to Contacts</button></>}
+        {leads.length > 0 && <><button onClick={findMore} disabled={!!busy || !hasMore} style={btn()} title="Search other parts of the area for more companies">🔎 Find more</button><button onClick={enrich} disabled={!!busy} style={btn()}>✉ Find emails</button><button onClick={save} disabled={!!busy || !ticked} style={{ ...btn(true), background: "#16A34A" }}>Save {ticked} to Contacts</button></>}
       </div>
       <details style={card}><summary style={{ cursor: "pointer", fontWeight: 700 }}>➕ Add companies manually (paste websites, one per line)</summary>
         <textarea value={manual} onChange={(e) => setManual(e.target.value)} placeholder={"Company name | https://website.com\nhttps://anotherstudio.ae"} style={{ ...inp, height: 110, width: "100%", boxSizing: "border-box", padding: 12, marginTop: 10 }} />

@@ -7,7 +7,7 @@
 //        (same website or email) are skipped, never doubled.
 // Free sources: OpenStreetMap (no key). Google Places is used only if GOOGLE_PLACES_KEY is set.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
-import { loadCategories, autoCategorize } from "../../_shared/companyCategories";
+import { loadCategories, autoCategorize, fetchAllRows } from "../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -27,7 +27,28 @@ const clean = (s: any) => String(s || "").trim();
 // UAE mobile numbers start 05x / +971 5x -> stored as WhatsApp/mobile; anything else = landline.
 const isMobile = (p: string) => /^(\+?971|00971|0)?\s*5\d/.test(String(p || "").replace(/[\s()-]/g, ""));
 const normSite = (u: string) => { const v = clean(u); if (!v) return ""; try { const x = new URL(/^https?:/i.test(v) ? v : "https://" + v); return x.origin; } catch { return ""; } };
-const domain = (u: string) => { try { return new URL(u).hostname.replace(/^www\./, "").toLowerCase(); } catch { return ""; } };
+// Social / map / link-page hosts are shared by thousands of businesses, so they never count as
+// "the same company" (many clinics list an Instagram page as their website).
+const SHARED_HOSTS = /(^|\.)(instagram\.com|facebook\.com|fb\.com|linktr\.ee|wa\.me|whatsapp\.com|google\.com|goo\.gl|business\.site|tiktok\.com|x\.com|twitter\.com|linkedin\.com|youtube\.com|bit\.ly|beacons\.ai|taplink\.cc)$/i;
+const domain = (u: string) => { try { const h = new URL(u).hostname.replace(/^www\./, "").toLowerCase(); return SHARED_HOSTS.test(h) ? "" : h; } catch { return ""; } };
+
+// "Find more": Google returns at most 60 places per search, so each extra round searches a
+// different part of the area (or a different wording) and only new companies are added.
+const SUB_AREAS: Record<string, string[]> = {
+  dubai: ["Deira", "Bur Dubai", "Karama", "Jumeirah", "Al Barsha", "Dubai Marina", "JLT", "Business Bay", "Downtown Dubai", "Al Quoz", "Mirdif", "Dubai Silicon Oasis", "JVC", "Al Nahda Dubai", "Motor City", "Dubai Healthcare City", "International City", "Al Qusais", "Umm Suqeim", "Arabian Ranches"],
+  sharjah: ["Al Majaz", "Al Nahda Sharjah", "Al Taawun", "Al Khan", "Muwailih", "Al Qasimia", "Rolla", "University City Sharjah", "Al Mamzar Sharjah", "Industrial Area Sharjah"],
+  "abu dhabi": ["Al Reem Island", "Khalifa City", "Al Khalidiyah", "Mussafah", "Yas Island", "Saadiyat", "Al Bateen", "Mohammed Bin Zayed City", "Al Raha", "Tourist Club Area"],
+  ajman: ["Al Nuaimiya", "Al Rashidiya Ajman", "Al Jurf", "Al Rawda Ajman", "Ajman Corniche", "Al Mowaihat"],
+};
+const WORDINGS = ["best", "top rated", "affordable", "luxury", "new", "family", "specialist", "centre"];
+function searchVariant(niche: string, area: string, round: number): { niche: string; area: string } | null {
+  if (round <= 0) return { niche, area };
+  const key = Object.keys(SUB_AREAS).find((k) => area.toLowerCase().includes(k));
+  const subs = key ? SUB_AREAS[key] : [];
+  if (round <= subs.length) return { niche, area: `${subs[round - 1]}, ${area}` };
+  const w = WORDINGS[round - subs.length - 1];
+  return w ? { niche: `${w} ${niche}`, area } : null;
+}
 
 async function searchOSM(niche: string, area: string, limit: number) {
   const key = Object.keys(NICHE_OSM).find((k) => niche.toLowerCase().includes(k)) || "";
@@ -145,14 +166,18 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
       const limit = Math.min(Math.max(Number(b.limit) || 60, 5), 200);
       const useGoogle = b.source === "google";
       if (useGoogle && !env.GOOGLE_PLACES_KEY) return json({ error: "Google Places isn't connected yet — use OpenStreetMap (free), or add GOOGLE_PLACES_KEY." }, 400, origin);
-      let rows = useGoogle ? await searchGoogle(env, niche, area, limit) : await searchOSM(niche, area, limit);
-      const seen = new Set<string>(); rows = rows.filter((x: any) => { const k = domain(x.website) || x.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
-      // mark ones already in Contacts
-      const ex = await supaAdmin(env, "outreach_companies?select=name,website,email&limit=5000", { method: "GET" });
-      const have = ex.ok ? ((await ex.json()) as any[]) : [];
+      const round = Math.max(0, Math.min(40, Math.floor(Number(b.round) || 0)));
+      const v = searchVariant(niche, area, round);
+      if (!v) return json({ leads: [], google: !!env.GOOGLE_PLACES_KEY, has_more: false, searched: "" }, 200, origin);
+      let rows = useGoogle ? await searchGoogle(env, v.niche, v.area, limit) : await searchOSM(v.niche, v.area, limit);
+      // Skip anything already in the on-screen list (sent back by "Find more").
+      const shown = new Set<string>((Array.isArray(b.exclude) ? b.exclude : []).map((s: any) => clean(s).toLowerCase()).filter(Boolean));
+      const seen = new Set<string>(); rows = rows.filter((x: any) => { const k = domain(x.website) || x.name.toLowerCase(); if (seen.has(k) || shown.has(k) || shown.has(x.name.toLowerCase())) return false; seen.add(k); return true; });
+      // mark ones already in Contacts (paged -- the list is past 1000 companies)
+      const have = (await fetchAllRows<any>(env, "outreach_companies?select=name,website,email&order=id.asc")) || [];
       const haveKeys = new Set(have.flatMap((c) => [domain(normSite(c.website)), clean(c.email).toLowerCase(), clean(c.name).toLowerCase()]).filter(Boolean));
       rows = rows.slice(0, limit).map((x: any) => ({ ...x, already: haveKeys.has(domain(x.website)) || (x.email && haveKeys.has(x.email)) || haveKeys.has(x.name.toLowerCase()) }));
-      return json({ leads: rows, google: !!env.GOOGLE_PLACES_KEY }, 200, origin);
+      return json({ leads: rows, google: !!env.GOOGLE_PLACES_KEY, has_more: !!searchVariant(niche, area, round + 1), searched: `${v.niche} in ${v.area}` }, 200, origin);
     }
     if (b.action === "enrich") {
       const list = (Array.isArray(b.leads) ? b.leads : []).slice(0, 4);
@@ -221,13 +246,15 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
       const tr = await supaAdmin(env, "outreach_tags?on_conflict=name", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify({ name: tagName }) });
       let tag = tr.ok ? ((await tr.json()) as any[])?.[0] : null;
       if (!tag) { const g = await supaAdmin(env, `outreach_tags?name=eq.${encodeURIComponent(tagName)}&select=id`, { method: "GET" }); tag = g.ok ? ((await g.json()) as any[])?.[0] : null; }
-      const ex = await supaAdmin(env, "outreach_companies?select=id,name,website,email&limit=5000", { method: "GET" });
-      const have = ex.ok ? ((await ex.json()) as any[]) : [];
+      const have = (await fetchAllRows<any>(env, "outreach_companies?select=id,name,website,email&order=id.asc")) || [];
       let saved = 0, skipped = 0;
       const cats = await loadCategories(env).catch(() => null); // auto-file new companies by niche
       for (const l of (Array.isArray(b.leads) ? b.leads : []).slice(0, 200)) {
         const site = normSite(l.website), email = clean(l.email).toLowerCase();
-        if (have.some((c) => (site && domain(normSite(c.website)) === domain(site)) || (email && clean(c.email).toLowerCase() === email))) { skipped++; continue; }
+        // Duplicate = same own website, same email, or same name. (An Instagram/Facebook "website"
+        // is shared by many businesses, so it never counts -- that used to skip real companies.)
+        const dk = domain(site), nm = clean(l.name).toLowerCase();
+        if (have.some((c) => (dk && domain(normSite(c.website)) === dk) || (email && clean(c.email).toLowerCase() === email) || (nm && clean(c.name).toLowerCase() === nm))) { skipped++; continue; }
         const cr = await supaAdmin(env, "outreach_companies", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ name: clean(l.name).slice(0, 200), industry: clean(b.niche || l.niche).slice(0, 80) || null, website: site || null, email: email || null, phone: !isMobile(l.phone) ? clean(l.phone) || null : null, whatsapp: isMobile(l.phone) ? clean(l.phone) : null, city: clean(b.area || "Dubai"), country: "UAE", address: clean(l.address) || null, source: `Lead Finder · ${clean(l.source) || "OpenStreetMap"}`, notes: l.rating ? `Rating ${l.rating}` : null }) });
         const comp = cr.ok ? ((await cr.json()) as any[])?.[0] : null; if (!comp) { skipped++; continue; }
         have.push(comp);

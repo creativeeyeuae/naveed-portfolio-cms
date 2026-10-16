@@ -76,9 +76,8 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
           source,
         };
         if (row.action === "update" && row.duplicate_id) {
-          fields.updated_at = new Date().toISOString();
-          const res = await supaAdmin(env, `outreach_companies?id=eq.${row.duplicate_id}`, { method: "PATCH", body: JSON.stringify(fields) });
-          if (!res.ok) throw new Error(await res.text());
+          // Fill in only what's missing -- never blank out or overwrite existing data.
+          await fillMissing(env, "outreach_companies", row.duplicate_id, fields);
           const companyId = row.duplicate_id;
           if (tagId) await linkTag(env, "outreach_company_tags", "company_id", companyId, tagId);
           updated++;
@@ -116,9 +115,8 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
           source,
         };
         if (row.action === "update" && row.duplicate_id) {
-          fields.updated_at = new Date().toISOString();
-          const res = await supaAdmin(env, `outreach_contacts?id=eq.${row.duplicate_id}`, { method: "PATCH", body: JSON.stringify(fields) });
-          if (!res.ok) throw new Error(await res.text());
+          // Fill in only what's missing -- never blank out or overwrite existing data.
+          await fillMissing(env, "outreach_contacts", row.duplicate_id, fields);
           if (tagId) await linkTag(env, "outreach_contact_tags", "contact_id", row.duplicate_id, tagId);
           updated++;
         } else {
@@ -148,6 +146,32 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
 
   return json({ total: rows.length, imported, updated, skipped, duplicates: rows.filter((r) => r.action === "update").length, errors }, 200, origin);
 };
+
+// "Update existing" = merge, not replace. Reads the current record and only writes fields
+// that are empty there and present in the import. Existing values are never overwritten or
+// cleared (an empty cell in the spreadsheet used to wipe the saved value -- that was the
+// data-loss bug). Notes are appended instead of replaced. `source` is kept as it was.
+const isEmpty = (v: unknown) => v === null || v === undefined || String(v).trim() === "";
+async function fillMissing(env: AdminEnv, table: string, id: string, incoming: Record<string, unknown>) {
+  const cur = await supaAdmin(env, `${table}?id=eq.${id}&select=*&limit=1`, { method: "GET" });
+  if (!cur.ok) throw new Error(await cur.text());
+  const existing = ((await cur.json()) as any[])?.[0];
+  if (!existing) throw new Error("Existing record not found.");
+  const patch: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(incoming)) {
+    if (k === "source" || k === "updated_at" || isEmpty(v)) continue;
+    if (k === "notes") {
+      const oldNotes = String(existing.notes || "");
+      if (!oldNotes.includes(String(v).trim())) patch.notes = oldNotes ? `${oldNotes}\n${String(v).trim()}` : v;
+      continue;
+    }
+    if (k in existing && isEmpty(existing[k])) patch[k] = v;
+  }
+  if (!Object.keys(patch).length) return;
+  patch.updated_at = new Date().toISOString();
+  const res = await supaAdmin(env, `${table}?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) });
+  if (!res.ok) throw new Error(await res.text());
+}
 
 // Links a tag to a just-created/updated row, ignoring an already-existing link.
 async function linkTag(env: AdminEnv, table: string, idColumn: string, id: string, tagId: string) {

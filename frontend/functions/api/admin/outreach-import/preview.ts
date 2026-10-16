@@ -5,6 +5,7 @@
 // actual write step.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { isValidEmail, isValidPhone, fullNameOf } from "../../../_shared/outreachHelpers";
+import { fetchAllRows } from "../../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -26,13 +27,12 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
 
   // Pull the existing companies/contacts once so every row can be checked in-memory
   // instead of firing one query per row (500-row imports would otherwise be very slow).
-  const companiesRes = await supaAdmin(env, "outreach_companies?select=id,name,website", { method: "GET" });
-  const existingCompanies = companiesRes.ok ? ((await companiesRes.json()) as any[]) : [];
+  // Paged -- a single request stops at 1000 rows, which would miss duplicates past that.
+  const existingCompanies = (await fetchAllRows<any>(env, "outreach_companies?select=id,name,website&order=id.asc")) || [];
 
   let existingContacts: any[] = [];
   if (entityType === "contact") {
-    const contactsRes = await supaAdmin(env, "outreach_contacts?select=id,email,phone,whatsapp,full_name", { method: "GET" });
-    existingContacts = contactsRes.ok ? ((await contactsRes.json()) as any[]) : [];
+    existingContacts = (await fetchAllRows<any>(env, "outreach_contacts?select=id,email,phone,whatsapp,full_name&order=id.asc")) || [];
   }
 
   const norm = (v: unknown) => String(v || "").trim().toLowerCase();

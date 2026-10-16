@@ -3694,7 +3694,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       if(!res.ok) throw new Error(data.error||"Could not preview import");
       setImportPreviewResults(data.results||[]);
       const actions:Record<number,"skip"|"update"|"create">={};
-      for(const r of data.results||[]) actions[r.row_index]=r.status==="invalid"?"skip":r.status==="possible_duplicate"?"skip":"create";
+      for(const r of data.results||[]) actions[r.row_index]=r.status==="invalid"?"skip":r.status==="possible_duplicate"?"update":"create"; // duplicates: fill in missing details only (never overwrites)
       setImportRowActions(actions);
       setImportStep(3);
     }catch(e:any){ setImportErr(e.message||"Could not preview import"); }
@@ -6919,14 +6919,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
 
               {importStep===4&&importPreviewResults&&(
                 <div>
-                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Decide what to do with possible duplicates. Nothing existing is ever overwritten unless you choose "Update existing".</div>
+                  <div style={{fontSize:12.5,color:C.MID,marginBottom:14}}>Decide what to do with possible duplicates. "Add missing details" only fills empty fields on the existing record -- saved data is never replaced or cleared.</div>
                   <div style={{maxHeight:300,overflowY:"auto" as const,marginBottom:16,display:"flex",flexDirection:"column",gap:8}}>
                     {importPreviewResults.filter(r=>r.status!=="invalid").map(r=>(
                       <div key={r.row_index} style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,padding:"8px 12px",background:"rgba(255,255,255,0.03)",borderRadius:8,fontSize:12}}>
                         <span style={{color:C.FG}}>{String(r.data.name||r.data.full_name||[r.data.first_name,r.data.last_name].filter(Boolean).join(" ")||"(no name)")}{r.duplicate?<span style={{color:C.MID}}> — matches existing {r.duplicate.name||r.duplicate.full_name}</span>:null}</span>
                         <div style={{display:"flex",gap:6}}>
                           {(["skip","update","create"] as const).filter(a=>a!=="update"||r.duplicate).map(a=>(
-                            <button key={a} onClick={()=>setImportRowActions(x=>({...x,[r.row_index]:a}))} style={{...(importRowActions[r.row_index]===a?S.btnP:S.btnO),padding:"5px 10px",fontSize:10.5}}>{a==="skip"?"Skip":a==="update"?"Update existing":"Create new"}</button>
+                            <button key={a} onClick={()=>setImportRowActions(x=>({...x,[r.row_index]:a}))} style={{...(importRowActions[r.row_index]===a?S.btnP:S.btnO),padding:"5px 10px",fontSize:10.5}}>{a==="skip"?"Skip":a==="update"?"Add missing details":"Create new"}</button>
                           ))}
                         </div>
                       </div>

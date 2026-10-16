@@ -19,6 +19,9 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env, para
   const tagLinks = tagRes.ok ? ((await tagRes.json()) as any[]) : [];
   company.tags = tagLinks.map((t) => t.outreach_tags).filter(Boolean);
 
+  const catRes = await supaAdmin(env, `outreach_company_categories?company_id=eq.${id}&select=category_id`, { method: "GET" });
+  company.category_ids = catRes.ok ? ((await catRes.json()) as any[]).map((r) => r.category_id) : [];
+
   const contactsRes = await supaAdmin(env, `outreach_contacts?company_id=eq.${id}&select=*&order=created_at.desc`, { method: "GET" });
   company.contacts = contactsRes.ok ? await contactsRes.json() : [];
 

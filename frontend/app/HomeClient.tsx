@@ -2857,11 +2857,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [companyDetail,setCompanyDetail]=useState<any|null>(null);
   const [companyDetailLoading,setCompanyDetailLoading]=useState(false);
   const [companyAddOpen,setCompanyAddOpen]=useState(false);
-  const COMPANY_EMPTY={name:"",industry:"",website:"",email:"",phone:"",whatsapp:"",country:"",city:"",address:"",linkedin:"",notes:"",status:"prospect"};
+  const COMPANY_EMPTY={name:"",industry:"",website:"",email:"",phone:"",whatsapp:"",country:"",city:"",address:"",linkedin:"",notes:"",status:"prospect",category_ids:[] as string[]};
   const [companyAddForm,setCompanyAddForm]=useState<any>(COMPANY_EMPTY);
   const [companyDuplicateFound,setCompanyDuplicateFound]=useState<any>(null);
   const [companyBusy,setCompanyBusy]=useState(false);
   const [companyNewTag,setCompanyNewTag]=useState("");
+  // Editable Company Categories (migration 0025) -- a company can sit in several at once.
+  const [companyCategories,setCompanyCategories]=useState<{id:string;name:string;sort_order:number}[]>([]);
+  const [companyCategoriesReady,setCompanyCategoriesReady]=useState(true);
+  const [companyCatFilter,setCompanyCatFilter]=useState<string>("all"); // "all" | "none" | category id
+  const [companyCatManageOpen,setCompanyCatManageOpen]=useState(false);
+  const [companyCatNewName,setCompanyCatNewName]=useState("");
+  const [companyBulkCatId,setCompanyBulkCatId]=useState("");
 
   const [contactsList,setContactsList]=useState<any[]|null>(null);
   const [contactsLoading,setContactsLoading]=useState(false);
@@ -3405,8 +3412,82 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Failed to load companies");
       setCompaniesList(data.companies||[]);
+      setCompanyCategories(data.categories||[]);
+      setCompanyCategoriesReady(data.categories_ready!==false);
     }catch(e:any){ setCompaniesErr(e.message||"Failed to load companies"); }
     setCompaniesLoading(false);
+  }
+  // Company Categories -- see functions/api/admin/outreach-categories.ts,
+  // companies/[id]/categories.ts and company-categories-bulk.ts.
+  async function catApi(url:string,method:string,body?:any){
+    if(!adminSession) throw new Error("Sign in required");
+    const res=await fetch(url,{method,headers:{"Content-Type":"application/json",Authorization:`Bearer ${adminSession.access_token}`},body:body===undefined?undefined:JSON.stringify(body)});
+    const data=await res.json().catch(()=>({} as any));
+    if(!res.ok) throw new Error(data.error||"Could not save categories");
+    return data;
+  }
+  async function addCompanyCategory(){
+    const name=companyCatNewName.trim(); if(!name) return;
+    setCompanyBusy(true);
+    try{ const d=await catApi("/api/admin/outreach-categories","POST",{name}); setCompanyCatNewName(""); if(d.category) setCompanyCategories(l=>l.some(c=>c.id===d.category.id)?l:[...l,d.category]); }
+    catch(e:any){ alert(e.message); }
+    setCompanyBusy(false);
+  }
+  async function renameCompanyCategory(id:string,name:string){
+    const cur=companyCategories.find(c=>c.id===id); if(!cur||!name.trim()||name.trim()===cur.name) return;
+    setCompanyBusy(true);
+    try{ await catApi(`/api/admin/outreach-categories/${id}`,"PATCH",{name:name.trim()}); setCompanyCategories(l=>l.map(c=>c.id===id?{...c,name:name.trim()}:c)); }
+    catch(e:any){ alert(e.message); await loadCompanies(); }
+    setCompanyBusy(false);
+  }
+  async function moveCompanyCategory(id:string,dir:-1|1){
+    const list=[...companyCategories]; const i=list.findIndex(c=>c.id===id); const j=i+dir;
+    if(i<0||j<0||j>=list.length) return;
+    [list[i],list[j]]=[list[j],list[i]];
+    const renumbered=list.map((c,k)=>({...c,sort_order:k+1}));
+    const changed=renumbered.filter(c=>companyCategories.find(o=>o.id===c.id)?.sort_order!==c.sort_order);
+    setCompanyCategories(renumbered);
+    try{ await Promise.all(changed.map(c=>catApi(`/api/admin/outreach-categories/${c.id}`,"PATCH",{sort_order:c.sort_order}))); }
+    catch(e:any){ alert(e.message); await loadCompanies(); }
+  }
+  async function deleteCompanyCategory(id:string){
+    const cur=companyCategories.find(c=>c.id===id); if(!cur) return;
+    const n=(companiesList||[]).filter((c:any)=>(c.category_ids||[]).includes(id)).length;
+    if(!confirm(`Delete the category "${cur.name}"?${n?` It will be removed from ${n} compan${n===1?"y":"ies"} -- the companies themselves are kept.`:""}`)) return;
+    setCompanyBusy(true);
+    try{
+      await catApi(`/api/admin/outreach-categories/${id}`,"DELETE");
+      if(companyCatFilter===id) setCompanyCatFilter("all");
+      if(companyBulkCatId===id) setCompanyBulkCatId("");
+      setCompanyCategories(l=>l.filter(c=>c.id!==id));
+      setCompaniesList(l=>(l||[]).map((c:any)=>({...c,category_ids:(c.category_ids||[]).filter((x:string)=>x!==id)})));
+    }
+    catch(e:any){ alert(e.message); }
+    setCompanyBusy(false);
+  }
+  async function toggleCompanyCategory(companyId:string,catId:string){
+    const comp=(companiesList||[]).find((c:any)=>c.id===companyId); if(!comp) return;
+    const cur:string[]=comp.category_ids||[];
+    const next=cur.includes(catId)?cur.filter(x=>x!==catId):[...cur,catId];
+    // optimistic: update the list + open detail immediately, then save
+    setCompaniesList(l=>(l||[]).map((c:any)=>c.id===companyId?{...c,category_ids:next}:c));
+    setCompanyDetail((d:any)=>d&&d.id===companyId?{...d,category_ids:next}:d);
+    try{ await catApi(`/api/admin/companies/${companyId}/categories`,"PUT",{category_ids:next}); }
+    catch(e:any){ alert(e.message); await loadCompanies(); }
+  }
+  async function bulkCompanyCategory(mode:"add"|"remove"){
+    if(!companyBulkCatId||companySel.length===0) return;
+    setCompanyBusy(true);
+    try{
+      await catApi("/api/admin/company-categories-bulk","POST",{company_ids:companySel,[mode==="add"?"add_ids":"remove_ids"]:[companyBulkCatId]});
+      const cat=companyBulkCatId;
+      setCompaniesList(l=>(l||[]).map((c:any)=>{
+        if(!companySel.includes(c.id)) return c;
+        const cur:string[]=c.category_ids||[];
+        return {...c,category_ids:mode==="add"?(cur.includes(cat)?cur:[...cur,cat]):cur.filter(x=>x!==cat)};
+      }));
+    }catch(e:any){ alert(e.message); }
+    setCompanyBusy(false);
   }
   useEffect(()=>{ if(cmsTab==="companies"&&adminSession) loadCompanies(); },[cmsTab,adminSession]);
   async function loadCompanyDetail(id:string){
@@ -6314,15 +6395,25 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           const q=companySearch.trim().toLowerCase();
           const filtered=(companiesList||[]).filter(c=>{
             if(companyStatusFilter!=="all"&&c.status!==companyStatusFilter) return false;
+            const cids:string[]=c.category_ids||[];
+            if(companyCatFilter==="none"&&cids.length>0) return false;
+            if(companyCatFilter!=="all"&&companyCatFilter!=="none"&&!cids.includes(companyCatFilter)) return false;
             if(!q) return true;
-            return (c.name||"").toLowerCase().includes(q)||(c.website||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q);
+            return (c.name||"").toLowerCase().includes(q)||(c.website||"").toLowerCase().includes(q)||(c.email||"").toLowerCase().includes(q)||(c.phone||"").toLowerCase().includes(q)||(c.whatsapp||"").toLowerCase().includes(q);
           });
+          const catName=(id:string)=>companyCategories.find(k=>k.id===id)?.name;
+          const catCount=(id:string)=>(companiesList||[]).filter((c:any)=>(c.category_ids||[]).includes(id)).length;
+          const uncategorizedCount=(companiesList||[]).filter((c:any)=>!(c.category_ids||[]).length).length;
+          const chip=(active:boolean):any=>({fontSize:11.5,padding:"5px 12px",borderRadius:20,cursor:"pointer",whiteSpace:"nowrap",background:active?"rgba(139,92,246,0.18)":"transparent",color:active?C.PL:C.MID,border:`1px solid ${active?C.PL:C.BORDER}`});
           return(
           <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
-              <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Companies</div>
+              <div>
+                <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Companies</div>
+                {companiesList&&<div style={{fontSize:12,color:C.MID,marginTop:4}}>{companiesList.length.toLocaleString()} existing record{companiesList.length===1?"":"s"}</div>}
+              </div>
               <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-                <input style={{...S.inp,width:200}} placeholder="Search name, website, email…" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} />
+                <input style={{...S.inp,width:220}} placeholder="Search name, website, email, phone…" value={companySearch} onChange={e=>setCompanySearch(e.target.value)} />
                 <select style={S.inp} value={companyStatusFilter} onChange={e=>setCompanyStatusFilter(e.target.value)}>
                   <option value="all">All statuses</option>
                   {OUTREACH_STATUSES.map(s=><option key={s} value={s}>{s}</option>)}
@@ -6333,6 +6424,46 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 <button onClick={loadCompanies} style={S.btnSm}>↻ Refresh</button>
               </div>
             </div>
+            {/* Company categories: filter chips (with live counts) + editable list. */}
+            {!companyCategoriesReady?(
+              <div style={{marginBottom:16,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
+                Company categories need a one-time database update: run <strong>database/migrations/0025_outreach_company_categories.sql</strong> in the Supabase SQL editor, then press ↻ Refresh.
+              </div>
+            ):(
+              <div style={{marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,gap:8}}>
+                  <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID}}>Company categories</div>
+                  <button onClick={()=>setCompanyCatManageOpen(v=>!v)} style={{...S.btnO,padding:"5px 12px",fontSize:10.5}}>{companyCatManageOpen?"✓ Done":"✎ Edit categories"}</button>
+                </div>
+                <div style={{display:"flex",gap:6,overflowX:isMobile?"auto":undefined,flexWrap:isMobile?"nowrap":"wrap",paddingBottom:isMobile?4:0}}>
+                  <span style={chip(companyCatFilter==="all")} onClick={()=>setCompanyCatFilter("all")}>All · {(companiesList||[]).length}</span>
+                  {companyCategories.map(k=>(
+                    <span key={k.id} style={chip(companyCatFilter===k.id)} onClick={()=>setCompanyCatFilter(companyCatFilter===k.id?"all":k.id)}>{k.name} · {catCount(k.id)}</span>
+                  ))}
+                  <span style={chip(companyCatFilter==="none")} onClick={()=>setCompanyCatFilter(companyCatFilter==="none"?"all":"none")}>Uncategorized · {uncategorizedCount}</span>
+                </div>
+                {companyCatManageOpen&&(
+                  <div style={{...CARD_STYLE,padding:16,marginTop:12}}>
+                    <div style={{fontSize:12,color:C.MID,marginBottom:10}}>Rename a category by editing its name (saves when you click away). Deleting a category never deletes companies -- it only removes that label from them.</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {companyCategories.map((k,i)=>(
+                        <div key={k.id} style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <input style={{...S.inp,flex:1,padding:"6px 10px",fontSize:12.5}} defaultValue={k.name} key={k.name} onBlur={e=>renameCompanyCategory(k.id,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")(e.target as HTMLInputElement).blur();}} />
+                          <span style={{fontSize:11,color:C.MID,minWidth:58,textAlign:"right"}}>{catCount(k.id)} co.</span>
+                          <button onClick={()=>moveCompanyCategory(k.id,-1)} disabled={i===0} title="Move up" style={{...S.btnO,padding:"5px 9px",fontSize:11}}>↑</button>
+                          <button onClick={()=>moveCompanyCategory(k.id,1)} disabled={i===companyCategories.length-1} title="Move down" style={{...S.btnO,padding:"5px 9px",fontSize:11}}>↓</button>
+                          <button onClick={()=>deleteCompanyCategory(k.id)} disabled={companyBusy} title="Delete category" style={{...S.btnO,padding:"5px 9px",fontSize:11,color:"#e74c3c",borderColor:"#4a2020"}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{display:"flex",gap:8,marginTop:12}}>
+                      <input style={{...S.inp,flex:1}} placeholder="New category name (e.g. Automotive)" value={companyCatNewName} onChange={e=>setCompanyCatNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addCompanyCategory()} />
+                      <button onClick={addCompanyCategory} disabled={companyBusy||!companyCatNewName.trim()} style={S.btnSm}>+ Add category</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {segmentsOpen&&(
               <div style={{...CARD_STYLE,padding:16,marginBottom:16}}>
                 <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:10}}>Saved Segments</div>
@@ -6341,13 +6472,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                 ):(
                   <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:10}}>
                     {segmentsList.map((s:any)=>(
-                      <button key={s.id} onClick={()=>{const f=s.filters||{};setCompanySearch(f.search||"");setCompanyStatusFilter(f.status||"all");}} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>{s.name}</button>
+                      <button key={s.id} onClick={()=>{const f=s.filters||{};setCompanySearch(f.search||"");setCompanyStatusFilter(f.status||"all");setCompanyCatFilter(f.category&&(f.category==="none"||companyCategories.some(k=>k.id===f.category))?f.category:"all");}} style={{...S.btnO,padding:"6px 12px",fontSize:11}}>{s.name}</button>
                     ))}
                   </div>
                 )}
                 <div style={{display:"flex",gap:8}}>
                   <input style={{...S.inp,flex:1}} placeholder="Name this segment (e.g. Dubai Real Estate Prospects)" value={segmentSaveName} onChange={e=>setSegmentSaveName(e.target.value)} />
-                  <button onClick={()=>saveSegment("company",{search:companySearch,status:companyStatusFilter})} disabled={!segmentSaveName.trim()} style={S.btnSm}>Save current filters</button>
+                  <button onClick={()=>saveSegment("company",{search:companySearch,status:companyStatusFilter,category:companyCatFilter})} disabled={!segmentSaveName.trim()} style={S.btnSm}>Save current filters</button>
                 </div>
               </div>
             )}
@@ -6371,6 +6502,16 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <input style={S.inp} placeholder="Source (e.g. manual, referral)" value={companyAddForm.source||""} onChange={e=>setCompanyAddForm((f:any)=>({...f,source:e.target.value}))} />
                   <textarea style={{...S.inp,gridColumn:isMobile?undefined:"1 / -1",minHeight:50}} placeholder="Notes" value={companyAddForm.notes} onChange={e=>setCompanyAddForm((f:any)=>({...f,notes:e.target.value}))} />
                 </div>
+                {companyCategoriesReady&&companyCategories.length>0&&(
+                  <div style={{marginTop:12}}>
+                    <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginBottom:8}}>Categories <span style={{textTransform:"none",letterSpacing:0}}>· pick one or more (left empty, it's filed automatically from Industry)</span></div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {companyCategories.map(k=>{const on=(companyAddForm.category_ids||[]).includes(k.id);return(
+                        <span key={k.id} style={chip(on)} onClick={()=>setCompanyAddForm((f:any)=>{const cur:string[]=f.category_ids||[];return {...f,category_ids:on?cur.filter(x=>x!==k.id):[...cur,k.id]};})}>{on?"✓ ":""}{k.name}</span>
+                      );})}
+                    </div>
+                  </div>
+                )}
                 {companyDuplicateFound&&(
                   <div style={{marginTop:12,padding:"10px 14px",background:"#2a2010",border:"1px solid #4a3a20",borderRadius:6,fontSize:12,color:"#e0c060"}}>
                     A company may already exist: <strong>{companyDuplicateFound.name}</strong>{companyDuplicateFound.website?` (${companyDuplicateFound.website})`:""}.
@@ -6397,6 +6538,18 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="checkbox" checked={filtered.length>0&&filtered.every((c:any)=>companySel.includes(c.id))} onChange={e=>{const ids=filtered.map((c:any)=>c.id);setCompanySel(s=>e.target.checked?Array.from(new Set([...s,...ids])):s.filter(x=>!ids.includes(x)));}} />Select all shown ({filtered.length})</label>
                   <span>· tick companies, then choose a template or proposal to send</span>
                 </div>
+                {companyCategoriesReady&&companySel.length>0&&companyCategories.length>0&&(
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",fontSize:12.5,color:C.MID,padding:"10px 14px",border:`1px solid ${C.BORDER}`,borderRadius:6}}>
+                    <span>Categories for <strong style={{color:C.FG}}>{companySel.length}</strong> ticked:</span>
+                    <select style={{...S.inp,padding:"6px 10px",fontSize:12}} value={companyBulkCatId} onChange={e=>setCompanyBulkCatId(e.target.value)}>
+                      <option value="">Choose category…</option>
+                      {companyCategories.map(k=><option key={k.id} value={k.id}>{k.name}</option>)}
+                    </select>
+                    <button onClick={()=>bulkCompanyCategory("add")} disabled={!companyBulkCatId||companyBusy} style={S.btnSm}>+ Add</button>
+                    <button onClick={()=>bulkCompanyCategory("remove")} disabled={!companyBulkCatId||companyBusy} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>− Remove</button>
+                  </div>
+                )}
+                {filtered.length===0&&<div style={{color:C.MID,fontSize:13,fontStyle:"italic",padding:"8px 0"}}>No companies match these filters.</div>}
                 {filtered.map((c:any)=>{
                   const open=companyOpenId===c.id;
                   return(
@@ -6407,6 +6560,13 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                         <div>
                           <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.name}{c.industry?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.industry}</span>:null}</div>
                           <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.website||c.email||"—"} · {c.contact_count||0} contact{c.contact_count===1?"":"s"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
+                          {(c.category_ids||[]).length>0&&(
+                            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
+                              {companyCategories.filter(k=>(c.category_ids||[]).includes(k.id)).map(k=>(
+                                <span key={k.id} style={{fontSize:10.5,padding:"2px 8px",borderRadius:20,color:C.PL,border:`1px solid rgba(139,92,246,0.45)`,background:"rgba(139,92,246,0.08)"}}>{k.name}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         </div>
                         <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
@@ -6428,6 +6588,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 </select>
                               </div>
                               <textarea style={{...S.inp,minHeight:50}} placeholder="Notes" defaultValue={companyDetail.notes||""} onBlur={e=>{ if(e.target.value!==(companyDetail.notes||"")) updateCompanyFields({notes:e.target.value}); }} />
+                              {companyCategoriesReady&&companyCategories.length>0&&(<>
+                                <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Categories <span style={{textTransform:"none",letterSpacing:0}}>· click to add or remove</span></div>
+                                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                                  {companyCategories.map(k=>{const on=(c.category_ids||[]).includes(k.id);return(
+                                    <span key={k.id} style={chip(on)} onClick={()=>toggleCompanyCategory(c.id,k.id)}>{on?"✓ ":""}{k.name}</span>
+                                  );})}
+                                </div>
+                              </>)}
                               <div style={{fontSize:11,letterSpacing:1,textTransform:"uppercase",color:C.MID,marginTop:4}}>Tags</div>
                               <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
                                 {(companyDetail.tags||[]).map((t:any)=>(

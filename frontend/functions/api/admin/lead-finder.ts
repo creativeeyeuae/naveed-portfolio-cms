@@ -7,6 +7,7 @@
 //        (same website or email) are skipped, never doubled.
 // Free sources: OpenStreetMap (no key). Google Places is used only if GOOGLE_PLACES_KEY is set.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
+import { loadCategories, autoCategorize } from "../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -223,12 +224,14 @@ export const onRequestPost: PagesFunction<AdminEnv & any> = async ({ request, en
       const ex = await supaAdmin(env, "outreach_companies?select=id,name,website,email&limit=5000", { method: "GET" });
       const have = ex.ok ? ((await ex.json()) as any[]) : [];
       let saved = 0, skipped = 0;
+      const cats = await loadCategories(env).catch(() => null); // auto-file new companies by niche
       for (const l of (Array.isArray(b.leads) ? b.leads : []).slice(0, 200)) {
         const site = normSite(l.website), email = clean(l.email).toLowerCase();
         if (have.some((c) => (site && domain(normSite(c.website)) === domain(site)) || (email && clean(c.email).toLowerCase() === email))) { skipped++; continue; }
         const cr = await supaAdmin(env, "outreach_companies", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ name: clean(l.name).slice(0, 200), industry: clean(b.niche || l.niche).slice(0, 80) || null, website: site || null, email: email || null, phone: !isMobile(l.phone) ? clean(l.phone) || null : null, whatsapp: isMobile(l.phone) ? clean(l.phone) : null, city: clean(b.area || "Dubai"), country: "UAE", address: clean(l.address) || null, source: `Lead Finder · ${clean(l.source) || "OpenStreetMap"}`, notes: l.rating ? `Rating ${l.rating}` : null }) });
         const comp = cr.ok ? ((await cr.json()) as any[])?.[0] : null; if (!comp) { skipped++; continue; }
         have.push(comp);
+        await autoCategorize(env, comp.id, comp.industry, cats);
         if (email) {
           const pr = await supaAdmin(env, "outreach_contacts", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ company_id: comp.id, full_name: null, email, phone: !isMobile(l.phone) ? clean(l.phone) || null : null, whatsapp: isMobile(l.phone) ? clean(l.phone) : null, website: site || null, city: clean(b.area || "Dubai"), country: "UAE", source: "Lead Finder" }) });
           const person = pr.ok ? ((await pr.json()) as any[])?.[0] : null;

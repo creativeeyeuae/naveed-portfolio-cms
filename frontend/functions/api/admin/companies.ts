@@ -1,6 +1,7 @@
 // GET/POST /api/admin/companies -- the outreach Companies database (Step 1 of the shared
 // Company + Contact foundation). Isolated from the Creative Fusion CRM's customers table.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../_shared/adminAuth";
+import { loadCategories, loadAllCategoryLinks, linkCategories, autoCategorize, fetchAllRows } from "../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -10,12 +11,11 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
   const admin = await requireAdmin(request, env);
   if (admin instanceof Response) return admin;
 
-  const res = await supaAdmin(env, "outreach_companies?select=*&order=created_at.desc&limit=1000", { method: "GET" });
-  if (!res.ok) return json({ error: "Could not load companies.", detail: await res.text() }, 500, origin);
-  const companies = (await res.json()) as any[];
+  // Paged: Supabase returns at most 1000 rows per request and the list is past 900.
+  const companies = await fetchAllRows<any>(env, "outreach_companies?select=*&order=created_at.desc,id.asc");
+  if (!companies) return json({ error: "Could not load companies." }, 500, origin);
 
-  const tagRes = await supaAdmin(env, "outreach_company_tags?select=company_id,outreach_tags(id,name)", { method: "GET" });
-  const tagLinks = tagRes.ok ? ((await tagRes.json()) as any[]) : [];
+  const tagLinks = (await fetchAllRows<any>(env, "outreach_company_tags?select=company_id,tag_id,outreach_tags(id,name)&order=company_id.asc,tag_id.asc")) || [];
   const tagsByCompany = new Map<string, any[]>();
   for (const t of tagLinks) {
     if (!t.company_id || !t.outreach_tags) continue;
@@ -23,16 +23,23 @@ export const onRequestGet: PagesFunction<AdminEnv> = async ({ request, env }) =>
     tagsByCompany.get(t.company_id)!.push(t.outreach_tags);
   }
 
-  const contactCountRes = await supaAdmin(env, "outreach_contacts?select=id,company_id", { method: "GET" });
-  const contactRows = contactCountRes.ok ? ((await contactCountRes.json()) as any[]) : [];
+  const contactRows = (await fetchAllRows<any>(env, "outreach_contacts?select=id,company_id&company_id=not.is.null&order=id.asc")) || [];
   const countByCompany = new Map<string, number>();
   for (const c of contactRows) {
     if (!c.company_id) continue;
     countByCompany.set(c.company_id, (countByCompany.get(c.company_id) || 0) + 1);
   }
 
-  const out = companies.map((c) => ({ ...c, tags: tagsByCompany.get(c.id) || [], contact_count: countByCompany.get(c.id) || 0 }));
-  return json({ companies: out }, 200, origin);
+  // Categories (migration 0025). null => tables not created yet; the page still works.
+  const [categories, catLinks] = await Promise.all([loadCategories(env), loadAllCategoryLinks(env)]);
+  const catIdsByCompany = new Map<string, string[]>();
+  for (const l of catLinks || []) {
+    if (!catIdsByCompany.has(l.company_id)) catIdsByCompany.set(l.company_id, []);
+    catIdsByCompany.get(l.company_id)!.push(l.category_id);
+  }
+
+  const out = companies.map((c) => ({ ...c, tags: tagsByCompany.get(c.id) || [], contact_count: countByCompany.get(c.id) || 0, category_ids: catIdsByCompany.get(c.id) || [] }));
+  return json({ companies: out, categories: categories || [], categories_ready: !!categories }, 200, origin);
 };
 
 // POST -- creates a company. Checks name/website for a possible existing match first (unless
@@ -75,6 +82,13 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
   if (!res.ok) return json({ error: "Could not create company.", detail: await res.text() }, 500, origin);
   const rows = (await res.json()) as any[];
   const created = rows?.[0];
+
+  // Categories picked in the Add form; if none were picked, auto-file by industry text.
+  const pickedCats = Array.isArray(body.category_ids) ? (body.category_ids as unknown[]).map(String).filter(Boolean) : [];
+  if (created?.id) {
+    if (pickedCats.length) await linkCategories(env, created.id, pickedCats).catch(() => false);
+    else await autoCategorize(env, created.id, row.industry);
+  }
 
   await supaAdmin(env, "audit_log", {
     method: "POST",

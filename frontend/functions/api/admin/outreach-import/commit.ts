@@ -3,6 +3,7 @@
 // (skip / update existing / create new) so nothing is silently overwritten.
 import { requireAdmin, supaAdmin, json, corsHeaders, type AdminEnv } from "../../../_shared/adminAuth";
 import { findOrCreateCompany, fullNameOf } from "../../../_shared/outreachHelpers";
+import { loadCategories, autoCategorize, type Category } from "../../../_shared/companyCategories";
 
 export const onRequestOptions: PagesFunction = async ({ request }) =>
   new Response(null, { headers: corsHeaders(request.headers.get("Origin")) });
@@ -46,6 +47,7 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
     }
   }
 
+  let importCats: Category[] | null | undefined; // loaded lazily, once, for auto-filing new companies
   let imported = 0;
   let updated = 0;
   let skipped = 0;
@@ -85,6 +87,10 @@ export const onRequestPost: PagesFunction<AdminEnv> = async ({ request, env }) =
           if (!res.ok) throw new Error(await res.text());
           const created = ((await res.json()) as any[])?.[0];
           if (tagId && created?.id) await linkTag(env, "outreach_company_tags", "company_id", created.id, tagId);
+          if (created?.id) {
+            if (importCats === undefined) importCats = await loadCategories(env).catch(() => null);
+            await autoCategorize(env, created.id, fields.industry, importCats);
+          }
           imported++;
         }
       } else {

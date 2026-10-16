@@ -1811,7 +1811,7 @@ function FloatingWA({num,msg}:{num:string;msg:string}) {
           </div>
           <div ref={listRef} style={{padding:"16px 18px",overflowY:"auto",flex:1,background:C.BG}}>
             <div style={{background:`linear-gradient(rgba(0,0,0,0.22),rgba(0,0,0,0.22)),${C.BG}`,border:`1px solid ${C.BORDER}`,borderRadius:"4px 14px 14px 14px",padding:"10px 14px",fontSize:13,color:C.FG,marginBottom:14,maxWidth:"88%"}}>
-              Hi there 👋 {BOT_NAME} here. How can I help you today? Please select one below, or type your own message.
+              Hi, welcome! 👋 How can I help you? Please select one below:
             </div>
             {loaded&&messages.map((m,mi)=>(
               <div key={m.id}>

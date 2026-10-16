@@ -2869,6 +2869,9 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
   const [companyCatManageOpen,setCompanyCatManageOpen]=useState(false);
   const [companyCatNewName,setCompanyCatNewName]=useState("");
   const [companyBulkCatId,setCompanyBulkCatId]=useState("");
+  const [companySort,setCompanySort]=useState("newest");
+  const [companyShowCount,setCompanyShowCount]=useState(50);
+  useEffect(()=>{ setCompanyShowCount(50); },[companySearch,companyStatusFilter,companyCatFilter,companySort]);
 
   const [contactsList,setContactsList]=useState<any[]|null>(null);
   const [contactsLoading,setContactsLoading]=useState(false);
@@ -6404,9 +6407,28 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
           const catName=(id:string)=>companyCategories.find(k=>k.id===id)?.name;
           const catCount=(id:string)=>(companiesList||[]).filter((c:any)=>(c.category_ids||[]).includes(id)).length;
           const uncategorizedCount=(companiesList||[]).filter((c:any)=>!(c.category_ids||[]).length).length;
+          const sortedCompanies=[...filtered].sort((a:any,b:any)=>{
+            switch(companySort){
+              case "oldest": return String(a.created_at||"").localeCompare(String(b.created_at||""));
+              case "az": return String(a.name||"").localeCompare(String(b.name||""),undefined,{sensitivity:"base"});
+              case "za": return String(b.name||"").localeCompare(String(a.name||""),undefined,{sensitivity:"base"});
+              case "contacts": return (b.contact_count||0)-(a.contact_count||0);
+              case "email": return (b.email?1:0)-(a.email?1:0);
+              default: return String(b.created_at||"").localeCompare(String(a.created_at||""));
+            }
+          });
+          const shownCompanies=sortedCompanies.slice(0,companyShowCount);
+          const COMPANY_GRID="20px minmax(0,2.4fr) minmax(0,1.6fr) minmax(0,1.7fr) 56px 96px";
+          const STATUS_STYLE:Record<string,{bg:string;fg:string;bd:string}>={
+            prospect:{bg:"rgba(168,146,198,0.10)",fg:"#C9B8E6",bd:"rgba(168,146,198,0.35)"},
+            contacted:{bg:"rgba(96,165,250,0.12)",fg:"#93C5FD",bd:"rgba(96,165,250,0.4)"},
+            interested:{bg:"rgba(251,191,36,0.12)",fg:"#FCD34D",bd:"rgba(251,191,36,0.4)"},
+            client:{bg:"rgba(52,211,153,0.12)",fg:"#6EE7B7",bd:"rgba(52,211,153,0.4)"},
+            inactive:{bg:"rgba(148,163,184,0.08)",fg:"#94A3B8",bd:"rgba(148,163,184,0.3)"},
+          };
           const chip=(active:boolean):any=>({fontSize:11.5,padding:"5px 12px",borderRadius:20,cursor:"pointer",whiteSpace:"nowrap",background:active?"rgba(139,92,246,0.18)":"transparent",color:active?C.PL:C.MID,border:`1px solid ${active?C.PL:C.BORDER}`});
           return(
-          <div style={{maxWidth:1000,margin:"48px auto",padding:"0 24px"}}>
+          <div style={{maxWidth:1200,margin:"48px auto",padding:isMobile?"0 16px":"0 24px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}>
               <div>
                 <div style={{fontSize:11,letterSpacing:4,color:C.MID,textTransform:"uppercase"}}>Companies</div>
@@ -6550,29 +6572,75 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                   </div>
                 )}
                 {filtered.length===0&&<div style={{color:C.MID,fontSize:13,fontStyle:"italic",padding:"8px 0"}}>No companies match these filters.</div>}
-                {filtered.map((c:any)=>{
+                {filtered.length>0&&(
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",fontSize:12,color:C.MID}}>
+                    <span>Showing <strong style={{color:C.FG}}>{Math.min(companyShowCount,filtered.length)}</strong> of {filtered.length.toLocaleString()}{filtered.length!==(companiesList||[]).length?` (filtered from ${(companiesList||[]).length.toLocaleString()})`:""}</span>
+                    <select style={{...S.inp,padding:"6px 10px",fontSize:12}} value={companySort} onChange={e=>setCompanySort(e.target.value)}>
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="az">Name A–Z</option>
+                      <option value="za">Name Z–A</option>
+                      <option value="contacts">Most contacts</option>
+                      <option value="email">Has email first</option>
+                    </select>
+                  </div>
+                )}
+                {filtered.length>0&&(
+                <div style={{...CARD_STYLE,padding:0,overflow:"hidden"}}>
+                  {!isMobile&&(
+                    <div style={{display:"grid",gridTemplateColumns:COMPANY_GRID,gap:12,alignItems:"center",padding:"10px 16px",fontSize:10,letterSpacing:1.5,textTransform:"uppercase",color:C.MID,borderBottom:`1px solid ${C.BORDER}`,background:"rgba(139,92,246,0.04)"}}>
+                      <span></span><span>Company</span><span>Categories</span><span>Contact</span><span style={{textAlign:"center"}}>People</span><span style={{textAlign:"right"}}>Status</span>
+                    </div>
+                  )}
+                {shownCompanies.map((c:any,idx:number)=>{
                   const open=companyOpenId===c.id;
+                  const sel=companySel.includes(c.id);
+                  const cats=companyCategories.filter(k=>(c.category_ids||[]).includes(k.id));
+                  const st=STATUS_STYLE[c.status]||STATUS_STYLE.prospect;
+                  const site=(c.website||"").replace(/^https?:\/\/(www\.)?/i,"").replace(/\/$/,"");
+                  const statusPill=<span style={{fontSize:10.5,padding:"3px 10px",borderRadius:20,background:st.bg,color:st.fg,border:`1px solid ${st.bd}`,textTransform:"capitalize",whiteSpace:"nowrap"}}>{c.status}</span>;
+                  const catChips=cats.length===0?<span style={{fontSize:11,color:C.MID,opacity:0.6}}>—</span>:(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {cats.slice(0,2).map(k=><span key={k.id} style={{fontSize:10.5,padding:"2px 8px",borderRadius:20,color:C.PL,border:`1px solid rgba(139,92,246,0.45)`,background:"rgba(139,92,246,0.08)",whiteSpace:"nowrap"}}>{k.name}</span>)}
+                      {cats.length>2&&<span style={{fontSize:10.5,color:C.MID}} title={cats.slice(2).map(k=>k.name).join(", ")}>+{cats.length-2}</span>}
+                    </div>
+                  );
                   return(
-                    <div key={c.id} style={{...CARD_STYLE,padding:16,borderColor:companySel.includes(c.id)?"rgba(139,92,246,0.6)":undefined}}>
-                      <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:8,cursor:"pointer"}} onClick={()=>{const willOpen=!open;setCompanyOpenId(willOpen?c.id:null);if(willOpen)loadCompanyDetail(c.id);}}>
-                        <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                        <input type="checkbox" checked={companySel.includes(c.id)} onClick={e=>e.stopPropagation()} onChange={e=>setCompanySel(s=>e.target.checked?[...s,c.id]:s.filter(x=>x!==c.id))} style={{marginTop:3,width:16,height:16,cursor:"pointer"}} title="Select to email" />
-                        <div>
-                          <div style={{fontSize:14,color:C.FG,fontWeight:700}}>{c.name}{c.industry?<span style={{color:C.MID,fontWeight:400,fontSize:12}}> · {c.industry}</span>:null}</div>
-                          <div style={{fontSize:11.5,color:C.MID,marginTop:2}}>{c.website||c.email||"—"} · {c.contact_count||0} contact{c.contact_count===1?"":"s"}{(c.tags||[]).length>0?` · ${(c.tags||[]).map((t:any)=>t.name).join(", ")}`:""}</div>
-                          {(c.category_ids||[]).length>0&&(
-                            <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:6}}>
-                              {companyCategories.filter(k=>(c.category_ids||[]).includes(k.id)).map(k=>(
-                                <span key={k.id} style={{fontSize:10.5,padding:"2px 8px",borderRadius:20,color:C.PL,border:`1px solid rgba(139,92,246,0.45)`,background:"rgba(139,92,246,0.08)"}}>{k.name}</span>
-                              ))}
+                    <div key={c.id} style={{borderTop:idx===0?"none":`1px solid ${C.BORDER}`,background:open?"rgba(139,92,246,0.06)":sel?"rgba(139,92,246,0.035)":undefined,boxShadow:sel?`inset 3px 0 0 ${C.PL}`:undefined}}>
+                      <div style={isMobile?{padding:"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:8}:{display:"grid",gridTemplateColumns:COMPANY_GRID,gap:12,alignItems:"center",padding:"12px 16px",cursor:"pointer"}} onClick={()=>{const willOpen=!open;setCompanyOpenId(willOpen?c.id:null);if(willOpen)loadCompanyDetail(c.id);}}>
+                        {isMobile?(<>
+                          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                            <input type="checkbox" checked={sel} onClick={e=>e.stopPropagation()} onChange={e=>setCompanySel(s=>e.target.checked?[...s,c.id]:s.filter(x=>x!==c.id))} style={{width:16,height:16,cursor:"pointer",flexShrink:0}} />
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:14,color:C.FG,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
+                              <div style={{fontSize:11.5,color:C.MID,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{site||c.email||c.phone||"—"}</div>
                             </div>
-                          )}
-                        </div>
-                        </div>
-                        <span style={{fontSize:11,padding:"4px 10px",borderRadius:20,background:"rgba(139,92,246,0.14)",color:C.PL,border:`1px solid ${C.PL}`,height:"fit-content"}}>{c.status}</span>
+                            {statusPill}
+                          </div>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,paddingLeft:26}}>
+                            {catChips}
+                            <span style={{fontSize:11,color:C.MID,whiteSpace:"nowrap"}}>{c.contact_count||0} 👤</span>
+                          </div>
+                        </>):(<>
+                          <input type="checkbox" checked={sel} onClick={e=>e.stopPropagation()} onChange={e=>setCompanySel(s=>e.target.checked?[...s,c.id]:s.filter(x=>x!==c.id))} style={{width:16,height:16,cursor:"pointer"}} title="Select" />
+                          <div style={{display:"flex",gap:10,alignItems:"center",minWidth:0}}>
+                            <div style={{width:32,height:32,borderRadius:4,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:C.PL,background:"rgba(139,92,246,0.12)",border:"1px solid rgba(139,92,246,0.3)"}}>{(c.name||"?").trim().charAt(0).toUpperCase()}</div>
+                            <div style={{minWidth:0}}>
+                              <div style={{fontSize:13.5,color:C.FG,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={c.name}>{c.name}</div>
+                              <div style={{fontSize:11,color:C.MID,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{[site,c.city].filter(Boolean).join(" · ")||"—"}</div>
+                            </div>
+                          </div>
+                          {catChips}
+                          <div style={{minWidth:0,fontSize:11.5,color:C.MID,lineHeight:1.5}}>
+                            <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:c.email?C.FG:C.MID}}>{c.email||"No email"}</div>
+                            <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.whatsapp||c.phone||"—"}</div>
+                          </div>
+                          <span style={{textAlign:"center",fontSize:12.5,color:(c.contact_count||0)>0?C.FG:C.MID}}>{c.contact_count||0}</span>
+                          <div style={{textAlign:"right"}}>{statusPill}</div>
+                        </>)}
                       </div>
                       {open&&(
-                        <div style={{marginTop:14,paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
+                        <div style={{margin:isMobile?"0 14px 14px":"0 16px 16px 56px",paddingTop:14,borderTop:`1px solid ${C.BORDER}`}}>
                           {companyDetailLoading?(
                             <div style={{color:C.MID,fontSize:13}}>Loading…</div>
                           ):!companyDetail?(
@@ -6619,6 +6687,14 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     </div>
                   );
                 })}
+                </div>
+                )}
+                {filtered.length>companyShowCount&&(
+                  <div style={{display:"flex",justifyContent:"center",gap:8,marginTop:4}}>
+                    <button onClick={()=>setCompanyShowCount(n=>n+50)} style={S.btnSm}>Show 50 more</button>
+                    <button onClick={()=>setCompanyShowCount(filtered.length)} style={{...S.btnO,padding:"8px 14px",fontSize:10}}>Show all {filtered.length.toLocaleString()}</button>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -134,18 +134,18 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
     // ── First email to a company: Naveed's intro + every service (his own wording) ──
     (() => {
       const SERVICES: [string, string, string[]][] = [
-        ["🏙️", "Real Estate & Property", ["Luxury villas, apartments and penthouses", "Property photography and cinematic videos", "Architectural exteriors and community shoots", "Drone and aerial photography", "Off-plan projects and property launches", "Real estate marketing campaigns"]],
-        ["🛋️", "Interior Design & Architecture", ["Luxury residential and commercial interiors", "Interior design and fit-out projects", "Hotels, offices and showrooms", "Furniture, lighting and finishing details", "Project portfolios and before-and-after shoots", "Architectural films and walkthroughs"]],
-        ["🏨", "Hospitality & Food", ["Hotels, resorts and spas", "Hotel rooms and lifestyle photography", "Restaurants, cafés and food photography", "Signature dishes and menu visuals", "Hospitality films and promotional videos", "Guest experiences and lifestyle campaigns"]],
-        ["📷", "Corporate & Commercial Photography", ["Corporate portraits and executive headshots", "Team photography and company profiles", "Product and jewellery photography", "Fashion and lifestyle photography", "Advertising campaigns and brand visuals", "Commercial and business photography"]],
-        ["🎬", "Videography & Film Production", ["Corporate films and commercials", "Property walkthroughs and brand films", "Interviews and client testimonials", "Drone and aerial cinematography", "Reels and short-form videos", "Events, exhibitions and product launches"]],
-        ["🎨", "Branding & Creative Design", ["Brand identity and logo design", "Graphic design and marketing creatives", "Company profiles and brochures", "Social media graphics and templates", "Advertising and promotional materials", "Campaign concepts and visual direction"]],
-        ["🌐", "Web Development & Digital Marketing", ["Business websites and landing pages", "Real estate and interior portfolio websites", "E-commerce and online booking systems", "Website maintenance and SEO", "Social media management and content planning", "Digital marketing and lead generation"]],
-        ["🤖", "CreativeBot — AI & WhatsApp Solutions", ["AI-powered website live chat", "WhatsApp Business integration", "AI chatbots and automated replies", "Seamless AI-to-human handover", "Lead capture and customer follow-ups", "Customer support and communication automation"]],
+        ["🏙️", "Real Estate & Property", ["Villas & penthouses", "Property photo & video", "Architecture & communities", "Drone & aerial", "Off-plan launches", "Marketing campaigns"]],
+        ["🛋️", "Interior Design", ["Luxury interiors", "Fit-out projects", "Hotels, offices, showrooms", "Furniture & details", "Before & after shoots", "Walkthrough films"]],
+        ["🏨", "Hospitality & Food", ["Hotels, resorts & spas", "Rooms & lifestyle", "Restaurants & cafés", "Signature dishes & menus", "Promo films", "Guest experiences"]],
+        ["📷", "Corporate & Commercial", ["Executive headshots", "Team & company profiles", "Product & jewellery", "Fashion & lifestyle", "Advertising campaigns", "Business photography"]],
+        ["🎬", "Video & Film", ["Corporate films & ads", "Brand films", "Interviews & testimonials", "Drone cinematography", "Reels & short videos", "Events & launches"]],
+        ["🎨", "Branding & Design", ["Logo & brand identity", "Marketing creatives", "Profiles & brochures", "Social media graphics", "Promo materials", "Campaign concepts"]],
+        ["🌐", "Web & Digital Marketing", ["Websites & landing pages", "Portfolio websites", "E-commerce & booking", "Maintenance & SEO", "Social media management", "Lead generation"]],
+        ["🤖", "CreativeBot · AI & WhatsApp", ["AI website live chat", "WhatsApp Business", "AI chatbots & auto-replies", "AI-to-human handover", "Lead capture & follow-ups", "Support automation"]],
       ];
-      const card = ([i, t, items]: [string, string, string[]]) => '<td width="100%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:13.5px;line-height:1.6;color:#5d5568;padding:2px 0;">• ' + x + '</div>').join("") + '</div></td>';
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:12.5px;line-height:1.6;color:#5d5568;padding:1px 0;white-space:nowrap;">• ' + x + '</div>').join("") + '</div></td>';
       const rows: string[] = [];
-      for (const sv of SERVICES) rows.push("<tr>" + card(sv) + "</tr>");
+      for (let i = 0; i < SERVICES.length; i += 2) rows.push("<tr>" + card(SERVICES[i]) + card(SERVICES[i + 1]) + "</tr>");
       return {
         key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography, film & digital for {{company_or}} — Naveed Anjum",
         description: "First email to a new company — Naveed's personal intro, all 8 service areas, portfolio links and one clear next step.",

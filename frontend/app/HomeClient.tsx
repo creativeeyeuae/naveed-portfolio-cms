@@ -7354,7 +7354,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                                 <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Text font {fontSel(st.font,v=>emailSetSettings({font:v}))}</label>
                                 <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Width
                                   <select value={st.width} onChange={e=>emailSetSettings({width:Number(e.target.value)})} style={{...S.inp,width:"auto",padding:"5px 8px",fontSize:11.5}}>
-                                    {[520,560,600,640,700].map(w=><option key={w} value={w}>{w}px{w===600?" (standard)":""}</option>)}
+                                    {[520,560,600,640,700,760,800].map(w=><option key={w} value={w}>{w}px{w===600?" (standard)":w>=760?" (wide — may scroll on small laptops)":""}</option>)}
                                   </select>
                                 </label>
                                 <label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:10.5,color:C.MID}}>Rounded corners
@@ -7504,7 +7504,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                       const blocks=emailTemplateForm.blocks||[];
                       if(!blocks.filter((b:any)=>b?.type!=="settings").length) return <div style={{background:"#f4f1f9",borderRadius:10,padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>;
                       const html=renderEmailHtml(blocks,{first_name:"Sarah",last_name:"Khan",company:"Emaar",job_title:"Marketing Director",name_sp:" Sarah",company_or:"Emaar"});
-                      const frameW=emailPreviewWidth==="mobile"?375:660;
+                      const frameW=emailPreviewWidth==="mobile"?375:Math.max(660,(getEmailSettings(blocks as any).width||600)+60);
                       const maxW=isMobile?320:440;
                       const scale=Math.min(1,maxW/frameW);
                       const boxW=Math.round(frameW*scale); // box exactly as wide as the scaled email -- no empty strip

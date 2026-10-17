@@ -131,31 +131,42 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
   }));
 
   return [
-    // ── First email to a company: who Naveed is + every service, one clear next step ──
-    {
-      key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography & film for {{company_or}} — from Naveed Anjum",
-      description: "The first email to a new company — a short personal intro, all services at a glance, recent work and one easy next step.",
-      blocks: [
-        light({ accent: GOLD, headingFont: "playfair", preheader: "20+ years of photography, film and content for brands across the UAE." }),
-        nav(`${b.site}/photography`, GOLD, INK, "#e6dcc8"),
-        hero(0, "Visual stories that\nmake brands stand out", "Photography · Film · Social Media · Design", "See My Work", b.workUrl, { height: 330, overlay: INK, overlayOpacity: 0.55 }),
-        { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
-        { type: "text", html: `I'm <b>${b.name}</b>, a Dubai-based photographer and filmmaker with over 20 years behind the camera. I help brands, developers, hotels and event teams look their best — with images and films that feel premium and actually get used.\n\nI came across {{company_or}} and thought there could be a great fit, so here's a quick look at what I do.`, size: 15 },
-        { type: "heading", text: "Everything visual, under one roof", size: 21, bold: true, align: "center" },
-        { type: "html", html: `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;">${[
-          [["📷", "Photography", "Corporate & headshots, real estate & interiors, product, food, fashion and lifestyle."], ["🎬", "Videography", "Brand films, commercials, property walkthroughs, interviews and aerial / drone footage."]],
-          [["🎤", "Events & Exhibitions", "Conferences, launches and trade shows — with same-day highlights for social."], ["📱", "Social Media", "Monthly Reels, posts and content calendars — from AED 500 / month."]],
-          [["🏨", "Hospitality & F&B", "Rooms, spa, signature dishes and lifestyle scenes that make guests book."], ["🎨", "Design & Content", "Campaign visuals, social creatives and graphics that match your brand."]],
-        ].map((row) => `<tr>${row.map(([i, t, d]) => `<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;height:100%;"><div style="font-size:22px;line-height:1;">${i}</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 4px;">${t}</div><div style="font-size:12.5px;line-height:1.55;color:#5d5568;">${d}</div></div></td>`).join("")}</tr>`).join("")}</table>` },
-        { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Recent work", cap2: "Brand & events", link1: b.workUrl, link2: b.workUrl },
-        { type: "html", html: `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;text-align:center;"><tr>${[["20+", "years experience"], ["UAE-wide", "on location"], ["48h", "fast delivery options"]].map(([n, l]) => `<td width="33%" style="padding:10px 4px;"><div style="font-size:24px;font-weight:800;color:#C9A96E;">${n}</div><div style="font-size:11.5px;color:#7d7290;text-transform:uppercase;letter-spacing:.08em;">${l}</div></td>`).join("")}</tr></table>` },
-        { type: "text", html: "If you have a shoot, launch or campaign coming up — or just want fresh content for your channels — I'd be happy to send a tailored proposal. A quick reply with what you need is all it takes.", size: 15, align: "center" },
-        { type: "button", text: "View Packages & Prices", href: `${b.site}/packages`, btnColor: GOLD },
-        { type: "button", text: "Chat on WhatsApp", href: wa, btnColor: "#25D366" },
-        signature(),
-        ...footerBlocks(),
-      ],
-    },
+    // ── First email to a company: Naveed's intro + every service (his own wording) ──
+    (() => {
+      const SERVICES: [string, string, string[]][] = [
+        ["🏙️", "Real Estate & Property", ["Luxury villas, apartments and penthouses", "Property photography and cinematic videos", "Architectural exteriors and community shoots", "Drone and aerial photography", "Off-plan projects and property launches", "Real estate marketing campaigns"]],
+        ["🛋️", "Interior Design & Architecture", ["Luxury residential and commercial interiors", "Interior design and fit-out projects", "Hotels, offices and showrooms", "Furniture, lighting and finishing details", "Project portfolios and before-and-after shoots", "Architectural films and walkthroughs"]],
+        ["🏨", "Hospitality & Food", ["Hotels, resorts and spas", "Hotel rooms and lifestyle photography", "Restaurants, cafés and food photography", "Signature dishes and menu visuals", "Hospitality films and promotional videos", "Guest experiences and lifestyle campaigns"]],
+        ["📷", "Corporate & Commercial Photography", ["Corporate portraits and executive headshots", "Team photography and company profiles", "Product and jewellery photography", "Fashion and lifestyle photography", "Advertising campaigns and brand visuals", "Commercial and business photography"]],
+        ["🎬", "Videography & Film Production", ["Corporate films and commercials", "Property walkthroughs and brand films", "Interviews and client testimonials", "Drone and aerial cinematography", "Reels and short-form videos", "Events, exhibitions and product launches"]],
+        ["🎨", "Branding & Creative Design", ["Brand identity and logo design", "Graphic design and marketing creatives", "Company profiles and brochures", "Social media graphics and templates", "Advertising and promotional materials", "Campaign concepts and visual direction"]],
+        ["🌐", "Web Development & Digital Marketing", ["Business websites and landing pages", "Real estate and interior portfolio websites", "E-commerce and online booking systems", "Website maintenance and SEO", "Social media management and content planning", "Digital marketing and lead generation"]],
+        ["🤖", "CreativeBot — AI & WhatsApp Solutions", ["AI-powered website live chat", "WhatsApp Business integration", "AI chatbots and automated replies", "Seamless AI-to-human handover", "Lead capture and customer follow-ups", "Customer support and communication automation"]],
+      ];
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:12.5px;line-height:1.5;color:#5d5568;padding:2px 0;">• ' + x + '</div>').join("") + '</div></td>';
+      const rows: string[] = [];
+      for (let i = 0; i < SERVICES.length; i += 2) rows.push("<tr>" + card(SERVICES[i]) + card(SERVICES[i + 1]) + "</tr>");
+      return {
+        key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography, film & digital for {{company_or}} — Naveed Anjum",
+        description: "First email to a new company — Naveed's personal intro, all 8 service areas, portfolio links and one clear next step.",
+        blocks: [
+          light({ accent: GOLD, headingFont: "playfair", preheader: "Premium visuals, creative branding and smart digital solutions — one creative partner." }),
+          nav(b.workUrl, GOLD, INK, "#e6dcc8"),
+          hero(0, "One creative partner.\nAll your visual & digital needs.", "Photography · Film · Branding · Web · AI", "See My Work", b.workUrl, { height: 330, overlay: INK, overlayOpacity: 0.55 }),
+          { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
+          { type: "text", html: "I'm <b>" + b.name + "</b>, a Dubai-based photographer, filmmaker and digital solutions provider with over 10 years behind the camera.\n\nI help businesses showcase their work through premium visuals, creative branding and smart digital solutions.", size: 15 },
+          { type: "heading", text: "Everything Visual & Digital, Under One Roof", size: 21, bold: true, align: "center" },
+          { type: "html", html: '<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;">' + rows.join("") + "</table>" },
+          { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Photography & Videography", cap2: "Recent work", link1: b.workUrl, link2: b.workUrl },
+          { type: "text", html: '<b>Portfolio</b>\n• Photography & Videography: <a href="' + b.workUrl + '">bynaveedanjum.com/work</a>\n• Website: <a href="' + b.site + '">bynaveedanjum.com</a>', size: 14, align: "center" },
+          { type: "text", html: "From premium photography and filmmaking to web development, digital marketing and AI automation, I provide integrated creative and digital solutions tailored to your business.\n\n<b>One creative partner. All your visual and digital needs.</b>\n\nLet's discuss your next project and create a tailored proposal.", size: 15, align: "center" },
+          { type: "button", text: "Let's Discuss Your Project", href: wa, btnColor: GOLD },
+          { type: "button", text: "View Packages & Prices", href: b.site + "/packages", btnColor: "#140D21" },
+          signature(),
+          ...footerBlocks(),
+        ],
+      } as StarterTemplate;
+    })(),
     ...proposalTemplates,
     // ── Corporate (light) ───────────────────────────────────────────────────
     {

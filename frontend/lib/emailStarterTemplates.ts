@@ -141,16 +141,19 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
         ["🎬", "Video & Film", ["Corporate films & ads", "Brand films", "Interviews & testimonials", "Drone cinematography", "Reels & short videos", "Events & launches"]],
         ["🎨", "Branding & Design", ["Logo & brand identity", "Marketing creatives", "Profiles & brochures", "Social media graphics", "Promo materials", "Campaign concepts"]],
         ["🌐", "Web & Digital Marketing", ["Websites & landing pages", "Portfolio websites", "E-commerce & booking", "Maintenance & SEO", "Social media management", "Lead generation"]],
-        ["🤖", "CreativeBot · AI & WhatsApp", ["AI website live chat", "WhatsApp Business", "AI chatbots & auto-replies", "AI-to-human handover", "Lead capture & follow-ups", "Support automation"]],
+        ["🤖", "CreativeBot AI", ["AI website live chat", "WhatsApp Business", "AI chatbots & auto-replies", "AI-to-human handover", "Lead capture & follow-ups", "Support automation"]],
       ];
-      const card = ([i, t, items]: [string, string, string[]]) => '<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:12.5px;line-height:1.6;color:#5d5568;padding:1px 0;white-space:nowrap;">• ' + x + '</div>').join("") + '</div></td>';
+      // 3 compact cards per row; the 9th tile is a "your project" call to action.
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="33%" valign="top" style="padding:5px;"><div style="background:#faf6ee;border:1px solid #efe6d6;border-radius:10px;padding:14px 12px;min-height:178px;"><div style="font-size:20px;line-height:1;">' + i + '</div><div style="font-size:13.5px;font-weight:700;color:#140D21;margin:8px 0 6px;line-height:1.3;">' + t + '</div>' + items.map((x) => '<div style="font-size:11.5px;line-height:1.55;color:#5d5568;white-space:nowrap;">• ' + x + '</div>').join("") + '</div></td>';
+      const cta = '<td width="33%" valign="top" style="padding:5px;"><a href="' + wa + '" style="text-decoration:none;display:block;"><div style="background:#140D21;border-radius:10px;padding:14px 12px;min-height:178px;text-align:center;"><div style="font-size:20px;line-height:1;margin-top:18px;">✨</div><div style="font-size:14px;font-weight:700;color:#C9A96E;margin:10px 0 6px;">Your Project</div><div style="font-size:11.5px;line-height:1.6;color:#e6dcc8;">Tell me what you need —<br>I\'ll send a tailored<br>proposal within 24h.</div><div style="display:inline-block;margin-top:12px;background:#C9A96E;color:#140D21;font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:6px;">Let\'s talk →</div></div></a></td>';
+      const tiles = SERVICES.map(card).concat([cta]);
       const rows: string[] = [];
-      for (let i = 0; i < SERVICES.length; i += 2) rows.push("<tr>" + card(SERVICES[i]) + card(SERVICES[i + 1]) + "</tr>");
+      for (let i = 0; i < tiles.length; i += 3) rows.push("<tr>" + tiles.slice(i, i + 3).join("") + "</tr>");
       return {
         key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography, film & digital for {{company_or}} — Naveed Anjum",
         description: "First email to a new company — Naveed's personal intro, all 8 service areas, portfolio links and one clear next step.",
         blocks: [
-          light({ accent: GOLD, headingFont: "playfair", preheader: "Premium visuals, creative branding and smart digital solutions — one creative partner." }),
+          light({ accent: GOLD, headingFont: "playfair", width: 680, preheader: "Premium visuals, creative branding and smart digital solutions — one creative partner." }),
           nav(b.workUrl, GOLD, INK, "#e6dcc8"),
           hero(0, "One creative partner.\nAll your visual & digital needs.", "Photography · Film · Branding · Web · AI", "See My Work", b.workUrl, { height: 330, overlay: INK, overlayOpacity: 0.55 }),
           { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },

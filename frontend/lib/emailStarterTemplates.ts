@@ -143,9 +143,9 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
         ["🌐", "Web Development & Digital Marketing", ["Business websites and landing pages", "Real estate and interior portfolio websites", "E-commerce and online booking systems", "Website maintenance and SEO", "Social media management and content planning", "Digital marketing and lead generation"]],
         ["🤖", "CreativeBot — AI & WhatsApp Solutions", ["AI-powered website live chat", "WhatsApp Business integration", "AI chatbots and automated replies", "Seamless AI-to-human handover", "Lead capture and customer follow-ups", "Customer support and communication automation"]],
       ];
-      const card = ([i, t, items]: [string, string, string[]]) => '<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:12.5px;line-height:1.5;color:#5d5568;padding:2px 0;">• ' + x + '</div>').join("") + '</div></td>';
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="100%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;"><div style="font-size:22px;line-height:1;">' + i + '</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 6px;">' + t + '</div>' + items.map((x) => '<div style="font-size:13.5px;line-height:1.6;color:#5d5568;padding:2px 0;">• ' + x + '</div>').join("") + '</div></td>';
       const rows: string[] = [];
-      for (let i = 0; i < SERVICES.length; i += 2) rows.push("<tr>" + card(SERVICES[i]) + card(SERVICES[i + 1]) + "</tr>");
+      for (const sv of SERVICES) rows.push("<tr>" + card(sv) + "</tr>");
       return {
         key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography, film & digital for {{company_or}} — Naveed Anjum",
         description: "First email to a new company — Naveed's personal intro, all 8 service areas, portfolio links and one clear next step.",

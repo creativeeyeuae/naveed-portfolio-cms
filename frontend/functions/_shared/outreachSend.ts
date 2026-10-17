@@ -104,7 +104,10 @@ export async function sendToOutreach(env: Env, campaign: any, template: any, cam
       last_name: c.last_name || full.split(/\s+/).slice(1).join(" "),
       company: c.company?.name || "",
       job_title: c.job_title || "",
-    };
+      // Safe fallbacks for templates: "Hello{{name_sp}}," -> "Hello Sarah," or "Hello,"
+      name_sp: (c.first_name || full.split(/\s+/)[0]) ? ` ${c.first_name || full.split(/\s+/)[0]}` : "",
+      company_or: c.company?.name || "your business",
+    } as Record<string, string>;
     const unsubUrl = `${SITE}/api/unsubscribe?t=${encodeURIComponent(await sign(env, { u: email, exp: Date.now() + 365 * 86400e3 }))}`;
     const footer = `<div style="text-align:center;font-family:Arial,sans-serif;font-size:12px;color:#8a8296;padding:14px 10px 24px">Not interested? <a href="${unsubUrl}" style="color:#8a8296;text-decoration:underline">Unsubscribe</a> — you won't hear from us again.</div>`;
     let html = renderTemplate((template.blocks || []) as EmailBlock[], vars);

@@ -31,7 +31,7 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   const template = ((await tRes.json()) as any[])?.[0];
   if (!template) return json({ error: "Template not found." }, 404, origin);
 
-  const sampleVars = { first_name: "Alex", last_name: "Sample", company: "Sample Co.", job_title: "Founder" };
+  const sampleVars = { first_name: "Alex", last_name: "Sample", company: "Sample Co.", job_title: "Founder", name_sp: " Alex", company_or: "Sample Co." };
   const html = renderTemplate((template.blocks || []) as EmailBlock[], sampleVars);
   const subject = `[TEST] ${substituteVariables(template.subject || template.name, sampleVars)}`;
 

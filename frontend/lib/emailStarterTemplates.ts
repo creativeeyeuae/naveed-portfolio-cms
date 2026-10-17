@@ -131,6 +131,31 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
   }));
 
   return [
+    // ── First email to a company: who Naveed is + every service, one clear next step ──
+    {
+      key: "intro-all-services", name: "First Email · Meet Naveed (All Services)", subject: "Photography & film for {{company_or}} — from Naveed Anjum",
+      description: "The first email to a new company — a short personal intro, all services at a glance, recent work and one easy next step.",
+      blocks: [
+        light({ accent: GOLD, headingFont: "playfair", preheader: "20+ years of photography, film and content for brands across the UAE." }),
+        nav(`${b.site}/photography`, GOLD, INK, "#e6dcc8"),
+        hero(0, "Visual stories that\nmake brands stand out", "Photography · Film · Social Media · Design", "See My Work", b.workUrl, { height: 330, overlay: INK, overlayOpacity: 0.55 }),
+        { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
+        { type: "text", html: `I'm <b>${b.name}</b>, a Dubai-based photographer and filmmaker with over 20 years behind the camera. I help brands, developers, hotels and event teams look their best — with images and films that feel premium and actually get used.\n\nI came across {{company_or}} and thought there could be a great fit, so here's a quick look at what I do.`, size: 15 },
+        { type: "heading", text: "Everything visual, under one roof", size: 21, bold: true, align: "center" },
+        { type: "html", html: `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;">${[
+          [["📷", "Photography", "Corporate & headshots, real estate & interiors, product, food, fashion and lifestyle."], ["🎬", "Videography", "Brand films, commercials, property walkthroughs, interviews and aerial / drone footage."]],
+          [["🎤", "Events & Exhibitions", "Conferences, launches and trade shows — with same-day highlights for social."], ["📱", "Social Media", "Monthly Reels, posts and content calendars — from AED 500 / month."]],
+          [["🏨", "Hospitality & F&B", "Rooms, spa, signature dishes and lifestyle scenes that make guests book."], ["🎨", "Design & Content", "Campaign visuals, social creatives and graphics that match your brand."]],
+        ].map((row) => `<tr>${row.map(([i, t, d]) => `<td width="50%" valign="top" style="padding:6px;"><div style="background:#faf6ee;border-radius:10px;padding:16px 14px;height:100%;"><div style="font-size:22px;line-height:1;">${i}</div><div style="font-size:15px;font-weight:700;color:#140D21;margin:8px 0 4px;">${t}</div><div style="font-size:12.5px;line-height:1.55;color:#5d5568;">${d}</div></div></td>`).join("")}</tr>`).join("")}</table>` },
+        { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Recent work", cap2: "Brand & events", link1: b.workUrl, link2: b.workUrl },
+        { type: "html", html: `<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;text-align:center;"><tr>${[["20+", "years experience"], ["UAE-wide", "on location"], ["48h", "fast delivery options"]].map(([n, l]) => `<td width="33%" style="padding:10px 4px;"><div style="font-size:24px;font-weight:800;color:#C9A96E;">${n}</div><div style="font-size:11.5px;color:#7d7290;text-transform:uppercase;letter-spacing:.08em;">${l}</div></td>`).join("")}</tr></table>` },
+        { type: "text", html: "If you have a shoot, launch or campaign coming up — or just want fresh content for your channels — I'd be happy to send a tailored proposal. A quick reply with what you need is all it takes.", size: 15, align: "center" },
+        { type: "button", text: "View Packages & Prices", href: `${b.site}/packages`, btnColor: GOLD },
+        { type: "button", text: "Chat on WhatsApp", href: wa, btnColor: "#25D366" },
+        signature(),
+        ...footerBlocks(),
+      ],
+    },
     ...proposalTemplates,
     // ── Corporate (light) ───────────────────────────────────────────────────
     {

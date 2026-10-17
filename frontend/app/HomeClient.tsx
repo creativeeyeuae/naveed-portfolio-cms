@@ -7503,7 +7503,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                     {(()=>{
                       const blocks=emailTemplateForm.blocks||[];
                       if(!blocks.filter((b:any)=>b?.type!=="settings").length) return <div style={{background:"#f4f1f9",borderRadius:10,padding:30,textAlign:"center" as const,color:"#9a92a8",fontSize:12}}>Add a block to see a preview.</div>;
-                      const html=renderEmailHtml(blocks,{first_name:"Sarah",last_name:"Khan",company:"Emaar",job_title:"Marketing Director"});
+                      const html=renderEmailHtml(blocks,{first_name:"Sarah",last_name:"Khan",company:"Emaar",job_title:"Marketing Director",name_sp:" Sarah",company_or:"Emaar"});
                       const frameW=emailPreviewWidth==="mobile"?375:660;
                       const maxW=isMobile?320:440;
                       const scale=Math.min(1,maxW/frameW);

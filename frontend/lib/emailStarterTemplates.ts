@@ -111,10 +111,9 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
   ];
   const proposalTemplates: StarterTemplate[] = PROPOSALS.map((p) => ({
     key: p.key, name: `Proposal · ${p.svc}`, subject: `{{first_name}}, your ${p.svc.split(" &")[0].toLowerCase()} proposal is ready`,
-    description: `Ready-to-send ${p.svc} proposal: navigation bar, scope, prices pulled from Packages, one-click Book.`,
+    description: `Ready-to-send ${p.svc} proposal: scope, prices pulled from Packages, one-click Book.`,
     blocks: [
       light({ accent: p.accent, headingFont: p.headingFont, font: p.font, preheader: `Your ${p.svc} proposal — scope, packages and how to book.` }),
-      nav(`${b.site}/${p.slug}`, p.accent, p.navBg, p.navFg),
       hero(p.img, p.title, `${p.svc} proposal · Prepared for {{company}}`, "Book a date", bookUrl, { height: 280, overlay: p.navBg === "#ffffff" ? "#1d1430" : p.navBg, overlayOpacity: 0.6, titleFont: p.headingFont }),
       { type: "text", html: `Dear {{first_name}},\n\n${p.intro}`, size: 15, padY: 24 },
       { type: "heading", text: "What's included", size: 19, bold: true },
@@ -154,7 +153,6 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
         description: "First email to a new company — Naveed's personal intro, all 8 service areas, portfolio links and one clear next step.",
         blocks: [
           light({ accent: GOLD, headingFont: "playfair", width: 680, preheader: "Premium visuals, creative branding and smart digital solutions — one creative partner." }),
-          nav(b.workUrl, GOLD, INK, "#e6dcc8"),
           hero(0, "One creative partner.\nAll your visual & digital needs.", "Photography · Film · Branding · Web · AI", "See My Work", b.workUrl, { height: 330, overlay: INK, overlayOpacity: 0.55 }),
           { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
           { type: "text", html: "I'm <b>" + b.name + "</b>, a Dubai-based photographer, filmmaker and digital solutions provider with over 10 years behind the camera.\n\nI help businesses showcase their work through premium visuals, creative branding and smart digital solutions.", size: 15 },

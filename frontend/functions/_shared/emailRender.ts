@@ -300,8 +300,17 @@ export function getSettings(blocks: EmailBlock[]): typeof DEFAULT_SETTINGS {
 
 // Renders a template to one complete, email-client-safe HTML document (table layout), then
 // substitutes {{variables}} across the whole document in one pass.
+/** The old top menu bar (Services | Packages & Prices | Portfolio | Book | WhatsApp) that earlier
+ *  ready-made designs inserted as a Custom HTML block. Removed from all emails, including
+ *  templates that were already saved with it. */
+export function isEmailNavBar(b: any): boolean {
+  if (b?.type !== "html" || typeof b.html !== "string") return false;
+  const h = b.html;
+  return />\s*Services\s*</.test(h) && /Packages\s*(&amp;|&)\s*Prices/.test(h) && />\s*Book\s*</.test(h) && />\s*WhatsApp\s*</.test(h) && h.length < 4000;
+}
+
 export function renderTemplate(blocks: EmailBlock[], vars: Record<string, string | null | undefined> = {}): string {
-  const list = Array.isArray(blocks) ? blocks : [];
+  const list = (Array.isArray(blocks) ? blocks : []).filter((b: any) => !isEmailNavBar(b));
   const raw = list.find((b: any) => b?.type === "rawhtml") as { html: string } | undefined;
   if (raw) {
     let doc = sanitizeDocument(raw.html || "");

@@ -19,7 +19,7 @@ import LeadFinder from "@/components/cms/LeadFinder";
 import BookingExtraActions from "@/components/cms/BookingExtraActions";
 import CompanyBulkSend from "@/components/cms/CompanyBulkSend";
 import EmailScheduler from "@/components/cms/EmailScheduler";
-import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings } from "@/functions/_shared/emailRender";
+import { renderTemplate as renderEmailHtml, EMAIL_FONTS, getSettings as getEmailSettings, isEmailNavBar } from "@/functions/_shared/emailRender";
 import { buildEmailStarters } from "@/lib/emailStarterTemplates";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -4212,7 +4212,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
     setEmailTestMsg("");
   }
   function emailOpenTemplate(t:any){
-    setEmailTemplateForm({name:t.name||"",subject:t.subject||"",blocks:Array.isArray(t.blocks)?t.blocks:[]});
+    setEmailTemplateForm({name:t.name||"",subject:t.subject||"",blocks:(Array.isArray(t.blocks)?t.blocks:[]).filter((b:any)=>!isEmailNavBar(b))});
     setEmailTemplateEditId(t.id);
     setEmailTestMsg("");
   }
@@ -7577,7 +7577,7 @@ export default function HomeClient({initialProjects}:{initialProjects?: Project[
                         </div>
                         <div style={{display:"flex",gap:8}}>
                           <button onClick={()=>emailOpenTemplate(t)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}}>Edit</button>
-                          <button onClick={()=>{setEmailTemplateForm({name:`${t.name} (copy)`,subject:t.subject||"",blocks:JSON.parse(JSON.stringify(Array.isArray(t.blocks)?t.blocks:[]))});setEmailTemplateEditId("new");setEmailTestMsg("");}} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}} title="Make an editable copy">Duplicate</button>
+                          <button onClick={()=>{setEmailTemplateForm({name:`${t.name} (copy)`,subject:t.subject||"",blocks:JSON.parse(JSON.stringify(Array.isArray(t.blocks)?t.blocks:[])).filter((b:any)=>!isEmailNavBar(b))});setEmailTemplateEditId("new");setEmailTestMsg("");}} style={{...S.btnO,padding:"7px 14px",fontSize:10.5}} title="Make an editable copy">Duplicate</button>
                           <button onClick={()=>emailDeleteTemplate(t.id)} style={{...S.btnO,padding:"7px 14px",fontSize:10.5,color:"#e74c3c"}}>Delete</button>
                         </div>
                       </div>

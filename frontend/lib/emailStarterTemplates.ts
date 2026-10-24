@@ -168,6 +168,36 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
         ],
       } as StarterTemplate;
     })(),
+    // ── Interior design companies: photo + video + web intro, NO prices ──
+    (() => {
+      const interiorUrl = b.site + "/interior-photographer-dubai";
+      const SERVICES: [string, string, string[]][] = [
+        ["📷", "Interior Photography", ["Luxury residences & villas", "Hotels, offices & showrooms", "Fit-out & handover shoots", "Details, materials & styling", "Before & after sets", "Award & magazine-ready images"]],
+        ["🎬", "Interior Videography", ["Cinematic walkthrough films", "Project reveal videos", "Reels & short videos", "Drone exteriors (where permitted)", "Designer interviews", "Behind-the-scenes content"]],
+        ["🌐", "Web Development", ["Portfolio websites for studios", "Project galleries & case studies", "Fast, mobile-friendly design", "SEO to get found on Google", "Enquiry & WhatsApp leads", "Ongoing updates & support"]],
+      ];
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="33%" valign="top" style="padding:5px;"><div style="background:#f7f3ec;border:1px solid #ebe2d2;border-radius:10px;padding:14px 12px;min-height:186px;"><div style="font-size:20px;line-height:1;">' + i + '</div><div style="font-size:13.5px;font-weight:700;color:#111111;margin:8px 0 6px;line-height:1.3;">' + t + '</div>' + items.map((x) => '<div style="font-size:11.5px;line-height:1.55;color:#5d5568;">• ' + x + '</div>').join("") + '</div></td>';
+      const ACCENT = "#B08D57";
+      return {
+        key: "intro-interior-design", name: "Interior Design · Photo, Video & Web (no prices)", subject: "Showcasing {{company_or}}'s interiors — photography, film & web",
+        description: "Introduction for interior design companies — photography, videography and web development, no prices.",
+        blocks: [
+          light({ accent: ACCENT, headingFont: "playfair", width: 640, preheader: "Interior photography, walkthrough films and portfolio websites for design studios in the UAE." }),
+          hero(0, "Your interiors deserve\nto be seen beautifully", "Interior Photography · Videography · Web Development", "See Interior Work", interiorUrl, { height: 320, overlay: "#111111", overlayOpacity: 0.55 }),
+          { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
+          { type: "text", html: "I'm <b>" + b.name + "</b>, a Dubai-based photographer and filmmaker. I work with interior design and fit-out companies to capture their finished projects — and present them online in a way that wins the next client.\n\nYour projects take months of design and craftsmanship. The right images, a cinematic walkthrough film and a strong portfolio website make sure that work is seen at its best.", size: 15 },
+          { type: "heading", text: "How I Can Help {{company_or}}", size: 21, bold: true, align: "center" },
+          { type: "html", html: '<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;"><tr>' + SERVICES.map(card).join("") + "</tr></table>" },
+          { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Interior photography", cap2: "Recent projects", link1: interiorUrl, link2: b.workUrl },
+          { type: "text", html: "<b>Why studios work with me</b>\n• True-to-life colour and perfectly straight lines\n• Discreet shoots that fit around your client and handover\n• Fast delivery, ready for Instagram, your website and award entries\n• Photo, video and website from one creative partner", size: 14.5, bg: "#f7f3ec", padY: 18 },
+          { type: "text", html: "I'd love to see your upcoming or recently completed projects and suggest the best way to showcase them.", size: 15, align: "center" },
+          { type: "button", text: "Let's Talk About Your Projects", href: wa, btnColor: ACCENT },
+          { type: "button", text: "View My Portfolio", href: b.workUrl, btnColor: "#111111" },
+          signature(),
+          ...footerBlocks(),
+        ],
+      } as StarterTemplate;
+    })(),
     ...proposalTemplates,
     // ── Corporate (light) ───────────────────────────────────────────────────
     {

@@ -65,7 +65,7 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
   const footerBlocks = (dark = false) => [
     { type: "spacer", height: 8, bg: dark ? undefined : "#f8f7fb" },
     { type: "social", instagram: b.instagram, youtube: b.youtube, linkedin: b.linkedin, tiktok: b.tiktok, website: b.site, bg: dark ? undefined : "#f8f7fb" },
-    { type: "contact", phone: b.phone, email: b.email, website: b.site, address: b.address, size: 12, bg: dark ? undefined : "#f8f7fb", color: dark ? "#cfc6e0" : "#5d5568" },
+    { type: "contact", phone: b.phone, whatsapp: b.waNumber, email: b.email, website: b.site, address: b.address, size: 12, bg: dark ? undefined : "#f8f7fb", color: dark ? "#cfc6e0" : "#5d5568" },
     { type: "footer", align: "center", bg: dark ? undefined : "#f8f7fb", color: dark ? "#7d7290" : "#9a92a8", text: `© ${b.name} · Dubai, UAE\nYou're receiving this because you're a valued contact. Simply reply "unsubscribe" to stop receiving emails.` },
   ];
   const portfolioBtn = (text = "View Portfolio") => ({ type: "button", text, href: b.workUrl });
@@ -174,22 +174,23 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
       const SERVICES: [string, string, string[]][] = [
         ["📷", "Interior Photography", ["Luxury residences & villas", "Hotels, offices & showrooms", "Fit-out & handover shoots", "Details, materials & styling", "Before & after sets", "Award & magazine-ready images"]],
         ["🎬", "Interior Videography", ["Cinematic walkthrough films", "Project reveal videos", "Reels & short videos", "Drone exteriors (where permitted)", "Designer interviews", "Behind-the-scenes content"]],
+        ["📱", "Social Media Content", ["Before shots of the empty space", "Work-in-progress & site updates", "After & final reveal shoots", "Before/after Reels & carousels", "Final project for your portfolio", "Ready for Instagram, TikTok & LinkedIn"]],
         ["🌐", "Web Development", ["Portfolio websites for studios", "Project galleries & case studies", "Fast, mobile-friendly design", "SEO to get found on Google", "Enquiry & WhatsApp leads", "Ongoing updates & support"]],
       ];
-      const card = ([i, t, items]: [string, string, string[]]) => '<td width="33%" valign="top" style="padding:5px;"><div style="background:#f7f3ec;border:1px solid #ebe2d2;border-radius:10px;padding:14px 12px;min-height:186px;"><div style="font-size:20px;line-height:1;">' + i + '</div><div style="font-size:13.5px;font-weight:700;color:#111111;margin:8px 0 6px;line-height:1.3;">' + t + '</div>' + items.map((x) => '<div style="font-size:11.5px;line-height:1.55;color:#5d5568;">• ' + x + '</div>').join("") + '</div></td>';
+      const card = ([i, t, items]: [string, string, string[]]) => '<td width="50%" valign="top" style="padding:5px;"><div style="background:#f7f3ec;border:1px solid #ebe2d2;border-radius:10px;padding:14px 12px;min-height:170px;"><div style="font-size:20px;line-height:1;">' + i + '</div><div style="font-size:13.5px;font-weight:700;color:#111111;margin:8px 0 6px;line-height:1.3;">' + t + '</div>' + items.map((x) => '<div style="font-size:11.5px;line-height:1.55;color:#5d5568;">• ' + x + '</div>').join("") + '</div></td>';
       const ACCENT = "#B08D57";
       return {
-        key: "intro-interior-design", name: "Interior Design · Photo, Video & Web (no prices)", subject: "Showcasing {{company_or}}'s interiors — photography, film & web",
-        description: "Introduction for interior design companies — photography, videography and web development, no prices.",
+        key: "intro-interior-design", name: "Interior Design · Photo, Video, Social & Web (no prices)", subject: "Showcasing {{company_or}}'s interiors — photography, film & web",
+        description: "Introduction for interior design companies — photography, videography, before/after social media content and web development, no prices.",
         blocks: [
           light({ accent: ACCENT, headingFont: "playfair", width: 640, preheader: "Interior photography, walkthrough films and portfolio websites for design studios in the UAE." }),
-          hero(0, "Your interiors deserve\nto be seen beautifully", "Interior Photography · Videography · Web Development", "See Interior Work", interiorUrl, { height: 320, overlay: "#111111", overlayOpacity: 0.55 }),
+          hero(0, "Your interiors deserve\nto be seen beautifully", "Photography · Videography · Social Media · Web", "See Interior Work", interiorUrl, { height: 320, overlay: "#111111", overlayOpacity: 0.55 }),
           { type: "text", html: "Hello{{name_sp}},", size: 16, padY: 26 },
-          { type: "text", html: "I'm <b>" + b.name + "</b>, a Dubai-based photographer and filmmaker. I work with interior design and fit-out companies to capture their finished projects — and present them online in a way that wins the next client.\n\nYour projects take months of design and craftsmanship. The right images, a cinematic walkthrough film and a strong portfolio website make sure that work is seen at its best.", size: 15 },
+          { type: "text", html: "I'm <b>" + b.name + "</b>, a Dubai-based photographer and filmmaker. I work with interior design and fit-out companies to capture their finished projects — and present them online in a way that wins the next client.\n\nYour projects take months of design and craftsmanship. I document every project from <b>before</b> to <b>after</b> — the empty space, the work in progress and the final reveal — giving you social media content along the way and a finished project for your portfolio. Add a cinematic walkthrough film and a strong portfolio website, and your work is seen at its best.", size: 15 },
           { type: "heading", text: "How I Can Help {{company_or}}", size: 21, bold: true, align: "center" },
-          { type: "html", html: '<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;"><tr>' + SERVICES.map(card).join("") + "</tr></table>" },
+          { type: "html", html: '<table width="100%" cellpadding="0" cellspacing="0" style="font-family:Arial,sans-serif;"><tr>' + SERVICES.slice(0, 2).map(card).join("") + "</tr><tr>" + SERVICES.slice(2).map(card).join("") + "</tr></table>" },
           { type: "gallery", img1: workImg(0), img2: workImg(1), cap1: "Interior photography", cap2: "Recent projects", link1: interiorUrl, link2: b.workUrl },
-          { type: "text", html: "<b>Why studios work with me</b>\n• True-to-life colour and perfectly straight lines\n• Discreet shoots that fit around your client and handover\n• Fast delivery, ready for Instagram, your website and award entries\n• Photo, video and website from one creative partner", size: 14.5, bg: "#f7f3ec", padY: 18 },
+          { type: "text", html: "<b>Why studios work with me</b>\n• True-to-life colour and perfectly straight lines\n• Discreet shoots that fit around your client and handover\n• Fast delivery, ready for Instagram, your website and award entries\n• Before, during & after coverage — social content plus a finished portfolio project\n• Photo, video, social media and website from one creative partner", size: 14.5, bg: "#f7f3ec", padY: 18 },
           { type: "text", html: "I'd love to see your upcoming or recently completed projects and suggest the best way to showcase them.", size: 15, align: "center" },
           { type: "button", text: "Let's Talk About Your Projects", href: wa, btnColor: ACCENT },
           { type: "button", text: "View My Portfolio", href: b.workUrl, btnColor: "#111111" },
@@ -369,7 +370,7 @@ export function buildEmailStarters(input?: Partial<EmailBrand>): StarterTemplate
         { type: "text", html: "I hope you're well and enjoying the final images. This is a friendly reminder that the balance for invoice <b>#0000</b> (<b>AED 0,000</b>) is due on <b>00 Month</b>.\n\nIf you've already sent it, thank you — please ignore this message.", size: 15 },
         { type: "button", text: "View Invoice", href: b.site, align: "left" },
         signature(),
-        { type: "contact", phone: b.phone, email: b.email, website: b.site, align: "left", size: 12, color: "#7d7290" },
+        { type: "contact", phone: b.phone, whatsapp: b.waNumber, email: b.email, website: b.site, align: "left", size: 12, color: "#7d7290" },
       ],
     },
     {
